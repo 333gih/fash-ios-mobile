@@ -647,9 +647,15 @@
 "explore_preview_detail_nudge" = "There's more to see";
 "explore_preview_detail_nudge_cta" = "Open details";
 "explore_preview_detail_nudge_sub" = "Full description, size, photos & buying terms";
+"explore_preview_image_page" = "%@ / %@";
+"explore_preview_image_pager_cd" = "Product image %@ of %@ — swipe for more";
+"explore_preview_inline_separator" = "·";
 "explore_preview_loading" = "Loading more details…";
 "explore_preview_message_seller" = "Message seller first";
 "explore_preview_scroll_hint" = "Scroll for more";
+"explore_preview_scroll_hint_cd" = "Scroll down for more product details";
+"explore_preview_seller_at_username" = "@%@";
+"explore_preview_seller_username_fallback" = "user";
 "explore_preview_sheet_subtitle" = "A fast preview — open full details when you're ready";
 "explore_preview_sheet_title" = "Quick look";
 "explore_preview_trust_line" = "Chat before you buy — meetup or ship safely on Fash";

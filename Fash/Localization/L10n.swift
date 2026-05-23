@@ -754,9 +754,21 @@ enum L10n {
     static var explorePreviewDetailNudge: String { t("explore_preview_detail_nudge") }
     static var explorePreviewDetailNudgeCta: String { t("explore_preview_detail_nudge_cta") }
     static var explorePreviewDetailNudgeSub: String { t("explore_preview_detail_nudge_sub") }
+    static func explorePreviewImagePage(_ a1: CVarArg, _ a2: CVarArg) -> String {
+        String(format: t("explore_preview_image_page"), a1, a2)
+    }
+    static func explorePreviewImagePagerCd(_ a1: CVarArg, _ a2: CVarArg) -> String {
+        String(format: t("explore_preview_image_pager_cd"), a1, a2)
+    }
+    static var explorePreviewInlineSeparator: String { t("explore_preview_inline_separator") }
     static var explorePreviewLoading: String { t("explore_preview_loading") }
     static var explorePreviewMessageSeller: String { t("explore_preview_message_seller") }
     static var explorePreviewScrollHint: String { t("explore_preview_scroll_hint") }
+    static var explorePreviewScrollHintCd: String { t("explore_preview_scroll_hint_cd") }
+    static func explorePreviewSellerAtUsername(_ a1: CVarArg) -> String {
+        String(format: t("explore_preview_seller_at_username"), a1)
+    }
+    static var explorePreviewSellerUsernameFallback: String { t("explore_preview_seller_username_fallback") }
     static var explorePreviewSheetSubtitle: String { t("explore_preview_sheet_subtitle") }
     static var explorePreviewSheetTitle: String { t("explore_preview_sheet_title") }
     static var explorePreviewTrustLine: String { t("explore_preview_trust_line") }
@@ -1132,6 +1144,21 @@ enum L10n {
     static var notificationEmptyTip2: String { t("notification_empty_tip_2") }
     static var notificationEmptyTip3: String { t("notification_empty_tip_3") }
     static var notificationEmptyTitle: String { t("notification_empty_title") }
+    static var notificationGroupAds: String { t("notification_group_ads") }
+    static var notificationGroupAdsDesc: String { t("notification_group_ads_desc") }
+    static var notificationGroupCommerce: String { t("notification_group_commerce") }
+    static var notificationGroupCommerceDesc: String { t("notification_group_commerce_desc") }
+    static var notificationGroupEmptyTitle: String { t("notification_group_empty_title") }
+    static var notificationGroupRealtime: String { t("notification_group_realtime") }
+    static var notificationGroupRealtimeDesc: String { t("notification_group_realtime_desc") }
+    static var notificationGroupRecommendation: String { t("notification_group_recommendation") }
+    static var notificationGroupRecommendationDesc: String { t("notification_group_recommendation_desc") }
+    static var notificationGroupReengagement: String { t("notification_group_reengagement") }
+    static var notificationGroupReengagementDesc: String { t("notification_group_reengagement_desc") }
+    static var notificationGroupSocial: String { t("notification_group_social") }
+    static var notificationGroupSocialDesc: String { t("notification_group_social_desc") }
+    static var notificationGroupSystem: String { t("notification_group_system") }
+    static var notificationGroupSystemDesc: String { t("notification_group_system_desc") }
     static var notificationInboxUnavailableSubtitle: String { t("notification_inbox_unavailable_subtitle") }
     static var notificationInboxUnavailableTitle: String { t("notification_inbox_unavailable_title") }
     static var notificationLoadErrorSubtitle: String { t("notification_load_error_subtitle") }

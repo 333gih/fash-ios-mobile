@@ -10,6 +10,7 @@ struct MainNavScreen: View {
     @State private var exploreVM = ExploreViewModel()
     @State private var profileVM = ProfileViewModel()
     @State private var chatVM = ChatViewModel()
+    @State private var listingPreview = ListingPreviewStore()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -18,8 +19,31 @@ struct MainNavScreen: View {
             bottomBar
         }
         .background(FashColors.screen)
+        .sheet(item: $listingPreview.state, onDismiss: { listingPreview.close() }) { preview in
+            ExploreListingPreviewSheet(
+                feedItem: preview.feedItem,
+                detail: preview.detail,
+                isDetailLoading: preview.isDetailLoading,
+                isGuestMode: isGuestMode,
+                onViewDetail: {
+                    router.selectedListingId = preview.feedItem.id
+                    listingPreview.close()
+                },
+                onLike: {},
+                onSave: {},
+                onMessageSeller: {
+                    router.selectedListingId = preview.feedItem.id
+                    listingPreview.close()
+                },
+                onRequestLogin: {
+                    onRequestSignIn?(L10n.guestLoginReasonBuy)
+                },
+            )
+            .environment(\.locale, AppLocale.locale)
+        }
         .sheet(isPresented: $router.showNotificationScreen) {
             NotificationScreen(
+                userRepository: deps.userRepository,
                 detailId: router.notificationDetailId,
                 onDismiss: {
                     router.showNotificationScreen = false
@@ -79,6 +103,11 @@ struct MainNavScreen: View {
         HStack {
             tabTitle
             Spacer()
+            if router.selectedTab == .home {
+                FashAnimatedSearchIconButton(animateHint: !router.featureTourActive) {
+                    router.selectedTab = .explore
+                }
+            }
             if isGuestMode {
                 Button(L10n.guestTopbarSignIn) {
                     onRequestSignIn?(L10n.guestLoginReasonTopbar)
@@ -121,7 +150,11 @@ struct MainNavScreen: View {
     private var tabContent: some View {
         switch router.selectedTab {
         case .home:
-            HomeFeedContent(viewModel: homeVM, onListingTap: { router.selectedListingId = $0 })
+            HomeFeedContent(
+                viewModel: homeVM,
+                listingPreview: listingPreview,
+                isGuestMode: isGuestMode,
+            )
                 .overlay(alignment: .bottom) {
                     if AppEnvironment.shippingEnabled {
                         Button(L10n.homeDeliveringScreenTitle) {
@@ -132,7 +165,11 @@ struct MainNavScreen: View {
                     }
                 }
         case .explore:
-            ExploreScreen(viewModel: exploreVM, onListingTap: { router.selectedListingId = $0 })
+            ExploreScreen(
+                viewModel: exploreVM,
+                listingPreview: listingPreview,
+                isGuestMode: isGuestMode,
+            )
         case .post:
             if isGuestMode {
                 GuestTabPlaceholder(tab: .post, onSignIn: { onRequestSignIn?(L10n.guestLoginReasonPost) })

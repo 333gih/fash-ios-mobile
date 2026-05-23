@@ -1,26 +1,181 @@
 import SwiftUI
 
 struct NotificationScreen: View {
+    @State private var viewModel: NotificationsViewModel
     var detailId: String?
     var onDismiss: () -> Void
 
+    init(userRepository: UserRepository, detailId: String? = nil, onDismiss: @escaping () -> Void) {
+        _viewModel = State(initialValue: NotificationsViewModel(userRepository: userRepository))
+        self.detailId = detailId
+        self.onDismiss = onDismiss
+    }
+
     var body: some View {
         NavigationStack {
-            VStack {
-                if let detailId {
-                    NotificationDetailScreen(notificationId: detailId, onDismiss: onDismiss)
+            Group {
+                if let detailId = viewModel.selectedDetailId ?? detailId {
+                    NotificationDetailScreen(notificationId: detailId, onDismiss: {
+                        viewModel.closeDetail()
+                        if self.detailId != nil { onDismiss() }
+                    })
+                } else if viewModel.selectedGroup == nil {
+                    groupList
                 } else {
-                    Text(L10n.notificationInboxUnavailableTitle)
-                        .font(FashTypography.bodyMedium)
-                        .foregroundStyle(FashColors.textSecondary)
+                    groupDetail
                 }
             }
-            .navigationTitle(L10n.notificationInboxUnavailableTitle)
+            .navigationTitle(viewModel.selectedGroup.map(notificationGroupTitle) ?? L10n.notifications)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button(L10n.dialogOk, action: onDismiss)
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        if viewModel.selectedGroup != nil {
+                            viewModel.closeGroup()
+                        } else {
+                            onDismiss()
+                        }
+                    } label: {
+                        Image(systemName: "chevron.left")
+                    }
+                }
+                if viewModel.selectedGroup != nil {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button(L10n.notificationMarkAllRead) {
+                            Task { await viewModel.markAllRead() }
+                        }
+                        .disabled(
+                            viewModel.markAllReadBusy ||
+                            !viewModel.canMarkAllReadInSelectedGroup
+                        )
+                    }
+                }
+            }
+            .task {
+                await viewModel.refresh()
+                if let detailId, !detailId.isEmpty {
+                    viewModel.openDetail(detailId)
                 }
             }
         }
+    }
+
+    private var groupList: some View {
+        List {
+            if viewModel.isLoading && viewModel.groups.isEmpty {
+                ProgressView().frame(maxWidth: .infinity)
+            } else if let error = viewModel.loadError, viewModel.groups.isEmpty {
+                Text(error).foregroundStyle(FashColors.textSecondary)
+            } else {
+                ForEach(viewModel.groups) { group in
+                    Button {
+                        viewModel.openGroup(group.group)
+                    } label: {
+                        groupRow(group)
+                    }
+                }
+            }
+        }
+        .refreshable { await viewModel.refresh() }
+    }
+
+    private var groupDetail: some View {
+        List {
+            if viewModel.isLoading && viewModel.items.isEmpty {
+                ProgressView().frame(maxWidth: .infinity)
+            } else if viewModel.items.isEmpty {
+                Text(L10n.notificationGroupEmptyTitle)
+                    .foregroundStyle(FashColors.textSecondary)
+            } else {
+                ForEach(viewModel.items) { item in
+                    Button {
+                        viewModel.openDetail(item.id)
+                        Task { await viewModel.markReadIfNeeded(item) }
+                    } label: {
+                        notificationRow(item)
+                    }
+                }
+                if viewModel.loadMoreBusy {
+                    ProgressView().frame(maxWidth: .infinity)
+                } else if viewModel.hasMore {
+                    Color.clear.frame(height: 1).onAppear {
+                        Task { await viewModel.loadMore() }
+                    }
+                }
+            }
+        }
+        .refreshable { await viewModel.refresh() }
+    }
+
+    @ViewBuilder
+    private func groupRow(_ group: NotificationGroupSummaryItem) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: notificationGroupSystemImage(group.group))
+                .foregroundStyle(FashColors.textSecondary)
+                .frame(width: 22)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 8) {
+                    Text(notificationGroupTitle(group.group))
+                        .font(FashTypography.titleSmall)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(FashColors.textPrimary)
+                        .lineLimit(1)
+                    if group.unreadCount > 0 {
+                        Text("\(min(group.unreadCount, 99))")
+                            .font(FashTypography.labelSmall)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 1)
+                            .background(FashColors.primary)
+                            .foregroundStyle(.white)
+                            .clipShape(Capsule())
+                    }
+                    Spacer(minLength: 0)
+                }
+                Text(group.latestBody ?? group.latestTitle ?? notificationGroupSubtitle(group.group))
+                    .font(FashTypography.bodySmall)
+                    .foregroundStyle(FashColors.textSecondary)
+                    .lineLimit(1)
+            }
+            Image(systemName: "chevron.right")
+                .foregroundStyle(FashColors.textSecondary)
+                .font(.caption)
+        }
+        .frame(height: NotificationGroups.rowHeight)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private func notificationRow(_ item: InboxNotificationItem) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: notificationPayloadSystemImage(item.payloadType))
+                .foregroundStyle(FashColors.primary)
+                .frame(width: 24)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(item.title.isEmpty ? L10n.notificationDetailNoTitle : item.title)
+                    .font(FashTypography.titleSmall)
+                    .foregroundStyle(FashColors.textPrimary)
+                Text(item.body)
+                    .font(FashTypography.bodyMedium)
+                    .foregroundStyle(FashColors.textSecondary)
+                    .lineLimit(3)
+                if item.isUnread {
+                    Text(L10n.notificationUnreadBadge)
+                        .font(FashTypography.labelSmall)
+                        .foregroundStyle(FashColors.primary)
+                }
+            }
+            if let url = notificationRowImageURL(item) {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image.resizable().scaledToFill()
+                    default:
+                        Color.gray.opacity(0.15)
+                    }
+                }
+                .frame(width: 56, height: 56)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+            }
+        }
+        .padding(.vertical, 4)
     }
 }

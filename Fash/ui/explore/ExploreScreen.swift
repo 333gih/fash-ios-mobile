@@ -3,7 +3,8 @@ import SwiftUI
 struct ExploreScreen: View {
     @Environment(AppDependencies.self) private var deps
     @Bindable var viewModel: ExploreViewModel
-    var onListingTap: (String) -> Void
+    @Bindable var listingPreview: ListingPreviewStore
+    var isGuestMode: Bool
 
     private let columns = [
         GridItem(.flexible(), spacing: 12),
@@ -21,8 +22,16 @@ struct ExploreScreen: View {
                 .onSubmit { Task { await viewModel.refresh(deps: deps) } }
             ScrollView {
                 LazyVGrid(columns: columns, spacing: 16) {
-                    ForEach(viewModel.items) { item in
-                        ListingGridCard(item: item) { onListingTap(item.id) }
+                    ForEach(Array(viewModel.items.enumerated()), id: \.element.id) { index, item in
+                        ListingGridCard(item: item) {
+                            listingPreview.open(
+                                item: item,
+                                deps: deps,
+                                publicBrowse: isGuestMode,
+                                surface: "explore",
+                                position: index,
+                            )
+                        }
                     }
                 }
                 .padding(20)
