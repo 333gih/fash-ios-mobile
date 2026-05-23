@@ -8,4 +8,6 @@ if ! command -v xcodegen >/dev/null 2>&1; then
   exit 1
 fi
 xcodegen generate
-echo "Open Fash.xcodeproj in Xcode and set your development team."
+echo "Generated Fash.xcodeproj"
+echo "Build from terminal:  ./scripts/build_mac.sh"
+echo "Or open in Xcode, set Development Team, then Cmd+R (scheme Fash-Dev)."
