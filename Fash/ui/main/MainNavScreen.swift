@@ -1,7 +1,11 @@
 import SwiftUI
 
 struct MainNavScreen: View {
+    @Environment(AppDependencies.self) private var deps
     @Bindable var router: AppRouter
+    var isGuestMode = false
+    var onRequestSignIn: ((String) -> Void)? = nil
+
     @State private var homeVM = HomeViewModel()
     @State private var exploreVM = ExploreViewModel()
     @State private var profileVM = ProfileViewModel()
@@ -10,16 +14,64 @@ struct MainNavScreen: View {
     var body: some View {
         VStack(spacing: 0) {
             topBar
-            tabContent
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            tabContent.frame(maxWidth: .infinity, maxHeight: .infinity)
             bottomBar
         }
         .background(FashColors.screen)
         .sheet(isPresented: $router.showNotificationScreen) {
-            NotificationScreen()
+            NotificationScreen(
+                detailId: router.notificationDetailId,
+                onDismiss: {
+                    router.showNotificationScreen = false
+                    router.notificationDetailId = nil
+                },
+            )
         }
         .sheet(isPresented: $router.showSettingsScreen) {
-            SettingsScreen()
+            SettingsScreen(
+                onBack: { router.showSettingsScreen = false },
+                onLogout: {
+                    Task {
+                        await deps.authManager.logout()
+                        router.showSettingsScreen = false
+                        router.loginStep = .email
+                    }
+                },
+                onOpenOrders: {
+                    router.showSettingsScreen = false
+                    router.showOrdersScreen = true
+                },
+                onOpenAddresses: {
+                    router.showSettingsScreen = false
+                    router.showShippingAddressList = true
+                },
+                onOpenEditProfile: {
+                    router.showSettingsScreen = false
+                    router.showEditProfile = true
+                },
+                onOpenChangePassword: {
+                    router.showSettingsScreen = false
+                    router.showChangePasswordScreen = true
+                },
+            )
+        }
+        .overlay(alignment: .top) {
+            if let banner = deps.inAppNotification {
+                FashInAppNotificationBanner(session: banner) {
+                    deps.inAppNotification = nil
+                }
+            }
+        }
+        .task {
+            deps.consumePendingDeepLinks(router: router)
+            if !isGuestMode {
+                await deps.realtimeManager.connect { _ in
+                    deps.requestOpenNotificationInbox()
+                }
+            }
+        }
+        .onChange(of: deps.inboxOpenRequestGeneration) { _, _ in
+            router.showNotificationScreen = true
         }
     }
 
@@ -27,11 +79,20 @@ struct MainNavScreen: View {
         HStack {
             tabTitle
             Spacer()
+            if isGuestMode {
+                Button(L10n.guestTopbarSignIn) {
+                    onRequestSignIn?(L10n.guestLoginReasonTopbar)
+                }
+                .font(FashTypography.labelLarge)
+            }
             Button { router.showNotificationScreen = true } label: {
                 Image(systemName: "bell")
             }
             Button { router.showOrdersScreen = true } label: {
                 Image(systemName: "bag")
+            }
+            Button { router.showSettingsScreen = true } label: {
+                Image(systemName: "gearshape")
             }
         }
         .padding(.horizontal, 20)
@@ -42,8 +103,7 @@ struct MainNavScreen: View {
     private var tabTitle: some View {
         HStack(spacing: 8) {
             FashBrandMarkText()
-            Text(headerSuffix)
-                .font(FashTypography.titleMedium)
+            Text(headerSuffix).font(FashTypography.titleMedium)
         }
     }
 
@@ -62,27 +122,49 @@ struct MainNavScreen: View {
         switch router.selectedTab {
         case .home:
             HomeFeedContent(viewModel: homeVM, onListingTap: { router.selectedListingId = $0 })
+                .overlay(alignment: .bottom) {
+                    if AppEnvironment.shippingEnabled {
+                        Button(L10n.homeDeliveringScreenTitle) {
+                            router.showHomeDeliveringScreen = true
+                        }
+                        .font(FashTypography.labelLarge)
+                        .padding(8)
+                    }
+                }
         case .explore:
             ExploreScreen(viewModel: exploreVM, onListingTap: { router.selectedListingId = $0 })
         case .post:
-            CreateListingFlowScreen()
+            if isGuestMode {
+                GuestTabPlaceholder(tab: .post, onSignIn: { onRequestSignIn?(L10n.guestLoginReasonPost) })
+            } else {
+                CreateListingFlowScreen()
+            }
         case .chat:
-            ChatScreen(viewModel: chatVM, onConversationTap: { router.selectedConversationId = $0 })
+            if isGuestMode {
+                GuestTabPlaceholder(tab: .chat, onSignIn: { onRequestSignIn?(L10n.guestLoginReasonChat) })
+            } else {
+                ChatScreen(viewModel: chatVM, onConversationTap: { router.selectedConversationId = $0 })
+            }
         case .profile:
-            ProfileScreen(viewModel: profileVM, onEditProfile: { router.showEditProfile = true })
+            if isGuestMode {
+                GuestTabPlaceholder(tab: .profile, onSignIn: { onRequestSignIn?(L10n.guestLoginReasonProfile) })
+            } else {
+                ProfileScreen(
+                    viewModel: profileVM,
+                    onEditProfile: { router.showEditProfile = true },
+                    onOpenSettings: { router.showSettingsScreen = true },
+                )
+            }
         }
     }
 
     private var bottomBar: some View {
         HStack {
             ForEach(MainTab.allCases, id: \.rawValue) { tab in
-                Button {
-                    router.selectedTab = tab
-                } label: {
+                Button { router.selectedTab = tab } label: {
                     VStack(spacing: 4) {
                         Image(systemName: icon(for: tab))
-                        Text(label(for: tab))
-                            .font(.caption2)
+                        Text(label(for: tab)).font(.caption2)
                     }
                     .foregroundStyle(router.selectedTab == tab ? FashColors.brandPrimary : FashColors.textSecondary)
                     .frame(maxWidth: .infinity)

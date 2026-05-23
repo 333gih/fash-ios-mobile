@@ -1,10 +1,25 @@
 #!/usr/bin/env python3
-"""Generate Dev.xcconfig / Prod.xcconfig from Android env/*.env files."""
+"""Generate Dev.xcconfig / Prod.xcconfig + GeneratedBuildConfig_*.swift from Android env/*.env."""
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 ANDROID_ENV = ROOT.parent / "fash-android-mobile/env"
 CONFIG = ROOT / "Config"
+
+AUTH_PATH_DEFAULTS = {
+    "AUTH_OTP_REQUEST_PATH": "api/v1/auth/otp/request",
+    "AUTH_OTP_VERIFY_PATH": "api/v1/auth/otp/verify",
+    "AUTH_LOGIN_PATH": "api/v1/auth/login",
+    "AUTH_REFRESH_PATH": "api/v1/auth/refresh",
+    "AUTH_LOGOUT_PATH": "api/v1/auth/logout",
+    "AUTH_LOGOUT_ALL_PATH": "api/v1/auth/logout-all",
+    "AUTH_FCM_REGISTER_PATH": "api/v1/auth/fcm/register",
+    "AUTH_CHANGE_PASSWORD_PATH": "api/v1/auth/change-password",
+    "AUTH_ME_PATH": "api/v1/auth/me",
+    "AUTH_SOCIAL_LOGIN_PATH": "api/v1/auth/social-login",
+    "CORE_USER_ACCESS_STATUS_PATH": "api/v1/users/me/setup-status",
+    "CORE_PAYMENT_INITIATE_PATH": "api/v1/orders/%s/payments/initiate",
+}
 
 
 def load_env(path: Path) -> dict[str, str]:
@@ -24,6 +39,17 @@ def bool_str(v: str, default: str = "NO") -> str:
     if not v:
         return default
     return "YES" if v.lower() in ("true", "1", "yes") else "NO"
+
+
+def env_bool(env: dict[str, str], key: str, default: bool) -> bool:
+    v = env.get(key, "")
+    if not v:
+        return default
+    return v.lower() in ("true", "1", "yes")
+
+
+def swift_escape(s: str) -> str:
+    return s.replace("\\", "\\\\").replace('"', '\\"')
 
 
 def xcconfig(env: dict[str, str], flavor: str) -> str:
@@ -53,6 +79,7 @@ def xcconfig(env: dict[str, str], flavor: str) -> str:
         f"FASH_LISTING_SHARE_BASE_URL = {env.get('LISTING_SHARE_BASE_URL', 'https://fash.app/p/l')}",
         f"FASH_LEGAL_PORTAL_BASE_URL = {env.get('LEGAL_PORTAL_BASE_URL', 'https://fashandcurious.com')}",
         f"FASH_PAYMENT_REDIRECT_URL = {env.get('PAYMENT_REDIRECT_URL', 'https://fash.app/payment/callback')}",
+        f"FASH_IDENTITY_REVERIFY_URL = {env.get('IDENTITY_REVERIFY_URL', '')}",
         f"FASH_PUBLIC_BROWSE_CLIENT_ID = {env.get('PUBLIC_BROWSE_CLIENT_ID', 'fash-android')}",
         f"FASH_PUBLIC_BROWSE_CLIENT_TOKEN = {env.get('PUBLIC_BROWSE_CLIENT_TOKEN', '')}",
         f"FASH_SKIP_SIZING_REFERENCE = {bool_str(env.get('SKIP_SIZING_REFERENCE_COMPLETED', 'false'))}",
@@ -62,30 +89,14 @@ def xcconfig(env: dict[str, str], flavor: str) -> str:
         f"FASH_POST_REQUIRE_IMAGES = {bool_str(env.get('POST_REQUIRE_LISTING_IMAGES', 'true'))}",
         f"CHAT_MAX_OFFERS = {env.get('CHAT_MAX_OFFERS_PER_CONVERSATION', '3')}",
     ]
-    paths = [
-        ("AUTH_OTP_REQUEST_PATH", "api/v1/auth/otp/request"),
-        ("AUTH_OTP_VERIFY_PATH", "api/v1/auth/otp/verify"),
-        ("AUTH_LOGIN_PATH", "api/v1/auth/login"),
-        ("AUTH_REFRESH_PATH", "api/v1/auth/refresh"),
-        ("AUTH_LOGOUT_PATH", "api/v1/auth/logout"),
-        ("AUTH_LOGOUT_ALL_PATH", "api/v1/auth/logout-all"),
-        ("AUTH_FCM_REGISTER_PATH", "api/v1/auth/fcm/register"),
-        ("AUTH_CHANGE_PASSWORD_PATH", "api/v1/auth/change-password"),
-        ("AUTH_ME_PATH", "api/v1/auth/me"),
-        ("CORE_USER_ACCESS_STATUS_PATH", "api/v1/users/me/setup-status"),
-    ]
-    for key, default in paths:
-        val = env.get(key, default)
-        swift_key = "FASH_" + key
-        lines.append(f"{swift_key} = {val}")
-    lines.append("FASH_AUTH_SOCIAL_LOGIN_PATH = api/v1/auth/social-login")
+    for key, default in AUTH_PATH_DEFAULTS.items():
+        lines.append(f"FASH_{key} = {env.get(key, default)}")
     return "\n".join(lines) + "\n"
 
 
 def swift_build_config(env: dict[str, str], flavor: str) -> str:
-    """Compile-time config — works without xcconfig injection into Info.plist."""
     bundle = "com.pc.fash-ios-mobile.dev" if flavor == "dev" else "com.pc.fash-ios-mobile"
-    keys = [
+    string_keys = [
         ("environmentName", env.get("ENVIRONMENT_NAME", flavor)),
         ("flavor", flavor),
         ("bundleId", bundle),
@@ -95,33 +106,63 @@ def swift_build_config(env: dict[str, str], flavor: str) -> str:
         ("realtimeBaseURL", env.get("REALTIME_BASE_URL", "")),
         ("authClientId", env.get("AUTH_CLIENT_ID", "fash-ios-dev")),
         ("authApplicationId", env.get("AUTH_APPLICATION_ID", "web")),
+        ("authClientSecret", env.get("AUTH_CLIENT_SECRET", "")),
         ("googleWebClientId", env.get("GOOGLE_WEB_CLIENT_ID", "")),
+        ("facebookAppId", env.get("FACEBOOK_APP_ID", "")),
+        ("facebookClientToken", env.get("FACEBOOK_CLIENT_TOKEN", "")),
         ("listingShareBaseURL", env.get("LISTING_SHARE_BASE_URL", "https://fash.app/p/l")),
         ("legalPortalBaseURL", env.get("LEGAL_PORTAL_BASE_URL", "https://fashandcurious.com")),
+        ("paymentRedirectURL", env.get("PAYMENT_REDIRECT_URL", "https://fash.app/payment/callback")),
+        ("identityReverifyURL", env.get("IDENTITY_REVERIFY_URL", "")),
         ("publicBrowseClientId", env.get("PUBLIC_BROWSE_CLIENT_ID", "fash-android")),
         ("publicBrowseClientToken", env.get("PUBLIC_BROWSE_CLIENT_TOKEN", "")),
         ("internalSecret", env.get("INTERNAL_SECRET", "")),
         ("internalServiceBearer", env.get("INTERNAL_SERVICE_BEARER_TOKEN", "")),
         ("userAccessStatusPath", env.get("CORE_USER_ACCESS_STATUS_PATH", "api/v1/users/me/setup-status")),
+        ("corePaymentInitiatePath", env.get("CORE_PAYMENT_INITIATE_PATH", "api/v1/orders/%s/payments/initiate")),
     ]
+    for env_key, swift_suffix in [
+        ("AUTH_OTP_REQUEST_PATH", "authOtpRequestPath"),
+        ("AUTH_OTP_VERIFY_PATH", "authOtpVerifyPath"),
+        ("AUTH_LOGIN_PATH", "authLoginPath"),
+        ("AUTH_REFRESH_PATH", "authRefreshPath"),
+        ("AUTH_LOGOUT_PATH", "authLogoutPath"),
+        ("AUTH_LOGOUT_ALL_PATH", "authLogoutAllPath"),
+        ("AUTH_FCM_REGISTER_PATH", "authFcmRegisterPath"),
+        ("AUTH_CHANGE_PASSWORD_PATH", "authChangePasswordPath"),
+        ("AUTH_ME_PATH", "authMePath"),
+        ("AUTH_SOCIAL_LOGIN_PATH", "authSocialLoginPath"),
+    ]:
+        string_keys.append((swift_suffix, env.get(env_key, AUTH_PATH_DEFAULTS[env_key])))
+
     lines = [
-        "// Generated from env/%s.env — re-run scripts/env_to_xcconfig.py" % flavor,
+        f"// Generated from env/{flavor}.env — mirrors Android BuildConfig injectFromEnv",
         "import Foundation",
         "",
         f"enum GeneratedBuildConfig_{flavor.capitalize()} {{",
     ]
-    for swift_name, val in keys:
-        escaped = val.replace("\\", "\\\\").replace("\"", "\\\"")
-        lines.append(f'    static let {swift_name}: String = "{escaped}"')
-    for key in ("CORE_API_USE_LANGUAGE_PREFIX", "AUTH_API_USE_LANGUAGE_PREFIX", "SHIPPING", "SKIP_SIZING_REFERENCE_COMPLETED"):
-        v = env.get(key, "")
-        if key == "SHIPPING":
-            b = v.lower() != "false" if v else True
-        elif key == "SKIP_SIZING_REFERENCE_COMPLETED":
-            b = v.lower() == "true"
+    for swift_name, val in string_keys:
+        lines.append(f'    static let {swift_name}: String = "{swift_escape(val)}"')
+
+    bool_defs = [
+        ("coreApiUseLanguagePrefix", "CORE_API_USE_LANGUAGE_PREFIX", True),
+        ("authApiUseLanguagePrefix", "AUTH_API_USE_LANGUAGE_PREFIX", None),
+        ("shippingEnabled", "SHIPPING", True),
+        ("skipSizingReferenceCompleted", "SKIP_SIZING_REFERENCE_COMPLETED", False),
+        ("c2cShipFulfillmentEnabled", "C2C_SHIP_FULFILLMENT_ENABLED", True),
+        ("c2cShipOnlinePaymentEnabled", "C2C_SHIP_ONLINE_PAYMENT_ENABLED", True),
+        ("postRequireListingImages", "POST_REQUIRE_LISTING_IMAGES", True),
+        ("facebookLoginEnabled", "FACEBOOK_LOGIN_ENABLED", False),
+    ]
+    for swift_name, env_key, default in bool_defs:
+        if env_key == "AUTH_API_USE_LANGUAGE_PREFIX" and env_key not in env:
+            b = env_bool(env, "CORE_API_USE_LANGUAGE_PREFIX", True)
         else:
-            b = v.lower() == "true" if v else key.startswith("CORE") or key.startswith("AUTH")
-        lines.append(f"    static let {key}: Bool = {'true' if b else 'false'}")
+            b = env_bool(env, env_key, default if default is not None else False)
+        lines.append(f"    static let {swift_name}: Bool = {'true' if b else 'false'}")
+
+    chat_max = env.get("CHAT_MAX_OFFERS_PER_CONVERSATION", "3")
+    lines.append(f"    static let chatMaxOffersPerConversation: Int = {chat_max}")
     lines.append("}")
     lines.append("")
     return "\n".join(lines)

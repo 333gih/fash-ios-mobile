@@ -1,24 +1,12 @@
 import SwiftUI
 
-/// SwiftUI port of Android `NotificationDetailScreen` (ui.notifications).
 struct NotificationDetailScreen: View {
-    @Environment(\.dismiss) private var dismiss
+    let notificationId: String
+    var onDismiss: () -> Void
 
     var body: some View {
-        NotificationDetailScreenBody()
-    }
-}
-
-private struct NotificationDetailScreenBody: View {
-    var body: some View {
-        FashScreenScaffold(title: "NotificationDetailScreen") {
-            Text(L10n.appName)
-                .font(FashTypography.bodyMedium)
-                .foregroundStyle(FashColors.textSecondary)
+        FashScreenScaffold(title: L10n.notificationInboxTitle, showBack: true, onBack: onDismiss) {
+            Text(notificationId).padding()
         }
     }
-}
-
-#Preview {
-    FashTheme { NotificationDetailScreen() }
 }

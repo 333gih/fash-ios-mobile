@@ -36,6 +36,7 @@ final class LoginViewModel {
         switch result {
         case .success(let session):
             sessionStore.save(session)
+            AppDependencies.shared.authManager.onSessionSaved()
             return true
         case .failure:
             errorMessage = L10n.loginOtpFailed

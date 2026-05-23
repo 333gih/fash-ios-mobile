@@ -6,6 +6,7 @@ struct FashApp: App {
 
     init() {
         AppLocale.applyPersistedOrDefault()
+        AppThemePreference.shared.loadPersisted()
     }
 
     var body: some Scene {

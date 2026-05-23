@@ -1,10 +1,11 @@
 import Foundation
 
-/// Port of Android `OrderCancelCoordinator` (data.order).
 final class OrderCancelCoordinator {
-    private let deps: AppDependencies
+    private let orderRepository: OrderRepository
+    private let chatRepository: ChatRepository
 
-    init(deps: AppDependencies) {
-        self.deps = deps
+    init(orderRepository: OrderRepository, chatRepository: ChatRepository) {
+        self.orderRepository = orderRepository
+        self.chatRepository = chatRepository
     }
 }

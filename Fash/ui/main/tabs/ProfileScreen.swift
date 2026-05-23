@@ -3,6 +3,7 @@ import SwiftUI
 struct ProfileScreen: View {
     @Bindable var viewModel: ProfileViewModel
     var onEditProfile: () -> Void
+    var onOpenSettings: () -> Void = {}
 
     var body: some View {
         ScrollView {
@@ -10,6 +11,7 @@ struct ProfileScreen: View {
                 Text(viewModel.displayName.isEmpty ? L10n.navProfile : viewModel.displayName)
                     .font(FashTypography.headlineMedium)
                 Button(L10n.profileEdit, action: onEditProfile)
+                Button(L10n.settingsTitle, action: onOpenSettings)
             }
             .padding(20)
         }

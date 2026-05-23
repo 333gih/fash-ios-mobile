@@ -1,10 +1,7 @@
 import Foundation
 
-/// Port of Android `AddressLocalStore` (data.address).
 final class AddressLocalStore {
-    private let deps: AppDependencies
-
-    init(deps: AppDependencies) {
-        self.deps = deps
-    }
+    private let key = "fash_address_book_local"
+    func loadJSON() -> Data? { UserDefaults.standard.data(forKey: key) }
+    func saveJSON(_ data: Data) { UserDefaults.standard.set(data, forKey: key) }
 }

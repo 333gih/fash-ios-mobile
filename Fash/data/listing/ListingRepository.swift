@@ -28,7 +28,7 @@ final class ListingRepository {
     func getListingDetail(listingId: String, publicBrowse: Bool = false) async -> Result<ListingFeedItem, Error> {
         let urlString: String
         if publicBrowse {
-            urlString = PublicBrowseHttp.publicApiPath("api/v1/public/listings/\(listingId)")
+            urlString = PublicBrowseHttp.publicApiPath("listings/\(listingId)")
         } else {
             urlString = AppEnvironment.apiPath("api/v1/listings/\(listingId)")
         }

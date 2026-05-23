@@ -57,6 +57,8 @@ struct RootView: View {
             ProductDetailScreen(listingId: id, onDismiss: { router.selectedListingId = nil })
         case .seller(let user):
             SellerProfileScreen(username: user, onDismiss: { router.sellerShopUsername = nil })
+        case .editListing(let id):
+            EditListingScreen(listingId: id, onDismiss: { router.editListingId = nil })
         case .editProfile:
             EditProfileScreen(onDismiss: { router.showEditProfile = false })
         case .chat(let id):
@@ -67,8 +69,24 @@ struct RootView: View {
             OrderDetailScreen(orderId: id, onDismiss: { router.selectedOrderId = nil })
         case .checkout(let id):
             CheckoutScreen(listingId: id, onDismiss: { router.selectedCheckoutListingId = nil })
+        case .shippingAddresses:
+            ShippingAddressListScreen(onDismiss: { router.showShippingAddressList = false })
+        case .addAddress:
+            AddEditAddressScreen(onDismiss: { router.showAddAddressScreen = false })
+        case .homeEditorial(let slug):
+            HomeEditorialDetailScreen(slug: slug, onDismiss: { router.homeEditorialSlug = nil })
+        case .homeDelivering:
+            HomeDeliveringScreen(onDismiss: { router.showHomeDeliveringScreen = false })
+        case .sellerPackages:
+            SellerProductPackagesScreen(onDismiss: { router.showSellerPackagesScreen = false })
+        case .followConnections:
+            FollowConnectionsScreen(onDismiss: { router.showFollowConnections = false })
+        case .featuredSellers:
+            FeaturedSellersScreen(onDismiss: { router.showFeaturedSellersAll = false })
         case .inviteFriends:
             InviteFriendsScreen(onDismiss: { router.showInviteFriendsScreen = false })
+        case .changePassword:
+            ChangePasswordScreen(onDismiss: { router.showChangePasswordScreen = false })
         }
     }
 
@@ -134,6 +152,8 @@ struct RootView: View {
         let status = await deps.userRepository.fetchSetupStatus()
         switch status {
         case .success(let gate):
+            deps.authManager.onSessionSaved()
+            await deps.realtimeManager.connect()
             if gate.canAccessHome {
                 router.onboardingStep = nil
                 router.loginStep = nil

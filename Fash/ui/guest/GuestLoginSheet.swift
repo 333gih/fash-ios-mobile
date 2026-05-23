@@ -1,24 +1,21 @@
 import SwiftUI
 
-/// SwiftUI port of Android `GuestLoginSheet` (ui.guest).
 struct GuestLoginSheet: View {
-    @Environment(\.dismiss) private var dismiss
+    var onSignIn: () -> Void
+    var onContinueBrowsing: () -> Void
 
     var body: some View {
-        GuestLoginSheetBody()
-    }
-}
-
-private struct GuestLoginSheetBody: View {
-    var body: some View {
-        FashScreenScaffold(title: "GuestLoginSheet") {
-            Text(L10n.appName)
+        VStack(alignment: .leading, spacing: 16) {
+            Text(L10n.guestLoginSheetTitle)
+                .font(FashTypography.headlineMedium)
+            Text(L10n.guestLoginSheetPrivacyNote)
                 .font(FashTypography.bodyMedium)
                 .foregroundStyle(FashColors.textSecondary)
+            FashPrimaryButton(title: L10n.guestLoginSheetSignIn, action: onSignIn)
+            Button(L10n.guestLoginSheetContinueBrowsing, action: onContinueBrowsing)
+                .frame(maxWidth: .infinity)
         }
+        .padding(24)
+        .presentationDetents([.medium])
     }
-}
-
-#Preview {
-    FashTheme { GuestLoginSheet() }
 }

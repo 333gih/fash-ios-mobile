@@ -83,6 +83,7 @@ final class AppRouter {
     }
 
     func popOverlay() {
+        if showChangePasswordScreen { showChangePasswordScreen = false; return }
         if orderIdPendingCancel != nil { orderIdPendingCancel = nil; return }
         if showInviteFriendsScreen { showInviteFriendsScreen = false; return }
         if showFeaturedSellersAll { showFeaturedSellersAll = false; return }

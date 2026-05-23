@@ -1,10 +1,9 @@
 import Foundation
 
-/// Port of Android `BrowseSessionStore` (data.recommendation).
 final class BrowseSessionStore {
-    private let deps: AppDependencies
-
-    init(deps: AppDependencies) {
-        self.deps = deps
+    private let key = "fash_browse_session_id"
+    var sessionId: String? {
+        get { UserDefaults.standard.string(forKey: key) }
+        set { UserDefaults.standard.set(newValue, forKey: key) }
     }
 }

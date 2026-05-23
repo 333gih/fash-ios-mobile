@@ -55,7 +55,9 @@ In Xcode:
 - **Guest:** `PublicBrowseHttp` when `PUBLIC_BROWSE_CLIENT_TOKEN` is set
 - **Deep links:** `fash://` + HTTPS `/p/l/`, `/p/u/`, invite (see `Info.plist` URL types)
 
-## Port status
+See **[PARITY.md](PARITY.md)** for full Android ↔ iOS feature matrix and port status.
+
+## Port status (summary)
 
 | Area | Status |
 |------|--------|
