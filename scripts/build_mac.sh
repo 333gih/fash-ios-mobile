@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Full Mac build: sync → xcodegen → xcodebuild (iOS Simulator)
+# Standalone Mac build: xcodegen → xcodebuild (iOS Simulator). No Android checkout required.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -11,16 +11,11 @@ SIMULATOR="${2:-iPhone 16}"
 die() { echo "error: $*" >&2; exit 1; }
 
 if [[ "$(uname -s)" != "Darwin" ]]; then
-  die "iOS builds require macOS + Xcode. On Windows run: .\\scripts\\sync.ps1 then build on a Mac."
+  die "iOS builds require macOS + Xcode. On Windows run: .\\scripts\\sync.ps1 (optional) then build on a Mac."
 fi
 
-command -v python3 >/dev/null 2>&1 || die "python3 not found"
 command -v xcodegen >/dev/null 2>&1 || die "XcodeGen not found — brew install xcodegen"
 command -v xcodebuild >/dev/null 2>&1 || die "xcodebuild not found — install Xcode from the App Store"
-
-echo "==> Sync strings + env config"
-python3 scripts/android_strings_to_ios.py
-python3 scripts/env_to_xcconfig.py
 
 echo "==> Generate Xcode project"
 xcodegen generate

@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 ANDROID_JAVA = ROOT.parent / "fash-android-mobile/app/src/main/java/com/pc/fash_android_mobile"
 FASH = ROOT / "Fash"
 
-SKIP = {"MainActivity.kt", "FashApplication.kt"}
+SKIP = {"MainActivity.kt", "FashApplication.kt", "Type.kt"}
 
 
 def kotlin_to_swift_path(kt: Path) -> Path:

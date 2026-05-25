@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
 """Generate Dev.xcconfig / Prod.xcconfig + GeneratedBuildConfig_*.swift from Android env/*.env."""
+from __future__ import annotations
+
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-ANDROID_ENV = ROOT.parent / "fash-android-mobile/env"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from fash_paths import env_dir  # noqa: E402
+
+ANDROID_ENV = env_dir()
 CONFIG = ROOT / "Config"
 
 AUTH_PATH_DEFAULTS = {
@@ -57,7 +63,7 @@ def xcconfig(env: dict[str, str], flavor: str) -> str:
     core_prefix = env.get("CORE_API_USE_LANGUAGE_PREFIX", "true")
     bundle = "com.pc.fash-ios-mobile.dev" if flavor == "dev" else "com.pc.fash-ios-mobile"
     lines = [
-        f"// Generated from fash-android-mobile/env/{flavor}.env",
+        f"// Generated from env/{flavor}.env",
         f"FASH_ENVIRONMENT_NAME = {env.get('ENVIRONMENT_NAME', flavor)}",
         f"FASH_FLAVOR = {flavor}",
         f"PRODUCT_BUNDLE_IDENTIFIER = {bundle}",

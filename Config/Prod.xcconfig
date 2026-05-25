@@ -1,4 +1,4 @@
-// Generated from fash-android-mobile/env/prod.env
+// Generated from env/prod.env
 FASH_ENVIRONMENT_NAME = prod
 FASH_FLAVOR = prod
 PRODUCT_BUNDLE_IDENTIFIER = com.pc.fash-ios-mobile

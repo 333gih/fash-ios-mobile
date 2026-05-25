@@ -90,11 +90,10 @@ $projOk = Test-Path (Join-Path $Root "Fash.xcodeproj")
 $projDetail = if ($projOk) { "present" } else { "missing (run xcodegen on Mac or ./scripts/setup_mac.sh)" }
 Write-Status "Fash.xcodeproj" $projOk $projDetail
 
-# Env source files
-$envOk = (Test-Path (Join-Path $Root "..\fash-android-mobile\env\dev.env")) -and
-         (Test-Path (Join-Path $Root "..\fash-android-mobile\env\prod.env"))
-$envDetail = if ($envOk) { "found" } else { "missing (expected ../fash-android-mobile/env/)" }
-Write-Status "Android env/*.env" $envOk $envDetail
+# Env (vendored in-repo; Android sibling optional for maintainer sync)
+$envOk = (Test-Path (Join-Path $Root "env\dev.env")) -and (Test-Path (Join-Path $Root "env\prod.env"))
+$envDetail = if ($envOk) { "env/dev.env + env/prod.env (standalone)" } else { "missing env/ — run scripts/vendor_from_android.py" }
+Write-Status "iOS env/*.env" $envOk $envDetail
 
 # Fonts (manual copy)
 $fontsDir = Join-Path $Root "Fash\Resources\Fonts"

@@ -60,6 +60,10 @@ final class AppRouter {
     var showFollowConnections = false
     var showFeaturedSellersAll = false
     var showInviteFriendsScreen = false
+    var showEditorialListScreen = false
+    var uxSurveyKey: String?
+    var sellerPackageCheckoutId: String?
+    var chatOrderDetailOverlayId: String?
     var orderIdPendingCancel: String?
 
     var hasBlockingOverlay: Bool {
@@ -79,10 +83,18 @@ final class AppRouter {
             || showFollowConnections
             || showFeaturedSellersAll
             || showInviteFriendsScreen
+            || showEditorialListScreen
+            || uxSurveyKey != nil
+            || sellerPackageCheckoutId != nil
+            || chatOrderDetailOverlayId != nil
             || orderIdPendingCancel != nil
     }
 
     func popOverlay() {
+        if chatOrderDetailOverlayId != nil { chatOrderDetailOverlayId = nil; return }
+        if sellerPackageCheckoutId != nil { sellerPackageCheckoutId = nil; return }
+        if uxSurveyKey != nil { uxSurveyKey = nil; return }
+        if showEditorialListScreen { showEditorialListScreen = false; return }
         if showChangePasswordScreen { showChangePasswordScreen = false; return }
         if orderIdPendingCancel != nil { orderIdPendingCancel = nil; return }
         if showInviteFriendsScreen { showInviteFriendsScreen = false; return }

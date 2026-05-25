@@ -87,6 +87,14 @@ struct RootView: View {
             InviteFriendsScreen(onDismiss: { router.showInviteFriendsScreen = false })
         case .changePassword:
             ChangePasswordScreen(onDismiss: { router.showChangePasswordScreen = false })
+        case .editorialList:
+            HomeEditorialListScreen(onDismiss: { router.showEditorialListScreen = false })
+        case .uxSurvey(let key):
+            UserExperienceSurveyScreen(surveyKey: key, onDismiss: { router.uxSurveyKey = nil })
+        case .sellerPackageCheckout(let id):
+            SellerPackageCheckoutScreen(packageId: id, onDismiss: { router.sellerPackageCheckoutId = nil })
+        case .chatOrderDetail(let id):
+            OrderDetailScreen(orderId: id, onDismiss: { router.chatOrderDetailOverlayId = nil })
         }
     }
 

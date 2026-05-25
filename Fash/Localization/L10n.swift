@@ -26,6 +26,7 @@ enum L10n {
     static var addressDefaultToggle: String { t("address_default_toggle") }
     static var addressDefaultToggleSub: String { t("address_default_toggle_sub") }
     static var addressDone: String { t("address_done") }
+    static var addressDropdownNoOptions: String { t("address_dropdown_no_options") }
     static var addressEmptyAlertBody: String { t("address_empty_alert_body") }
     static var addressEmptyAlertCreate: String { t("address_empty_alert_create") }
     static var addressEmptyAlertTitle: String { t("address_empty_alert_title") }
@@ -92,10 +93,10 @@ enum L10n {
     static var appTourIntroTitle: String { t("app_tour_intro_title") }
     static var appTourNavChatBody: String { t("app_tour_nav_chat_body") }
     static var appTourNavChatTitle: String { t("app_tour_nav_chat_title") }
-    static var appTourNavExploreBody: String { t("app_tour_nav_explore_body") }
-    static var appTourNavExploreTitle: String { t("app_tour_nav_explore_title") }
     static var appTourNavHomeBody: String { t("app_tour_nav_home_body") }
     static var appTourNavHomeTitle: String { t("app_tour_nav_home_title") }
+    static var appTourNavOrdersBody: String { t("app_tour_nav_orders_body") }
+    static var appTourNavOrdersTitle: String { t("app_tour_nav_orders_title") }
     static var appTourNavPostBody: String { t("app_tour_nav_post_body") }
     static var appTourNavPostTitle: String { t("app_tour_nav_post_title") }
     static var appTourNavProfileBody: String { t("app_tour_nav_profile_body") }
@@ -104,13 +105,31 @@ enum L10n {
     static var appTourSkip: String { t("app_tour_skip") }
     static var appTourTopBarBody: String { t("app_tour_top_bar_body") }
     static var appTourTopBarTitle: String { t("app_tour_top_bar_title") }
+    static var appointmentCardTicket: String { t("appointment_card_ticket") }
     static var avatarDefaultCd: String { t("avatar_default_cd") }
+    static var badgeReviewLoadError: String { t("badge_review_load_error") }
+    static var badgeReviewRequired: String { t("badge_review_required") }
+    static var badgeReviewSubtitle: String { t("badge_review_subtitle") }
+    static var badgeReviewTitle: String { t("badge_review_title") }
     static var brandHeaderSuffixChat: String { t("brand_header_suffix_chat") }
     static var brandHeaderSuffixExplore: String { t("brand_header_suffix_explore") }
     static var brandHeaderSuffixHome: String { t("brand_header_suffix_home") }
+    static var brandHeaderSuffixOrders: String { t("brand_header_suffix_orders") }
     static var brandHeaderSuffixPost: String { t("brand_header_suffix_post") }
     static var brandHeaderSuffixProfile: String { t("brand_header_suffix_profile") }
     static var brandWordmark: String { t("brand_wordmark") }
+    static func browseLocationChip(_ a1: CVarArg) -> String {
+        String(format: t("browse_location_chip"), a1)
+    }
+    static var browseLocationPick: String { t("browse_location_pick") }
+    static var browseLocationPickerApply: String { t("browse_location_picker_apply") }
+    static var browseLocationPickerHierarchyHint: String { t("browse_location_picker_hierarchy_hint") }
+    static var browseLocationPickerSearchDistrict: String { t("browse_location_picker_search_district") }
+    static var browseLocationPickerSearchProvince: String { t("browse_location_picker_search_province") }
+    static var browseLocationPickerStepDistrict: String { t("browse_location_picker_step_district") }
+    static var browseLocationPickerStepProvince: String { t("browse_location_picker_step_province") }
+    static var browseLocationPickerTitle: String { t("browse_location_picker_title") }
+    static var browseLocationPickerWardOptional: String { t("browse_location_picker_ward_optional") }
     static var buyNow: String { t("buy_now") }
     static var cdBack: String { t("cd_back") }
     static var cdOverflowMenu: String { t("cd_overflow_menu") }
@@ -256,6 +275,7 @@ enum L10n {
     static var chatMeetingConfirm: String { t("chat_meeting_confirm") }
     static var chatMeetingConfirmedNoMapsHint: String { t("chat_meeting_confirmed_no_maps_hint") }
     static var chatMeetingConfirmedOk: String { t("chat_meeting_confirmed_ok") }
+    static var chatMeetingDatePickerTitle: String { t("chat_meeting_date_picker_title") }
     static var chatMeetingDatetimeLabel: String { t("chat_meeting_datetime_label") }
     static var chatMeetingDatetimePlaceholder: String { t("chat_meeting_datetime_placeholder") }
     static var chatMeetingError: String { t("chat_meeting_error") }
@@ -278,11 +298,14 @@ enum L10n {
     static var chatMeetingReject: String { t("chat_meeting_reject") }
     static var chatMeetingReminder1440: String { t("chat_meeting_reminder_1440") }
     static var chatMeetingReminder15: String { t("chat_meeting_reminder_15") }
+    static var chatMeetingReminder30: String { t("chat_meeting_reminder_30") }
     static var chatMeetingReminder60: String { t("chat_meeting_reminder_60") }
     static var chatMeetingReminderLabel: String { t("chat_meeting_reminder_label") }
     static var chatMeetingReminderToggle: String { t("chat_meeting_reminder_toggle") }
     static var chatMeetingSheetSubmit: String { t("chat_meeting_sheet_submit") }
     static var chatMeetingSheetSubtitle: String { t("chat_meeting_sheet_subtitle") }
+    static var chatMeetingSheetSubtitleManual: String { t("chat_meeting_sheet_subtitle_manual") }
+    static var chatMeetingSheetSubtitleSafe: String { t("chat_meeting_sheet_subtitle_safe") }
     static var chatMeetingSheetTitle: String { t("chat_meeting_sheet_title") }
     static var chatMeetingStateDescCancelled: String { t("chat_meeting_state_desc_cancelled") }
     static var chatMeetingStateDescConfirmed: String { t("chat_meeting_state_desc_confirmed") }
@@ -290,6 +313,9 @@ enum L10n {
     static var chatMeetingStatusCancelled: String { t("chat_meeting_status_cancelled") }
     static var chatMeetingStatusConfirmed: String { t("chat_meeting_status_confirmed") }
     static var chatMeetingStatusPending: String { t("chat_meeting_status_pending") }
+    static func chatMeetingTimeFromNowHint(_ a1: CVarArg) -> String {
+        String(format: t("chat_meeting_time_from_now_hint"), a1)
+    }
     static var chatMeetingTimePickerTitle: String { t("chat_meeting_time_picker_title") }
     static var chatMeetingWithdraw: String { t("chat_meeting_withdraw") }
     static func chatMeetingYouCheckedInAt(_ a1: CVarArg) -> String {
@@ -529,8 +555,11 @@ enum L10n {
     static var colorBlack: String { t("color_black") }
     static var colorBlue: String { t("color_blue") }
     static var colorBrown: String { t("color_brown") }
+    static var colorCream: String { t("color_cream") }
     static var colorGray: String { t("color_gray") }
     static var colorGreen: String { t("color_green") }
+    static var colorNavy: String { t("color_navy") }
+    static var colorOlive: String { t("color_olive") }
     static var colorOrange: String { t("color_orange") }
     static var colorPink: String { t("color_pink") }
     static var colorPurple: String { t("color_purple") }
@@ -634,8 +663,12 @@ enum L10n {
     static var editListingReadonlyLocked: String { t("edit_listing_readonly_locked") }
     static var editListingReadonlySectionSubtitle: String { t("edit_listing_readonly_section_subtitle") }
     static var editListingReadonlySectionTitle: String { t("edit_listing_readonly_section_title") }
+    static var editListingRejectedBanner: String { t("edit_listing_rejected_banner") }
+    static var editListingRejectedBottomHint: String { t("edit_listing_rejected_bottom_hint") }
+    static var editListingResubmitted: String { t("edit_listing_resubmitted") }
     static var editListingSave: String { t("edit_listing_save") }
     static var editListingSaveError: String { t("edit_listing_save_error") }
+    static var editListingSaveResubmit: String { t("edit_listing_save_resubmit") }
     static var editListingSaved: String { t("edit_listing_saved") }
     static var editListingScreenTitle: String { t("edit_listing_screen_title") }
     static var editListingStyleTags: String { t("edit_listing_style_tags") }
@@ -721,15 +754,43 @@ enum L10n {
         String(format: t("explore_filter_country_summary_cd"), a1)
     }
     static var exploreFilterCountryTitle: String { t("explore_filter_country_title") }
+    static var exploreFilterGroupPersonalSubtitle: String { t("explore_filter_group_personal_subtitle") }
+    static var exploreFilterGroupPriceSubtitle: String { t("explore_filter_group_price_subtitle") }
+    static var exploreFilterGroupPriceTitle: String { t("explore_filter_group_price_title") }
+    static var exploreFilterGroupProductSubtitle: String { t("explore_filter_group_product_subtitle") }
+    static var exploreFilterGroupProductTitle: String { t("explore_filter_group_product_title") }
+    static var exploreFilterHintArea: String { t("explore_filter_hint_area") }
+    static var exploreFilterHintCategory: String { t("explore_filter_hint_category") }
+    static var exploreFilterHintLabel: String { t("explore_filter_hint_label") }
+    static var exploreFilterHintPrice: String { t("explore_filter_hint_price") }
+    static var exploreFilterHintSizing: String { t("explore_filter_hint_sizing") }
+    static var exploreFilterHintStyle: String { t("explore_filter_hint_style") }
+    static var exploreFilterLoading: String { t("explore_filter_loading") }
+    static var exploreFilterLocationAll: String { t("explore_filter_location_all") }
+    static var exploreFilterLocationManual: String { t("explore_filter_location_manual") }
+    static func exploreFilterLocationManualCd(_ a1: CVarArg) -> String {
+        String(format: t("explore_filter_location_manual_cd"), a1)
+    }
+    static func exploreFilterLocationManualHint(_ a1: CVarArg) -> String {
+        String(format: t("explore_filter_location_manual_hint"), a1)
+    }
+    static var exploreFilterLocationNearby: String { t("explore_filter_location_nearby") }
+    static func exploreFilterLocationNearbyHint(_ a1: CVarArg) -> String {
+        String(format: t("explore_filter_location_nearby_hint"), a1)
+    }
+    static var exploreFilterLocationTitle: String { t("explore_filter_location_title") }
     static var exploreFilterMaxHint: String { t("explore_filter_max_hint") }
     static var exploreFilterMinHint: String { t("explore_filter_min_hint") }
+    static var exploreFilterPersonalTitle: String { t("explore_filter_personal_title") }
     static var exploreFilterPriceTitle: String { t("explore_filter_price_title") }
     static var exploreFilterSheetDone: String { t("explore_filter_sheet_done") }
+    static var exploreFilterSheetJourneySubtitle: String { t("explore_filter_sheet_journey_subtitle") }
     static var exploreFilterSizingAll: String { t("explore_filter_sizing_all") }
     static var exploreFilterSizingMatchProfile: String { t("explore_filter_sizing_match_profile") }
     static var exploreFilterSizingTitle: String { t("explore_filter_sizing_title") }
     static var exploreFilterSortTitle: String { t("explore_filter_sort_title") }
     static var exploreFilterSummaryDefault: String { t("explore_filter_summary_default") }
+    static var exploreFilterSummaryLocationActive: String { t("explore_filter_summary_location_active") }
     static func exploreFilterSummaryPriceMax(_ a1: CVarArg) -> String {
         String(format: t("explore_filter_summary_price_max"), a1)
     }
@@ -740,6 +801,19 @@ enum L10n {
         String(format: t("explore_filter_summary_price_range"), a1, a2)
     }
     static var exploreFilterSummarySizingMatch: String { t("explore_filter_summary_sizing_match") }
+    static var exploreFilterTeaserArea: String { t("explore_filter_teaser_area") }
+    static var exploreFilterTeaserBrand: String { t("explore_filter_teaser_brand") }
+    static var exploreFilterTeaserCategory: String { t("explore_filter_teaser_category") }
+    static var exploreFilterTeaserLineArea: String { t("explore_filter_teaser_line_area") }
+    static var exploreFilterTeaserLineCategory: String { t("explore_filter_teaser_line_category") }
+    static var exploreFilterTeaserLinePrice: String { t("explore_filter_teaser_line_price") }
+    static var exploreFilterTeaserLineSizing: String { t("explore_filter_teaser_line_sizing") }
+    static var exploreFilterTeaserLineStyle: String { t("explore_filter_teaser_line_style") }
+    static var exploreFilterTeaserPrice: String { t("explore_filter_teaser_price") }
+    static var exploreFilterTeaserSeparator: String { t("explore_filter_teaser_separator") }
+    static var exploreFilterTeaserSizing: String { t("explore_filter_teaser_sizing") }
+    static var exploreFilterTeaserStyle: String { t("explore_filter_teaser_style") }
+    static var exploreFilterTeaserTap: String { t("explore_filter_teaser_tap") }
     static var exploreFiltersBarSubtitleActive: String { t("explore_filters_bar_subtitle_active") }
     static var exploreFiltersBarSubtitleIdle: String { t("explore_filters_bar_subtitle_idle") }
     static var exploreFiltersBarTitle: String { t("explore_filters_bar_title") }
@@ -751,6 +825,12 @@ enum L10n {
     static var exploreFollowers: String { t("explore_followers") }
     static var exploreGridEmptySubtitle: String { t("explore_grid_empty_subtitle") }
     static var exploreInterestChipsLabel: String { t("explore_interest_chips_label") }
+    static var exploreLocationSetupAddAddress: String { t("explore_location_setup_add_address") }
+    static var exploreLocationSetupBody: String { t("explore_location_setup_body") }
+    static var exploreLocationSetupPickManual: String { t("explore_location_setup_pick_manual") }
+    static var exploreLocationSetupSkip: String { t("explore_location_setup_skip") }
+    static var exploreLocationSetupTitle: String { t("explore_location_setup_title") }
+    static var explorePersonalFiltersEdit: String { t("explore_personal_filters_edit") }
     static var explorePreviewDetailNudge: String { t("explore_preview_detail_nudge") }
     static var explorePreviewDetailNudgeCta: String { t("explore_preview_detail_nudge_cta") }
     static var explorePreviewDetailNudgeSub: String { t("explore_preview_detail_nudge_sub") }
@@ -783,6 +863,17 @@ enum L10n {
     static var explorePromoSlide2Title: String { t("explore_promo_slide2_title") }
     static var explorePromoSlide3Subtitle: String { t("explore_promo_slide3_subtitle") }
     static var explorePromoSlide3Title: String { t("explore_promo_slide3_title") }
+    static var exploreQuickLocationCd: String { t("explore_quick_location_cd") }
+    static var exploreQuickLocationPickLink: String { t("explore_quick_location_pick_link") }
+    static var exploreQuickLocationSetupHint: String { t("explore_quick_location_setup_hint") }
+    static func exploreQuickLocationSubtitleManual(_ a1: CVarArg) -> String {
+        String(format: t("explore_quick_location_subtitle_manual"), a1)
+    }
+    static func exploreQuickLocationSubtitleNearby(_ a1: CVarArg) -> String {
+        String(format: t("explore_quick_location_subtitle_nearby"), a1)
+    }
+    static var exploreQuickLocationSubtitleOff: String { t("explore_quick_location_subtitle_off") }
+    static var exploreQuickLocationTitle: String { t("explore_quick_location_title") }
     static var exploreQuickSizingCd: String { t("explore_quick_sizing_cd") }
     static var exploreQuickSizingEstimateBadge: String { t("explore_quick_sizing_estimate_badge") }
     static var exploreQuickSizingSetupHint: String { t("explore_quick_sizing_setup_hint") }
@@ -791,6 +882,9 @@ enum L10n {
     static var exploreQuickSizingTitle: String { t("explore_quick_sizing_title") }
     static var exploreSearchActiveCd: String { t("explore_search_active_cd") }
     static var exploreSearchActiveLabel: String { t("explore_search_active_label") }
+    static var exploreSearchBrowseAction: String { t("explore_search_browse_action") }
+    static var exploreSearchBrowseSubtitle: String { t("explore_search_browse_subtitle") }
+    static var exploreSearchBrowseTitle: String { t("explore_search_browse_title") }
     static var exploreSearchClearActive: String { t("explore_search_clear_active") }
     static var exploreSearchIdleEmpty: String { t("explore_search_idle_empty") }
     static var exploreSearchNoSuggestions: String { t("explore_search_no_suggestions") }
@@ -867,9 +961,14 @@ enum L10n {
     static var genderTargetUnisex: String { t("gender_target_unisex") }
     static var genderTargetWomen: String { t("gender_target_women") }
     static var genderWomen: String { t("gender_women") }
+    static var guestLoginReasonBrowseLocation: String { t("guest_login_reason_browse_location") }
     static var guestLoginReasonBuy: String { t("guest_login_reason_buy") }
     static var guestLoginReasonChat: String { t("guest_login_reason_chat") }
     static var guestLoginReasonFollow: String { t("guest_login_reason_follow") }
+    static var guestLoginReasonHomeFollowing: String { t("guest_login_reason_home_following") }
+    static var guestLoginReasonHomeForYou: String { t("guest_login_reason_home_for_you") }
+    static var guestLoginReasonHomeSimilar: String { t("guest_login_reason_home_similar") }
+    static var guestLoginReasonHomeStyle: String { t("guest_login_reason_home_style") }
     static var guestLoginReasonInvite: String { t("guest_login_reason_invite") }
     static var guestLoginReasonLike: String { t("guest_login_reason_like") }
     static var guestLoginReasonNotifications: String { t("guest_login_reason_notifications") }
@@ -885,6 +984,8 @@ enum L10n {
     static var guestLoginSheetTitle: String { t("guest_login_sheet_title") }
     static var guestTabChatBody: String { t("guest_tab_chat_body") }
     static var guestTabChatTitle: String { t("guest_tab_chat_title") }
+    static var guestTabOrdersBody: String { t("guest_tab_orders_body") }
+    static var guestTabOrdersTitle: String { t("guest_tab_orders_title") }
     static var guestTabPostBody: String { t("guest_tab_post_body") }
     static var guestTabPostTitle: String { t("guest_tab_post_title") }
     static var guestTabProfileBody: String { t("guest_tab_profile_body") }
@@ -893,17 +994,9 @@ enum L10n {
     static var guestTopbarSignInCd: String { t("guest_topbar_sign_in_cd") }
     static var homeBrandFooterSub: String { t("home_brand_footer_sub") }
     static var homeBrandMarketplace: String { t("home_brand_marketplace") }
-    static var homeDeliveringComingSoonBody: String { t("home_delivering_coming_soon_body") }
-    static var homeDeliveringComingSoonHint: String { t("home_delivering_coming_soon_hint") }
-    static var homeDeliveringComingSoonTitle: String { t("home_delivering_coming_soon_title") }
-    static var homeDeliveringCtaAllOrders: String { t("home_delivering_cta_all_orders") }
-    static var homeDeliveringEmptySubtitle: String { t("home_delivering_empty_subtitle") }
-    static var homeDeliveringEmptyTitle: String { t("home_delivering_empty_title") }
-    static var homeDeliveringErrorSubtitle: String { t("home_delivering_error_subtitle") }
-    static var homeDeliveringErrorTitle: String { t("home_delivering_error_title") }
-    static var homeDeliveringListIntro: String { t("home_delivering_list_intro") }
-    static var homeDeliveringScreenTitle: String { t("home_delivering_screen_title") }
     static var homeEditedByFashBadge: String { t("home_edited_by_fash_badge") }
+    static var homeEditorialListSubtitle: String { t("home_editorial_list_subtitle") }
+    static var homeEditorialListTitle: String { t("home_editorial_list_title") }
     static var homeEditorialPostExcerptOfficeChic: String { t("home_editorial_post_excerpt_office_chic") }
     static var homeEditorialPostExcerptSecondhandSmart: String { t("home_editorial_post_excerpt_secondhand_smart") }
     static var homeEditorialPostExcerptSneaker: String { t("home_editorial_post_excerpt_sneaker") }
@@ -918,7 +1011,11 @@ enum L10n {
     static var homeEditorialPostTitleStreetVn: String { t("home_editorial_post_title_street_vn") }
     static var homeEditorialPostTitleWeekend: String { t("home_editorial_post_title_weekend") }
     static var homeEditorialReadMore: String { t("home_editorial_read_more") }
+    static var homeEditorialViewDetail: String { t("home_editorial_view_detail") }
     static var homeEmptyCtaExplore: String { t("home_empty_cta_explore") }
+    static var homeExploreShortcutAction: String { t("home_explore_shortcut_action") }
+    static var homeExploreShortcutCategory: String { t("home_explore_shortcut_category") }
+    static var homeExploreShortcutStyle: String { t("home_explore_shortcut_style") }
     static var homeFeedEmptyCtaFeatured: String { t("home_feed_empty_cta_featured") }
     static var homeFeedEmptySubtitle: String { t("home_feed_empty_subtitle") }
     static var homeFeedEmptyTitle: String { t("home_feed_empty_title") }
@@ -927,14 +1024,32 @@ enum L10n {
     static var homeFollowEmptyCtaFeatured: String { t("home_follow_empty_cta_featured") }
     static var homeFollowEmptyHint: String { t("home_follow_empty_hint") }
     static var homeGuestFollowHint: String { t("home_guest_follow_hint") }
+    static var homeGuestTabFollowingBody: String { t("home_guest_tab_following_body") }
+    static var homeGuestTabFollowingTitle: String { t("home_guest_tab_following_title") }
+    static var homeGuestTabForYouBody: String { t("home_guest_tab_for_you_body") }
+    static var homeGuestTabForYouTitle: String { t("home_guest_tab_for_you_title") }
+    static var homeGuestTabSignIn: String { t("home_guest_tab_sign_in") }
+    static var homeGuestTabSignInCd: String { t("home_guest_tab_sign_in_cd") }
+    static var homeGuestTabSimilarBody: String { t("home_guest_tab_similar_body") }
+    static var homeGuestTabSimilarTitle: String { t("home_guest_tab_similar_title") }
+    static var homeGuestTabStyleBody: String { t("home_guest_tab_style_body") }
+    static var homeGuestTabStyleTitle: String { t("home_guest_tab_style_title") }
+    static var homeHeaderSearchPlaceholder: String { t("home_header_search_placeholder") }
     static var homeHeroCta: String { t("home_hero_cta") }
     static var homeHeroSubtitle: String { t("home_hero_subtitle") }
     static var homeHeroTitle: String { t("home_hero_title") }
     static var homeHuntTodaySeeAll: String { t("home_hunt_today_see_all") }
     static var homeHuntTodaySubtitle: String { t("home_hunt_today_subtitle") }
     static var homeHuntTodayTitle: String { t("home_hunt_today_title") }
+    static var homeInReviewCtaPost: String { t("home_in_review_cta_post") }
+    static var homeInReviewEmptySubtitle: String { t("home_in_review_empty_subtitle") }
+    static var homeInReviewEmptyTitle: String { t("home_in_review_empty_title") }
+    static var homeInReviewErrorSubtitle: String { t("home_in_review_error_subtitle") }
+    static var homeInReviewErrorTitle: String { t("home_in_review_error_title") }
+    static var homeInReviewListIntro: String { t("home_in_review_list_intro") }
+    static var homeInReviewScreenTitle: String { t("home_in_review_screen_title") }
     static var homeJourneyDelivering: String { t("home_journey_delivering") }
-    static var homeJourneyMessages: String { t("home_journey_messages") }
+    static var homeJourneyInReview: String { t("home_journey_in_review") }
     static var homeJourneySaved: String { t("home_journey_saved") }
     static var homeJourneyTitle: String { t("home_journey_title") }
     static var homeLogout: String { t("home_logout") }
@@ -964,6 +1079,14 @@ enum L10n {
     static var homeSizingBannerTitle: String { t("home_sizing_banner_title") }
     static var homeStylePicksSubtitle: String { t("home_style_picks_subtitle") }
     static var homeStylePicksTitle: String { t("home_style_picks_title") }
+    static var homeTabEmptyForYouSubtitle: String { t("home_tab_empty_for_you_subtitle") }
+    static var homeTabEmptyForYouTitle: String { t("home_tab_empty_for_you_title") }
+    static var homeTabEmptyHuntSubtitle: String { t("home_tab_empty_hunt_subtitle") }
+    static var homeTabEmptyHuntTitle: String { t("home_tab_empty_hunt_title") }
+    static var homeTabEmptySimilarSubtitle: String { t("home_tab_empty_similar_subtitle") }
+    static var homeTabEmptySimilarTitle: String { t("home_tab_empty_similar_title") }
+    static var homeTabEmptyStyleSubtitle: String { t("home_tab_empty_style_subtitle") }
+    static var homeTabEmptyStyleTitle: String { t("home_tab_empty_style_title") }
     static var homeTopSectionSubtitle: String { t("home_top_section_subtitle") }
     static var homeTopSectionTitle: String { t("home_top_section_title") }
     static func homeTrendingCategoryCd(_ a1: CVarArg) -> String {
@@ -1000,6 +1123,9 @@ enum L10n {
     }
     static var listingCardA11ySellerRole: String { t("listing_card_a11y_seller_role") }
     static var listingCardPhotoStackA11y: String { t("listing_card_photo_stack_a11y") }
+    static var listingCommitmentBadge: String { t("listing_commitment_badge") }
+    static var listingCommitmentBody: String { t("listing_commitment_body") }
+    static var listingCommitmentTitle: String { t("listing_commitment_title") }
     static var listingLikeAddedSnackbar: String { t("listing_like_added_snackbar") }
     static var listingLikeRemovedSnackbar: String { t("listing_like_removed_snackbar") }
     static var listingSaveAddedSnackbar: String { t("listing_save_added_snackbar") }
@@ -1059,6 +1185,7 @@ enum L10n {
     static var loginWithPassword: String { t("login_with_password") }
     static var logoutFailed: String { t("logout_failed") }
     static var logoutSuccess: String { t("logout_success") }
+    static var meetingCheckInRequiresOnMyWay: String { t("meeting_check_in_requires_on_my_way") }
     static var meetingIdentityReverifyAckDone: String { t("meeting_identity_reverify_ack_done") }
     static var meetingIdentityReverifyAckError: String { t("meeting_identity_reverify_ack_error") }
     static var meetingIdentityReverifyAckOk: String { t("meeting_identity_reverify_ack_ok") }
@@ -1066,10 +1193,15 @@ enum L10n {
     static var meetingIdentityReverifyDialogBody: String { t("meeting_identity_reverify_dialog_body") }
     static var meetingIdentityReverifyDialogTitle: String { t("meeting_identity_reverify_dialog_title") }
     static var meetingIdentityReverifyOpenLink: String { t("meeting_identity_reverify_open_link") }
+    static var meetingOnMyWay: String { t("meeting_on_my_way") }
+    static var meetingOnMyWayOk: String { t("meeting_on_my_way_ok") }
+    static var meetingOtherOnMyWay: String { t("meeting_other_on_my_way") }
+    static var meetingSelfOnMyWay: String { t("meeting_self_on_my_way") }
     static var navChat: String { t("nav_chat") }
     static var navExplore: String { t("nav_explore") }
     static var navHome: String { t("nav_home") }
     static var navInbox: String { t("nav_inbox") }
+    static var navOrders: String { t("nav_orders") }
     static var navPost: String { t("nav_post") }
     static var navPostFabCd: String { t("nav_post_fab_cd") }
     static var navPostFabLabel: String { t("nav_post_fab_label") }
@@ -1088,6 +1220,8 @@ enum L10n {
     static var notificationChannelGeneralName: String { t("notification_channel_general_name") }
     static var notificationChannelOrdersDesc: String { t("notification_channel_orders_desc") }
     static var notificationChannelOrdersName: String { t("notification_channel_orders_name") }
+    static var notificationChannelRecommendationDesc: String { t("notification_channel_recommendation_desc") }
+    static var notificationChannelRecommendationName: String { t("notification_channel_recommendation_name") }
     static var notificationDataHideRaw: String { t("notification_data_hide_raw") }
     static var notificationDataLabelBuyer: String { t("notification_data_label_buyer") }
     static var notificationDataLabelChatMessage: String { t("notification_data_label_chat_message") }
@@ -1194,6 +1328,16 @@ enum L10n {
     static var notificationPtMarketplaceOrderFundsReleased: String { t("notification_pt_marketplace_order_funds_released") }
     static var notificationPtMarketplaceOrderMeetupAborted: String { t("notification_pt_marketplace_order_meetup_aborted") }
     static var notificationPtMarketplaceOrderShipped: String { t("notification_pt_marketplace_order_shipped") }
+    static var notificationPtMarketplaceRecommendationCommunityQuiet: String { t("notification_pt_marketplace_recommendation_community_quiet") }
+    static var notificationPtMarketplaceRecommendationContinueBrowsing: String { t("notification_pt_marketplace_recommendation_continue_browsing") }
+    static var notificationPtMarketplaceRecommendationDailyDigest: String { t("notification_pt_marketplace_recommendation_daily_digest") }
+    static var notificationPtMarketplaceRecommendationHuntToday: String { t("notification_pt_marketplace_recommendation_hunt_today") }
+    static var notificationPtMarketplaceRecommendationInactiveNudge: String { t("notification_pt_marketplace_recommendation_inactive_nudge") }
+    static var notificationPtMarketplaceRecommendationSimilarSaved: String { t("notification_pt_marketplace_recommendation_similar_saved") }
+    static var notificationPtMarketplaceRecommendationSocialStyleMatch: String { t("notification_pt_marketplace_recommendation_social_style_match") }
+    static var notificationPtMarketplaceRecommendationStyleDrought: String { t("notification_pt_marketplace_recommendation_style_drought") }
+    static var notificationPtMarketplaceRecommendationStyleFresh: String { t("notification_pt_marketplace_recommendation_style_fresh") }
+    static var notificationPtMarketplaceRecommendationTasteNeighbor: String { t("notification_pt_marketplace_recommendation_taste_neighbor") }
     static var notificationPtMarketplaceReferralInviteRewarded: String { t("notification_pt_marketplace_referral_invite_rewarded") }
     static var notificationPtMarketplaceReviewReceived: String { t("notification_pt_marketplace_review_received") }
     static var notificationRowNoTitle: String { t("notification_row_no_title") }
@@ -1578,8 +1722,37 @@ enum L10n {
     static var postCategoryNoMatches: String { t("post_category_no_matches") }
     static var postCategoryParentsHeading: String { t("post_category_parents_heading") }
     static var postClearBrand: String { t("post_clear_brand") }
+    static var postConditionDefectPhotoHint: String { t("post_condition_defect_photo_hint") }
+    static var postConditionDefectsLabel: String { t("post_condition_defects_label") }
+    static func postConditionScoreLabel(_ a1: CVarArg) -> String {
+        String(format: t("post_condition_score_label"), a1)
+    }
+    static var postDefectFading: String { t("post_defect_fading") }
+    static var postDefectMissingButton: String { t("post_defect_missing_button") }
+    static var postDefectOdor: String { t("post_defect_odor") }
+    static var postDefectPilling: String { t("post_defect_pilling") }
+    static var postDefectStains: String { t("post_defect_stains") }
+    static var postDefectWorn: String { t("post_defect_worn") }
     static var postDescriptionLabel: String { t("post_description_label") }
     static var postDropPercent: String { t("post_drop_percent") }
+    static var postFillModeFromProfileSubtitleEmpty: String { t("post_fill_mode_from_profile_subtitle_empty") }
+    static var postFillModeFromProfileSubtitleReady: String { t("post_fill_mode_from_profile_subtitle_ready") }
+    static var postFillModeFromProfileTitle: String { t("post_fill_mode_from_profile_title") }
+    static var postFillModeManualSubtitle: String { t("post_fill_mode_manual_subtitle") }
+    static var postFillModeManualTitle: String { t("post_fill_mode_manual_title") }
+    static var postFillModePrefilledHint: String { t("post_fill_mode_prefilled_hint") }
+    static var postFillModeProfileEmpty: String { t("post_fill_mode_profile_empty") }
+    static func postFillModeProfileGender(_ a1: CVarArg) -> String {
+        String(format: t("post_fill_mode_profile_gender"), a1)
+    }
+    static func postFillModeProfileSize(_ a1: CVarArg) -> String {
+        String(format: t("post_fill_mode_profile_size"), a1)
+    }
+    static func postFillModeProfileTags(_ a1: CVarArg) -> String {
+        String(format: t("post_fill_mode_profile_tags"), a1)
+    }
+    static var postFillModeSubtitle: String { t("post_fill_mode_subtitle") }
+    static var postFillModeTitle: String { t("post_fill_mode_title") }
     static var postFloorPrice: String { t("post_floor_price") }
     static var postHintBrand: String { t("post_hint_brand") }
     static var postHintCategoryRequired: String { t("post_hint_category_required") }
@@ -1594,8 +1767,12 @@ enum L10n {
     static var postHintShipping: String { t("post_hint_shipping") }
     static var postHintStyleTagsStep: String { t("post_hint_style_tags_step") }
     static var postHintTitleDesc: String { t("post_hint_title_desc") }
+    static var postListingColorHint: String { t("post_listing_color_hint") }
     static var postListingDetailsIntro: String { t("post_listing_details_intro") }
     static var postListingPhotoSlotsUnavailable: String { t("post_listing_photo_slots_unavailable") }
+    static var postListingSizingGenderHint: String { t("post_listing_sizing_gender_hint") }
+    static var postListingSizingGenderRecommended: String { t("post_listing_sizing_gender_recommended") }
+    static var postListingSizingSubtitle: String { t("post_listing_sizing_subtitle") }
     static var postMeasureNoticeCombined: String { t("post_measure_notice_combined") }
     static var postMeasureSectionDetails: String { t("post_measure_section_details") }
     static var postMeasureSectionSize: String { t("post_measure_section_size") }
@@ -1608,6 +1785,7 @@ enum L10n {
     static var postMeasurementShoulders: String { t("post_measurement_shoulders") }
     static var postMeasurementSleeve: String { t("post_measurement_sleeve") }
     static var postNextBlockedCategory: String { t("post_next_blocked_category") }
+    static var postNextBlockedCommitment: String { t("post_next_blocked_commitment") }
     static var postNextBlockedCondition: String { t("post_next_blocked_condition") }
     static var postNextBlockedDescriptionLong: String { t("post_next_blocked_description_long") }
     static var postNextBlockedDropPercent: String { t("post_next_blocked_drop_percent") }
@@ -1622,7 +1800,29 @@ enum L10n {
     static var postNextBlockedTitleShort: String { t("post_next_blocked_title_short") }
     static var postNoSavedAddress: String { t("post_no_saved_address") }
     static var postNoticeTitle: String { t("post_notice_title") }
+    static var postPriceStepSubtitle: String { t("post_price_step_subtitle") }
+    static func postPriceVndExample(_ a1: CVarArg, _ a2: CVarArg) -> String {
+        String(format: t("post_price_vnd_example"), a1, a2)
+    }
+    static var postPriceVndPrefix: String { t("post_price_vnd_prefix") }
+    static func postPriceVndPreview(_ a1: CVarArg) -> String {
+        String(format: t("post_price_vnd_preview"), a1)
+    }
+    static var postPriceVndRangeHint: String { t("post_price_vnd_range_hint") }
+    static var postPriceVndSuffix: String { t("post_price_vnd_suffix") }
+    static var postReviewBuyerBannerSubtitle: String { t("post_review_buyer_banner_subtitle") }
+    static var postReviewBuyerBannerTitle: String { t("post_review_buyer_banner_title") }
+    static var postReviewBuyerPageSubtitle: String { t("post_review_buyer_page_subtitle") }
+    static var postReviewDetailPreviewHeading: String { t("post_review_detail_preview_heading") }
+    static var postReviewEditSection: String { t("post_review_edit_section") }
+    static var postReviewFeedPreviewHeading: String { t("post_review_feed_preview_heading") }
+    static var postReviewMissingTitle: String { t("post_review_missing_title") }
+    static var postReviewNotSet: String { t("post_review_not_set") }
     static var postReviewNoticeTitle: String { t("post_review_notice_title") }
+    static var postReviewOptionalEmpty: String { t("post_review_optional_empty") }
+    static func postReviewPhotoCount(_ a1: CVarArg) -> String {
+        String(format: t("post_review_photo_count"), a1)
+    }
     static var postSearchBrand: String { t("post_search_brand") }
     static var postSearchCategory: String { t("post_search_category") }
     static var postSearchCountry: String { t("post_search_country") }
@@ -1654,6 +1854,7 @@ enum L10n {
     static var postUnitCm: String { t("post_unit_cm") }
     static var postUnitIn: String { t("post_unit_in") }
     static var postValidationCategory: String { t("post_validation_category") }
+    static var postValidationCommitment: String { t("post_validation_commitment") }
     static var postValidationCondition: String { t("post_validation_condition") }
     static var postValidationDescriptionLong: String { t("post_validation_description_long") }
     static var postValidationDropPercent: String { t("post_validation_drop_percent") }
@@ -1777,9 +1978,15 @@ enum L10n {
     static var profileActionShare: String { t("profile_action_share") }
     static var profileCdBriefScrollToTop: String { t("profile_cd_brief_scroll_to_top") }
     static var profileEdit: String { t("profile_edit") }
+    static var profileEmptyInReviewSubtitle: String { t("profile_empty_in_review_subtitle") }
+    static var profileEmptyInReviewTitle: String { t("profile_empty_in_review_title") }
+    static var profileEmptyPinnedFooterInReview: String { t("profile_empty_pinned_footer_in_review") }
+    static var profileEmptyPinnedFooterRejected: String { t("profile_empty_pinned_footer_rejected") }
     static var profileEmptyPinnedFooterSelling: String { t("profile_empty_pinned_footer_selling") }
     static var profileEmptyPinnedFooterSold: String { t("profile_empty_pinned_footer_sold") }
     static var profileEmptyPinnedFooterWishlist: String { t("profile_empty_pinned_footer_wishlist") }
+    static var profileEmptyRejectedSubtitle: String { t("profile_empty_rejected_subtitle") }
+    static var profileEmptyRejectedTitle: String { t("profile_empty_rejected_title") }
     static var profileEmptySellingSubtitle: String { t("profile_empty_selling_subtitle") }
     static var profileEmptySellingTitle: String { t("profile_empty_selling_title") }
     static var profileEmptySoldSubtitle: String { t("profile_empty_sold_subtitle") }
@@ -1791,6 +1998,9 @@ enum L10n {
     static var profileFollowersOpenCd: String { t("profile_followers_open_cd") }
     static var profileFollowing: String { t("profile_following") }
     static var profileFollowingOpenCd: String { t("profile_following_open_cd") }
+    static func profileHeightCm(_ a1: CVarArg) -> String {
+        String(format: t("profile_height_cm"), a1)
+    }
     static var profileInviteFriendsSubtitle: String { t("profile_invite_friends_subtitle") }
     static var profileInviteFriendsTitle: String { t("profile_invite_friends_title") }
     static var profileLoadError: String { t("profile_load_error") }
@@ -1904,10 +2114,31 @@ enum L10n {
     static var profileSizingRefTitle: String { t("profile_sizing_ref_title") }
     static var profileSizingRefUnitDefault: String { t("profile_sizing_ref_unit_default") }
     static var profileSold: String { t("profile_sold") }
+    static var profileTabInReview: String { t("profile_tab_in_review") }
+    static var profileTabRejected: String { t("profile_tab_rejected") }
     static var profileTabSelling: String { t("profile_tab_selling") }
     static var profileTabSold: String { t("profile_tab_sold") }
     static var profileTabWishlist: String { t("profile_tab_wishlist") }
     static var profileVerifiedCd: String { t("profile_verified_cd") }
+    static func profileWeightKg(_ a1: CVarArg) -> String {
+        String(format: t("profile_weight_kg"), a1)
+    }
+    static var safeZoneCityHanoi: String { t("safe_zone_city_hanoi") }
+    static var safeZoneCityHcm: String { t("safe_zone_city_hcm") }
+    static var safeZoneEmptyHint: String { t("safe_zone_empty_hint") }
+    static var safeZoneHubSubtitle: String { t("safe_zone_hub_subtitle") }
+    static var safeZoneListTitle: String { t("safe_zone_list_title") }
+    static var safeZoneLoadError: String { t("safe_zone_load_error") }
+    static var safeZoneManualHint: String { t("safe_zone_manual_hint") }
+    static var safeZoneRetry: String { t("safe_zone_retry") }
+    static var safeZoneSelectedLabel: String { t("safe_zone_selected_label") }
+    static var safeZoneSwitchManual: String { t("safe_zone_switch_manual") }
+    static var safeZoneTabManual: String { t("safe_zone_tab_manual") }
+    static var safeZoneTabPicker: String { t("safe_zone_tab_picker") }
+    static var safeZoneTypeCafe: String { t("safe_zone_type_cafe") }
+    static var safeZoneTypeConvenience: String { t("safe_zone_type_convenience") }
+    static var safeZoneTypeMall: String { t("safe_zone_type_mall") }
+    static var safeZoneTypeOther: String { t("safe_zone_type_other") }
     static var save: String { t("save") }
     static var searchLabel: String { t("search_label") }
     static var searchPlaceholder: String { t("search_placeholder") }
@@ -1990,6 +2221,11 @@ enum L10n {
     static var splashLogoCd: String { t("splash_logo_cd") }
     static var splashWordmark: String { t("splash_wordmark") }
     static var unfollowAction: String { t("unfollow_action") }
+    static var uxSurveySubmit: String { t("ux_survey_submit") }
+    static var uxSurveyTextHint: String { t("ux_survey_text_hint") }
+    static var uxSurveyThanksBody: String { t("ux_survey_thanks_body") }
+    static var uxSurveyThanksTitle: String { t("ux_survey_thanks_title") }
+    static var uxSurveyTitle: String { t("ux_survey_title") }
     static var waitingScreenEyebrow: String { t("waiting_screen_eyebrow") }
     static var waitingScreenHeadline: String { t("waiting_screen_headline") }
     static var waitingScreenLine2: String { t("waiting_screen_line_2") }

@@ -7,7 +7,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-ANDROID = ROOT.parent / "fash-android-mobile"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from fash_paths import android_strings_en, android_strings_vi  # noqa: E402
 OUT_VI = ROOT / "Fash" / "Resources" / "vi.lproj"
 OUT_EN = ROOT / "Fash" / "Resources" / "en.lproj"
 OUT_L10N = ROOT / "Fash" / "Localization"
@@ -39,7 +40,7 @@ def parse_strings_xml(path: Path) -> dict[str, str]:
 
 
 def to_strings_file(entries: dict[str, str]) -> str:
-    lines = ['/* Generated from fash-android-mobile — do not edit by hand. */', ""]
+    lines = ['/* Generated from vendor/android-res — do not edit by hand. */', ""]
     for key in sorted(entries.keys()):
         val = entries[key].replace('"', '\\"')
         lines.append(f'"{key}" = "{val}";')
@@ -85,13 +86,16 @@ def generate_l10n(vi: dict[str, str], en: dict[str, str]) -> str:
 
 
 def main() -> int:
-    vi_path = ANDROID / "app/src/main/res/values/strings.xml"
-    en_path = ANDROID / "app/src/main/res/values-en/strings.xml"
-    if not vi_path.exists():
-        print(f"Missing {vi_path}", file=sys.stderr)
+    vi_path = android_strings_vi()
+    en_path = android_strings_en()
+    if not vi_path:
+        print(
+            "Missing strings source. Run scripts/vendor_from_android.py or set FASH_ANDROID_ROOT.",
+            file=sys.stderr,
+        )
         return 1
     vi = parse_strings_xml(vi_path)
-    en = parse_strings_xml(en_path) if en_path.exists() else vi
+    en = parse_strings_xml(en_path) if en_path and en_path.exists() else vi
     OUT_VI.mkdir(parents=True, exist_ok=True)
     OUT_EN.mkdir(parents=True, exist_ok=True)
     OUT_L10N.mkdir(parents=True, exist_ok=True)
