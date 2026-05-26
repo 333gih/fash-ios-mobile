@@ -145,7 +145,7 @@ struct MainNavScreen: View {
     private var headerSuffix: String {
         switch router.selectedTab {
         case .home: return L10n.brandHeaderSuffixHome
-        case .explore: return L10n.exploreTitle
+        case .explore: return L10n.brandHeaderSuffixExplore
         case .post: return L10n.brandHeaderSuffixPost
         case .chat: return L10n.brandHeaderSuffixChat
         case .profile: return L10n.brandHeaderSuffixProfile
