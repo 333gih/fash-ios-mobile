@@ -115,23 +115,22 @@ struct NotificationScreen: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 8) {
                     Text(notificationGroupTitle(group.group))
-                        .font(FashTypography.titleSmall)
-                        .fontWeight(.semibold)
+                        .font(FashTypography.labelLarge)
                         .foregroundStyle(FashColors.textPrimary)
                         .lineLimit(1)
                     if group.unreadCount > 0 {
                         Text("\(min(group.unreadCount, 99))")
-                            .font(FashTypography.labelSmall)
+                            .font(FashTypography.labelLarge)
                             .padding(.horizontal, 7)
                             .padding(.vertical, 1)
-                            .background(FashColors.primary)
+                            .background(FashColors.brandPrimary)
                             .foregroundStyle(.white)
                             .clipShape(Capsule())
                     }
                     Spacer(minLength: 0)
                 }
                 Text(group.latestBody ?? group.latestTitle ?? notificationGroupSubtitle(group.group))
-                    .font(FashTypography.bodySmall)
+                    .font(FashTypography.bodyMedium)
                     .foregroundStyle(FashColors.textSecondary)
                     .lineLimit(1)
             }
@@ -147,11 +146,11 @@ struct NotificationScreen: View {
     private func notificationRow(_ item: InboxNotificationItem) -> some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: notificationPayloadSystemImage(item.payloadType))
-                .foregroundStyle(FashColors.primary)
+                .foregroundStyle(FashColors.brandPrimary)
                 .frame(width: 24)
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.title.isEmpty ? L10n.notificationDetailNoTitle : item.title)
-                    .font(FashTypography.titleSmall)
+                    .font(FashTypography.labelLarge)
                     .foregroundStyle(FashColors.textPrimary)
                 Text(item.body)
                     .font(FashTypography.bodyMedium)
@@ -159,8 +158,8 @@ struct NotificationScreen: View {
                     .lineLimit(3)
                 if item.isUnread {
                     Text(L10n.notificationUnreadBadge)
-                        .font(FashTypography.labelSmall)
-                        .foregroundStyle(FashColors.primary)
+                        .font(FashTypography.labelLarge)
+                        .foregroundStyle(FashColors.brandPrimary)
                 }
             }
             if let url = notificationRowImageURL(item) {
