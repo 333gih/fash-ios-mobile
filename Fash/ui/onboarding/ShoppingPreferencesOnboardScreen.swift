@@ -8,7 +8,7 @@ struct ShoppingPreferencesOnboardScreen: View {
             title: L10n.onboardingShoppingTitle,
             bodyText: L10n.onboardingShoppingSubtitle,
             actionTitle: L10n.onboardingContinue,
-            onContinue: onContinue,
+            onContinue: onContinue
         )
     }
 }

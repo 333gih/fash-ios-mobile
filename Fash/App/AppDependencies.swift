@@ -65,8 +65,7 @@ final class AppDependencies {
                     AppDependencies.shared.authManager.onSessionCleared(reason: reason)
                     AppDependencies.shared.handleSessionCleared(reason: reason)
                 }
-            },
-        )
+            )
         userRepository = UserRepository(client: securedClient)
         listingRepository = ListingRepository(client: securedClient)
         chatRepository = ChatRepository(client: securedClient)
@@ -89,7 +88,7 @@ final class AppDependencies {
         realtimeManager = RealtimeManager(
             baseURL: AppEnvironment.realtimeBaseURL,
             sessionStore: authSessionStore,
-            authRepository: authRepository,
+            authRepository: authRepository
         )
         fcmTokenRegistrar = FcmTokenRegistrar(authRepository: authRepository, sessionStore: authSessionStore)
         authManager.hydrateInitialAuthFromStore()

@@ -15,7 +15,7 @@ struct RootView: View {
             }
             .fullScreenCover(item: Binding(
                 get: { router.fullScreenRoute },
-                set: { if $0 == nil { router.dismissFullScreen() } },
+                set: { if $0 == nil { router.dismissFullScreen() } }
             )) { route in
                 fullScreenContent(route)
             }
@@ -109,7 +109,7 @@ struct RootView: View {
                     deps.isGuestBrowseActive = true
                     router.isGuestMode = true
                     router.loginStep = nil
-                },
+                }
             )
         case .otp:
             OtpVerifyScreen(
@@ -118,7 +118,7 @@ struct RootView: View {
                     router.loginStep = nil
                     Task { await bootstrapSession() }
                 },
-                onBack: { router.loginStep = .email },
+                onBack: { router.loginStep = .email }
             )
         }
     }

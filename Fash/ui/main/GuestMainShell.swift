@@ -25,7 +25,7 @@ struct GuestMainShell: View {
                     router.isGuestMode = false
                     router.loginStep = .email
                 },
-                onContinueBrowsing: { showLoginSheet = false },
+                onContinueBrowsing: { showLoginSheet = false }
             )
         }
         .task { deps.consumePendingDeepLinks(router: router) }

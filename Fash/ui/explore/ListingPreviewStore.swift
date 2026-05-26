@@ -29,13 +29,13 @@ final class ListingPreviewStore {
             surface: surface,
             gridPosition: position,
             detail: nil,
-            isDetailLoading: true,
+            isDetailLoading: true
         )
         let listingId = item.id
         loadTask = Task {
             let result = await deps.listingRepository.getListingPreviewDetail(
                 listingId: listingId,
-                publicBrowse: publicBrowse,
+                publicBrowse: publicBrowse
             )
             guard !Task.isCancelled else { return }
             switch result {

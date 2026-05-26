@@ -67,7 +67,7 @@ final class AuthRepository {
             _ = try await HttpJson.post(
                 url: AppEnvironment.authServicePath(AppEnvironment.authLogoutPath),
                 body: [:],
-                bearer: accessToken,
+                bearer: accessToken
             )
             return .success(())
         } catch {
@@ -80,7 +80,7 @@ final class AuthRepository {
             _ = try await HttpJson.post(
                 url: AppEnvironment.authServicePath(AppEnvironment.authLogoutAllPath),
                 body: [:],
-                bearer: accessToken,
+                bearer: accessToken
             )
             return .success(())
         } catch {
@@ -93,7 +93,7 @@ final class AuthRepository {
             _ = try await HttpJson.post(
                 url: AppEnvironment.authServicePath(AppEnvironment.authFcmRegisterPath),
                 body: ["token": token, "platform": platform],
-                bearer: accessToken,
+                bearer: accessToken
             )
             return .success(())
         } catch {

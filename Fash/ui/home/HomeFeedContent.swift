@@ -26,7 +26,7 @@ struct HomeFeedContent: View {
                             deps: deps,
                             publicBrowse: isGuestMode,
                             surface: "home",
-                            position: index,
+                            position: index
                         )
                     }
                 }

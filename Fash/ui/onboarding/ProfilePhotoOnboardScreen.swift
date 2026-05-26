@@ -8,7 +8,7 @@ struct ProfilePhotoOnboardScreen: View {
             title: L10n.onboardingProfilePhotoTitle,
             bodyText: L10n.onboardingProfilePhotoSubtitle,
             actionTitle: L10n.onboardingContinue,
-            onContinue: onContinue,
+            onContinue: onContinue
         )
     }
 }

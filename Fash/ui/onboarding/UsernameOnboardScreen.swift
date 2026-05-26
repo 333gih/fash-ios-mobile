@@ -8,7 +8,7 @@ struct UsernameOnboardScreen: View {
             title: L10n.onboardingUsernameScreenTitle,
             bodyText: L10n.onboardingSubtitle,
             actionTitle: L10n.onboardingContinue,
-            onContinue: onContinue,
+            onContinue: onContinue
         )
     }
 }

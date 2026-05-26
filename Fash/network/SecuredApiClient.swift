@@ -41,7 +41,7 @@ final class SecuredApiClient {
         let refreshed = await AuthTokenRefreshCoordinator.refreshIfStillCurrent(
             sessionStore: sessionStore,
             authRepository: authRepository,
-            accessTokenWhenUnauthorized: staleToken,
+            accessTokenWhenUnauthorized: staleToken
         )
         guard case .success = refreshed else {
             sessionStore.clear()

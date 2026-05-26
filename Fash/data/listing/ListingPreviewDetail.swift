@@ -104,7 +104,7 @@ struct ListingPreviewDetail: Hashable {
             sellerListingCount: sellerListingCount,
             sellerAvatarURL: sellerAvatarURL,
             estimatedShippingVnd: estimatedShippingVnd,
-            shipFromRegion: shipFromRegion?.isEmpty == false ? shipFromRegion : nil,
+            shipFromRegion: shipFromRegion?.isEmpty == false ? shipFromRegion : nil
         )
     }
 }

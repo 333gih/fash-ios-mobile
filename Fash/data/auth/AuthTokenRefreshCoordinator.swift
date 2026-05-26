@@ -10,7 +10,7 @@ enum AuthTokenRefreshCoordinator {
         func refreshIfStillCurrent(
             sessionStore: AuthSessionStore,
             authRepository: AuthRepository,
-            accessTokenWhenUnauthorized: String,
+            accessTokenWhenUnauthorized: String
         ) async -> Result<AuthSession, Error> {
             guard let current = sessionStore.read() else {
                 return .failure(AuthSessionMissingError.noStoredSession)
@@ -34,12 +34,12 @@ enum AuthTokenRefreshCoordinator {
     static func refreshIfStillCurrent(
         sessionStore: AuthSessionStore,
         authRepository: AuthRepository,
-        accessTokenWhenUnauthorized: String,
+        accessTokenWhenUnauthorized: String
     ) async -> Result<AuthSession, Error> {
         await gate.refreshIfStillCurrent(
             sessionStore: sessionStore,
             authRepository: authRepository,
-            accessTokenWhenUnauthorized: accessTokenWhenUnauthorized,
+            accessTokenWhenUnauthorized: accessTokenWhenUnauthorized
         )
     }
 }

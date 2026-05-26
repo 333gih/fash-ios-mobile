@@ -59,7 +59,7 @@ final class ListingRepository {
                     title: obj["title"] as? String ?? "",
                     price: (obj["price"] as? NSNumber)?.int64Value ?? 0,
                     imageURL: nil,
-                    sellerUsername: nil,
+                    sellerUsername: nil
                 ))
             }
             return .failure(URLError(.cannotParseResponse))

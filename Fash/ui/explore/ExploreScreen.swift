@@ -29,7 +29,7 @@ struct ExploreScreen: View {
                                 deps: deps,
                                 publicBrowse: isGuestMode,
                                 surface: "explore",
-                                position: index,
+                                position: index
                             )
                         }
                     }

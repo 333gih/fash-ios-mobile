@@ -24,17 +24,17 @@ struct ExploreListingPreviewSheet: View {
                             GeometryReader { proxy in
                                 Color.clear.preference(
                                     key: PreviewScrollOffsetKey.self,
-                                    value: proxy.frame(in: .named("previewScroll")).minY,
+                                    value: proxy.frame(in: .named("previewScroll")).minY
                                 )
-                            },
+                            }
                         )
                         .background(
                             GeometryReader { proxy in
                                 Color.clear.preference(
                                     key: PreviewScrollHeightKey.self,
-                                    value: proxy.size.height,
+                                    value: proxy.size.height
                                 )
-                            },
+                            }
                         )
                 }
                 .coordinateSpace(name: "previewScroll")
@@ -79,10 +79,10 @@ struct ExploreListingPreviewSheet: View {
             LinearGradient(
                 colors: [.clear, FashColors.screen.opacity(0.78), FashColors.screen],
                 startPoint: .top,
-                endPoint: .bottom,
+                endPoint: .bottom
             )
             .frame(height: 44),
-            alignment: .bottom,
+            alignment: .bottom
         )
     }
 
@@ -209,18 +209,18 @@ struct ExploreListingPreviewSheet: View {
             socialStat(
                 systemName: (detail?.isLiked ?? false) ? "heart.fill" : "heart",
                 value: FeedEngagementFormat.short(detail?.likeCount ?? 0),
-                tint: (detail?.isLiked ?? false) ? FashColors.brandPrimary : FashColors.textSecondary,
+                tint: (detail?.isLiked ?? false) ? FashColors.brandPrimary : FashColors.textSecondary
             )
             socialStat(
                 systemName: (detail?.isSaved ?? false) ? "bookmark.fill" : "bookmark",
                 value: FeedEngagementFormat.short(detail?.saveCount ?? 0),
-                tint: (detail?.isSaved ?? false) ? FashColors.brandPrimary : FashColors.textSecondary,
+                tint: (detail?.isSaved ?? false) ? FashColors.brandPrimary : FashColors.textSecondary
             )
             if let views = detail?.viewCount, views > 0 {
                 socialStat(
                     systemName: "eye",
                     value: FeedEngagementFormat.short(views),
-                    tint: FashColors.textSecondary,
+                    tint: FashColors.textSecondary
                 )
             }
         }
@@ -288,7 +288,7 @@ struct ExploreListingPreviewSheet: View {
             .background(FashColors.surfaceContainer, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .stroke(FashColors.brandPrimary.opacity(0.28), lineWidth: 1),
+                    .stroke(FashColors.brandPrimary.opacity(0.28), lineWidth: 1)
             )
         }
         .buttonStyle(.plain)
@@ -303,7 +303,7 @@ struct ExploreListingPreviewSheet: View {
                     active: detail?.isLiked ?? false,
                     action: {
                         if isGuestMode { onRequestLogin?() } else { onLike() }
-                    },
+                    }
                 )
                 actionIconButton(
                     systemName: (detail?.isSaved ?? false) ? "bookmark.fill" : "bookmark",
@@ -311,7 +311,7 @@ struct ExploreListingPreviewSheet: View {
                     active: detail?.isSaved ?? false,
                     action: {
                         if isGuestMode { onRequestLogin?() } else { onSave() }
-                    },
+                    }
                 )
                 Button(action: onViewDetail) {
                     Text(L10n.explorePreviewViewDetail)
@@ -352,7 +352,7 @@ struct ExploreListingPreviewSheet: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 (isSold ? FashColors.surfaceContainer : FashColors.brandPrimary.opacity(0.12)),
-                in: RoundedRectangle(cornerRadius: 8, style: .continuous),
+                in: RoundedRectangle(cornerRadius: 8, style: .continuous)
             )
     }
 
@@ -364,7 +364,7 @@ struct ExploreListingPreviewSheet: View {
                 .frame(width: 38, height: 38)
                 .overlay(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .stroke(FashColors.outlineMuted.opacity(0.4), lineWidth: 1),
+                        .stroke(FashColors.outlineMuted.opacity(0.4), lineWidth: 1)
                 )
         }
         .accessibilityLabel(label)
@@ -554,7 +554,7 @@ private struct FlowLayout: Layout {
         for placement in rows.placements {
             subviews[placement.index].place(
                 at: CGPoint(x: bounds.minX + placement.x, y: bounds.minY + placement.y),
-                proposal: ProposedViewSize(placement.size),
+                proposal: ProposedViewSize(placement.size)
             )
         }
     }

@@ -8,7 +8,7 @@ struct SizingReferenceScreen: View {
             title: L10n.onboardingSizingScreenTitle,
             bodyText: L10n.onboardingSizingBodyFirstSubtitle,
             actionTitle: L10n.onboardingContinue,
-            onContinue: onContinue,
+            onContinue: onContinue
         )
     }
 }

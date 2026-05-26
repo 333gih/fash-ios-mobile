@@ -37,7 +37,7 @@ struct MainNavScreen: View {
                 },
                 onRequestLogin: {
                     onRequestSignIn?(L10n.guestLoginReasonBuy)
-                },
+                }
             )
             .environment(\.locale, AppLocale.locale)
         }
@@ -48,7 +48,7 @@ struct MainNavScreen: View {
                 onDismiss: {
                     router.showNotificationScreen = false
                     router.notificationDetailId = nil
-                },
+                }
             )
         }
         .sheet(isPresented: $router.showSettingsScreen) {
@@ -76,7 +76,7 @@ struct MainNavScreen: View {
                 onOpenChangePassword: {
                     router.showSettingsScreen = false
                     router.showChangePasswordScreen = true
-                },
+                }
             )
         }
         .overlay(alignment: .top) {
@@ -153,7 +153,7 @@ struct MainNavScreen: View {
             HomeFeedContent(
                 viewModel: homeVM,
                 listingPreview: listingPreview,
-                isGuestMode: isGuestMode,
+                isGuestMode: isGuestMode
             )
                 .overlay(alignment: .bottom) {
                     if AppEnvironment.shippingEnabled {
@@ -168,7 +168,7 @@ struct MainNavScreen: View {
             ExploreScreen(
                 viewModel: exploreVM,
                 listingPreview: listingPreview,
-                isGuestMode: isGuestMode,
+                isGuestMode: isGuestMode
             )
         case .post:
             if isGuestMode {
@@ -189,7 +189,7 @@ struct MainNavScreen: View {
                 ProfileScreen(
                     viewModel: profileVM,
                     onEditProfile: { router.showEditProfile = true },
-                    onOpenSettings: { router.showSettingsScreen = true },
+                    onOpenSettings: { router.showSettingsScreen = true }
                 )
             }
         }
