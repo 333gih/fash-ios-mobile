@@ -850,6 +850,10 @@
 "guest_topbar_sign_in_cd" = "Sign in or create account";
 "home_brand_footer_sub" = "SHAPING VIETNAMESE STYLE";
 "home_brand_marketplace" = "FASH MARKETPLACE";
+"home_delivering_coming_soon_body" = "Shipping with in-app payment is coming soon. You'll manage deliveries here when it launches.";
+"home_delivering_coming_soon_title" = "Coming soon";
+"home_delivering_list_intro" = "Orders on the way to buyers. Track status and update delivery details here.";
+"home_delivering_screen_title" = "In transit";
 "home_edited_by_fash_badge" = "Edited by Fash";
 "home_editorial_list_subtitle" = "Tips for buying and styling pre-loved fashion — tap to read.";
 "home_editorial_list_title" = "Fash guides";

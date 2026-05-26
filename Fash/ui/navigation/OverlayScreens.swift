@@ -17,7 +17,7 @@ struct HomeDeliveringScreen: View {
     var body: some View {
         OverlayScreenHost(
             title: AppEnvironment.shippingEnabled ? L10n.homeDeliveringScreenTitle : L10n.homeDeliveringComingSoonTitle,
-            onDismiss: onDismiss,
+            onDismiss: onDismiss
         ) {
             Text(AppEnvironment.shippingEnabled ? L10n.homeDeliveringListIntro : L10n.homeDeliveringComingSoonBody)
                 .padding()

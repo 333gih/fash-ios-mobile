@@ -13,7 +13,7 @@ final class SecuredApiClient {
     init(
         sessionStore: AuthSessionStore,
         authRepository: AuthRepository,
-        onSessionInvalidated: ((String?) -> Void)? = nil,
+        onSessionInvalidated: ((String?) -> Void)? = nil
     ) {
         self.sessionStore = sessionStore
         self.authRepository = authRepository

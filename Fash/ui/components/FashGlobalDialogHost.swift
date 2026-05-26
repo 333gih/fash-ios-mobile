@@ -9,8 +9,8 @@ struct FashGlobalDialogHost: View {
                 deps.uiDialog.title ?? "",
                 isPresented: Binding(
                     get: { deps.uiDialog.isPresented },
-                    set: { if !$0 { deps.uiDialog.dismiss() } },
-                ),
+                    set: { if !$0 { deps.uiDialog.dismiss() } }
+                )
             ) {
                 Button(L10n.dialogOk) { deps.uiDialog.dismiss() }
             } message: {

@@ -21,7 +21,7 @@ final class ListingPreviewStore {
         deps: AppDependencies,
         publicBrowse: Bool,
         surface: String = "explore",
-        position: Int = 0,
+        position: Int = 0
     ) {
         loadTask?.cancel()
         state = ExploreListingPreviewState(

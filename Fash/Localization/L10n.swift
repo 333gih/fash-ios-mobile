@@ -994,6 +994,10 @@ enum L10n {
     static var guestTopbarSignInCd: String { t("guest_topbar_sign_in_cd") }
     static var homeBrandFooterSub: String { t("home_brand_footer_sub") }
     static var homeBrandMarketplace: String { t("home_brand_marketplace") }
+    static var homeDeliveringComingSoonBody: String { t("home_delivering_coming_soon_body") }
+    static var homeDeliveringComingSoonTitle: String { t("home_delivering_coming_soon_title") }
+    static var homeDeliveringListIntro: String { t("home_delivering_list_intro") }
+    static var homeDeliveringScreenTitle: String { t("home_delivering_screen_title") }
     static var homeEditedByFashBadge: String { t("home_edited_by_fash_badge") }
     static var homeEditorialListSubtitle: String { t("home_editorial_list_subtitle") }
     static var homeEditorialListTitle: String { t("home_editorial_list_title") }

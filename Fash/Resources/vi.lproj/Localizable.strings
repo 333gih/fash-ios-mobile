@@ -866,6 +866,10 @@
 "guest_topbar_sign_in_cd" = "Đăng nhập hoặc tạo tài khoản";
 "home_brand_footer_sub" = "ĐỊNH HÌNH PHONG CÁCH VIỆT";
 "home_brand_marketplace" = "FASH MARKETPLACE";
+"home_delivering_coming_soon_body" = "Giao hàng và thanh toán online trên ứng dụng — sắp ra mắt. Bạn sẽ quản lý đơn giao tại đây khi tính năng mở.";
+"home_delivering_coming_soon_title" = "Sắp ra mắt";
+"home_delivering_list_intro" = "Các đơn đang giao đến người mua. Theo dõi trạng thái và cập nhật thông tin giao hàng tại đây.";
+"home_delivering_screen_title" = "Đang giao";
 "home_edited_by_fash_badge" = "Fash tuyển chọn";
 "home_editorial_list_subtitle" = "Gợi ý mua và phối đồ second-hand — chọn bài để đọc chi tiết.";
 "home_editorial_list_title" = "Cẩm nang Fash";
