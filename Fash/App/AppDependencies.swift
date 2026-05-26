@@ -42,6 +42,7 @@ final class AppDependencies {
     let orderCancelCoordinator: OrderCancelCoordinator
     let realtimeManager: RealtimeManager
     let fcmTokenRegistrar: FcmTokenRegistrar
+    let preferredLocaleSync: PreferredLocaleSync
 
     var isGuestBrowseActive = false
 
@@ -92,7 +93,18 @@ final class AppDependencies {
             sessionStore: authSessionStore,
             authRepository: authRepository
         )
-        fcmTokenRegistrar = FcmTokenRegistrar(authRepository: authRepository, sessionStore: authSessionStore)
+        fcmTokenRegistrar = FcmTokenRegistrar(
+            authRepository: authRepository,
+            sessionStore: authSessionStore,
+            clientLocaleProvider: { AppLocale.currentTag }
+        )
+        preferredLocaleSync = PreferredLocaleSync(
+            userRepository: userRepository,
+            sessionStore: authSessionStore
+        )
+        AppLocaleController.shared.onLocaleChanged = { [preferredLocaleSync] tag in
+            Task { await preferredLocaleSync.syncIfSession(locale: tag) }
+        }
         authManager.hydrateInitialAuthFromStore()
     }
 

@@ -15,6 +15,9 @@ final class AppLocaleController {
     private(set) var revision = 0
     private(set) var currentTag: String = tagVI
 
+    /// Called after the user changes in-app language (settings / login toggle).
+    var onLocaleChanged: ((String) -> Void)?
+
     var locale: Locale {
         Locale(identifier: currentTag == Self.tagEN ? "en" : "vi")
     }
@@ -39,6 +42,7 @@ final class AppLocaleController {
         currentTag = normalized
         UserDefaults.standard.set(normalized, forKey: Self.prefsKey)
         revision += 1
+        onLocaleChanged?(normalized)
     }
 
     private static func normalize(_ raw: String) -> String {

@@ -88,11 +88,23 @@ final class AuthRepository {
         }
     }
 
-    func registerFcm(accessToken: String, token: String, platform: String = "ios") async -> Result<Void, Error> {
+    func registerFcm(
+        accessToken: String,
+        token: String,
+        platform: String = "ios",
+        clientLocale: String? = nil
+    ) async -> Result<Void, Error> {
         do {
+            var body: [String: String] = [
+                "fcm_token": token.trimmingCharacters(in: .whitespaces),
+                "device_platform": platform,
+            ]
+            if let loc = clientLocale?.trimmingCharacters(in: .whitespaces), !loc.isEmpty {
+                body["client_locale"] = loc
+            }
             _ = try await HttpJson.post(
                 url: AppEnvironment.authServicePath(AppEnvironment.authFcmRegisterPath),
-                body: ["token": token, "platform": platform],
+                body: body,
                 bearer: accessToken
             )
             return .success(())

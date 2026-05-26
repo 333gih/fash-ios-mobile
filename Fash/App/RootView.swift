@@ -161,6 +161,7 @@ struct RootView: View {
         switch status {
         case .success(let gate):
             deps.authManager.onSessionSaved()
+            await deps.preferredLocaleSync.syncIfSession(locale: AppLocale.currentTag)
             await deps.realtimeManager.connect()
             if gate.canAccessHome {
                 router.onboardingStep = nil
