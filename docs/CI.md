@@ -42,6 +42,16 @@ Trigger:
 - `push` / `pull_request` vào `main`, `master`, `develop`
 - **Run workflow** thủ công (chọn scheme `Fash-Dev`, `Fash-Prod`, hoặc `both`)
 
+Scheme theo branch (tự động):
+
+| Branch | Scheme build |
+|---|---|
+| `develop` | **Fash-Dev** |
+| `main` / `master` | **Fash-Prod** |
+| PR vào `develop` | **Fash-Dev** |
+| PR vào `main` / `master` | **Fash-Prod** |
+| Run workflow thủ công | Chọn scheme (hoặc `both`) |
+
 ## 3. Workflow làm gì?
 
 Giống `./scripts/build_mac.sh` trên Mac cloud:
@@ -52,9 +62,9 @@ Giống `./scripts/build_mac.sh` trên Mac cloud:
 4. `xcodebuild` cho **iOS Simulator** (iPhone 15, iOS 17.5)
 5. `CODE_SIGNING_ALLOWED=NO` — chỉ verify compile, chưa ký app
 
-Build cả hai scheme: **Fash-Dev** và **Fash-Prod**.
+Mỗi push chỉ build **một scheme** theo branch (`develop` → Dev, `main`/`master` → Prod). Run workflow thủ công vẫn chọn được `both`.
 
-Runner: `macos-14` + **Xcode 15.4** (phù hợp `project.yml`: iOS 17, Swift 5.9).
+Runner: `macos-14` + **Xcode 16.2** (iOS 17 SDK; `project.yml` pin `projectFormat: xcode15_0` để tránh lỗi format 77 trên Xcode 15).
 
 ## 4. Chi phí GitHub
 

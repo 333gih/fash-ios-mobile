@@ -1,5 +1,10 @@
-# Build Fash iOS on GitHub-hosted macOS runners (Xcode 15.4).
+# Build Fash iOS on GitHub-hosted macOS runners (Xcode 16.2, iOS 17 SDK).
 # Typical flow: push to GitLab → mirror to GitHub → this workflow runs.
+#
+# Branch → scheme (push / PR):
+#   develop  → Fash-Dev
+#   main     → Fash-Prod
+#   master   → Fash-Prod
 name: iOS Build
 
 on:
@@ -24,34 +29,92 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  resolve:
+    name: Resolve scheme
+    runs-on: ubuntu-latest
+    outputs:
+      schemes: ${{ steps.matrix.outputs.schemes }}
+      branch: ${{ steps.matrix.outputs.branch }}
+    steps:
+      - id: matrix
+        env:
+          EVENT: ${{ github.event_name }}
+          INPUT_SCHEME: ${{ inputs.scheme }}
+          REF_NAME: ${{ github.ref_name }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          branch="manual"
+
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            if [ "$INPUT_SCHEME" = "both" ]; then
+              schemes='["Fash-Dev","Fash-Prod"]'
+            else
+              schemes=$(printf '%s\n' "$INPUT_SCHEME" | jq -R -s -c 'split("\n") | map(select(length > 0))')
+            fi
+          else
+            if [ "$EVENT" = "pull_request" ]; then
+              branch="$BASE_REF"
+            else
+              branch="$REF_NAME"
+            fi
+
+            case "$branch" in
+              develop)
+                schemes='["Fash-Dev"]'
+                ;;
+              main|master)
+                schemes='["Fash-Prod"]'
+                ;;
+              *)
+                schemes='["Fash-Dev"]'
+                ;;
+            esac
+          fi
+
+          echo "event=$EVENT branch=$branch schemes=$schemes"
+          echo "branch=${branch}" >> "$GITHUB_OUTPUT"
+          echo "schemes=${schemes}" >> "$GITHUB_OUTPUT"
+
   build:
-    name: Build (${{ matrix.scheme }})
+    name: Build ${{ matrix.scheme }} (${{ needs.resolve.outputs.branch }})
     runs-on: macos-14
+    needs: resolve
     strategy:
       fail-fast: false
       matrix:
         scheme: ${{ fromJSON(needs.resolve.outputs.schemes) }}
-    needs: resolve
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Select Xcode 15.4
+      - name: Select Xcode 16.2
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: "15.4"
+          xcode-version: "16.2"
 
       - name: Show toolchain
         run: |
           xcodebuild -version
           swift --version
+          echo "Scheme: ${{ matrix.scheme }}"
 
       - name: Install XcodeGen
-        run: brew install xcodegen
+        run: |
+          brew install xcodegen
+          xcodegen --version
 
       - name: Generate Xcode project
         run: xcodegen generate
+
+      - name: Ensure Xcode 15+ compatible project format
+        run: |
+          object_version=$(sed -n 's/.*objectVersion = \([0-9]*\);.*/\1/p' Fash.xcodeproj/project.pbxproj | head -1)
+          echo "objectVersion=${object_version}"
+          if [ "${object_version}" -gt 60 ]; then
+            sed -i '' -E 's/objectVersion = [0-9]+/objectVersion = 60/' Fash.xcodeproj/project.pbxproj
+            echo "Downgraded objectVersion to 60 for Xcode 15/16 compatibility"
+          fi
 
       - name: Resolve Swift packages
         run: |
@@ -78,18 +141,3 @@ jobs:
           name: xcodebuild-log-${{ matrix.scheme }}
           path: xcodebuild.log
           retention-days: 7
-
-  resolve:
-    name: Resolve matrix
-    runs-on: ubuntu-latest
-    outputs:
-      schemes: ${{ steps.matrix.outputs.schemes }}
-    steps:
-      - id: matrix
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.scheme }}" != "both" ]; then
-            schemes=$(printf '%s\n' "${{ inputs.scheme }}" | jq -R -s -c 'split("\n") | map(select(length > 0))')
-          else
-            schemes='["Fash-Dev","Fash-Prod"]'
-          fi
-          echo "schemes=${schemes}" >> "$GITHUB_OUTPUT"
