@@ -147,4 +147,4 @@ jobs:
 
       - name: Print Swift compiler errors
         if: failure()
-        run: grep -E ' error:' xcodebuild.log | head -40 || true
+        run: grep -E ' error:' xcodebuild.log | head -60 || true

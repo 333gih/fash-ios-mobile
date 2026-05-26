@@ -33,6 +33,7 @@ settings:
     CODE_SIGN_ENTITLEMENTS: Fash/Fash.entitlements
     ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     ENABLE_USER_SCRIPT_SANDBOXING: NO
+    SWIFT_STRICT_CONCURRENCY: minimal
 
 packages:
   Kingfisher:
