@@ -98,7 +98,7 @@ struct LoginHeroCarousel: View {
             VStack(alignment: .leading, spacing: 4) {
                 if !slide.badgeLabel.isEmpty {
                     Text(slide.badgeLabel)
-                        .font(FashTypography.labelSmall.weight(.semibold))
+                        .font(FashTypography.labelLarge)
                         .foregroundStyle(FashColors.brandPrimary)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 4)
@@ -114,7 +114,7 @@ struct LoginHeroCarousel: View {
                 }
                 if !slide.subtitle.isEmpty {
                     Text(slide.subtitle)
-                        .font(FashTypography.bodySmall)
+                        .font(FashTypography.bodyMedium)
                         .foregroundStyle(FashColors.textSecondary)
                         .lineLimit(2)
                 }
