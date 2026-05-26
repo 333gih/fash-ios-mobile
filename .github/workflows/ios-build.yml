@@ -1,0 +1,95 @@
+# Build Fash iOS on GitHub-hosted macOS runners (Xcode 15.4).
+# Typical flow: push to GitLab → mirror to GitHub → this workflow runs.
+name: iOS Build
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+  workflow_dispatch:
+    inputs:
+      scheme:
+        description: Xcode scheme to build
+        required: true
+        default: Fash-Dev
+        type: choice
+        options:
+          - Fash-Dev
+          - Fash-Prod
+          - both
+
+concurrency:
+  group: ios-build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build (${{ matrix.scheme }})
+    runs-on: macos-14
+    strategy:
+      fail-fast: false
+      matrix:
+        scheme: ${{ fromJSON(needs.resolve.outputs.schemes) }}
+    needs: resolve
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode 15.4
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "15.4"
+
+      - name: Show toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Resolve Swift packages
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -project Fash.xcodeproj \
+            -scheme "${{ matrix.scheme }}"
+
+      - name: Build for iOS Simulator
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project Fash.xcodeproj \
+            -scheme "${{ matrix.scheme }}" \
+            -destination 'platform=iOS Simulator,name=iPhone 15,OS=17.5' \
+            -derivedDataPath DerivedData \
+            build \
+            CODE_SIGNING_ALLOWED=NO \
+            | tee xcodebuild.log
+
+      - name: Upload xcodebuild log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-log-${{ matrix.scheme }}
+          path: xcodebuild.log
+          retention-days: 7
+
+  resolve:
+    name: Resolve matrix
+    runs-on: ubuntu-latest
+    outputs:
+      schemes: ${{ steps.matrix.outputs.schemes }}
+    steps:
+      - id: matrix
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.scheme }}" != "both" ]; then
+            schemes=$(printf '%s\n' "${{ inputs.scheme }}" | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          else
+            schemes='["Fash-Dev","Fash-Prod"]'
+          fi
+          echo "schemes=${schemes}" >> "$GITHUB_OUTPUT"

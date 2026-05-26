@@ -1,0 +1,24 @@
+# GitLab → GitHub mirror: iOS compile runs in GitHub Actions, not on GitLab runners.
+# See docs/CI.md for setup and troubleshooting.
+
+stages:
+  - notify
+
+ios_build_on_github:
+  stage: notify
+  image: alpine:3.20
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  script:
+    - |
+      echo "=========================================="
+      echo " Fash iOS — build chạy trên GitHub Actions"
+      echo "=========================================="
+      echo ""
+      echo "GitLab repo này mirror sang GitHub."
+      echo "Sau khi mirror sync xong, workflow sau sẽ build:"
+      echo "  .github/workflows/ios-build.yml"
+      echo ""
+      echo "Mở GitHub → tab Actions để xem kết quả build."
+      echo "Chi tiết: docs/CI.md"

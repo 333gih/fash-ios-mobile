@@ -75,6 +75,18 @@ See **[PARITY.md](PARITY.md)** for Android ↔ iOS feature matrix.
 - Push, Sign in with Apple / Google SDKs (stubs in repo — wire before release)
 - Associated Domains for Universal Links
 
+## CI (GitLab → GitHub → build iOS)
+
+No Mac required for **compile checks**: push to GitLab (mirrored to GitHub) triggers [GitHub Actions](.github/workflows/ios-build.yml) on `macos-14` + Xcode 15.4.
+
+```text
+git push origin develop  →  GitLab mirror  →  GitHub Actions  →  xcodebuild (simulator)
+```
+
+Setup, mirror checklist, and troubleshooting: **[docs/CI.md](docs/CI.md)**.
+
+GitLab pipeline (`.gitlab-ci.yml`) only prints a reminder — the real iOS build runs on GitHub.
+
 ## Windows
 
-Authoring on Windows is supported; **compile only on Mac**. `Fash.xcodeproj` is gitignored — created by `xcodegen generate` locally.
+Authoring on Windows is supported; **compile only on Mac or GitHub Actions**. `Fash.xcodeproj` is gitignored — created by `xcodegen generate` locally or in CI.
