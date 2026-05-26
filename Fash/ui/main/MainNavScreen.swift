@@ -56,6 +56,8 @@ struct MainNavScreen: View {
                 onBack: { router.showSettingsScreen = false },
                 onLogout: {
                     Task {
+                        homeVM.clearCachesForSignedOutUser()
+                        router.selectedTab = .home
                         await deps.authManager.logout()
                         router.showSettingsScreen = false
                         router.loginStep = .email
@@ -92,6 +94,14 @@ struct MainNavScreen: View {
                 await deps.realtimeManager.connect { _ in
                     deps.requestOpenNotificationInbox()
                 }
+            } else {
+                homeVM.onGuestBrowseEntered()
+            }
+        }
+        .onChange(of: isGuestMode) { _, guest in
+            if guest {
+                homeVM.onGuestBrowseEntered()
+                router.selectedTab = .home
             }
         }
         .onChange(of: deps.inboxOpenRequestGeneration) { _, _ in

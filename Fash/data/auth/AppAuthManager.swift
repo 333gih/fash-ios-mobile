@@ -36,18 +36,24 @@ final class AppAuthManager {
     }
 
     func logout() async {
-        if let session = sessionStore.read() {
+        let session = sessionStore.read()
+        let userId = session?.userId
+        if let session {
             _ = await authRepository.logout(accessToken: session.accessToken)
         }
         sessionStore.clear()
+        UxPersonalizationLocalStore.clearForUser(userId: userId)
         onSessionCleared()
     }
 
     func logoutAll() async {
-        if let session = sessionStore.read() {
+        let session = sessionStore.read()
+        let userId = session?.userId
+        if let session {
             _ = await authRepository.logoutAll(accessToken: session.accessToken)
         }
         sessionStore.clear()
+        UxPersonalizationLocalStore.clearForUser(userId: userId)
         onSessionCleared()
     }
 }

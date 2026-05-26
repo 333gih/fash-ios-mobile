@@ -7,6 +7,18 @@ final class HomeViewModel {
     var isLoading = false
     var items: [ListingFeedItem] = []
     var errorMessage: String?
+    /// Mirrors Android default home feed tab after guest browse / sign-out.
+    var selectedFeedTabKey = "hunt_today"
+
+    func onGuestBrowseEntered() {
+        selectedFeedTabKey = "hunt_today"
+        items = []
+        errorMessage = nil
+    }
+
+    func clearCachesForSignedOutUser() {
+        onGuestBrowseEntered()
+    }
 
     func refresh(deps: AppDependencies) async {
         isLoading = true

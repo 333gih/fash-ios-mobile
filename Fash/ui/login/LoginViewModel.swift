@@ -8,8 +8,10 @@ final class LoginViewModel {
     var otp = ""
     var isOtpLoading = false
     var errorMessage: String?
+    var resendCooldownSec = 0
 
     private let auth = AuthRepository()
+    private var resendCooldownTask: Task<Void, Never>?
 
     func requestOtp() async -> Bool {
         let trimmed = email.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -23,8 +25,8 @@ final class LoginViewModel {
         switch result {
         case .success:
             return true
-        case .failure:
-            errorMessage = L10n.dialogTitleError
+        case .failure(let error):
+            handleOtpRequestFailure(error)
             return false
         }
     }
@@ -38,9 +40,40 @@ final class LoginViewModel {
             sessionStore.save(session)
             AppDependencies.shared.authManager.onSessionSaved()
             return true
-        case .failure:
-            errorMessage = L10n.loginOtpFailed
+        case .failure(let error):
+            errorMessage = authFailureMessage(error, otpContext: true, fallback: L10n.otpVerifyFailed)
             return false
+        }
+    }
+
+    private func handleOtpRequestFailure(_ error: Error) {
+        if let http = error as? CoreServiceHttpException, http.isRateLimited {
+            if let retry = http.retryAfterSeconds, retry > 0 {
+                startResendCooldown(retry)
+            }
+        }
+        errorMessage = authFailureMessage(error, otpContext: true, fallback: L10n.loginOtpFailed)
+    }
+
+    private func authFailureMessage(_ error: Error, otpContext: Bool, fallback: String) -> String {
+        if let http = error as? CoreServiceHttpException, http.isRateLimited {
+            return CoreServiceErrors.localizedMessage(http.serviceError, otpContext: otpContext)
+        }
+        if let localized = (error as? LocalizedError)?.errorDescription, !localized.isEmpty {
+            return localized
+        }
+        return fallback
+    }
+
+    private func startResendCooldown(_ seconds: Int) {
+        resendCooldownTask?.cancel()
+        resendCooldownSec = max(1, seconds)
+        resendCooldownTask = Task {
+            while resendCooldownSec > 0 {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                if Task.isCancelled { return }
+                resendCooldownSec = max(0, resendCooldownSec - 1)
+            }
         }
     }
 }

@@ -15,7 +15,12 @@ enum HttpJson {
         let (data, response) = try await URLSession.shared.data(for: req)
         guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
         guard (200..<300).contains(http.statusCode) else {
-            throw CoreServiceHttpException(statusCode: http.statusCode, message: CoreServiceErrors.parseMessage(data: data, statusCode: http.statusCode))
+            let parsed = CoreServiceErrors.parse(
+                data: data,
+                statusCode: http.statusCode,
+                retryAfterHeader: http.value(forHTTPHeaderField: "Retry-After")
+            )
+            throw CoreServiceHttpException(statusCode: parsed.httpCode, message: parsed.message, serviceError: parsed)
         }
         return data
     }
@@ -33,10 +38,4 @@ enum HttpJson {
         }
         return obj
     }
-}
-
-struct CoreServiceHttpException: Error, LocalizedError {
-    let statusCode: Int
-    let message: String
-    var errorDescription: String? { message }
 }

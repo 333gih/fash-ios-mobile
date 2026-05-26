@@ -1030,6 +1030,10 @@
 "login_legal_prefix" = "Bằng cách tiếp tục, bạn đồng ý với\\u00A0";
 "login_or_continue" = "Hoặc tiếp tục với";
 "login_otp_failed" = "Không gửi được mã. Kiểm tra mạng hoặc máy chủ.";
+"error_rate_limit_generic" = "Quá nhiều yêu cầu. Vui lòng thử lại sau.";
+"error_rate_limit_wait" = "Quá nhiều yêu cầu. Vui lòng thử lại sau %d giây.";
+"error_rate_limit_otp" = "Bạn đã gửi quá nhiều mã OTP. Vui lòng đợi rồi thử lại.";
+"error_rate_limit_otp_wait" = "Bạn đã gửi quá nhiều mã OTP. Thử lại sau %d giây.";
 "login_otp_resent" = "Đã gửi lại mã. Kiểm tra hộp thư của bạn.";
 "login_otp_sent" = "Đã gửi mã OTP. Kiểm tra hộp thư của bạn.";
 "login_password_failed" = "Email hoặc mật khẩu không đúng.";

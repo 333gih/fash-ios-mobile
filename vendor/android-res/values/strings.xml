@@ -101,6 +101,10 @@
     <string name="login_otp_sent">Đã gửi mã OTP. Kiểm tra hộp thư của bạn.</string>
     <string name="login_otp_resent">Đã gửi lại mã. Kiểm tra hộp thư của bạn.</string>
     <string name="login_otp_failed">Không gửi được mã. Kiểm tra mạng hoặc máy chủ.</string>
+    <string name="error_rate_limit_generic">Quá nhiều yêu cầu. Vui lòng thử lại sau.</string>
+    <string name="error_rate_limit_wait">Quá nhiều yêu cầu. Vui lòng thử lại sau %1$d giây.</string>
+    <string name="error_rate_limit_otp">Bạn đã gửi quá nhiều mã OTP. Vui lòng đợi rồi thử lại.</string>
+    <string name="error_rate_limit_otp_wait">Bạn đã gửi quá nhiều mã OTP. Thử lại sau %1$d giây.</string>
     <string name="login_facebook_success">Đăng nhập Facebook thành công.</string>
     <string name="login_facebook_error">Đăng nhập Facebook không thành công.</string>
     <string name="login_facebook_not_configured">Thêm FACEBOOK_APP_ID và FACEBOOK Client Token vào env/bản dựng.</string>

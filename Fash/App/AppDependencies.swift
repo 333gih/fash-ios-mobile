@@ -99,6 +99,7 @@ final class AppDependencies {
     func handleSessionCleared(reason: String?) {
         authSessionStore.clear()
         isGuestBrowseActive = false
+        onboardingLocalStore.clearAll()
         realtimeManager.disconnect()
         if let reason, !reason.isEmpty {
             uiDialog.showError(reason)

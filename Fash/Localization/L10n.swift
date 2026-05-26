@@ -1172,6 +1172,10 @@ enum L10n {
     static var loginOtpFailed: String { t("login_otp_failed") }
     static var loginOtpResent: String { t("login_otp_resent") }
     static var loginOtpSent: String { t("login_otp_sent") }
+    static var errorRateLimitGeneric: String { t("error_rate_limit_generic") }
+    static func errorRateLimitWait(_ seconds: Int) -> String { String(format: t("error_rate_limit_wait"), seconds) }
+    static var errorRateLimitOtp: String { t("error_rate_limit_otp") }
+    static func errorRateLimitOtpWait(_ seconds: Int) -> String { String(format: t("error_rate_limit_otp_wait"), seconds) }
     static var loginPasswordFailed: String { t("login_password_failed") }
     static var loginPasswordHideCd: String { t("login_password_hide_cd") }
     static var loginPasswordInvalid: String { t("login_password_invalid") }

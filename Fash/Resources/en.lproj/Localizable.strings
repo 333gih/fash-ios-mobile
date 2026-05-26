@@ -1003,6 +1003,10 @@
 "login_legal_prefix" = "By continuing, you agree to\\u00A0";
 "login_or_continue" = "Or continue with";
 "login_otp_failed" = "Could not send OTP. Check network or server.";
+"error_rate_limit_generic" = "Too many requests. Please try again later.";
+"error_rate_limit_wait" = "Too many requests. Please try again in %d seconds.";
+"error_rate_limit_otp" = "Too many OTP requests. Please wait before requesting another code.";
+"error_rate_limit_otp_wait" = "Too many OTP requests. Try again in %d seconds.";
 "login_otp_resent" = "We sent another code. Check your inbox.";
 "login_otp_sent" = "OTP sent. Check your inbox.";
 "login_password_failed" = "Email or password is incorrect.";

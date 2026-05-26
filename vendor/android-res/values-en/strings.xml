@@ -98,6 +98,10 @@
     <string name="login_otp_sent">OTP sent. Check your inbox.</string>
     <string name="login_otp_resent">We sent another code. Check your inbox.</string>
     <string name="login_otp_failed">Could not send OTP. Check network or server.</string>
+    <string name="error_rate_limit_generic">Too many requests. Please try again later.</string>
+    <string name="error_rate_limit_wait">Too many requests. Please try again in %1$d seconds.</string>
+    <string name="error_rate_limit_otp">Too many OTP requests. Please wait before requesting another code.</string>
+    <string name="error_rate_limit_otp_wait">Too many OTP requests. Try again in %1$d seconds.</string>
     <string name="login_facebook_success">Signed in with Facebook.</string>
     <string name="login_facebook_error">Facebook sign-in failed.</string>
     <string name="login_facebook_not_configured">Add FACEBOOK_APP_ID and Facebook Client Token to your env/build.</string>
