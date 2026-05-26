@@ -81,7 +81,7 @@ struct LoginHeroCarousel: View {
                     case .success(let image):
                         image.resizable().scaledToFill()
                     default:
-                        FashColors.surfaceContainerLow
+                        FashColors.surfaceContainer
                     }
                 }
             } else {
@@ -102,12 +102,11 @@ struct LoginHeroCarousel: View {
                         .foregroundStyle(FashColors.brandPrimary)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 4)
-                        .background(FashColors.surface.opacity(0.9))
+                        .background(FashColors.screen.opacity(0.9))
                         .clipShape(Capsule())
                 }
-                let title = slide.title.isEmpty ? (slide.fallbackCaption ?? "") : slide.title
-                if !title.isEmpty {
-                    Text(title)
+                if !displayTitle(for: slide).isEmpty {
+                    Text(displayTitle(for: slide))
                         .font(FashTypography.labelLarge.weight(.bold))
                         .foregroundStyle(FashColors.textPrimary.opacity(0.9))
                         .lineLimit(2)
@@ -123,5 +122,9 @@ struct LoginHeroCarousel: View {
             .accessibilityLabel(L10n.loginHeroPagerCd(String(index + 1), String(slides.count)))
         }
         .clipped()
+    }
+
+    private func displayTitle(for slide: LoginHeroSlide) -> String {
+        slide.title.isEmpty ? (slide.fallbackCaption ?? "") : slide.title
     }
 }

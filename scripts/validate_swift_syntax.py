@@ -13,7 +13,9 @@ TRAILING_COMMA = re.compile(r",\s*\n\s*\)", re.MULTILINE)
 INVALID_TYPOGRAPHY = re.compile(
     r"FashTypography\.(?:titleSmall|bodySmall|labelSmall|headlineSmall|displaySmall)"
 )
-INVALID_COLORS = re.compile(r"FashColors\.(?:primary|onPrimary|secondary|background)\b")
+INVALID_COLORS = re.compile(
+    r"FashColors\.(?:primary|onPrimary|secondary|background|surface|surfaceContainerLow)\b"
+)
 
 
 def check_file(path: Path) -> list[str]:
