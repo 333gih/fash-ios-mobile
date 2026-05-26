@@ -102,6 +102,9 @@ jobs:
       - name: Validate localization files
         run: python3 scripts/validate_strings.py
 
+      - name: Validate Swift syntax (static)
+        run: python3 scripts/validate_swift_syntax.py
+
       - name: Install XcodeGen
         run: |
           brew install xcodegen

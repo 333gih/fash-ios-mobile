@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import SwiftUI
 
 struct FashInAppNotificationSession: Equatable {
     let title: String
@@ -65,7 +66,8 @@ final class AppDependencies {
                     AppDependencies.shared.authManager.onSessionCleared(reason: reason)
                     AppDependencies.shared.handleSessionCleared(reason: reason)
                 }
-            )
+            }
+        )
         userRepository = UserRepository(client: securedClient)
         listingRepository = ListingRepository(client: securedClient)
         chatRepository = ChatRepository(client: securedClient)

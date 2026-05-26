@@ -1,6 +1,6 @@
 import Foundation
 
-struct InboxNotificationItem: Identifiable, Equatable {
+struct InboxNotificationItem: Identifiable {
     let id: String
     let title: String
     let body: String
