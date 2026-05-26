@@ -517,10 +517,10 @@
 "create_listing_error" = "Đăng tin thất bại. Thử lại.";
 "create_listing_image_error" = "Không đọc được ảnh.";
 "create_listing_just_now" = "Vừa xong";
-"create_listing_legal_mid" = "\u00A0và\u00A0";
-"create_listing_legal_prefix" = "Bằng cách nhấn Đăng bán, bạn đồng ý với\u00A0";
+"create_listing_legal_mid" = "\\u00A0và\\u00A0";
+"create_listing_legal_prefix" = "Bằng cách nhấn Đăng bán, bạn đồng ý với\\u00A0";
 "create_listing_legal_privacy_link" = "Chính sách bảo mật";
-"create_listing_legal_suffix" = "\u00A0của chúng tôi.";
+"create_listing_legal_suffix" = "\\u00A0của chúng tôi.";
 "create_listing_legal_terms_link" = "Điều khoản sử dụng";
 "create_listing_location_default" = "Hà Nội";
 "create_listing_next" = "TIẾP THEO";
@@ -977,13 +977,7 @@
 "invite_screen_hero_kicker" = "Cùng nhau lớn mạnh";
 "invite_screen_hero_title" = "Mang Fash tới hội bạn thân";
 "invite_screen_title" = "Mời bạn bè";
-"invite_share_body_format" = "Tham gia Fash cùng mình — sàn thời trang second-hand.
-
-🔗 Link tham gia (https — bấm được trong chat/SMS): %@
-
-📲 Chưa cài app? Tải trên Play Store: %@
-
-Mỗi lượt mời bạn thật giúp cộng đồng lớn hơn; Fash đang chuẩn bị điểm ưu tiên & ưu đãi cho những ai đồng hành cùng nền tảng.";
+"invite_share_body_format" = "Tham gia Fash cùng mình — sàn thời trang second-hand.\n\n🔗 Link tham gia (https — bấm được trong chat/SMS): %@\n\n📲 Chưa cài app? Tải trên Play Store: %@\n\nMỗi lượt mời bạn thật giúp cộng đồng lớn hơn; Fash đang chuẩn bị điểm ưu tiên & ưu đãi cho những ai đồng hành cùng nền tảng.";
 "invite_share_chooser_title" = "Gửi lời mời qua…";
 "invite_share_subject" = "Tham gia Fash cùng mình";
 "language_english" = "English";
@@ -1028,8 +1022,8 @@ Mỗi lượt mời bạn thật giúp cộng đồng lớn hơn; Fash đang chu
 "login_hero_slide1_caption" = "Pre-loved được chọn lọc";
 "login_hero_slide2_caption" = "Gợi ý mới mỗi ngày";
 "login_hero_slide3_caption" = "Phong cách là của bạn";
-"login_legal_and" = "\u00A0&\u00A0";
-"login_legal_prefix" = "Bằng cách tiếp tục, bạn đồng ý với\u00A0";
+"login_legal_and" = "\\u00A0&\\u00A0";
+"login_legal_prefix" = "Bằng cách tiếp tục, bạn đồng ý với\\u00A0";
 "login_or_continue" = "Hoặc tiếp tục với";
 "login_otp_failed" = "Không gửi được mã. Kiểm tra mạng hoặc máy chủ.";
 "login_otp_resent" = "Đã gửi lại mã. Kiểm tra hộp thư của bạn.";
@@ -1114,8 +1108,7 @@ Mỗi lượt mời bạn thật giúp cộng đồng lớn hơn; Fash đang chu
 "notification_data_nav_order" = "Đơn hàng";
 "notification_data_raw_only_hint" = "Các trường còn lại chỉ hiển thị ở dạng dữ liệu gốc bên dưới.";
 "notification_data_show_raw" = "Xem dữ liệu gốc";
-"notification_data_title_with_id" = "%@
-Mã: %@";
+"notification_data_title_with_id" = "%@\nMã: %@";
 "notification_detail_actions_heading" = "Điều hướng";
 "notification_detail_more_label" = "Thêm chi tiết";
 "notification_detail_no_title" = "(Không tiêu đề)";
@@ -1257,7 +1250,7 @@ Mã: %@";
 "order_cancel_reason_meetup_not_possible" = "Không sắp xếp được gặp mặt";
 "order_cancel_reason_note_hint" = "Tối thiểu 3 ký tự";
 "order_cancel_reason_note_label" = "Mô tả thêm";
-"order_cancel_reason_note_required" = "Vui lòng mô tả lý do khi chọn \\"Khác\\".";
+"order_cancel_reason_note_required" = "Vui lòng mô tả lý do khi chọn \\\"Khác\\\".";
 "order_cancel_reason_other" = "Khác";
 "order_cancel_reason_payment_expired" = "Hết thời gian thanh toán";
 "order_cancel_reason_payment_problem" = "Vấn đề thanh toán";
@@ -1502,7 +1495,7 @@ Mã: %@";
 "post_add_shipping_address" = "Thêm địa chỉ lấy hàng";
 "post_auto_price_drop" = "Tự động giảm giá theo tuần";
 "post_brand_featured" = "Đề xuất";
-"post_category_children_heading" = "Danh mục trong \\"%@\\"";
+"post_category_children_heading" = "Danh mục trong \\\"%@\\\"";
 "post_category_level_up" = "Trở lại cấp trên";
 "post_category_no_matches" = "Không có danh mục phù hợp. Thử từ khác hoặc xóa ô tìm để duyệt cây danh mục.";
 "post_category_parents_heading" = "Danh mục cha";
@@ -1550,8 +1543,7 @@ Mã: %@";
 "post_listing_sizing_gender_hint" = "Chọn trước để hiển thị bảng size phù hợp (nam/nữ).";
 "post_listing_sizing_gender_recommended" = "Khuyến khích";
 "post_listing_sizing_subtitle" = "Chọn size trên nhãn sản phẩm. Số đo giúp người mua so khớp — không bắt buộc; có thể dùng bảng tham chiếu như khi thiết lập size cá nhân.";
-"post_measure_notice_combined" = "Tất cả không bắt buộc. Size và số đo giúp người mua so khớp với form của họ — bán dễ hơn.
-Chọn cm hoặc inch rồi nhập số theo đơn vị đã chọn.";
+"post_measure_notice_combined" = "Tất cả không bắt buộc. Size và số đo giúp người mua so khớp với form của họ — bán dễ hơn.\nChọn cm hoặc inch rồi nhập số theo đơn vị đã chọn.";
 "post_measure_section_details" = "Số đo chi tiết";
 "post_measure_section_size" = "Kích cỡ trên nhãn";
 "post_measure_section_unit" = "Đơn vị số đo";
@@ -1787,7 +1779,7 @@ Chọn cm hoặc inch rồi nhập số theo đơn vị đã chọn.";
 "profile_setup_size_recommendation_title" = "Gợi ý từ Fash";
 "profile_setup_sizing_chart_men" = "Bảng tham chiếu nam";
 "profile_setup_sizing_chart_women" = "Bảng tham chiếu nữ";
-"profile_setup_sizing_guide_body" = "Khoảng số đo phổ biến cho size này. Hầu hết người dùng không tự đo — bạn có thể bấm \\"Điền số đo tham khảo\\" hoặc bỏ qua.";
+"profile_setup_sizing_guide_body" = "Khoảng số đo phổ biến cho size này. Hầu hết người dùng không tự đo — bạn có thể bấm \\\"Điền số đo tham khảo\\\" hoặc bỏ qua.";
 "profile_setup_sizing_guide_title" = "Size %@ — số đo tham khảo";
 "profile_setup_sizing_inline_hint" = "Chạm từng ô số đo bên dưới để xem khoảng tham chiếu cho size đã chọn.";
 "profile_setup_sizing_subtitle" = "Chọn cỡ thường mặc để mở khóa bảng tin. Số đo cơ thể là tuỳ chọn — bạn không cần tự đo.";
@@ -1903,21 +1895,9 @@ Chọn cm hoặc inch rồi nhập số theo đơn vị đã chọn.";
 "setup_gate_sign_out" = "Đăng xuất";
 "share" = "Chia sẻ";
 "share_listing_subject" = "Xem tin này trên Fash";
-"share_listing_text" = "%@
-
-Mở trên web:
-%@
-
-Mở trong ứng dụng:
-%@";
+"share_listing_text" = "%@\n\nMở trên web:\n%@\n\nMở trong ứng dụng:\n%@";
 "share_profile_subject" = "Xem shop %@ trên Fash";
-"share_profile_text" = "Shop %@ trên Fash — khám phá tủ đồ second-hand.
-
-Mở trên web:
-%@
-
-Mở trong ứng dụng:
-%@";
+"share_profile_text" = "Shop %@ trên Fash — khám phá tủ đồ second-hand.\n\nMở trên web:\n%@\n\nMở trong ứng dụng:\n%@";
 "shipping_address_row_untitled" = "Địa chỉ đã lưu";
 "splash_footer_gen_z" = "THẾ HỆ GEN Z";
 "splash_logo_cd" = "Logo Fash";

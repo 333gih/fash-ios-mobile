@@ -39,10 +39,22 @@ def parse_strings_xml(path: Path) -> dict[str, str]:
     return entries
 
 
+def escape_strings_value(value: str) -> str:
+    """Escape a value for a single-line iOS Localizable.strings entry."""
+    return (
+        value.replace("\\", "\\\\")
+        .replace('"', '\\"')
+        .replace("\r\n", "\n")
+        .replace("\r", "\n")
+        .replace("\n", "\\n")
+        .replace("\t", "\\t")
+    )
+
+
 def to_strings_file(entries: dict[str, str]) -> str:
     lines = ['/* Generated from vendor/android-res — do not edit by hand. */', ""]
     for key in sorted(entries.keys()):
-        val = entries[key].replace('"', '\\"')
+        val = escape_strings_value(entries[key])
         lines.append(f'"{key}" = "{val}";')
     lines.append("")
     return "\n".join(lines)
@@ -99,8 +111,8 @@ def main() -> int:
     OUT_VI.mkdir(parents=True, exist_ok=True)
     OUT_EN.mkdir(parents=True, exist_ok=True)
     OUT_L10N.mkdir(parents=True, exist_ok=True)
-    (OUT_VI / "Localizable.strings").write_text(to_strings_file(vi), encoding="utf-8")
-    (OUT_EN / "Localizable.strings").write_text(to_strings_file(en), encoding="utf-8")
+    (OUT_VI / "Localizable.strings").write_bytes(to_strings_file(vi).encode("utf-8"))
+    (OUT_EN / "Localizable.strings").write_bytes(to_strings_file(en).encode("utf-8"))
     (OUT_L10N / "L10n.swift").write_text(generate_l10n(vi, en), encoding="utf-8")
     print(f"vi: {len(vi)} keys, en: {len(en)} keys -> {OUT_VI}")
     return 0

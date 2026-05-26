@@ -1,0 +1,9 @@
+# Xcode and Apple tooling expect LF for localization catalogs.
+*.strings text eol=lf
+*.stringsdict text eol=lf
+*.xcconfig text eol=lf
+*.plist text eol=lf
+*.entitlements text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.sh text eol=lf
