@@ -37,7 +37,7 @@ struct SettingsScreen: View {
                 Section(L10n.settingsSectionAbout) {
                     Link(L10n.loginTerms, destination: URL(string: AppEnvironment.legalTermsURL(languageTag: AppLocale.currentTag))!)
                     Link(L10n.loginPrivacy, destination: URL(string: AppEnvironment.legalPrivacyURL(languageTag: AppLocale.currentTag))!)
-                    Text("\(L10n.settingsAboutVersionLabel) 1.0.3 · \(BuildConfig.flavor)")
+                    Text("\(L10n.settingsAboutVersionLabel) \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.5") · \(BuildConfig.flavor)")
                         .font(FashTypography.bodyMedium)
                         .foregroundStyle(FashColors.textSecondary)
                 }
@@ -51,4 +51,4 @@ struct SettingsScreen: View {
         }
     }
 }
-
+

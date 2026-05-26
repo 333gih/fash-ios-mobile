@@ -11,10 +11,11 @@ struct FashApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView()
-                .environment(deps)
-                .environment(\.locale, AppLocale.locale)
-                .preferredColorScheme(deps.themePreference.preferredColorScheme)
+            ProvideAppLocale {
+                RootView()
+                    .environment(deps)
+                    .preferredColorScheme(deps.themePreference.preferredColorScheme)
+            }
         }
     }
 }

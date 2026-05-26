@@ -8,6 +8,13 @@ enum MainTab: Int, CaseIterable {
     case post = 2
     case chat = 3
     case profile = 4
+
+    var isGuestLocked: Bool {
+        switch self {
+        case .post, .chat, .profile: return true
+        default: return false
+        }
+    }
 }
 
 enum LoginStep {

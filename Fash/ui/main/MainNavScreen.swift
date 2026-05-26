@@ -97,6 +97,12 @@ struct MainNavScreen: View {
         .onChange(of: deps.inboxOpenRequestGeneration) { _, _ in
             router.showNotificationScreen = true
         }
+        .onChange(of: router.selectedTab) { _, tab in
+            guard !isGuestMode else { return }
+            if tab == .profile {
+                Task { await profileVM.refreshIfStale() }
+            }
+        }
     }
 
     private var topBar: some View {
@@ -139,7 +145,7 @@ struct MainNavScreen: View {
     private var headerSuffix: String {
         switch router.selectedTab {
         case .home: return L10n.brandHeaderSuffixHome
-        case .explore: return L10n.brandHeaderSuffixExplore
+        case .explore: return L10n.exploreTitle
         case .post: return L10n.brandHeaderSuffixPost
         case .chat: return L10n.brandHeaderSuffixChat
         case .profile: return L10n.brandHeaderSuffixProfile
@@ -198,7 +204,13 @@ struct MainNavScreen: View {
     private var bottomBar: some View {
         HStack {
             ForEach(MainTab.allCases, id: \.rawValue) { tab in
-                Button { router.selectedTab = tab } label: {
+                Button {
+                    if isGuestMode && tab.isGuestLocked {
+                        onRequestSignIn?(guestLoginReason(for: tab))
+                    } else {
+                        router.selectedTab = tab
+                    }
+                } label: {
                     VStack(spacing: 4) {
                         Image(systemName: icon(for: tab))
                         Text(label(for: tab)).font(.caption2)
@@ -229,6 +241,15 @@ struct MainNavScreen: View {
         case .post: return L10n.navPost
         case .chat: return L10n.navChat
         case .profile: return L10n.navProfile
+        }
+    }
+
+    private func guestLoginReason(for tab: MainTab) -> String {
+        switch tab {
+        case .post: return L10n.guestLoginReasonPost
+        case .chat: return L10n.guestLoginReasonChat
+        case .profile: return L10n.guestLoginReasonProfile
+        default: return L10n.guestLoginSheetTitle
         }
     }
 }

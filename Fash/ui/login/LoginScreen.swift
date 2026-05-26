@@ -35,13 +35,3 @@ struct LoginScreen: View {
         .background(FashColors.screen)
     }
 }
-
-struct LoginLanguageToggle: View {
-    var body: some View {
-        HStack(spacing: 12) {
-            Button(L10n.languageVietnamese) { AppLocale.setLocale(AppLocale.tagVI) }
-            Button(L10n.languageEnglish) { AppLocale.setLocale(AppLocale.tagEN) }
-        }
-        .font(FashTypography.bodyMedium)
-    }
-}
