@@ -603,7 +603,7 @@ private struct FlowLayout: Layout {
                 title: "Vintage jacket",
                 price: 250_000,
                 imageURL: nil,
-                sellerUsername: "seller",
+                sellerUsername: "seller"
             ),
             detail: nil,
             isDetailLoading: true,
@@ -611,7 +611,7 @@ private struct FlowLayout: Layout {
             onViewDetail: {},
             onLike: {},
             onSave: {},
-            onMessageSeller: {},
+            onMessageSeller: {}
         )
     }
 }
