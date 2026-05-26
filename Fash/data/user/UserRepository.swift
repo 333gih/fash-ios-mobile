@@ -11,7 +11,7 @@ struct SetupStatusGate: Decodable {
 }
 
 final class UserRepository {
-    private let client: SecuredApiClient
+    let client: SecuredApiClient
 
     init(client: SecuredApiClient) {
         self.client = client

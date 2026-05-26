@@ -141,3 +141,7 @@ jobs:
           name: xcodebuild-log-${{ matrix.scheme }}
           path: xcodebuild.log
           retention-days: 7
+
+      - name: Print Swift compiler errors
+        if: failure()
+        run: grep -E ' error:' xcodebuild.log | head -40 || true
