@@ -26,7 +26,7 @@ enum ClientIpAddress {
                 socklen_t(hostname.count),
                 nil,
                 0,
-                NI_NUMERICHOST,
+                NI_NUMERICHOST
             )
             address = String(cString: hostname)
             break

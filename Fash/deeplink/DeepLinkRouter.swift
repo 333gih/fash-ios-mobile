@@ -1,5 +1,6 @@
 import Foundation
 
+@MainActor
 enum DeepLinkRouter {
     static func handle(url: URL, router: AppRouter, deps: AppDependencies) {
         if url.scheme == "fash" {

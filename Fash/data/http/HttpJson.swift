@@ -40,13 +40,3 @@ struct CoreServiceHttpException: Error, LocalizedError {
     let message: String
     var errorDescription: String? { message }
 }
-
-enum CoreServiceErrors {
-    static func parseMessage(data: Data, statusCode: Int) -> String {
-        if let json = try? HttpJson.dictionary(data) {
-            if let msg = json["message"] as? String, !msg.isEmpty { return msg }
-            if let err = json["error"] as? String, !err.isEmpty { return err }
-        }
-        return "HTTP \(statusCode)"
-    }
-}
