@@ -147,7 +147,7 @@ final class AppDependencies {
 }
 
 private struct AppDependenciesKey: EnvironmentKey {
-    @MainActor static var defaultValue: AppDependencies { .shared }
+    @MainActor static var defaultValue: AppDependencies { AppDependencies.shared }
 }
 
 extension EnvironmentValues {

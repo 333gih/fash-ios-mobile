@@ -117,6 +117,7 @@ jobs:
           echo "Installed provisioning profile UUID=${UUID}"
 
       - name: Archive (iphoneos)
+        id: archive
         run: |
           set -o pipefail
           mkdir -p build
@@ -128,6 +129,18 @@ jobs:
             -archivePath "${ARCHIVE_PATH}" \
             -destination 'generic/platform=iOS' \
             | tee xcodebuild-archive.log
+
+      - name: Print xcodebuild errors
+        if: failure()
+        run: |
+          set +e
+          for log in xcodebuild-archive.log xcodebuild-export.log; do
+            [[ -f "${log}" ]] || continue
+            echo "::group::${log}"
+            grep -E ' error:|fatal error:|Invalid redeclaration|ARCHIVE FAILED|BUILD FAILED|exportArchive FAILED|Code Sign error' "${log}" | tail -120 || echo "(no matching lines)"
+            echo "::endgroup::"
+          done
+          exit 0
 
       - name: Prepare ExportOptions.plist
         env:

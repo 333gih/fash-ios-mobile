@@ -13,6 +13,12 @@ TRAILING_COMMA = re.compile(r",\s*\n\s*\)", re.MULTILINE)
 TYPOGRAPHY_USE = re.compile(r"FashTypography\.(\w+)")
 COLOR_USE = re.compile(r"FashColors\.(\w+)\b")
 STATIC_LET = re.compile(r"static (?:var|let) (\w+)")
+FUNC_DECL = re.compile(
+    r"^\s+(?:@\w+(?:\([^)]*\))?\s+)*(?:private |fileprivate |public |internal )?"
+    r"func (\w+)\(([^)]*)\)",
+    re.MULTILINE,
+)
+TYPE_DECL = re.compile(r"^(?:final\s+)?(?:class|struct|enum|actor)\s+(\w+)", re.MULTILINE)
 
 
 def tokens_from_enum(path: Path) -> set[str]:
@@ -60,6 +66,33 @@ def check_file(
         errors.append(
             f"{path.relative_to(ROOT)}: unbalanced braces ({opens} '{{' vs {closes} '}}')"
         )
+
+    scope = "file"
+    depth = 0
+    sigs: dict[str, int] = {}
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.endswith("{"):
+            depth += 1
+            m = TYPE_DECL.match(line)
+            if m and depth == 1:
+                scope = m.group(1)
+                sigs = {}
+        if stripped == "}":
+            depth = max(0, depth - 1)
+            if depth == 0:
+                scope = "file"
+                sigs = {}
+        m = FUNC_DECL.match(line)
+        if m and depth >= 1:
+            name, params = m.group(1), re.sub(r"\s+", "", m.group(2).split("->")[0])
+            key = f"{scope}::{name}({params})"
+            sigs[key] = sigs.get(key, 0) + 1
+            if sigs[key] > 1:
+                line_no = text[: text.find(line)].count("\n") + 1
+                errors.append(
+                    f"{path.relative_to(ROOT)}:{line_no}: duplicate func {name} in {scope}"
+                )
 
     return errors
 

@@ -12,8 +12,12 @@ final class LoginHeroSlidesViewModel {
     var remoteSlides: [AppAdvertisingSlideItem] = []
     var isLoading = false
 
-    init(repository: AdvertisingRepository = AppDependencies.shared.advertisingRepository) {
+    init(repository: AdvertisingRepository) {
         self.repository = repository
+    }
+
+    convenience init() {
+        self.init(repository: AppDependencies.shared.advertisingRepository)
     }
 
     func refresh() async {
