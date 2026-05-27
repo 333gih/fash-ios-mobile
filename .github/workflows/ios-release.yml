@@ -2,9 +2,9 @@
 # Requires Apple Developer signing secrets (see docs/CI.md).
 #
 # Triggers:
-#   - Push main/master or release/**: Fash-Prod archive + IPA artifact (TestFlight only when run manually with checkbox)
-#   - Tag ios/v1.0.0: same
-#   - Manual: Actions -> iOS Release -> Run workflow
+#   - Push releases/** or release/** (Fash-Prod): archive + IPA + TestFlight upload
+#   - Push main/master or tag ios/v*: archive + IPA artifact only
+#   - Manual: Actions -> iOS Release -> Run workflow (optional TestFlight checkbox)
 name: iOS Release
 
 on:
@@ -19,9 +19,9 @@ on:
           - Fash-Prod
           - Fash-Dev
       upload_testflight:
-        description: Upload IPA to TestFlight (needs App Store Connect API key secrets)
+        description: Upload IPA to TestFlight (Fash-Prod only; auto on releases/** push)
         required: false
-        default: false
+        default: true
         type: boolean
   push:
     branches:
@@ -84,6 +84,16 @@ jobs:
           TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           PROFILE_NAME: ${{ secrets.IOS_PROVISIONING_PROFILE_SPECIFIER }}
         run: bash scripts/ci_patch_release_signing.sh "${TEAM_ID}" "${PROFILE_NAME}"
+
+      - name: Read expected app version
+        id: app_version
+        run: |
+          set -euo pipefail
+          MARKETING="$(grep 'MARKETING_VERSION:' project.yml | head -1 | sed -E 's/.*"([^"]+)".*/\1/')"
+          BUILD="$(grep 'CURRENT_PROJECT_VERSION:' project.yml | head -1 | sed -E 's/.*"([^"]+)".*/\1/')"
+          echo "marketing=${MARKETING}" >> "${GITHUB_OUTPUT}"
+          echo "build=${BUILD}" >> "${GITHUB_OUTPUT}"
+          echo "Release target: ${MARKETING} (${BUILD})"
 
       - name: Prepare Xcode project
         run: bash scripts/ci_ios_prepare.sh "${SCHEME}"
@@ -159,6 +169,10 @@ jobs:
           fi
           ls -la build/Fash.ipa
 
+      - name: Verify IPA version matches project.yml
+        if: env.SCHEME == 'Fash-Prod'
+        run: bash scripts/ci_verify_ipa_version.sh build/Fash.ipa
+
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
@@ -179,7 +193,14 @@ jobs:
           if-no-files-found: warn
 
       - name: Verify App Store Connect secrets
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.upload_testflight }}
+        if: >-
+          env.SCHEME == 'Fash-Prod' && (
+            (github.event_name == 'workflow_dispatch' && inputs.upload_testflight) ||
+            (github.event_name == 'push' && (
+              startsWith(github.ref, 'refs/heads/releases/') ||
+              startsWith(github.ref, 'refs/heads/release/')
+            ))
+          )
         env:
           ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
@@ -196,13 +217,28 @@ jobs:
           exit "${missing}"
 
       - name: Upload to TestFlight
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.upload_testflight }}
+        if: >-
+          env.SCHEME == 'Fash-Prod' && (
+            (github.event_name == 'workflow_dispatch' && inputs.upload_testflight) ||
+            (github.event_name == 'push' && (
+              startsWith(github.ref, 'refs/heads/releases/') ||
+              startsWith(github.ref, 'refs/heads/release/')
+            ))
+          )
         uses: apple-actions/upload-testflight-build@v3
         with:
           app-path: build/Fash.ipa
           issuer-id: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           api-key-id: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
           api-private-key: ${{ secrets.APP_STORE_CONNECT_API_PRIVATE_KEY }}
+
+      - name: Release summary
+        if: always() && steps.app_version.outcome == 'success'
+        run: |
+          echo "### iOS release" >> "${GITHUB_STEP_SUMMARY}"
+          echo "- Version: **${{ steps.app_version.outputs.marketing }} (${{ steps.app_version.outputs.build }})**" >> "${GITHUB_STEP_SUMMARY}"
+          echo "- Scheme: **${SCHEME}** · Event: **${{ github.event_name }}** · Ref: \`${{ github.ref }}\`" >> "${GITHUB_STEP_SUMMARY}"
+          echo "- After upload: App Store Connect → TestFlight → **${{ steps.app_version.outputs.marketing }} (${{ steps.app_version.outputs.build }})**" >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Upload xcodebuild logs on failure
         if: failure()

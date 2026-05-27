@@ -3,7 +3,7 @@
 **Product source of truth:** `fash-android-mobile` (Kotlin / Compose).  
 **iOS delivery:** `fash-ios-mobile` — builds **without** an Android checkout (`env/`, `vendor/`, fonts committed).
 
-Last audit: **2026-05-27** — iOS `MARKETING_VERSION` 1.0.7 / build 12, Android 1.0.3.
+Last audit: **2026-05-27** — iOS `MARKETING_VERSION` 1.0.7 / build 14, Android 1.0.3.
 
 ## Standalone build
 
