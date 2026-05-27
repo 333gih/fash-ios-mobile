@@ -98,11 +98,10 @@ jobs:
       - name: Archive (iphoneos)
         env:
           TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          PROFILE_NAME: ${{ secrets.IOS_PROVISIONING_PROFILE_SPECIFIER }}
         run: |
           set -o pipefail
           mkdir -p build
-          # Sign only the app target — global PROVISIONING_PROFILE_SPECIFIER breaks SPM (Kingfisher).
+          # Automatic signing: cert + profile are installed above. Avoid global manual profile (breaks Kingfisher SPM).
           xcodebuild archive \
             -project Fash.xcodeproj \
             -scheme "${SCHEME}" \
@@ -110,27 +109,17 @@ jobs:
             -archivePath "${ARCHIVE_PATH}" \
             -destination 'generic/platform=iOS' \
             DEVELOPMENT_TEAM="${TEAM_ID}" \
-            "Fash:CODE_SIGN_STYLE=Manual" \
-            "Fash:CODE_SIGN_IDENTITY=Apple Distribution" \
-            "Fash:PROVISIONING_PROFILE_SPECIFIER=${PROFILE_NAME}" \
-            "Fash:DEVELOPMENT_TEAM=${TEAM_ID}" \
+            CODE_SIGN_STYLE=Automatic \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            -allowProvisioningUpdates \
             | tee xcodebuild-archive.log
 
       - name: Prepare ExportOptions.plist
         env:
           TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          PROFILE_NAME: ${{ secrets.IOS_PROVISIONING_PROFILE_SPECIFIER }}
         run: |
           set -euo pipefail
-          if [[ "${SCHEME}" == "Fash-Prod" ]]; then
-            BUNDLE_ID="com.pc.fash-ios-mobile"
-          else
-            BUNDLE_ID="com.pc.fash-ios-mobile.dev"
-          fi
-          sed -e "s/TEAM_ID_PLACEHOLDER/${TEAM_ID}/g" \
-              -e "s/BUNDLE_ID_PLACEHOLDER/${BUNDLE_ID}/g" \
-              -e "s/PROFILE_NAME_PLACEHOLDER/${PROFILE_NAME}/g" \
-              Config/ExportOptions-AppStore.plist > build/ExportOptions.plist
+          sed "s/TEAM_ID_PLACEHOLDER/${TEAM_ID}/g" Config/ExportOptions-AppStore.plist > build/ExportOptions.plist
 
       - name: Export App Store IPA
         run: |
