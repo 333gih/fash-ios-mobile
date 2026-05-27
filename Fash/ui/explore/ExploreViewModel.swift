@@ -162,6 +162,7 @@ final class ExploreViewModel {
                 q: q,
                 categoryId: selectedCategoryId,
                 aestheticTagIds: tagIds,
+                sizingMode: sizingModeFilter,
                 brandId: selectedBrandId,
                 countryIso2: selectedCountryIso2,
                 minPrice: minPrice,
@@ -169,8 +170,7 @@ final class ExploreViewModel {
                 condition: selectedConditionFilter,
                 sort: sortMode,
                 limit: 40,
-                offset: 0,
-                sizingMode: sizingModeFilter
+                offset: 0
             )
         }
         switch result {

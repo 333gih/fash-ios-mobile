@@ -50,6 +50,26 @@ enum HomeFeedTab: String, CaseIterable, Identifiable {
     static func tabsFor(isGuestBrowse: Bool) -> [HomeFeedTab] {
         isGuestBrowse ? [.huntToday, .forYou, .following] : allCases
     }
+
+    var emptyTitle: String {
+        switch self {
+        case .huntToday: return L10n.homeTabEmptyHuntTitle
+        case .forYou: return L10n.homeTabEmptyForYouTitle
+        case .stylePicks: return L10n.homeTabEmptyStyleTitle
+        case .similarSaved: return L10n.homeTabEmptySimilarTitle
+        case .following: return L10n.feedEmptyTitle
+        }
+    }
+
+    var emptySubtitle: String {
+        switch self {
+        case .huntToday: return L10n.homeTabEmptyHuntSubtitle
+        case .forYou: return L10n.homeTabEmptyForYouSubtitle
+        case .stylePicks: return L10n.homeTabEmptyStyleSubtitle
+        case .similarSaved: return L10n.homeTabEmptySimilarSubtitle
+        case .following: return L10n.feedEmptySubtitle
+        }
+    }
 }
 
 struct HomeFeedTabSwitcher: View {
@@ -118,26 +138,7 @@ struct HomeFeedTabGenericEmpty: View {
     let tab: HomeFeedTab
 
     var body: some View {
-        let title: String
-        let subtitle: String
-        switch tab {
-        case .huntToday:
-            title = L10n.homeTabEmptyHuntTitle
-            subtitle = L10n.homeTabEmptyHuntSubtitle
-        case .forYou:
-            title = L10n.homeTabEmptyForYouTitle
-            subtitle = L10n.homeTabEmptyForYouSubtitle
-        case .stylePicks:
-            title = L10n.homeTabEmptyStyleTitle
-            subtitle = L10n.homeTabEmptyStyleSubtitle
-        case .similarSaved:
-            title = L10n.homeTabEmptySimilarTitle
-            subtitle = L10n.homeTabEmptySimilarSubtitle
-        case .following:
-            title = L10n.feedEmptyTitle
-            subtitle = L10n.feedEmptySubtitle
-        }
-        FashEmptyStateView(title: title, subtitle: subtitle)
+        FashEmptyStateView(title: tab.emptyTitle, subtitle: tab.emptySubtitle)
             .padding(.vertical, 32)
     }
 }

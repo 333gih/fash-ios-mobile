@@ -13,7 +13,9 @@ final class AddressBookViewModel {
     var eventMessage: String?
 
     func refresh(deps: AppDependencies) async {
-        guard let uid = deps.authSessionStore.read()?.userId.trimmingCharacters(in: .whitespaces), !uid.isEmpty else { return }
+        guard let rawUserId = deps.authSessionStore.read()?.userId else { return }
+        let uid = rawUserId.trimmingCharacters(in: .whitespaces)
+        guard !uid.isEmpty else { return }
         addresses = deps.addressLocalStore.listAddresses(uid)
         loading = true
         defer { loading = false }
