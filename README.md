@@ -32,7 +32,7 @@ In Xcode: scheme **Fash-Dev** or **Fash-Prod**, set **Development Team**, run on
 | `Config/*.xcconfig`, `Fash/config/generated/` | Generated from `env/` |
 | `Fash/Resources/Fonts/*.ttf` | Android `res/font/` (Be Vietnam Pro) |
 
-## Maintainer sync (optional Android checkout)
+## Maintainer sync (optional Android checkout) 
 
 When Android strings or env change:
 
