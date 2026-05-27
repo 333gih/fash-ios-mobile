@@ -28,8 +28,8 @@ enum FashSkeleton {
         VStack(alignment: .leading, spacing: 6) {
             box(height: 180, cornerRadius: 16)
             box(height: 12)
-            box(height: 12, width: 80)
-            box(height: 14, width: 64)
+            box(width: 80, height: 12)
+            box(width: 64, height: 14)
         }
     }
 }

@@ -60,11 +60,11 @@ final class UserRepository {
     func getMeProfile() async -> Result<ProfileInfo, Error> {
         do {
             let data = try await RepositoryHttp.executeCoreGet(relativePath: "api/v1/users/me", client: client)
-            return .success(parseProfileInfo(data))
+            return .success(try parseProfileInfo(data))
         } catch {
             do {
                 let data = try await RepositoryHttp.executeCoreGet(relativePath: "v1/users/me", client: client)
-                return .success(parseProfileInfo(data))
+                return .success(try parseProfileInfo(data))
             } catch {
                 return .failure(error)
             }

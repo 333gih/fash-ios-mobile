@@ -7,6 +7,7 @@ enum FashFirebaseMessagingService {
         routeFromPushData(data)
     }
 
+    @MainActor
     static func handleForegroundNotification(userInfo: [AnyHashable: Any]) {
         let data = stringDataMap(from: userInfo)
         guard isNotificationForLoggedInUser(data) else { return }
@@ -46,6 +47,7 @@ enum FashFirebaseMessagingService {
         }
     }
 
+    @MainActor
     private static func storePendingDeepLink(url: URL, deps: AppDependencies) {
         guard url.scheme == "fash" else { return }
         let path = url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
@@ -61,6 +63,7 @@ enum FashFirebaseMessagingService {
         }
     }
 
+    @MainActor
     private static func isNotificationForLoggedInUser(_ data: [String: String]) -> Bool {
         let sessionUid = AppDependencies.shared.authSessionStore.read()?.userId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if sessionUid.isEmpty { return true }
