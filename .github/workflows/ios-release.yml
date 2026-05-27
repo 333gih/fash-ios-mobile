@@ -39,7 +39,7 @@ concurrency:
 jobs:
   release:
     name: Archive & export IPA
-    runs-on: macos-14
+    runs-on: macos-26
     env:
       SCHEME: ${{ github.event_name == 'workflow_dispatch' && inputs.scheme || 'Fash-Prod' }}
       BUILD_CONFIGURATION: ${{ (github.event_name == 'workflow_dispatch' && inputs.scheme || 'Fash-Prod') == 'Fash-Prod' && 'ProdRelease' || 'DevRelease' }}
@@ -51,10 +51,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Select Xcode 16.2
+      - name: Select Xcode 26.4
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: "16.2"
+          xcode-version: "26.4"
+
+      - name: Verify iOS 26 SDK
+        run: |
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
 
       - name: Verify signing secrets
         env:
