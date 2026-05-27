@@ -19,3 +19,9 @@ xcuserdata/
 # Secrets (never commit)
 *.p12
 *.mobileprovision
+*.p8
+secrets/ios-release.env
+secrets/*.local.env
+secrets/AppleDistribution.p12
+secrets/Fash_AppStore.mobileprovision
+secrets/AuthKey_*.p8

@@ -87,6 +87,15 @@ Setup, mirror checklist, and troubleshooting: **[docs/CI.md](docs/CI.md)**.
 
 GitLab pipeline (`.gitlab-ci.yml`) only prints a reminder — the real iOS build runs on GitHub.
 
+**Artifacts (GitHub Actions):**
+
+| Workflow | Khi nào | Artifact |
+|---|---|---|
+| **iOS Build** | Push/PR pass | `fash-ios-simulator-Fash-*` (.zip → `Fash.app` simulator) |
+| **iOS Release** | Tag `ios/v*` hoặc Run workflow | `fash-ios-ipa-Fash-Prod-*` (`.ipa` App Store) |
+
+Chi tiết secrets & TestFlight: **[docs/CI.md](docs/CI.md)**.
+
 ## Windows
 
 Authoring on Windows is supported; **compile only on Mac or GitHub Actions**. `Fash.xcodeproj` is gitignored — created by `xcodegen generate` locally or in CI.

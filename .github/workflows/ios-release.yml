@@ -1,0 +1,179 @@
+# Archive + export signed IPA for App Store / TestFlight.
+# Requires Apple Developer signing secrets (see docs/CI.md).
+#
+# Triggers:
+#   - Manual: Actions → iOS Release → Run workflow
+#   - Tag: ios/v1.0.0 (recommended prefix to avoid clashing with Android tags)
+name: iOS Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      scheme:
+        description: Xcode scheme to archive
+        required: true
+        default: Fash-Prod
+        type: choice
+        options:
+          - Fash-Prod
+          - Fash-Dev
+      upload_testflight:
+        description: Upload IPA to TestFlight (needs App Store Connect API key secrets)
+        required: false
+        default: false
+        type: boolean
+  push:
+    tags:
+      - "ios/v*"
+
+concurrency:
+  group: ios-release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Archive & export IPA
+    runs-on: macos-14
+    env:
+      SCHEME: ${{ github.event_name == 'workflow_dispatch' && inputs.scheme || 'Fash-Prod' }}
+      BUILD_CONFIGURATION: ${{ (github.event_name == 'workflow_dispatch' && inputs.scheme || 'Fash-Prod') == 'Fash-Prod' && 'ProdRelease' || 'DevRelease' }}
+      ARCHIVE_PATH: build/Fash.xcarchive
+      EXPORT_DIR: build/export
+      IPA_PATH: build/export/Fash.ipa
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode 16.2
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "16.2"
+
+      - name: Verify signing secrets
+        env:
+          CERT_B64: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_BASE64 }}
+          CERT_PW: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_PASSWORD }}
+          PROFILE_B64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+          PROFILE_NAME: ${{ secrets.IOS_PROVISIONING_PROFILE_SPECIFIER }}
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in CERT_B64 CERT_PW PROFILE_B64 PROFILE_NAME TEAM_ID; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "::error::Missing GitHub secret for ${name}. See docs/CI.md § App Store release."
+              missing=1
+            fi
+          done
+          exit "${missing}"
+
+      - name: Prepare Xcode project
+        run: bash scripts/ci_ios_prepare.sh "${SCHEME}"
+
+      - name: Import code signing certificate
+        uses: apple-actions/import-codesign-certs@v3
+        with:
+          p12-file-base64: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_BASE64 }}
+          p12-password: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_PASSWORD }}
+
+      - name: Install provisioning profile
+        env:
+          PROFILE_B64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          set -euo pipefail
+          PP_PATH="${RUNNER_TEMP}/fash.mobileprovision"
+          echo "${PROFILE_B64}" | base64 --decode > "${PP_PATH}"
+          UUID="$(/usr/libexec/PlistBuddy -c 'Print UUID' /dev/stdin <<< "$(security cms -D -i "${PP_PATH}")")"
+          mkdir -p "${HOME}/Library/MobileDevice/Provisioning Profiles"
+          cp "${PP_PATH}" "${HOME}/Library/MobileDevice/Provisioning Profiles/${UUID}.mobileprovision"
+          echo "Installed provisioning profile UUID=${UUID}"
+
+      - name: Archive (iphoneos)
+        env:
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          PROFILE_NAME: ${{ secrets.IOS_PROVISIONING_PROFILE_SPECIFIER }}
+        run: |
+          set -o pipefail
+          mkdir -p build
+          xcodebuild archive \
+            -project Fash.xcodeproj \
+            -scheme "${SCHEME}" \
+            -configuration "${BUILD_CONFIGURATION}" \
+            -archivePath "${ARCHIVE_PATH}" \
+            -destination 'generic/platform=iOS' \
+            DEVELOPMENT_TEAM="${TEAM_ID}" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            PROVISIONING_PROFILE_SPECIFIER="${PROFILE_NAME}" \
+            | tee xcodebuild-archive.log
+
+      - name: Prepare ExportOptions.plist
+        env:
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          sed "s/TEAM_ID_PLACEHOLDER/${TEAM_ID}/g" Config/ExportOptions-AppStore.plist > build/ExportOptions.plist
+
+      - name: Export App Store IPA
+        run: |
+          set -o pipefail
+          rm -rf "${EXPORT_DIR}"
+          mkdir -p "${EXPORT_DIR}"
+          xcodebuild -exportArchive \
+            -archivePath "${ARCHIVE_PATH}" \
+            -exportPath "${EXPORT_DIR}" \
+            -exportOptionsPlist build/ExportOptions.plist \
+            | tee xcodebuild-export.log
+          ls -la "${EXPORT_DIR}"
+          test -f "${IPA_PATH}" || test -n "$(find "${EXPORT_DIR}" -maxdepth 1 -name '*.ipa' -print -quit)"
+
+      - name: Normalize IPA path
+        run: |
+          set -euo pipefail
+          if [[ ! -f "${IPA_PATH}" ]]; then
+            FOUND="$(find "${EXPORT_DIR}" -maxdepth 1 -name '*.ipa' | head -1)"
+            cp "${FOUND}" build/Fash.ipa
+          else
+            cp "${IPA_PATH}" build/Fash.ipa
+          fi
+          ls -la build/Fash.ipa
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fash-ios-ipa-${{ env.SCHEME }}-${{ github.run_number }}
+          path: build/Fash.ipa
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Upload archive artifact (optional debug)
+        uses: actions/upload-artifact@v4
+        with:
+          name: fash-ios-xcarchive-${{ env.SCHEME }}-${{ github.run_number }}
+          path: |
+            build/Fash.xcarchive
+            xcodebuild-archive.log
+            xcodebuild-export.log
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Upload to TestFlight
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.upload_testflight && secrets.APP_STORE_CONNECT_API_KEY_ID != '' }}
+        uses: apple-actions/upload-testflight-build@v3
+        with:
+          app-path: build/Fash.ipa
+          issuer-id: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          api-key-id: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          api-private-key: ${{ secrets.APP_STORE_CONNECT_API_PRIVATE_KEY }}
+
+      - name: Upload xcodebuild logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fash-ios-release-logs-${{ github.run_number }}
+          path: |
+            xcodebuild-archive.log
+            xcodebuild-export.log
+          retention-days: 14
+          if-no-files-found: ignore

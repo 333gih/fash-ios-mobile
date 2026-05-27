@@ -99,34 +99,8 @@ jobs:
           swift --version
           echo "Scheme: ${{ matrix.scheme }}"
 
-      - name: Validate localization files
-        run: python3 scripts/validate_strings.py
-
-      - name: Validate Swift syntax (static)
-        run: python3 scripts/validate_swift_syntax.py
-
-      - name: Install XcodeGen
-        run: |
-          brew install xcodegen
-          xcodegen --version
-
-      - name: Generate Xcode project
-        run: xcodegen generate
-
-      - name: Ensure Xcode 15+ compatible project format
-        run: |
-          object_version=$(sed -n 's/.*objectVersion = \([0-9]*\);.*/\1/p' Fash.xcodeproj/project.pbxproj | head -1)
-          echo "objectVersion=${object_version}"
-          if [ "${object_version}" -gt 60 ]; then
-            sed -i '' -E 's/objectVersion = [0-9]+/objectVersion = 60/' Fash.xcodeproj/project.pbxproj
-            echo "Downgraded objectVersion to 60 for Xcode 15/16 compatibility"
-          fi
-
-      - name: Resolve Swift packages
-        run: |
-          xcodebuild -resolvePackageDependencies \
-            -project Fash.xcodeproj \
-            -scheme "${{ matrix.scheme }}"
+      - name: Prepare Xcode project
+        run: bash scripts/ci_ios_prepare.sh "${{ matrix.scheme }}"
 
       - name: Build for iOS Simulator
         run: |
@@ -139,6 +113,25 @@ jobs:
             build \
             CODE_SIGNING_ALLOWED=NO \
             | tee xcodebuild.log
+
+      - name: Package simulator app
+        run: |
+          APP="$(find DerivedData/Build/Products -type d -name 'Fash.app' -path '*iphonesimulator*' | head -1)"
+          if [[ -z "${APP}" ]]; then
+            echo "Fash.app (simulator) not found under DerivedData/Build/Products"
+            find DerivedData/Build/Products -maxdepth 3 -type d 2>/dev/null || true
+            exit 1
+          fi
+          echo "Packaging ${APP}"
+          ditto -c -k --sequesterRsrc --keepParent "${APP}" "Fash-${{ matrix.scheme }}-Simulator.zip"
+
+      - name: Upload simulator app artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fash-ios-simulator-${{ matrix.scheme }}-${{ github.run_number }}
+          path: Fash-${{ matrix.scheme }}-Simulator.zip
+          retention-days: 14
+          if-no-files-found: error
 
       - name: Upload xcodebuild log on failure
         if: failure()

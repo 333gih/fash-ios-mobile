@@ -54,17 +54,45 @@ Scheme theo branch (tự động):
 
 ## 3. Workflow làm gì?
 
+### iOS Build (`ios-build.yml`) — mỗi push/PR
+
 Giống `./scripts/build_mac.sh` trên Mac cloud:
 
-1. Cài **XcodeGen** (`brew`)
-2. `xcodegen generate` → tạo `Fash.xcodeproj`
-3. Resolve **Kingfisher** (SwiftPM)
-4. `xcodebuild` cho **iOS Simulator** (iPhone 15, iOS 17.5)
-5. `CODE_SIGNING_ALLOWED=NO` — chỉ verify compile, chưa ký app
+1. `scripts/ci_ios_prepare.sh` — validate, **XcodeGen**, resolve Kingfisher
+2. `xcodebuild` cho **iOS Simulator** (iPhone 15, iOS 17.5)
+3. `CODE_SIGNING_ALLOWED=NO` — verify compile
+4. **Upload artifact** — file `.zip` chứa `Fash.app` (simulator)
 
-Mỗi push chỉ build **một scheme** theo branch (`develop` → Dev, `main`/`master` → Prod). Run workflow thủ công vẫn chọn được `both`.
+**Tải build trên GitHub (build pass):**
 
-Runner: `macos-14` + **Xcode 16.2** (iOS 17 SDK; `project.yml` pin `projectFormat: xcode15_0` để tránh lỗi format 77 trên Xcode 15).
+1. **Actions** → workflow **iOS Build** → run thành công
+2. Cuối trang → **Artifacts**
+3. Tên: `fash-ios-simulator-Fash-Dev-<run>` hoặc `fash-ios-simulator-Fash-Prod-<run>`
+4. Giải nén → `Fash.app` (chỉ chạy Simulator, không cài iPhone thật)
+
+Build fail → artifact `xcodebuild-log-Fash-Dev` / `Fash-Prod`.
+
+### iOS Release (`ios-release.yml`) — App Store / TestFlight
+
+Khi đã có **Apple Developer** + GitHub Secrets (mục 6):
+
+1. **Archive** thiết bị thật (`iphoneos`) + ký **Apple Distribution**
+2. **Export IPA** (`app-store`)
+3. **Artifact:** `fash-ios-ipa-Fash-Prod-<run>` — file `.ipa` tải về hoặc upload App Store Connect thủ công
+4. Tuỳ chọn: **Upload TestFlight** (checkbox khi Run workflow)
+
+Trigger release:
+
+| Cách | Hành vi |
+|---|---|
+| **Actions → iOS Release → Run workflow** | Chọn scheme, bật/tắt TestFlight |
+| Push tag `ios/v1.0.0` | Archive **Fash-Prod**, export IPA (TestFlight tắt mặc định) |
+
+Khuyến nghị tag prefix **`ios/v*`** để không trùng tag Android (`v1.0.8`).
+
+Mỗi push CI chỉ build **một scheme** theo branch (`develop` → Dev, `main`/`master` → Prod).
+
+Runner: `macos-14` + **Xcode 16.2** (iOS 17 SDK; `project.yml` pin `projectFormat: xcode15_0`).
 
 ## 4. Chi phí GitHub
 
@@ -79,15 +107,94 @@ Nếu build thường xuyên và repo private, cân nhắc public repo hoặc Gi
 
 File `.gitlab-ci.yml` chỉ **thông báo** — job chạy trên runner Linux, không build iOS. Giúp team biết build thật nằm trên GitHub Actions.
 
-## 6. TestFlight / cài iPhone (bước sau)
+## 6. App Store / TestFlight — GitHub Secrets
 
-Workflow hiện tại **chỉ compile** — chưa upload TestFlight.
+### Cách 1 — File local (gitignored) + script đẩy lên GitHub (khuyến nghị)
 
-Cần thêm (khi sẵn sàng):
+GitHub Actions **không đọc** file trên máy bạn khi chạy CI. File local chỉ để **lưu + đồng bộ** secrets lên GitHub một lần.
 
-- Apple Developer Program (~99 USD/năm)
-- GitHub Secrets: certificate `.p12`, provisioning profile, App Store Connect API key
-- Workflow release riêng (archive + sign + upload)
+1. Copy template:
+
+```bash
+cp secrets/ios-release.env.example secrets/ios-release.env
+```
+
+2. Đặt file binary vào `secrets/` (đã gitignore):
+
+| File | Nguồn |
+|---|---|
+| `AppleDistribution.p12` | Keychain Access → export **Apple Distribution** |
+| `Fash_AppStore.mobileprovision` | Apple Developer → Profiles → Download |
+| `AuthKey_XXXX.p8` | App Store Connect → Users and Access → Keys |
+
+3. Điền `secrets/ios-release.env` (`APPLE_TEAM_ID`, mật khẩu `.p12`, tên profile, …).
+
+4. Cài [GitHub CLI](https://cli.github.com/) và login: `gh auth login`
+
+5. Đẩy secrets lên repo:
+
+```powershell
+# Windows
+.\scripts\push_github_ios_secrets.ps1
+# hoặc repo khác:
+.\scripts\push_github_ios_secrets.ps1 -Repo phuckhoa33/fash-ios-mobile
+```
+
+```bash
+# Mac / Linux
+chmod +x scripts/push_github_ios_secrets.sh
+./scripts/push_github_ios_secrets.sh
+```
+
+Script map sang GitHub Secrets:
+
+| Trong `ios-release.env` | GitHub Secret |
+|---|---|
+| `APPLE_TEAM_ID` | `APPLE_TEAM_ID` |
+| `IOS_DISTRIBUTION_CERTIFICATE_PASSWORD` | `IOS_DISTRIBUTION_CERTIFICATE_PASSWORD` |
+| `IOS_PROVISIONING_PROFILE_SPECIFIER` | `IOS_PROVISIONING_PROFILE_SPECIFIER` |
+| `IOS_DISTRIBUTION_CERTIFICATE_PATH` → base64 | `IOS_DISTRIBUTION_CERTIFICATE_BASE64` |
+| `IOS_PROVISIONING_PROFILE_PATH` → base64 | `IOS_PROVISIONING_PROFILE_BASE64` |
+| `APP_STORE_CONNECT_*` | cùng tên |
+
+### Cách 2 — Dán thủ công trên GitHub
+
+**Settings → Secrets and variables → Actions** (repo GitHub):
+
+| Secret | Mô tả |
+|---|---|
+| `APPLE_TEAM_ID` | Team ID (10 ký tự), ví dụ `AB12CD34EF` |
+| `IOS_DISTRIBUTION_CERTIFICATE_BASE64` | File `.p12` **Apple Distribution**, encode base64 |
+| `IOS_DISTRIBUTION_CERTIFICATE_PASSWORD` | Mật khẩu export `.p12` |
+| `IOS_PROVISIONING_PROFILE_BASE64` | Profile **App Store** cho `com.pc.fash-ios-mobile`, encode base64 |
+| `IOS_PROVISIONING_PROFILE_SPECIFIER` | **Tên** profile trong Apple Developer (đúng chữ, có space) |
+
+**TestFlight tự động (tuỳ chọn):**
+
+| Secret | Mô tả |
+|---|---|
+| `APP_STORE_CONNECT_ISSUER_ID` | Issuer ID từ App Store Connect → Users and Access → Keys |
+| `APP_STORE_CONNECT_API_KEY_ID` | Key ID |
+| `APP_STORE_CONNECT_API_PRIVATE_KEY` | Nội dung file `.p8` (giữ nguyên `-----BEGIN PRIVATE KEY-----`) |
+
+Sau khi thêm secrets:
+
+```text
+Actions → iOS Release → Run workflow
+  Scheme: Fash-Prod
+  Upload TestFlight: ✓ (nếu đã có API key)
+```
+
+Hoặc push tag:
+
+```bash
+git tag ios/v1.0.7
+git push origin ios/v1.0.7
+```
+
+Tải IPA: **Artifacts** → `fash-ios-ipa-Fash-Prod-<run>`.
+
+Provisioning profile phải khớp bundle id **ProdRelease**: `com.pc.fash-ios-mobile` (xem `project.yml`).
 
 ## 7. Troubleshooting
 
@@ -96,6 +203,8 @@ Cần thêm (khi sẵn sàng):
 | Push GitLab nhưng GitHub không build | Kiểm tra mirror sync; branch có trong workflow trigger? |
 | Workflow không xuất hiện | File `.github/workflows/ios-build.yml` đã lên GitHub chưa? |
 | Build fail Kingfisher / Swift | Xem log artifact `xcodebuild-log-*`; cần Xcode 15+ |
+| Không thấy artifact simulator | Build phải **pass**; tên `fash-ios-simulator-*` |
+| iOS Release fail signing | Kiểm tra secrets mục 6; profile name khớp `IOS_PROVISIONING_PROFILE_SPECIFIER` |
 | Hết phút macOS (private repo) | Đổi repo public hoặc nâng gói GitHub |
 
 ## 8. Build local (Mac)

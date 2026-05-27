@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Template for App Store export. CI replaces TEAM_ID_PLACEHOLDER at release time.
+  See docs/CI.md and .github/workflows/ios-release.yml
+-->
+<plist version="1.0">
+<dict>
+	<key>method</key>
+	<string>app-store</string>
+	<key>teamID</key>
+	<string>TEAM_ID_PLACEHOLDER</string>
+	<key>uploadSymbols</key>
+	<true/>
+	<key>signingStyle</key>
+	<string>manual</string>
+	<key>stripSwiftSymbols</key>
+	<true/>
+</dict>
+</plist>
