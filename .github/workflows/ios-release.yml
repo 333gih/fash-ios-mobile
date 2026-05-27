@@ -137,7 +137,7 @@ jobs:
           for log in xcodebuild-archive.log xcodebuild-export.log; do
             [[ -f "${log}" ]] || continue
             echo "::group::${log}"
-            grep -E ' error:|fatal error:|Invalid redeclaration|ARCHIVE FAILED|BUILD FAILED|exportArchive FAILED|Code Sign error' "${log}" | tail -120 || echo "(no matching lines)"
+            grep -E 'Fash/.*\.swift:[0-9]+:[0-9]+: error:|fatal error:|Invalid redeclaration|ARCHIVE FAILED|BUILD FAILED|exportArchive FAILED|Code Sign error|Expected .+ after|Failed frontend command' "${log}" | tail -120 || echo "(no matching lines)"
             echo "::endgroup::"
           done
           exit 0

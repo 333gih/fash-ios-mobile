@@ -13,6 +13,10 @@ TRAILING_COMMA = re.compile(r",\s*\n\s*\)", re.MULTILINE)
 TYPOGRAPHY_USE = re.compile(r"FashTypography\.(\w+)")
 COLOR_USE = re.compile(r"FashColors\.(\w+)\b")
 STATIC_LET = re.compile(r"static (?:var|let) (\w+)")
+GUARD_MISSING_ELSE = re.compile(
+    r"^\s*guard\b(?:(?!.*\belse\b).)*\{",
+    re.MULTILINE,
+)
 FUNC_DECL = re.compile(
     r"^\s+(?:@\w+(?:\([^)]*\))?\s+)*(?:private |fileprivate |public |internal )?"
     r"func (\w+)\(([^)]*)\)",
@@ -43,6 +47,12 @@ def check_file(
 ) -> list[str]:
     errors: list[str] = []
     text = path.read_text(encoding="utf-8")
+
+    for m in GUARD_MISSING_ELSE.finditer(text):
+        line = text[: m.start()].count("\n") + 1
+        errors.append(
+            f"{path.relative_to(ROOT)}:{line}: guard is missing 'else' before '{{'"
+        )
 
     for m in TRAILING_COMMA.finditer(text):
         line = text[: m.start()].count("\n") + 1

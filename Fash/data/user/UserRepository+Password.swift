@@ -3,7 +3,7 @@ import Foundation
 extension UserRepository {
     /// Auth-service `POST .../auth/change-password` — Android `putUserPassword`.
     func putUserPassword(newPassword: String, currentPassword: String?) async -> Result<Void, Error> {
-        guard (8...72).contains(newPassword.count) {
+        guard (8...72).contains(newPassword.count) else {
             return .failure(NSError(domain: "FashPassword", code: 0, userInfo: [NSLocalizedDescriptionKey: "PASSWORD_LENGTH"]))
         }
         let path = AppEnvironment.authChangePasswordPath.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
