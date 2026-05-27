@@ -10,15 +10,31 @@ ROOT = Path(__file__).resolve().parents[1]
 FASH = ROOT / "Fash"
 
 TRAILING_COMMA = re.compile(r",\s*\n\s*\)", re.MULTILINE)
-INVALID_TYPOGRAPHY = re.compile(
-    r"FashTypography\.(?:titleSmall|bodySmall|labelSmall|headlineSmall|displaySmall)"
-)
-INVALID_COLORS = re.compile(
-    r"FashColors\.(?:primary|onPrimary|secondary|background|surface|surfaceContainerLow)\b"
-)
+TYPOGRAPHY_USE = re.compile(r"FashTypography\.(\w+)")
+COLOR_USE = re.compile(r"FashColors\.(\w+)\b")
+STATIC_LET = re.compile(r"static (?:var|let) (\w+)")
 
 
-def check_file(path: Path) -> list[str]:
+def tokens_from_enum(path: Path) -> set[str]:
+    if not path.is_file():
+        return set()
+    return set(STATIC_LET.findall(path.read_text(encoding="utf-8")))
+
+
+def load_valid_typography() -> set[str]:
+    return tokens_from_enum(FASH / "ui" / "theme" / "FashTypography.swift")
+
+
+def load_valid_colors() -> set[str]:
+    return tokens_from_enum(FASH / "ui" / "theme" / "Color.swift")
+
+
+def check_file(
+    path: Path,
+    *,
+    valid_typography: set[str],
+    valid_colors: set[str],
+) -> list[str]:
     errors: list[str] = []
     text = path.read_text(encoding="utf-8")
 
@@ -26,15 +42,18 @@ def check_file(path: Path) -> list[str]:
         line = text[: m.start()].count("\n") + 1
         errors.append(f"{path.relative_to(ROOT)}:{line}: trailing comma before ')' (Swift 5.9)")
 
-    for m in INVALID_TYPOGRAPHY.finditer(text):
-        line = text[: m.start()].count("\n") + 1
-        errors.append(f"{path.relative_to(ROOT)}:{line}: invalid FashTypography token")
+    for m in TYPOGRAPHY_USE.finditer(text):
+        token = m.group(1)
+        if token not in valid_typography:
+            line = text[: m.start()].count("\n") + 1
+            errors.append(f"{path.relative_to(ROOT)}:{line}: invalid FashTypography token '{token}'")
 
-    for m in INVALID_COLORS.finditer(text):
-        line = text[: m.start()].count("\n") + 1
-        errors.append(f"{path.relative_to(ROOT)}:{line}: invalid FashColors token")
+    for m in COLOR_USE.finditer(text):
+        token = m.group(1)
+        if token not in valid_colors:
+            line = text[: m.start()].count("\n") + 1
+            errors.append(f"{path.relative_to(ROOT)}:{line}: invalid FashColors token '{token}'")
 
-    # Rough brace balance for init blocks (catches common SecuredApiClient-style typos)
     opens = text.count("{")
     closes = text.count("}")
     if opens != closes:
@@ -46,9 +65,17 @@ def check_file(path: Path) -> list[str]:
 
 
 def main() -> int:
+    valid_typography = load_valid_typography()
+    valid_colors = load_valid_colors()
     all_errors: list[str] = []
     for path in sorted(FASH.rglob("*.swift")):
-        all_errors.extend(check_file(path))
+        all_errors.extend(
+            check_file(
+                path,
+                valid_typography=valid_typography,
+                valid_colors=valid_colors,
+            )
+        )
 
     if all_errors:
         print("Swift validation failed:\n", file=sys.stderr)
