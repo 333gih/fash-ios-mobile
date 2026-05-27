@@ -19,6 +19,15 @@ enum FashColors {
     static var surfaceContainer: Color {
         FashThemeState.shared.isDark ? FashColorTokens.Dark.surfaceContainer : FashColorTokens.LightEditorial.surfaceContainer
     }
+    static var surfaceContainerHigh: Color {
+        FashThemeState.shared.isDark ? FashColorTokens.Dark.surfaceContainerHigh : FashColorTokens.LightEditorial.surfaceContainerHigh
+    }
+    static var surfaceContainerHighest: Color {
+        FashThemeState.shared.isDark ? FashColorTokens.Dark.surfaceContainerHighest : FashColorTokens.LightEditorial.surfaceContainerHighest
+    }
+    static var surfaceVariant: Color {
+        FashThemeState.shared.isDark ? FashColorTokens.Dark.surfaceContainer : FashColorTokens.LightEditorial.surfaceVariant
+    }
     static var outlineMuted: Color {
         FashThemeState.shared.isDark ? FashColorTokens.Dark.outlineMuted : FashColorTokens.LightEditorial.outlineMuted
     }

@@ -56,4 +56,34 @@ final class UserRepository {
         }
         return .failure(URLError(.cannotConnectToHost))
     }
+
+    func getMeProfile() async -> Result<ProfileInfo, Error> {
+        do {
+            let data = try await RepositoryHttp.executeCoreGet(relativePath: "api/v1/users/me", client: client)
+            return .success(parseProfileInfo(data))
+        } catch {
+            do {
+                let data = try await RepositoryHttp.executeCoreGet(relativePath: "v1/users/me", client: client)
+                return .success(parseProfileInfo(data))
+            } catch {
+                return .failure(error)
+            }
+        }
+    }
+
+    private func parseProfileInfo(_ data: Data) throws -> ProfileInfo {
+        let root = try RepositoryHttp.jsonObject(data)
+        let obj = (root["data"] as? [String: Any]) ?? root
+        return ProfileInfo(
+            userId: RepositoryHttp.optString(obj, "user_id", "UserID", "id", "ID"),
+            username: RepositoryHttp.optString(obj, "username", "Username"),
+            displayName: RepositoryHttp.optString(obj, "display_name", "DisplayName", "name", "Name"),
+            avatarUrl: RepositoryHttp.optString(obj, "avatar_url", "AvatarURL"),
+            coverImageUrl: RepositoryHttp.optString(obj, "cover_image_url", "CoverImageURL"),
+            followerCount: RepositoryHttp.optInt(obj, "follower_count", "FollowerCount"),
+            followingCount: RepositoryHttp.optInt(obj, "following_count", "FollowingCount"),
+            productCount: RepositoryHttp.optInt(obj, "product_count", "ProductCount", "listing_count", "ListingCount"),
+            bio: RepositoryHttp.optString(obj, "bio", "Bio")
+        )
+    }
 }

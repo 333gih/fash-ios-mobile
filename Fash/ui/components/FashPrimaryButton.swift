@@ -1,25 +1,30 @@
 import SwiftUI
 
+/// Primary CTA — Android [FashPrimaryButton] (48pt, gradient, radius 12).
 struct FashPrimaryButton: View {
     let title: String
     var isLoading = false
+    var cornerRadius: CGFloat = 12
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            HStack {
-                if isLoading {
-                    ProgressView().tint(.white)
+            ZStack {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(FashGradients.primaryCta(in: CGSize(width: 320, height: 48)))
+                HStack(spacing: 8) {
+                    if isLoading {
+                        ProgressView().tint(.white)
+                    }
+                    Text(title)
+                        .font(FashTypography.labelLarge)
+                        .foregroundStyle(.white)
                 }
-                Text(title)
-                    .font(FashTypography.labelLarge)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
-            .background(FashColors.brandPrimary)
-            .foregroundStyle(.white)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .frame(height: 48)
         }
         .disabled(isLoading)
+        .buttonStyle(.plain)
     }
 }

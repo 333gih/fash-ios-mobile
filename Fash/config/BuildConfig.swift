@@ -21,6 +21,8 @@ enum BuildConfig {
     static var authApplicationId: String { C.authApplicationId }
     static var authClientSecret: String { C.authClientSecret }
     static var googleWebClientId: String { C.googleWebClientId }
+    static var googleIosClientId: String { C.googleIosClientId }
+    static var googleUrlScheme: String { C.googleUrlScheme }
     static var facebookAppId: String { C.facebookAppId }
     static var facebookClientToken: String { C.facebookClientToken }
     static var facebookLoginEnabled: Bool { C.facebookLoginEnabled }

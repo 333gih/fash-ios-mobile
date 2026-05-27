@@ -20,6 +20,7 @@ struct RootView: View {
                 fullScreenContent(route)
             }
             .onOpenURL { url in
+                if GoogleSignInClients.handle(url: url) { return }
                 DeepLinkRouter.handle(url: url, router: router, deps: deps)
             }
         }
@@ -27,6 +28,9 @@ struct RootView: View {
             try? await Task.sleep(for: .seconds(splashDisplaySeconds))
             router.showSplash = false
             await bootstrapSession()
+        }
+        .onAppear {
+            deps.navigationRouter = router
         }
     }
 
@@ -109,6 +113,10 @@ struct RootView: View {
                     deps.isGuestBrowseActive = true
                     router.isGuestMode = true
                     router.loginStep = nil
+                },
+                onSocialLoginVerified: {
+                    router.loginStep = nil
+                    Task { await bootstrapSession() }
                 }
             )
         case .otp:
@@ -163,6 +171,8 @@ struct RootView: View {
             deps.authManager.onSessionSaved()
             await deps.preferredLocaleSync.syncIfSession(locale: AppLocale.currentTag)
             await deps.realtimeManager.connect()
+            await PushNotificationCoordinator.shared.requestAuthorizationAndRegisterForRemoteNotifications()
+            await PushNotificationCoordinator.shared.registerCurrentTokenIfSession()
             if gate.canAccessHome {
                 router.onboardingStep = nil
                 router.loginStep = nil

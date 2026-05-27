@@ -58,6 +58,15 @@ def swift_escape(s: str) -> str:
     return s.replace("\\", "\\\\").replace('"', '\\"')
 
 
+def google_reversed_url_scheme(ios_client_id: str) -> str:
+    trimmed = ios_client_id.strip()
+    suffix = ".apps.googleusercontent.com"
+    if not trimmed or not trimmed.endswith(suffix):
+        return ""
+    prefix = trimmed[: -len(suffix)]
+    return f"com.googleusercontent.apps.{prefix}"
+
+
 def xcconfig(env: dict[str, str], flavor: str) -> str:
     auth_prefix = env.get("AUTH_API_USE_LANGUAGE_PREFIX") or env.get("CORE_API_USE_LANGUAGE_PREFIX", "true")
     core_prefix = env.get("CORE_API_USE_LANGUAGE_PREFIX", "true")
@@ -79,6 +88,8 @@ def xcconfig(env: dict[str, str], flavor: str) -> str:
         f"FASH_CORE_API_USE_LANGUAGE_PREFIX = {bool_str(core_prefix)}",
         f"FASH_AUTH_API_USE_LANGUAGE_PREFIX = {bool_str(auth_prefix)}",
         f"FASH_GOOGLE_WEB_CLIENT_ID = {env.get('GOOGLE_WEB_CLIENT_ID', '')}",
+        f"FASH_GOOGLE_IOS_CLIENT_ID = {env.get('GOOGLE_IOS_CLIENT_ID', '')}",
+        f"FASH_GOOGLE_URL_SCHEME = {google_reversed_url_scheme(env.get('GOOGLE_IOS_CLIENT_ID', ''))}",
         f"FASH_FACEBOOK_APP_ID = {env.get('FACEBOOK_APP_ID', '')}",
         f"FASH_FACEBOOK_CLIENT_TOKEN = {env.get('FACEBOOK_CLIENT_TOKEN', '')}",
         f"FASH_FACEBOOK_LOGIN_ENABLED = {bool_str(env.get('FACEBOOK_LOGIN_ENABLED', 'false'))}",
@@ -114,6 +125,8 @@ def swift_build_config(env: dict[str, str], flavor: str) -> str:
         ("authApplicationId", env.get("AUTH_APPLICATION_ID", "web")),
         ("authClientSecret", env.get("AUTH_CLIENT_SECRET", "")),
         ("googleWebClientId", env.get("GOOGLE_WEB_CLIENT_ID", "")),
+        ("googleIosClientId", env.get("GOOGLE_IOS_CLIENT_ID", "")),
+        ("googleUrlScheme", google_reversed_url_scheme(env.get("GOOGLE_IOS_CLIENT_ID", ""))),
         ("facebookAppId", env.get("FACEBOOK_APP_ID", "")),
         ("facebookClientToken", env.get("FACEBOOK_CLIENT_TOKEN", "")),
         ("listingShareBaseURL", env.get("LISTING_SHARE_BASE_URL", "https://fash.app/p/l")),

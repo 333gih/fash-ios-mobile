@@ -44,6 +44,9 @@ final class SecuredApiClient {
             accessTokenWhenUnauthorized: staleToken
         )
         guard case .success = refreshed else {
+            if case .failure(let err) = refreshed, AuthRefreshPolicy.isTransientRefreshFailure(err) {
+                throw err
+            }
             sessionStore.clear()
             onSessionInvalidated?(sessionExpiredMessage)
             throw NSError(domain: "FashAuth", code: 401, userInfo: [NSLocalizedDescriptionKey: sessionExpiredMessage])

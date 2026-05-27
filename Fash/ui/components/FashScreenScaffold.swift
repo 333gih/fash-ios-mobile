@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct FashScreenScaffold<Content: View>: View {
+    @Environment(\.fashSpacing) private var spacing
     let title: String
     var showBack = false
     var onBack: (() -> Void)?
@@ -8,20 +9,26 @@ struct FashScreenScaffold<Content: View>: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
+            HStack(spacing: spacing.spacing3) {
                 if showBack {
                     Button(action: { onBack?() }) {
                         Image(systemName: "chevron.left")
+                            .font(.system(size: 18, weight: .semibold))
                             .foregroundStyle(FashColors.textPrimary)
+                            .frame(width: 48, height: 48)
                     }
                 }
                 Text(title)
-                    .font(FashTypography.titleMedium)
+                    .font(FashTypography.titleLarge)
+                    .fontWeight(.bold)
                     .foregroundStyle(FashColors.textPrimary)
                 Spacer()
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
+            .padding(.leading, spacing.editorialStart)
+            .padding(.trailing, spacing.editorialEnd)
+            .padding(.vertical, spacing.spacing3)
+            .background(FashColors.surfaceContainerHighest)
+            Divider().overlay(FashColors.outlineMuted.opacity(0.72))
             content()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }

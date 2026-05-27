@@ -56,6 +56,9 @@ final class AppDependencies {
     var inboxOpenRequestGeneration: Int = 0
     var inAppNotification: FashInAppNotificationSession?
 
+    /// Set from [RootView] so push notification taps can open overlays while the app is running.
+    weak var navigationRouter: AppRouter?
+
     private init() {
         authRepository = AuthRepository()
         authManager = AppAuthManager(sessionStore: authSessionStore, authRepository: authRepository)
@@ -71,7 +74,7 @@ final class AppDependencies {
         )
         userRepository = UserRepository(client: securedClient)
         listingRepository = ListingRepository(client: securedClient)
-        chatRepository = ChatRepository(client: securedClient)
+        chatRepository = ChatRepository(client: securedClient, sessionStore: authSessionStore)
         orderRepository = OrderRepository(client: securedClient)
         searchRepository = SearchRepository(client: securedClient)
         recommendationRepository = RecommendationRepository(client: securedClient)
@@ -96,7 +99,7 @@ final class AppDependencies {
         fcmTokenRegistrar = FcmTokenRegistrar(
             authRepository: authRepository,
             sessionStore: authSessionStore,
-            clientLocaleProvider: { AppLocale.currentTag }
+            clientLocaleProvider: { AppLocale.coreApiPathSegment() }
         )
         preferredLocaleSync = PreferredLocaleSync(
             userRepository: userRepository,

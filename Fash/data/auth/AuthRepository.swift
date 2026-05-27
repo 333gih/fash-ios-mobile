@@ -114,12 +114,35 @@ final class AuthRepository {
     }
 
     private func parseLoginResponse(_ data: Data) throws -> AuthSession {
-        let json = try HttpJson.dictionary(data)
+        let root = try HttpJson.dictionary(data)
+        let json: [String: Any]
+        if let nested = root["data"] as? [String: Any] {
+            json = nested
+        } else {
+            json = root
+        }
         let access = json["access_token"] as? String ?? ""
         let refresh = json["refresh_token"] as? String ?? ""
-        let type = json["token_type"] as? String ?? "Bearer"
+        let type = (json["token_type"] as? String)?.trimmingCharacters(in: .whitespaces).isEmpty == false
+            ? (json["token_type"] as? String ?? "Bearer")
+            : "Bearer"
         let userId = json["user_id"] as? String
+        let expiresIn: Int64 = {
+            if let n = json["expires_in"] as? NSNumber { return n.int64Value }
+            if let s = json["expires_in"] as? String, let v = Int64(s) { return v }
+            return 0
+        }()
+        let isNewUser = json["is_new_user"] as? Bool ?? false
+        let unreadCount = (json["unread_count"] as? NSNumber)?.int64Value ?? 0
         guard !access.isEmpty else { throw URLError(.userAuthenticationRequired) }
-        return AuthSession(accessToken: access, refreshToken: refresh, tokenType: type, userId: userId)
+        return AuthSession(
+            accessToken: access,
+            refreshToken: refresh,
+            tokenType: type,
+            userId: userId,
+            expiresInSeconds: max(0, expiresIn),
+            isNewUser: isNewUser,
+            unreadCount: max(0, unreadCount)
+        )
     }
 }

@@ -13,6 +13,8 @@ enum GeneratedBuildConfig_Dev {
     static let authApplicationId: String = "web"
     static let authClientSecret: String = ""
     static let googleWebClientId: String = "598587496348-3m7us7ap54ia5clqvag38ctqbuqefasf.apps.googleusercontent.com"
+    static let googleIosClientId: String = ""
+    static let googleUrlScheme: String = ""
     static let facebookAppId: String = "940995382097327"
     static let facebookClientToken: String = "23dff93cd150b947ceb55afdcec6f4d6"
     static let listingShareBaseURL: String = "https://fashandcurious.com/p/l"

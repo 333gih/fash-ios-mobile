@@ -110,15 +110,20 @@ struct MainNavScreen: View {
         .onChange(of: router.selectedTab) { _, tab in
             guard !isGuestMode else { return }
             if tab == .profile {
-                Task { await profileVM.refreshIfStale() }
+                Task { await profileVM.refreshIfStale(deps: deps) }
+            } else if tab == .chat {
+                Task { await chatVM.refresh(deps: deps) }
+            } else if tab == .explore {
+                Task { await exploreVM.refresh(deps: deps, isGuestMode: isGuestMode) }
             }
         }
     }
 
+    @ViewBuilder
     private var topBar: some View {
-        HStack {
-            tabTitle
-            Spacer()
+        HStack(spacing: 0) {
+            FashScreenTitle(suffix: headerSuffix)
+            Spacer(minLength: 10)
             if router.selectedTab == .home {
                 FashAnimatedSearchIconButton(animateHint: !router.featureTourActive) {
                     router.selectedTab = .explore
@@ -132,24 +137,26 @@ struct MainNavScreen: View {
             }
             Button { router.showNotificationScreen = true } label: {
                 Image(systemName: "bell")
+                    .font(.system(size: 22))
+                    .foregroundStyle(FashColors.textPrimary)
+                    .frame(width: 48, height: 48)
             }
             Button { router.showOrdersScreen = true } label: {
                 Image(systemName: "bag")
+                    .font(.system(size: 22))
+                    .foregroundStyle(FashColors.textPrimary)
+                    .frame(width: 48, height: 48)
             }
             Button { router.showSettingsScreen = true } label: {
                 Image(systemName: "gearshape")
+                    .font(.system(size: 22))
+                    .foregroundStyle(FashColors.textPrimary)
+                    .frame(width: 48, height: 48)
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 10)
-    }
-
-    @ViewBuilder
-    private var tabTitle: some View {
-        HStack(spacing: 8) {
-            FashBrandMarkText()
-            Text(headerSuffix).font(FashTypography.titleMedium)
-        }
+        .padding(.leading, 16)
+        .padding(.trailing, 4)
+        .background(FashColors.surfaceContainerHighest)
     }
 
     private var headerSuffix: String {
@@ -212,46 +219,33 @@ struct MainNavScreen: View {
     }
 
     private var bottomBar: some View {
-        HStack {
-            ForEach(MainTab.allCases, id: \.rawValue) { tab in
-                Button {
-                    if isGuestMode && tab.isGuestLocked {
-                        onRequestSignIn?(guestLoginReason(for: tab))
-                    } else {
-                        router.selectedTab = tab
+        MainNavBottomBar(
+            selectedTab: $router.selectedTab,
+            chatUnreadCount: chatVM.unreadTotal,
+            onTabChange: { tab in
+                if isGuestMode && tab.isGuestLocked {
+                    onRequestSignIn?(guestLoginReason(for: tab))
+                } else {
+                    router.selectedTab = tab
+                }
+            },
+            onTabReselected: { tab in
+                Task {
+                    switch tab {
+                    case .home:
+                        await homeVM.pullToRefresh(deps: deps, isGuestMode: isGuestMode)
+                    case .explore:
+                        await exploreVM.pullToRefresh(deps: deps, isGuestMode: isGuestMode)
+                    case .chat:
+                        await chatVM.pullToRefresh(deps: deps)
+                    case .profile:
+                        await profileVM.refresh(deps: deps)
+                    default:
+                        break
                     }
-                } label: {
-                    VStack(spacing: 4) {
-                        Image(systemName: icon(for: tab))
-                        Text(label(for: tab)).font(.caption2)
-                    }
-                    .foregroundStyle(router.selectedTab == tab ? FashColors.brandPrimary : FashColors.textSecondary)
-                    .frame(maxWidth: .infinity)
                 }
             }
-        }
-        .padding(.vertical, 8)
-        .background(FashColors.surfaceContainer)
-    }
-
-    private func icon(for tab: MainTab) -> String {
-        switch tab {
-        case .home: return "house.fill"
-        case .explore: return "safari.fill"
-        case .post: return "plus.circle.fill"
-        case .chat: return "bubble.left.and.bubble.right.fill"
-        case .profile: return "person.fill"
-        }
-    }
-
-    private func label(for tab: MainTab) -> String {
-        switch tab {
-        case .home: return L10n.navHome
-        case .explore: return L10n.navExplore
-        case .post: return L10n.navPost
-        case .chat: return L10n.navChat
-        case .profile: return L10n.navProfile
-        }
+        )
     }
 
     private func guestLoginReason(for tab: MainTab) -> String {

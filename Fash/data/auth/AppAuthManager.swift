@@ -43,6 +43,7 @@ final class AppAuthManager {
         }
         sessionStore.clear()
         UxPersonalizationLocalStore.clearForUser(userId: userId)
+        SocialAuthCacheClear.clearCachedSocialSignInForLogout()
         onSessionCleared()
     }
 
@@ -54,6 +55,7 @@ final class AppAuthManager {
         }
         sessionStore.clear()
         UxPersonalizationLocalStore.clearForUser(userId: userId)
+        SocialAuthCacheClear.clearCachedSocialSignInForLogout()
         onSessionCleared()
     }
 }

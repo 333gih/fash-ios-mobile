@@ -7,26 +7,39 @@ final class ExploreViewModel {
     var query = ""
     var items: [ListingFeedItem] = []
     var isLoading = false
+    var isRefreshing = false
+    var loadError = false
 
-    func refresh(deps: AppDependencies) async {
+    func refresh(deps: AppDependencies, isGuestMode: Bool) async {
         isLoading = true
+        loadError = false
         defer { isLoading = false }
-        if query.trimmingCharacters(in: .whitespaces).isEmpty {
-            let result = await deps.listingRepository.getHomeFeed(limit: 40)
-            if case .success(let feed) = result { items = feed }
-            return
+        let q = query.trimmingCharacters(in: .whitespaces)
+        let result: Result<[ListingFeedItem], Error>
+        if q.isEmpty {
+            result = await deps.recommendationRepository.exploreListings(
+                publicBrowse: isGuestMode,
+                limit: 20,
+                offset: 0
+            )
+        } else if isGuestMode {
+            result = await deps.searchRepository.browseListings(q: q, limit: 40, offset: 0)
+        } else {
+            result = await deps.searchRepository.searchListings(q: q, limit: 40, offset: 0)
         }
-        let path = "api/v1/search/listings?q=\(query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query)&limit=40"
-        let urlString = AppEnvironment.apiPath(path)
-        guard let url = URL(string: urlString) else { return }
-        var req = URLRequest(url: url)
-        req.httpMethod = "GET"
-        do {
-            let (data, http) = try await deps.securedClient.data(for: req)
-            guard (200..<300).contains(http.statusCode) else { return }
-            items = try ListingFeedJsonParser.parseFeed(data)
-        } catch {
+        switch result {
+        case .success(let feed):
+            items = feed
+            loadError = false
+        case .failure:
             items = []
+            loadError = true
         }
+    }
+
+    func pullToRefresh(deps: AppDependencies, isGuestMode: Bool) async {
+        isRefreshing = true
+        defer { isRefreshing = false }
+        await refresh(deps: deps, isGuestMode: isGuestMode)
     }
 }

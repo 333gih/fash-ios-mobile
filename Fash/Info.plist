@@ -52,7 +52,17 @@
 				<string>fash</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.googleusercontent.apps</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>$(FASH_GOOGLE_URL_SCHEME)</string>
+			</array>
+		</dict>
 	</array>
+	<key>GIDClientID</key>
+	<string>$(FASH_GOOGLE_IOS_CLIENT_ID)</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>

@@ -2,11 +2,13 @@ import SwiftUI
 
 @main
 struct FashApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var deps = AppDependencies.shared
 
     init() {
         AppLocale.applyPersistedOrDefault()
         AppThemePreference.shared.loadPersisted()
+        GoogleSignInClients.configureIfNeeded()
     }
 
     var body: some Scene {

@@ -6,6 +6,9 @@ struct AuthSession: Codable, Equatable {
     var refreshToken: String
     var tokenType: String
     var userId: String?
+    var expiresInSeconds: Int64 = 0
+    var isNewUser: Bool = false
+    var unreadCount: Int64 = 0
 }
 
 /// Encrypted session storage (Android [AuthSessionStore]).

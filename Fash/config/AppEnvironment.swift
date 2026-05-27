@@ -24,6 +24,8 @@ enum AppEnvironment {
     static var coreApiUseLanguagePrefix: Bool { BuildConfig.coreApiUseLanguagePrefix }
     static var authApiUseLanguagePrefix: Bool { BuildConfig.authApiUseLanguagePrefix }
     static var googleWebClientId: String { BuildConfig.googleWebClientId }
+    static var googleIosClientId: String { BuildConfig.googleIosClientId }
+    static var googleUrlScheme: String { BuildConfig.googleUrlScheme }
     static var facebookLoginEnabled: Bool { BuildConfig.facebookLoginEnabled }
     static var listingShareBaseURL: String { BuildConfig.listingShareBaseURL }
     static var legalPortalBaseURL: String { BuildConfig.legalPortalBaseURL }

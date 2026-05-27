@@ -1,12 +1,30 @@
 import SwiftUI
 
+/// Brand wordmark — Android [FashBrandMarkText].
 struct FashBrandMarkText: View {
     var text: String = L10n.brandWordmark
+    var style: Font = FashBrandTypography.markBoldItalicMedium
+    var color: Color = FashColors.brandPrimary
 
     var body: some View {
         Text(text)
-            .font(FashTypography.displayLarge)
-            .italic()
-            .foregroundStyle(FashColors.brandPrimary)
+            .font(style)
+            .foregroundStyle(color)
+    }
+}
+
+/// `FASH.` + screen suffix — Android [FashScreenTitle].
+struct FashScreenTitle: View {
+    let suffix: String
+
+    var body: some View {
+        HStack(spacing: 10) {
+            FashBrandMarkText(style: FashBrandTypography.markBoldItalicMedium)
+            Text(suffix)
+                .font(FashTypography.titleLarge)
+                .fontWeight(.bold)
+                .foregroundStyle(FashColors.textPrimary)
+                .lineLimit(1)
+        }
     }
 }
