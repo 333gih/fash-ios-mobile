@@ -30,6 +30,9 @@ struct ChatDetailScreen: View {
         .task(id: conversationId) {
             await viewModel.load(conversationId: conversationId, deps: deps)
         }
+        .onDisappear {
+            viewModel.stopPolling()
+        }
     }
 
     private var headerBar: some View {

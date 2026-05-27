@@ -59,212 +59,6 @@ final class ChatRepository {
                 relativePath: "api/v1/chat/conversations/\(id)/messages?limit=\(limit)&offset=\(offset)",
                 client: client
             )
-            return .success(parseMessagesArray(data))
-        } catch {
-            return .failure(error)
-        }
-    }
-
-    func sendMessage(conversationId: String, text: String) async -> Result<ChatMessage, Error> {
-        guard let url = URL(string: AppEnvironment.apiPath("api/v1/chat/messages")) else {
-            return .failure(URLError(.badURL))
-        }
-        var req = URLRequest(url: url)
-        req.httpMethod = "POST"
-        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        let payload: [String: Any] = [
-            "conversation_id": conversationId,
-            "content": text,
-        ]
-        do {
-            req.httpBody = try JSONSerialization.data(withJSONObject: payload)
-            let (data, http) = try await client.data(for: req)
-            guard (200..<300).contains(http.statusCode) else {
-                throw CoreServiceHttpException(
-                    statusCode: http.statusCode,
-                    message: CoreServiceErrors.parseMessage(data: data, statusCode: http.statusCode)
-                )
-            }
-            return .success(parseSingleMessage(data))
-        } catch {
-            return .failure(error)
-        }
-    }
-
-    private func parseConversationDetail(_ data: Data) -> ConversationDetail {
-        let obj = (try? RepositoryHttp.jsonObject(data)) ?? [:]
-        let dataObj = (obj["data"] as? [String: Any]) ?? obj
-        let root = (dataObj["conversation"] as? [String: Any])
-            ?? (dataObj["Conversation"] as? [String: Any])
-            ?? dataObj
-        let myId = sessionStore.read()?.userId ?? ""
-        let convId = RepositoryHttp.optString(root, "ID", "id", "conversation_id")
-        let buyerId = RepositoryHttp.optString(root, "BuyerID", "buyer_id")
-        let sellerId = RepositoryHttp.optString(root, "SellerID", "seller_id")
-        let buyerObj = root["Buyer"] as? [String: Any] ?? root["buyer"] as? [String: Any]
-        let sellerObj = root["Seller"] as? [String: Any] ?? root["seller"] as? [String: Any]
-        let otherProfile: [String: Any]? = {
-            if !myId.isEmpty, myId == buyerId { return sellerObj }
-            if !myId.isEmpty, myId == sellerId { return buyerObj }
-            return sellerObj ?? buyerObj
-        }()
-        let otherUser = parseOtherUser(otherProfile ?? root["other_user"] as? [String: Any] ?? [:])
-        let listingObj = root["Listing"] as? [String: Any]
-            ?? root["listing"] as? [String: Any]
-            ?? root["product"] as? [String: Any]
-        let product = listingObj.map(parseProductCard)
-        let isBuyer: Bool = {
-            if !myId.isEmpty, !buyerId.isEmpty { return myId == buyerId }
-            return true
-        }()
-        let orderId = RepositoryHttp.optString(root, "order_id", "OrderID").nilIfEmpty
-        let offerCount = RepositoryHttp.optInt(root, "offer_count", "OfferCount")
-        let isClosed = RepositoryHttp.optBool(root, "is_closed", "IsClosed")
-        return ConversationDetail(
-            conversationId: convId,
-            otherUser: otherUser,
-            product: product,
-            isBuyer: isBuyer,
-            orderId: orderId,
-            offerCount: offerCount,
-            isClosed: isClosed
-        )
-    }
-
-    private func parseOtherUser(_ o: [String: Any]) -> ChatOtherUser {
-        ChatOtherUser(
-            userId: RepositoryHttp.optString(o, "UserID", "user_id", "id", "ID"),
-            displayName: RepositoryHttp.optString(o, "DisplayName", "display_name"),
-            username: RepositoryHttp.optString(o, "Username", "username"),
-            avatarUrl: RepositoryHttp.optString(o, "AvatarURL", "avatar_url")
-        )
-    }
-
-    private func parseProductCard(_ p: [String: Any]) -> ChatProductCard {
-        ChatProductCard(
-            listingId: RepositoryHttp.optString(p, "ID", "id"),
-            title: RepositoryHttp.optString(p, "Title", "title"),
-            priceVnd: RepositoryHttp.optLong(p, "Price", "price"),
-            imageUrl: RepositoryHttp.optString(p, "CoverImageURL", "cover_image_url", "image_url", "thumbnail_url"),
-            listingStatus: RepositoryHttp.optString(p, "status", "Status").isEmpty ? "active" : RepositoryHttp.optString(p, "status", "Status")
-        )
-    }
-
-    private func parseMessagesArray(_ data: Data) -> [ChatMessage] {
-        let rows = RepositoryHttp.jsonArray(data)
-        return rows.map(parseMessageObj).sorted { $0.timestamp < $1.timestamp }
-    }
-
-    private func parseSingleMessage(_ data: Data) -> ChatMessage {
-        let obj = (try? RepositoryHttp.jsonObject(data)) ?? [:]
-        let payload = (obj["data"] as? [String: Any]) ?? obj
-        return parseMessageObj(payload)
-    }
-
-    private func parseMessageObj(_ m: [String: Any]) -> ChatMessage {
-        let myId = sessionStore.read()?.userId ?? ""
-        let senderId = RepositoryHttp.optString(m, "SenderID", "sender_id")
-        let isFromMe: Bool = {
-            if let b = m["is_from_me"] as? Bool { return b }
-            if let b = m["from_me"] as? Bool { return b }
-            if !myId.isEmpty, !senderId.isEmpty { return senderId == myId }
-            return false
-        }()
-        let rawType = RepositoryHttp.optString(m, "MessageType", "message_type", "Type", "type")
-        let messageType = rawType.isEmpty ? "text" : rawType
-        let isRead: Bool = {
-            if m["ReadAt"] != nil || m["read_at"] != nil { return true }
-            return RepositoryHttp.optBool(m, "IsRead", "is_read")
-        }()
-        return ChatMessage(
-            messageId: RepositoryHttp.optString(m, "ID", "id", "message_id"),
-            text: RepositoryHttp.optString(m, "Content", "content", "text", "Text"),
-            isFromMe: isFromMe,
-            timestamp: RepositoryHttp.optString(m, "CreatedAt", "created_at", "timestamp", "sent_at"),
-            isRead: isRead,
-            senderId: senderId,
-            messageType: messageType,
-            offerAmountVnd: RepositoryHttp.optLong(m, "OfferAmountVND", "offer_amount_vnd"),
-            offerStatus: RepositoryHttp.optString(m, "OfferStatus", "offer_status").isEmpty ? "pending" : RepositoryHttp.optString(m, "OfferStatus", "offer_status"),
-            outboundState: .none,
-            systemSubtype: RepositoryHttp.optString(m, "system_subtype", "SystemSubtype").nilIfEmpty
-        )
-    }
-
-    private func parseConversations(_ data: Data) -> [ConversationItem] {
-        RepositoryHttp.jsonArray(data).map { parseConversationItem($0) }
-    }
-
-    private func parseConversationItem(_ o: [String: Any]) -> ConversationItem {
-        let myId = sessionStore.read()?.userId ?? ""
-        let convId = RepositoryHttp.optString(o, "ID", "id", "conversation_id")
-        let buyerId = RepositoryHttp.optString(o, "BuyerID", "buyer_id")
-        let sellerId = RepositoryHttp.optString(o, "SellerID", "seller_id")
-        let buyerObj = o["Buyer"] as? [String: Any] ?? o["buyer"] as? [String: Any]
-        let sellerObj = o["Seller"] as? [String: Any] ?? o["seller"] as? [String: Any]
-        let otherProfile: [String: Any]? = {
-            if !myId.isEmpty, myId == buyerId { return sellerObj }
-            if !myId.isEmpty, myId == sellerId { return buyerObj }
-            return sellerObj ?? buyerObj
-        }()
-        let listingObj = o["Listing"] as? [String: Any]
-            ?? o["listing"] as? [String: Any]
-            ?? o["product"] as? [String: Any]
-        var lastMsgText = ""
-        var lastMsgType = "text"
-        if let lm = o["LastMessage"] as? [String: Any] ?? o["last_message"] as? [String: Any] {
-            lastMsgText = RepositoryHttp.optString(lm, "Content", "content", "Text", "text")
-            lastMsgType = RepositoryHttp.optString(lm, "MessageType", "message_type").isEmpty ? "text" : RepositoryHttp.optString(lm, "MessageType", "message_type")
-        } else {
-            lastMsgText = RepositoryHttp.optString(o, "LastMessage", "last_message")
-        }
-        let otherId = RepositoryHttp.optString(otherProfile ?? [:], "UserID", "user_id", "id", "ID")
-        let username = RepositoryHttp.optString(otherProfile ?? [:], "Username", "username")
-        let displayName = RepositoryHttp.optString(otherProfile ?? [:], "DisplayName", "display_name")
-        let avatarUrl = RepositoryHttp.optString(otherProfile ?? [:], "AvatarURL", "avatar_url")
-        let productId = RepositoryHttp.optString(listingObj ?? [:], "ID", "id")
-        let productTitle = RepositoryHttp.optString(listingObj ?? [:], "Title", "title")
-        let productPrice = RepositoryHttp.optLong(listingObj ?? [:], "Price", "price")
-        let thumb = RepositoryHttp.optString(listingObj ?? [:], "CoverImageURL", "cover_image_url", "thumbnail_url")
-        let timestamp = RepositoryHttp.optString(o, "LastMessageAt", "last_message_at", "UpdatedAt", "updated_at")
-        let hasUnread = RepositoryHttp.optBool(o, "has_unread", "HasUnread")
-        let unreadCount = RepositoryHttp.optInt(o, "unread_count", "UnreadCount")
-        return ConversationItem(
-            conversationId: convId,
-            otherUserId: otherId,
-            username: username,
-            displayName: displayName.isEmpty ? username : displayName,
-            avatarUrl: avatarUrl,
-            lastMessageText: lastMsgText,
-            lastMessageType: lastMsgType,
-            timestamp: timestamp,
-            productThumbnailUrl: thumb,
-            productTitle: productTitle,
-            productId: productId,
-            productPrice: productPrice,
-            hasUnread: hasUnread,
-            unreadCount: unreadCount
-        )
-    }
-
-    func getConversationDetail(conversationId: String) async -> Result<ConversationDetail, Error> {
-        do {
-            let data = try await RepositoryHttp.executeCoreGet(
-                relativePath: "api/v1/chat/conversations/\(conversationId)",
-                client: client
-            )
-            return .success(parseConversationDetail(data))
-        } catch {
-            return .failure(error)
-        }
-    }
-
-    func getMessages(conversationId: String, limit: Int = 50, offset: Int = 0) async -> Result<[ChatMessage], Error> {
-        do {
-            let data = try await RepositoryHttp.executeCoreGet(
-                relativePath: "api/v1/chat/conversations/\(conversationId)/messages?limit=\(limit)&offset=\(offset)",
-                client: client
-            )
             return .success(parseMessages(data))
         } catch {
             return .failure(error)
@@ -344,40 +138,34 @@ final class ChatRepository {
     }
 
     private func parseConversationDetail(_ data: Data) -> ConversationDetail {
-        guard let root = try? RepositoryHttp.jsonObject(data) else {
-            return ConversationDetail(
-                conversationId: "",
-                otherUser: ChatOtherUser(userId: "", displayName: "", username: "", avatarUrl: ""),
-                product: nil,
-                isBuyer: true,
-                orderId: nil,
-                offerCount: 0,
-                isClosed: false
-            )
-        }
-        let dataObj = (root["data"] as? [String: Any]) ?? root
-        let obj = (dataObj["conversation"] as? [String: Any]) ?? dataObj
-        let convId = RepositoryHttp.optString(obj, "ID", "id", "conversation_id")
+        let obj = (try? RepositoryHttp.jsonObject(data)) ?? [:]
+        let dataObj = (obj["data"] as? [String: Any]) ?? obj
+        let root = (dataObj["conversation"] as? [String: Any])
+            ?? (dataObj["Conversation"] as? [String: Any])
+            ?? dataObj
         let myId = sessionStore.read()?.userId ?? ""
-        let buyerId = RepositoryHttp.optString(obj, "BuyerID", "buyer_id")
-        let sellerId = RepositoryHttp.optString(obj, "SellerID", "seller_id")
-        let buyerObj = obj["Buyer"] as? [String: Any] ?? obj["buyer"] as? [String: Any]
-        let sellerObj = obj["Seller"] as? [String: Any] ?? obj["seller"] as? [String: Any]
+        let convId = RepositoryHttp.optString(root, "ID", "id", "conversation_id")
+        let buyerId = RepositoryHttp.optString(root, "BuyerID", "buyer_id")
+        let sellerId = RepositoryHttp.optString(root, "SellerID", "seller_id")
+        let buyerObj = root["Buyer"] as? [String: Any] ?? root["buyer"] as? [String: Any]
+        let sellerObj = root["Seller"] as? [String: Any] ?? root["seller"] as? [String: Any]
         let otherProfile: [String: Any]? = {
             if !myId.isEmpty, myId == buyerId { return sellerObj }
             if !myId.isEmpty, myId == sellerId { return buyerObj }
-            return sellerObj ?? buyerObj ?? obj["other_user"] as? [String: Any]
+            return sellerObj ?? buyerObj
         }()
-        let otherUser = parseOtherUser(otherProfile ?? [:])
-        let listingObj = obj["Listing"] as? [String: Any] ?? obj["listing"] as? [String: Any] ?? obj["product"] as? [String: Any]
+        let otherUser = parseOtherUser(otherProfile ?? root["other_user"] as? [String: Any] ?? [:])
+        let listingObj = root["Listing"] as? [String: Any]
+            ?? root["listing"] as? [String: Any]
+            ?? root["product"] as? [String: Any]
         let product = listingObj.map(parseProductCard)
         let isBuyer: Bool = {
             if !myId.isEmpty, !buyerId.isEmpty { return myId == buyerId }
             return true
         }()
-        let orderId = RepositoryHttp.optString(obj, "order_id", "OrderID").nilIfEmpty
-        let offerCount = RepositoryHttp.optInt(obj, "offer_count", "OfferCount")
-        let isClosed = RepositoryHttp.optBool(obj, "is_closed", "IsClosed")
+        let orderId = RepositoryHttp.optString(root, "order_id", "OrderID").nilIfEmpty
+        let offerCount = RepositoryHttp.optInt(root, "offer_count", "OfferCount")
+        let isClosed = RepositoryHttp.optBool(root, "is_closed", "IsClosed")
         return ConversationDetail(
             conversationId: convId,
             otherUser: otherUser,
@@ -387,14 +175,6 @@ final class ChatRepository {
             offerCount: offerCount,
             isClosed: isClosed
         )
-    }
-
-    private func parseMessages(_ data: Data) -> [ChatMessage] {
-        let rows = RepositoryHttp.jsonArray(data)
-        if !rows.isEmpty { return rows.map(parseMessageObj) }
-        guard let root = try? RepositoryHttp.jsonObject(data) else { return [] }
-        if let arr = root["messages"] as? [[String: Any]] { return arr.map(parseMessageObj) }
-        return []
     }
 
     private func parseOtherUser(_ o: [String: Any]) -> ChatOtherUser {
@@ -408,7 +188,7 @@ final class ChatRepository {
 
     private func parseProductCard(_ p: [String: Any]) -> ChatProductCard {
         let imageUrls = p["ImageURLs"] as? [String] ?? p["image_urls"] as? [String]
-        let cover = RepositoryHttp.optString(p, "CoverImageURL", "cover_image_url", "thumbnail_url")
+        let cover = RepositoryHttp.optString(p, "CoverImageURL", "cover_image_url", "thumbnail_url", "image_url")
         let imageUrl = cover.isEmpty ? (imageUrls?.first ?? "") : cover
         let status = RepositoryHttp.optString(p, "Status", "status", "listing_status").lowercased().ifEmpty("active")
         return ChatProductCard(
@@ -418,6 +198,24 @@ final class ChatRepository {
             imageUrl: imageUrl,
             listingStatus: status
         )
+    }
+
+    private func parseMessages(_ data: Data) -> [ChatMessage] {
+        let rows = RepositoryHttp.jsonArray(data)
+        if !rows.isEmpty {
+            return rows.map(parseMessageObj).sorted { $0.timestamp < $1.timestamp }
+        }
+        guard let root = try? RepositoryHttp.jsonObject(data) else { return [] }
+        if let arr = root["messages"] as? [[String: Any]] {
+            return arr.map(parseMessageObj).sorted { $0.timestamp < $1.timestamp }
+        }
+        return []
+    }
+
+    private func parseSingleMessage(_ data: Data) -> ChatMessage {
+        let obj = (try? RepositoryHttp.jsonObject(data)) ?? [:]
+        let payload = (obj["data"] as? [String: Any]) ?? obj
+        return parseMessageObj(payload)
     }
 
     private func parseMessageObj(_ m: [String: Any]) -> ChatMessage {
@@ -438,7 +236,7 @@ final class ChatRepository {
         }()
         return ChatMessage(
             messageId: RepositoryHttp.optString(m, "ID", "id", "message_id"),
-            text: RepositoryHttp.optString(m, "Content", "content", "text"),
+            text: RepositoryHttp.optString(m, "Content", "content", "text", "Text"),
             isFromMe: isFromMe,
             timestamp: RepositoryHttp.optString(m, "CreatedAt", "created_at", "timestamp", "sent_at"),
             isRead: isRead,
@@ -450,12 +248,61 @@ final class ChatRepository {
             systemSubtype: systemSubtype
         )
     }
-}
 
-private extension String {
-    var nilIfEmpty: String? {
-        let t = trimmingCharacters(in: .whitespaces)
-        return t.isEmpty ? nil : t
+    private func parseConversations(_ data: Data) -> [ConversationItem] {
+        RepositoryHttp.jsonArray(data).map { parseConversationItem($0) }
+    }
+
+    private func parseConversationItem(_ o: [String: Any]) -> ConversationItem {
+        let myId = sessionStore.read()?.userId ?? ""
+        let convId = RepositoryHttp.optString(o, "ID", "id", "conversation_id")
+        let buyerId = RepositoryHttp.optString(o, "BuyerID", "buyer_id")
+        let sellerId = RepositoryHttp.optString(o, "SellerID", "seller_id")
+        let buyerObj = o["Buyer"] as? [String: Any] ?? o["buyer"] as? [String: Any]
+        let sellerObj = o["Seller"] as? [String: Any] ?? o["seller"] as? [String: Any]
+        let otherProfile: [String: Any]? = {
+            if !myId.isEmpty, myId == buyerId { return sellerObj }
+            if !myId.isEmpty, myId == sellerId { return buyerObj }
+            return sellerObj ?? buyerObj
+        }()
+        let listingObj = o["Listing"] as? [String: Any]
+            ?? o["listing"] as? [String: Any]
+            ?? o["product"] as? [String: Any]
+        var lastMsgText = ""
+        var lastMsgType = "text"
+        if let lm = o["LastMessage"] as? [String: Any] ?? o["last_message"] as? [String: Any] {
+            lastMsgText = RepositoryHttp.optString(lm, "Content", "content", "Text", "text")
+            lastMsgType = RepositoryHttp.optString(lm, "MessageType", "message_type").isEmpty ? "text" : RepositoryHttp.optString(lm, "MessageType", "message_type")
+        } else {
+            lastMsgText = RepositoryHttp.optString(o, "LastMessage", "last_message")
+        }
+        let otherId = RepositoryHttp.optString(otherProfile ?? [:], "UserID", "user_id", "id", "ID")
+        let username = RepositoryHttp.optString(otherProfile ?? [:], "Username", "username")
+        let displayName = RepositoryHttp.optString(otherProfile ?? [:], "DisplayName", "display_name")
+        let avatarUrl = RepositoryHttp.optString(otherProfile ?? [:], "AvatarURL", "avatar_url")
+        let productId = RepositoryHttp.optString(listingObj ?? [:], "ID", "id")
+        let productTitle = RepositoryHttp.optString(listingObj ?? [:], "Title", "title")
+        let productPrice = RepositoryHttp.optLong(listingObj ?? [:], "Price", "price")
+        let thumb = RepositoryHttp.optString(listingObj ?? [:], "CoverImageURL", "cover_image_url", "thumbnail_url")
+        let timestamp = RepositoryHttp.optString(o, "LastMessageAt", "last_message_at", "UpdatedAt", "updated_at")
+        let hasUnread = RepositoryHttp.optBool(o, "has_unread", "HasUnread")
+        let unreadCount = RepositoryHttp.optInt(o, "unread_count", "UnreadCount")
+        return ConversationItem(
+            conversationId: convId,
+            otherUserId: otherId,
+            username: username,
+            displayName: displayName.isEmpty ? username : displayName,
+            avatarUrl: avatarUrl,
+            lastMessageText: lastMsgText,
+            lastMessageType: lastMsgType,
+            timestamp: timestamp,
+            productThumbnailUrl: thumb,
+            productTitle: productTitle,
+            productId: productId,
+            productPrice: productPrice,
+            hasUnread: hasUnread,
+            unreadCount: unreadCount
+        )
     }
 }
 

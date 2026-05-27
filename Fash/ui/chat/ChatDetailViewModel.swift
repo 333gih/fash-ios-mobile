@@ -15,8 +15,9 @@ final class ChatDetailViewModel {
     private var pollTask: Task<Void, Never>?
     private var loadedConversationId: String?
 
-    deinit {
+    func stopPolling() {
         pollTask?.cancel()
+        pollTask = nil
     }
 
     func load(conversationId: String, deps: AppDependencies) async {
