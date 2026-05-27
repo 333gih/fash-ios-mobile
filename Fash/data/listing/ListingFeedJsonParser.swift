@@ -20,6 +20,8 @@ struct ListingFeedItem: Identifiable, Hashable {
     let isLiked: Bool
     let isSaved: Bool
     let onsiteInspectionCommitment: Bool
+    let listingStatus: String?
+    let descriptionText: String
 
     /// Legacy aliases
     var price: Int64 { priceVnd }
@@ -44,7 +46,9 @@ struct ListingFeedItem: Identifiable, Hashable {
         createdAt: String? = nil,
         isLiked: Bool = false,
         isSaved: Bool = false,
-        onsiteInspectionCommitment: Bool = false
+        onsiteInspectionCommitment: Bool = false,
+        listingStatus: String? = nil,
+        descriptionText: String = ""
     ) {
         self.id = id
         self.title = title
@@ -65,6 +69,8 @@ struct ListingFeedItem: Identifiable, Hashable {
         self.isLiked = isLiked
         self.isSaved = isSaved
         self.onsiteInspectionCommitment = onsiteInspectionCommitment
+        self.listingStatus = listingStatus
+        self.descriptionText = descriptionText
     }
 
     /// Convenience for legacy call sites
@@ -136,7 +142,10 @@ enum ListingFeedJsonParser {
             createdAt: (row["created_at"] as? String) ?? (row["CreatedAt"] as? String),
             isLiked: (row["is_liked"] as? Bool) ?? (row["IsLiked"] as? Bool) ?? false,
             isSaved: (row["is_saved"] as? Bool) ?? (row["IsSaved"] as? Bool) ?? false,
-            onsiteInspectionCommitment: (row["onsite_inspection_commitment"] as? Bool) ?? (row["OnsiteInspectionCommitment"] as? Bool) ?? false
+            onsiteInspectionCommitment: (row["onsite_inspection_commitment"] as? Bool) ?? (row["OnsiteInspectionCommitment"] as? Bool) ?? false,
+            listingStatus: ((row["status"] as? String) ?? (row["Status"] as? String) ?? (row["listing_status"] as? String))?
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+            descriptionText: (row["description"] as? String) ?? (row["Description"] as? String) ?? ""
         )
     }
 

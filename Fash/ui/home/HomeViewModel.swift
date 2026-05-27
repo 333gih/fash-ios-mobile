@@ -8,35 +8,69 @@ final class HomeViewModel {
     var isRefreshing = false
     var items: [ListingFeedItem] = []
     var errorMessage: String?
-    /// Mirrors Android default home feed tab after guest browse / sign-out.
     var selectedFeedTabKey = "hunt_today"
+    var featuredSellers: [FeaturedSellerItem] = []
+    var promoSlides: [AppAdvertisingSlideItem] = []
+
+    private var sections = HomeRecommendationSections()
 
     func onGuestBrowseEntered() {
         selectedFeedTabKey = "hunt_today"
         items = []
         errorMessage = nil
+        featuredSellers = []
     }
 
     func clearCachesForSignedOutUser() {
         onGuestBrowseEntered()
     }
 
+    var selectedFeedTab: HomeFeedTab {
+        HomeFeedTab(rawValue: selectedFeedTabKey) ?? .huntToday
+    }
+
+    func selectFeedTab(_ tab: HomeFeedTab) {
+        selectedFeedTabKey = tab.rawValue
+        items = itemsForTab(sections, tabKey: tab.rawValue)
+    }
+
+    func normalizeSelectedFeedTab(isGuestMode: Bool) {
+        let allowed = HomeFeedTab.tabsFor(isGuestBrowse: isGuestMode)
+        if !allowed.contains(selectedFeedTab) {
+            selectFeedTab(.huntToday)
+        }
+    }
+
     func refresh(deps: AppDependencies, isGuestMode: Bool = false) async {
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
-        let sectionsResult = await deps.recommendationRepository.homeSections(publicBrowse: isGuestMode)
-        switch sectionsResult {
-        case .success(let sections):
-            items = itemsForTab(sections)
-            if items.isEmpty, !isGuestMode {
+
+        normalizeSelectedFeedTab(isGuestMode: isGuestMode)
+
+        async let sectionsResult = deps.recommendationRepository.homeSections(publicBrowse: isGuestMode)
+        async let sellersResult = deps.searchRepository.getFeaturedSellers(limit: 12, publicBrowse: isGuestMode)
+        async let slidesResult = deps.advertisingRepository.getSlides(publicBrowse: isGuestMode)
+
+        switch await sectionsResult {
+        case .success(let loaded):
+            sections = loaded
+            items = itemsForTab(loaded, tabKey: selectedFeedTabKey)
+            if items.isEmpty, !isGuestMode, selectedFeedTabKey == "following" {
                 await loadFollowFeedFallback(deps: deps)
             }
         case .failure(let error):
             errorMessage = error.localizedDescription
-            if !isGuestMode {
+            if !isGuestMode, selectedFeedTabKey == "following" {
                 await loadFollowFeedFallback(deps: deps)
             }
+        }
+
+        if case .success(let sellers) = await sellersResult {
+            featuredSellers = sellers
+        }
+        if case .success(let slides) = await slidesResult {
+            promoSlides = slides.items
         }
     }
 
@@ -46,16 +80,16 @@ final class HomeViewModel {
         await refresh(deps: deps, isGuestMode: isGuestMode)
     }
 
-    private func itemsForTab(_ sections: HomeRecommendationSections) -> [ListingFeedItem] {
-        switch selectedFeedTabKey {
+    private func itemsForTab(_ sections: HomeRecommendationSections, tabKey: String) -> [ListingFeedItem] {
+        switch tabKey {
         case "for_you":
             return sections.forYou
         case "style_picks":
             return sections.stylePicks
-        case "continue_browsing":
-            return sections.continueBrowsing
-        case "similar_to_saved":
+        case "similar_saved":
             return sections.similarToSaved
+        case "following":
+            return sections.continueBrowsing
         default:
             if !sections.huntToday.isEmpty { return sections.huntToday }
             if !sections.forYou.isEmpty { return sections.forYou }

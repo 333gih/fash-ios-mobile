@@ -78,3 +78,56 @@ final class OrderRepository {
         )
     }
 }
+
+extension OrderRepository {
+    func createOrder(listingId: String, amountVnd: Int64, shippingFeeVnd: Int64 = 0) async -> Result<String, Error> {
+        let body: [String: Any] = [
+            "listing_id": listingId.trimmingCharacters(in: .whitespacesAndNewlines),
+            "amount_vnd": amountVnd,
+            "shipping_fee_vnd": max(0, shippingFeeVnd),
+        ]
+        do {
+            let data = try await postJSON(relativePath: "api/v1/orders", body: body)
+            let root = try RepositoryHttp.jsonObject(data)
+            let payload = (root["data"] as? [String: Any]) ?? root
+            let orderId = RepositoryHttp.optString(payload, "id", "ID", "order_id")
+                .ifEmpty(RepositoryHttp.optString(root, "id", "ID", "order_id"))
+            guard !orderId.isEmpty else { return .failure(URLError(.cannotParseResponse)) }
+            return .success(orderId)
+        } catch {
+            return .failure(error)
+        }
+    }
+
+    private func postJSON(relativePath: String, body: [String: Any]) async throws -> Data {
+        let urls = AppEnvironment.coreApiCandidateURLs(relativePath)
+        var lastError: Error = URLError(.cannotConnectToHost)
+        let payload = try JSONSerialization.data(withJSONObject: body)
+        for urlString in urls {
+            guard let url = URL(string: urlString) else { continue }
+            var req = URLRequest(url: url)
+            req.httpMethod = "POST"
+            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            req.httpBody = payload
+            do {
+                let (data, http) = try await client.data(for: req)
+                guard (200..<300).contains(http.statusCode) else {
+                    throw CoreServiceHttpException(
+                        statusCode: http.statusCode,
+                        message: CoreServiceErrors.parseMessage(data: data, statusCode: http.statusCode)
+                    )
+                }
+                return data
+            } catch {
+                lastError = error
+            }
+        }
+        throw lastError
+    }
+}
+
+private extension String {
+    func ifEmpty(_ fallback: String) -> String {
+        isEmpty ? fallback : self
+    }
+}

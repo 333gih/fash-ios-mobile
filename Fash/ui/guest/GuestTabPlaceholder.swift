@@ -18,6 +18,7 @@ struct GuestTabPlaceholder: View {
 
     private var title: String {
         switch tab {
+        case .orders: return L10n.guestTabOrdersTitle
         case .post: return L10n.guestTabPostTitle
         case .chat: return L10n.guestTabChatTitle
         case .profile: return L10n.guestTabProfileTitle
@@ -27,6 +28,7 @@ struct GuestTabPlaceholder: View {
 
     private var bodyText: String {
         switch tab {
+        case .orders: return L10n.guestTabOrdersBody
         case .post: return L10n.guestTabPostBody
         case .chat: return L10n.guestTabChatBody
         case .profile: return L10n.guestTabProfileBody

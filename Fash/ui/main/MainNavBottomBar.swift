@@ -4,6 +4,7 @@ import SwiftUI
 struct MainNavBottomBar: View {
     @Binding var selectedTab: MainTab
     var chatUnreadCount: Int = 0
+    var isPostListingFlow: Bool = false
     var onTabChange: (MainTab) -> Void
     var onTabReselected: ((MainTab) -> Void)? = nil
 
@@ -13,21 +14,25 @@ struct MainNavBottomBar: View {
     private let slotMinHeight: CGFloat = 56
 
     var body: some View {
-        VStack(spacing: 0) {
-            Divider()
-                .overlay(FashColors.outlineMuted.opacity(0.72))
-            HStack(alignment: .center, spacing: 0) {
-                sideItem(tab: .home)
-                sideItem(tab: .explore)
-                postFab
-                sideItem(tab: .chat)
-                sideItem(tab: .profile)
+        if isPostListingFlow {
+            EmptyView()
+        } else {
+            VStack(spacing: 0) {
+                Divider()
+                    .overlay(FashColors.outlineMuted.opacity(0.72))
+                HStack(alignment: .center, spacing: 0) {
+                    sideItem(tab: .home)
+                    sideItem(tab: .orders)
+                    postFab
+                    sideItem(tab: .chat)
+                    sideItem(tab: .profile)
+                }
+                .frame(minHeight: 72)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 10)
             }
-            .frame(minHeight: 72)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 10)
+            .background(FashColors.surfaceContainerHighest)
         }
-        .background(FashColors.surfaceContainerHighest)
     }
 
     @ViewBuilder
@@ -49,7 +54,7 @@ struct MainNavBottomBar: View {
                     if tab == .chat, chatUnreadCount > 0 {
                         Text(chatUnreadCount > 99 ? "99+" : "\(chatUnreadCount)")
                             .font(FashTypography.labelSmall)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(FashColors.readableOnBrandPrimary)
                             .padding(.horizontal, 5)
                             .padding(.vertical, 2)
                             .background(FashColors.brandPrimary)
@@ -87,7 +92,7 @@ struct MainNavBottomBar: View {
                         .shadow(color: FashColors.brandPrimary.opacity(0.16), radius: selected ? 8 : 5, y: 2)
                     Image(systemName: "plus")
                         .font(.system(size: 26, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(FashColors.readableOnBrandPrimary)
                 }
                 Text(L10n.navPostFabLabel)
                     .font(FashTypography.labelSmall)
@@ -104,7 +109,7 @@ struct MainNavBottomBar: View {
     private func icon(for tab: MainTab) -> String {
         switch tab {
         case .home: return "house.fill"
-        case .explore: return "safari.fill"
+        case .orders: return "bag.fill"
         case .post: return "plus"
         case .chat: return "bubble.left.and.bubble.right.fill"
         case .profile: return "person.fill"
@@ -114,7 +119,7 @@ struct MainNavBottomBar: View {
     private func label(for tab: MainTab) -> String {
         switch tab {
         case .home: return L10n.navHome
-        case .explore: return L10n.navExplore
+        case .orders: return L10n.navOrders
         case .post: return L10n.navPost
         case .chat: return L10n.navChat
         case .profile: return L10n.navProfile

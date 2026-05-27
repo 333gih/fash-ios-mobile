@@ -15,10 +15,24 @@ struct NotificationScreen: View {
         NavigationStack {
             Group {
                 if let detailId = viewModel.selectedDetailId ?? detailId {
-                    NotificationDetailScreen(notificationId: detailId, onDismiss: {
-                        viewModel.closeDetail()
-                        if self.detailId != nil { onDismiss() }
-                    })
+                    if let item = viewModel.selectedDetailItem ?? viewModel.items.first(where: { $0.id == detailId }) {
+                        NotificationDetailScreen(
+                            item: item,
+                            onDismiss: {
+                                viewModel.closeDetail()
+                                if self.detailId != nil { onDismiss() }
+                            }
+                        )
+                    } else {
+                        ProgressView()
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .task {
+                                await viewModel.refresh()
+                                if let item = viewModel.items.first(where: { $0.id == detailId }) {
+                                    viewModel.openDetail(item)
+                                }
+                            }
+                    }
                 } else if viewModel.selectedGroup == nil {
                     groupList
                 } else {
@@ -88,7 +102,7 @@ struct NotificationScreen: View {
             } else {
                 ForEach(viewModel.items) { item in
                     Button {
-                        viewModel.openDetail(item.id)
+                        viewModel.openDetail(item)
                         Task { await viewModel.markReadIfNeeded(item) }
                     } label: {
                         notificationRow(item)

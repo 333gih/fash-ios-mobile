@@ -4,14 +4,14 @@ import Observation
 /// Mirrors MainActivity navigation state (tabs + overlays).
 enum MainTab: Int, CaseIterable {
     case home = 0
-    case explore = 1
+    case orders = 1
     case post = 2
     case chat = 3
     case profile = 4
 
     var isGuestLocked: Bool {
         switch self {
-        case .post, .chat, .profile: return true
+        case .orders, .post, .chat, .profile: return true
         default: return false
         }
     }
@@ -42,6 +42,8 @@ final class AppRouter {
     var setupGateFetchFailed = false
     var onboardingStep: OnboardingStep?
     var selectedTab: MainTab = .home
+    var showExploreOverlay = false
+    var exploreSearchExpanded = false
 
     // MainNav overlays
     var showNotificationScreen = false
@@ -65,6 +67,7 @@ final class AppRouter {
     var showHomeDeliveringScreen = false
     var showSellerPackagesScreen = false
     var showFollowConnections = false
+    var followConnectionsInitialTab = 0
     var showFeaturedSellersAll = false
     var showInviteFriendsScreen = false
     var showEditorialListScreen = false

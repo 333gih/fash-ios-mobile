@@ -1,8 +1,10 @@
 import SwiftUI
+import UIKit
 
 /// Semantic colors for SwiftUI (Android [FashColors]).
 enum FashColors {
     static var brandPrimary: Color { FashColorTokens.LightEditorial.brandPrimary }
+    static var brandSecondary: Color { FashColorTokens.LightEditorial.brandPrimaryDeep }
     static var screen: Color {
         FashThemeState.shared.isDark
             ? FashColorTokens.Dark.screen
@@ -33,6 +35,28 @@ enum FashColors {
     }
     static var error: Color {
         FashThemeState.shared.isDark ? FashColorTokens.Dark.error : FashColorTokens.LightEditorial.error
+    }
+
+    /// Foreground readable on [brandPrimary] — Android [fashReadableOn].
+    static var readableOnBrandPrimary: Color {
+        FashColorTokens.LightEditorial.brandPrimary.fashReadableOn()
+    }
+}
+
+extension Color {
+    func fashReadableOn() -> Color {
+        relativeLuminance > 0.5 ? FashColors.textPrimary : .white
+    }
+
+    private var relativeLuminance: Double {
+        func channel(_ value: Double) -> Double {
+            value <= 0.03928 ? value / 12.92 : pow((value + 0.055) / 1.055, 2.4)
+        }
+        let ui = UIColor(self)
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        ui.getRed(&r, green: &g, blue: &b, alpha: &a)
+        let lr = channel(Double(r)), lg = channel(Double(g)), lb = channel(Double(b))
+        return 0.2126 * lr + 0.7152 * lg + 0.0722 * lb
     }
 }
 

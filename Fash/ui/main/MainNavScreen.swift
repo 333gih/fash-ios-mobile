@@ -10,13 +10,22 @@ struct MainNavScreen: View {
     @State private var exploreVM = ExploreViewModel()
     @State private var profileVM = ProfileViewModel()
     @State private var chatVM = ChatViewModel()
+    @State private var ordersVM = OrdersViewModel()
+    @State private var postVM = PostViewModel()
+    @State private var addressBookVM = AddressBookViewModel()
     @State private var listingPreview = ListingPreviewStore()
+
+    private var isPostListingFlow: Bool { router.selectedTab == .post }
 
     var body: some View {
         VStack(spacing: 0) {
-            topBar
+            if !isPostListingFlow {
+                topBar
+            }
             tabContent.frame(maxWidth: .infinity, maxHeight: .infinity)
-            bottomBar
+            if !isPostListingFlow {
+                bottomBar
+            }
         }
         .background(FashColors.screen)
         .sheet(item: $listingPreview.state, onDismiss: { listingPreview.close() }) { preview in
@@ -63,9 +72,18 @@ struct MainNavScreen: View {
                         router.loginStep = .email
                     }
                 },
+                onLogoutAll: {
+                    Task {
+                        homeVM.clearCachesForSignedOutUser()
+                        router.selectedTab = .home
+                        await deps.authManager.logoutAll()
+                        router.showSettingsScreen = false
+                        router.loginStep = .email
+                    }
+                },
                 onOpenOrders: {
                     router.showSettingsScreen = false
-                    router.showOrdersScreen = true
+                    router.selectedTab = .orders
                 },
                 onOpenAddresses: {
                     router.showSettingsScreen = false
@@ -80,6 +98,19 @@ struct MainNavScreen: View {
                     router.showChangePasswordScreen = true
                 }
             )
+        }
+        .fullScreenCover(isPresented: $router.showExploreOverlay) {
+            ExploreOverlayHost(
+                viewModel: exploreVM,
+                listingPreview: listingPreview,
+                isGuestMode: isGuestMode,
+                expandSearchOnAppear: router.exploreSearchExpanded,
+                onClose: {
+                    router.showExploreOverlay = false
+                    router.exploreSearchExpanded = false
+                }
+            )
+            .environment(\.locale, AppLocale.locale)
         }
         .overlay(alignment: .top) {
             if let banner = deps.inAppNotification {
@@ -105,64 +136,62 @@ struct MainNavScreen: View {
             }
         }
         .onChange(of: deps.inboxOpenRequestGeneration) { _, _ in
-            router.showNotificationScreen = true
+            if !isGuestMode {
+                router.showNotificationScreen = true
+            }
         }
         .onChange(of: router.selectedTab) { _, tab in
             guard !isGuestMode else { return }
-            if tab == .profile {
+            switch tab {
+            case .profile:
                 Task { await profileVM.refreshIfStale(deps: deps) }
-            } else if tab == .chat {
+            case .chat:
                 Task { await chatVM.refresh(deps: deps) }
-            } else if tab == .explore {
-                Task { await exploreVM.refresh(deps: deps, isGuestMode: isGuestMode) }
+            case .orders:
+                Task { await ordersVM.refresh(deps: deps) }
+            default:
+                break
             }
         }
     }
 
     @ViewBuilder
     private var topBar: some View {
-        HStack(spacing: 0) {
-            FashScreenTitle(suffix: headerSuffix)
-            Spacer(minLength: 10)
-            if router.selectedTab == .home {
-                FashAnimatedSearchIconButton(animateHint: !router.featureTourActive) {
-                    router.selectedTab = .explore
-                }
-            }
-            if isGuestMode {
-                Button(L10n.guestTopbarSignIn) {
-                    onRequestSignIn?(L10n.guestLoginReasonTopbar)
-                }
-                .font(FashTypography.labelLarge)
-            }
-            Button { router.showNotificationScreen = true } label: {
-                Image(systemName: "bell")
-                    .font(.system(size: 22))
-                    .foregroundStyle(FashColors.textPrimary)
-                    .frame(width: 48, height: 48)
-            }
-            Button { router.showOrdersScreen = true } label: {
-                Image(systemName: "bag")
-                    .font(.system(size: 22))
-                    .foregroundStyle(FashColors.textPrimary)
-                    .frame(width: 48, height: 48)
-            }
-            Button { router.showSettingsScreen = true } label: {
-                Image(systemName: "gearshape")
-                    .font(.system(size: 22))
-                    .foregroundStyle(FashColors.textPrimary)
-                    .frame(width: 48, height: 48)
-            }
+        switch router.selectedTab {
+        case .home:
+            HomeTopBar(
+                animateSearch: !router.featureTourActive,
+                showGuestSignIn: isGuestMode,
+                onSearchClick: openExploreSearch,
+                onNotificationsClick: openNotifications
+            )
+        case .profile:
+            ProfileTopBar(
+                showGuestSignIn: isGuestMode,
+                onSearchClick: openExploreSearch,
+                onNotificationsClick: openNotifications,
+                onGuestSignIn: { onRequestSignIn?(L10n.guestLoginReasonTopbar) },
+                onLogout: logout,
+                onOpenSettings: { router.showSettingsScreen = true },
+                isLoggingOut: router.isLoggingOut
+            )
+        case .orders, .chat:
+            MainTopBar(
+                suffix: headerSuffix,
+                showGuestSignIn: isGuestMode,
+                onSearchClick: openExploreSearch,
+                onNotificationsClick: openNotifications,
+                onGuestSignIn: { onRequestSignIn?(L10n.guestLoginReasonTopbar) }
+            )
+        case .post:
+            EmptyView()
         }
-        .padding(.leading, 16)
-        .padding(.trailing, 4)
-        .background(FashColors.surfaceContainerHighest)
     }
 
     private var headerSuffix: String {
         switch router.selectedTab {
         case .home: return L10n.brandHeaderSuffixHome
-        case .explore: return L10n.brandHeaderSuffixExplore
+        case .orders: return L10n.brandHeaderSuffixOrders
         case .post: return L10n.brandHeaderSuffixPost
         case .chat: return L10n.brandHeaderSuffixChat
         case .profile: return L10n.brandHeaderSuffixProfile
@@ -176,28 +205,39 @@ struct MainNavScreen: View {
             HomeFeedContent(
                 viewModel: homeVM,
                 listingPreview: listingPreview,
-                isGuestMode: isGuestMode
-            )
-                .overlay(alignment: .bottom) {
-                    if AppEnvironment.shippingEnabled {
-                        Button(L10n.homeDeliveringScreenTitle) {
-                            router.showHomeDeliveringScreen = true
-                        }
-                        .font(FashTypography.labelLarge)
-                        .padding(8)
+                isGuestMode: isGuestMode,
+                onOpenExplore: { openExploreOverlay(expandSearch: false) },
+                onOpenPost: { selectTab(.post) },
+                onOpenOrders: { selectTab(.orders) },
+                onOpenFeaturedSellersAll: { router.showFeaturedSellersAll = true },
+                onFeaturedSellerClick: { seller in
+                    let username = seller.username.trimmingCharacters(in: .whitespaces)
+                    if !username.isEmpty {
+                        router.sellerShopUsername = username
                     }
-                }
-        case .explore:
-            ExploreScreen(
-                viewModel: exploreVM,
-                listingPreview: listingPreview,
-                isGuestMode: isGuestMode
+                },
+                onRequestSignIn: { reason in onRequestSignIn?(reason) }
             )
+        case .orders:
+            if isGuestMode {
+                GuestTabPlaceholder(tab: .orders, onSignIn: { onRequestSignIn?(L10n.guestLoginReasonOrders) })
+            } else {
+                OrdersScreen(
+                    viewModel: ordersVM,
+                    embeddedInMainNav: true,
+                    onDismiss: {},
+                    onSelectOrder: { router.selectedOrderId = $0 }
+                )
+            }
         case .post:
             if isGuestMode {
                 GuestTabPlaceholder(tab: .post, onSignIn: { onRequestSignIn?(L10n.guestLoginReasonPost) })
             } else {
-                CreateListingFlowScreen()
+                CreateListingFlowScreen(
+                    postVM: postVM,
+                    addressVM: addressBookVM,
+                    onClose: { router.selectedTab = .home }
+                )
             }
         case .chat:
             if isGuestMode {
@@ -212,7 +252,13 @@ struct MainNavScreen: View {
                 ProfileScreen(
                     viewModel: profileVM,
                     onEditProfile: { router.showEditProfile = true },
-                    onOpenSettings: { router.showSettingsScreen = true }
+                    onOpenFollowConnections: { tab in
+                        router.followConnectionsInitialTab = tab
+                        router.showFollowConnections = true
+                    },
+                    onShippingAddressesClick: { router.showShippingAddressList = true },
+                    onInviteFriendsClick: { router.showInviteFriendsScreen = true },
+                    onListingClick: { id, _ in router.selectedListingId = id }
                 )
             }
         }
@@ -222,6 +268,7 @@ struct MainNavScreen: View {
         MainNavBottomBar(
             selectedTab: $router.selectedTab,
             chatUnreadCount: chatVM.unreadTotal,
+            isPostListingFlow: isPostListingFlow,
             onTabChange: { tab in
                 if isGuestMode && tab.isGuestLocked {
                     onRequestSignIn?(guestLoginReason(for: tab))
@@ -234,8 +281,8 @@ struct MainNavScreen: View {
                     switch tab {
                     case .home:
                         await homeVM.pullToRefresh(deps: deps, isGuestMode: isGuestMode)
-                    case .explore:
-                        await exploreVM.pullToRefresh(deps: deps, isGuestMode: isGuestMode)
+                    case .orders:
+                        await ordersVM.pullToRefresh(deps: deps)
                     case .chat:
                         await chatVM.pullToRefresh(deps: deps)
                     case .profile:
@@ -248,12 +295,187 @@ struct MainNavScreen: View {
         )
     }
 
+    private func selectTab(_ tab: MainTab) {
+        if isGuestMode && tab.isGuestLocked {
+            onRequestSignIn?(guestLoginReason(for: tab))
+        } else {
+            router.selectedTab = tab
+        }
+    }
+
+    private func openExploreOverlay(expandSearch: Bool) {
+        router.exploreSearchExpanded = expandSearch
+        router.showExploreOverlay = true
+    }
+
+    private func openExploreSearch() {
+        openExploreOverlay(expandSearch: true)
+    }
+
+    private func openNotifications() {
+        if isGuestMode {
+            onRequestSignIn?(L10n.guestLoginReasonTopbar)
+        } else {
+            router.showNotificationScreen = true
+        }
+    }
+
+    private func logout() {
+        Task {
+            homeVM.clearCachesForSignedOutUser()
+            router.selectedTab = .home
+            await deps.authManager.logout()
+            router.loginStep = .email
+        }
+    }
+
     private func guestLoginReason(for tab: MainTab) -> String {
         switch tab {
+        case .orders: return L10n.guestLoginReasonOrders
         case .post: return L10n.guestLoginReasonPost
         case .chat: return L10n.guestLoginReasonChat
         case .profile: return L10n.guestLoginReasonProfile
         default: return L10n.guestLoginSheetTitle
         }
+    }
+}
+
+// MARK: - Top bars
+
+private struct HomeTopBar: View {
+    var animateSearch: Bool = true
+    var showGuestSignIn: Bool = false
+    let onSearchClick: () -> Void
+    let onNotificationsClick: () -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            FashScreenTitle(suffix: L10n.brandHeaderSuffixHome)
+            GeometryReader { geo in
+                TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+                    let progress = rememberHomeSearchExpandProgress(animate: animateSearch, date: timeline.date)
+                    HStack(spacing: 0) {
+                        Spacer(minLength: 0)
+                        if progress > 0 {
+                            let fieldWidth = 48 + max(geo.size.width - 48, 0) * progress
+                            FashHomeHeaderSearchField(
+                                onClick: onSearchClick,
+                                width: fieldWidth,
+                                animateHint: animateSearch && progress > 0.92,
+                                contentReveal: progress
+                            )
+                        } else if animateSearch {
+                            FashHomeCollapsedSearchIcon(onClick: onSearchClick, animateHint: true)
+                        } else {
+                            searchIconButton
+                        }
+                        if !showGuestSignIn {
+                            notificationButton
+                        }
+                    }
+                }
+            }
+            .frame(height: 48)
+        }
+        .padding(.leading, 16)
+        .padding(.trailing, 4)
+        .padding(.vertical, 4)
+        .background(FashColors.surfaceContainerHighest)
+    }
+
+    private var searchIconButton: some View {
+        Button(action: onSearchClick) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 22))
+                .foregroundStyle(FashColors.textPrimary)
+                .frame(width: 48, height: 48)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(L10n.searchLabel)
+    }
+
+    private var notificationButton: some View {
+        Button(action: onNotificationsClick) {
+            Image(systemName: "bell")
+                .font(.system(size: 22))
+                .foregroundStyle(FashColors.textPrimary)
+                .frame(width: 48, height: 48)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct MainTopBar: View {
+    let suffix: String
+    var showGuestSignIn: Bool = false
+    let onSearchClick: () -> Void
+    let onNotificationsClick: () -> Void
+    var onGuestSignIn: () -> Void = {}
+
+    var body: some View {
+        HStack(spacing: 0) {
+            FashScreenTitle(suffix: suffix)
+            Spacer(minLength: 10)
+            FashAnimatedSearchIconButton(animateHint: true, action: onSearchClick)
+            if showGuestSignIn {
+                Button(L10n.guestTopbarSignIn, action: onGuestSignIn)
+                    .font(FashTypography.labelLarge)
+            } else {
+                Button(action: onNotificationsClick) {
+                    Image(systemName: "bell")
+                        .font(.system(size: 22))
+                        .foregroundStyle(FashColors.textPrimary)
+                        .frame(width: 48, height: 48)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.leading, 16)
+        .padding(.trailing, 4)
+        .background(FashColors.surfaceContainerHighest)
+    }
+}
+
+private struct ProfileTopBar: View {
+    var showGuestSignIn: Bool = false
+    let onSearchClick: () -> Void
+    let onNotificationsClick: () -> Void
+    var onGuestSignIn: () -> Void = {}
+    let onLogout: () -> Void
+    let onOpenSettings: () -> Void
+    var isLoggingOut: Bool = false
+
+    var body: some View {
+        HStack(spacing: 0) {
+            FashScreenTitle(suffix: L10n.brandHeaderSuffixProfile)
+            Spacer(minLength: 10)
+            FashAnimatedSearchIconButton(animateHint: true, action: onSearchClick)
+            if showGuestSignIn {
+                Button(L10n.guestTopbarSignIn, action: onGuestSignIn)
+                    .font(FashTypography.labelLarge)
+            } else {
+                Button(action: onNotificationsClick) {
+                    Image(systemName: "bell")
+                        .font(.system(size: 22))
+                        .foregroundStyle(FashColors.textPrimary)
+                        .frame(width: 48, height: 48)
+                }
+                .buttonStyle(.plain)
+                Menu {
+                    Button(L10n.homeLogout, action: onLogout)
+                        .disabled(isLoggingOut)
+                    Button(L10n.homeSettings, action: onOpenSettings)
+                        .disabled(isLoggingOut)
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .font(.system(size: 22))
+                        .foregroundStyle(FashColors.textPrimary)
+                        .frame(width: 48, height: 48)
+                }
+            }
+        }
+        .padding(.leading, 16)
+        .padding(.trailing, 4)
+        .background(FashColors.surfaceContainerHighest)
     }
 }

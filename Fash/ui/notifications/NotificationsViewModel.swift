@@ -16,6 +16,7 @@ final class NotificationsViewModel {
     var loadError: String?
     var inboxUnavailable = false
     var selectedDetailId: String?
+    var selectedDetailItem: InboxNotificationItem?
     var unreadCount = 0
     var markAllReadBusy = false
 
@@ -146,12 +147,21 @@ final class NotificationsViewModel {
         }
     }
 
+    func openDetail(_ item: InboxNotificationItem) {
+        selectedDetailId = item.id
+        selectedDetailItem = item
+    }
+
     func openDetail(_ id: String) {
         selectedDetailId = id
+        if let item = items.first(where: { $0.id == id }) {
+            selectedDetailItem = item
+        }
     }
 
     func closeDetail() {
         selectedDetailId = nil
+        selectedDetailItem = nil
     }
 
     func markReadIfNeeded(_ item: InboxNotificationItem) async {

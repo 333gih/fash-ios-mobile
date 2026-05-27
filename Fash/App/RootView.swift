@@ -6,6 +6,8 @@ struct RootView: View {
     @Environment(AppDependencies.self) private var deps
     @State private var router = AppRouter()
     @State private var loginVM = LoginViewModel()
+    @State private var addressBookVM = AddressBookViewModel()
+    @State private var changePasswordVM = ChangePasswordViewModel()
 
     var body: some View {
         FashTheme {
@@ -58,7 +60,19 @@ struct RootView: View {
     private func fullScreenContent(_ route: FullScreenRoute) -> some View {
         switch route {
         case .listing(let id):
-            ProductDetailScreen(listingId: id, onDismiss: { router.selectedListingId = nil })
+            ProductDetailScreen(
+                listingId: id,
+                onDismiss: { router.selectedListingId = nil },
+                onBuyNow: { router.selectedCheckoutListingId = $0 },
+                onChat: { convId in
+                    router.selectedListingId = nil
+                    router.selectedConversationId = convId
+                },
+                onVisitSellerShop: { username in
+                    router.selectedListingId = nil
+                    router.sellerShopUsername = username
+                }
+            )
         case .seller(let user):
             SellerProfileScreen(username: user, onDismiss: { router.sellerShopUsername = nil })
         case .editListing(let id):
@@ -66,7 +80,14 @@ struct RootView: View {
         case .editProfile:
             EditProfileScreen(onDismiss: { router.showEditProfile = false })
         case .chat(let id):
-            ChatDetailScreen(conversationId: id, onDismiss: { router.selectedConversationId = nil })
+            ChatDetailScreen(
+                conversationId: id,
+                onDismiss: { router.selectedConversationId = nil },
+                onProductClick: { listingId in
+                    router.selectedConversationId = nil
+                    router.selectedListingId = listingId
+                }
+            )
         case .orders:
             OrdersScreen(onDismiss: { router.showOrdersScreen = false }, onSelectOrder: { router.selectedOrderId = $0 })
         case .order(let id):
@@ -74,9 +95,16 @@ struct RootView: View {
         case .checkout(let id):
             CheckoutScreen(listingId: id, onDismiss: { router.selectedCheckoutListingId = nil })
         case .shippingAddresses:
-            ShippingAddressListScreen(onDismiss: { router.showShippingAddressList = false })
+            ShippingAddressListScreen(
+                addressVM: addressBookVM,
+                onDismiss: { router.showShippingAddressList = false },
+                onAddAddress: { router.showAddAddressScreen = true }
+            )
         case .addAddress:
-            AddEditAddressScreen(onDismiss: { router.showAddAddressScreen = false })
+            AddEditAddressScreen(
+                addressVM: addressBookVM,
+                onDismiss: { router.showAddAddressScreen = false }
+            )
         case .homeEditorial(let slug):
             HomeEditorialDetailScreen(slug: slug, onDismiss: { router.homeEditorialSlug = nil })
         case .homeDelivering:
@@ -84,13 +112,25 @@ struct RootView: View {
         case .sellerPackages:
             SellerProductPackagesScreen(onDismiss: { router.showSellerPackagesScreen = false })
         case .followConnections:
-            FollowConnectionsScreen(onDismiss: { router.showFollowConnections = false })
+            FollowConnectionsScreen(
+                initialTab: router.followConnectionsInitialTab,
+                onDismiss: { router.showFollowConnections = false },
+                onUserClick: { user in
+                    router.showFollowConnections = false
+                    if !user.username.isEmpty {
+                        router.sellerShopUsername = user.username
+                    }
+                }
+            )
         case .featuredSellers:
             FeaturedSellersScreen(onDismiss: { router.showFeaturedSellersAll = false })
         case .inviteFriends:
             InviteFriendsScreen(onDismiss: { router.showInviteFriendsScreen = false })
         case .changePassword:
-            ChangePasswordScreen(onDismiss: { router.showChangePasswordScreen = false })
+            ChangePasswordScreen(
+                viewModel: changePasswordVM,
+                onDismiss: { router.showChangePasswordScreen = false }
+            )
         case .editorialList:
             HomeEditorialListScreen(onDismiss: { router.showEditorialListScreen = false })
         case .uxSurvey(let key):

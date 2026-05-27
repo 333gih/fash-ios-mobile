@@ -68,6 +68,31 @@ final class SearchRepository {
         return await runGetFeed(path: "api/v1/search/listings?\(query)")
     }
 
+    func getFeaturedSellers(limit: Int = 12, publicBrowse: Bool = false) async -> Result<[FeaturedSellerItem], Error> {
+        let capped = min(max(limit, 1), 50)
+        if publicBrowse {
+            do {
+                let data = try await RepositoryHttp.executeGet(
+                    urlString: PublicBrowseHttp.publicApiPath("browse/featured-sellers") + "?limit=\(capped)&offset=0",
+                    client: client,
+                    publicBrowse: true
+                )
+                return .success(FeaturedSellerParser.parse(data))
+            } catch {
+                return .failure(error)
+            }
+        }
+        do {
+            let data = try await RepositoryHttp.executeCoreGet(
+                relativePath: "api/v1/search/featured-sellers?limit=\(capped)&offset=0",
+                client: client
+            )
+            return .success(FeaturedSellerParser.parse(data))
+        } catch {
+            return .failure(error)
+        }
+    }
+
     func browseListings(
         q: String = "",
         categoryId: String? = nil,
