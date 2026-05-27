@@ -1,4 +1,4 @@
-# Push iOS release secrets from secrets/ios-release.env → GitHub Actions.
+# Push iOS release secrets from secrets/ios-release.env to GitHub Actions.
 # Usage: .\scripts\push_github_ios_secrets.ps1 [-EnvFile secrets\ios-release.env] [-Repo owner/repo]
 param(
     [string]$EnvFile = "secrets/ios-release.env",
@@ -14,7 +14,7 @@ if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
 }
 
 if (-not (Test-Path $EnvFile)) {
-    Write-Error "Missing $EnvFile — copy secrets/ios-release.env.example → secrets/ios-release.env and fill in."
+    Write-Error "Missing $EnvFile - copy secrets/ios-release.env.example to secrets/ios-release.env and fill in."
 }
 
 function Read-DotEnv([string]$Path) {
@@ -26,8 +26,9 @@ function Read-DotEnv([string]$Path) {
         if ($eq -lt 1) { return }
         $key = $line.Substring(0, $eq).Trim()
         $val = $line.Substring($eq + 1).Trim()
-        if ($val.StartsWith('"') -and $val.EndsWith('"')) {
-            $val = $val.Substring(1, $val.Length - 2).Replace("\n", "`n")
+        $dq = [char]34
+        if ($val.StartsWith($dq) -and $val.EndsWith($dq)) {
+            $val = $val.Substring(1, $val.Length - 2).Replace('\n', "`n")
         }
         $map[$key] = $val
     }
