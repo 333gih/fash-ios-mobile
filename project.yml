@@ -63,12 +63,20 @@ targets:
         DevRelease:
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEV
           PRODUCT_BUNDLE_IDENTIFIER: com.pc.fash-ios-mobile.dev
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: Apple Distribution
+          PROVISIONING_PROFILE_SPECIFIER: __CI_PROVISIONING_PROFILE__
+          DEVELOPMENT_TEAM: __CI_TEAM_ID__
         ProdDebug:
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: PROD DEBUG
           PRODUCT_BUNDLE_IDENTIFIER: com.pc.fash-ios-mobile
         ProdRelease:
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: PROD
           PRODUCT_BUNDLE_IDENTIFIER: com.pc.fash-ios-mobile
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: Apple Distribution
+          PROVISIONING_PROFILE_SPECIFIER: __CI_PROVISIONING_PROFILE__
+          DEVELOPMENT_TEAM: __CI_TEAM_ID__
     scheme:
       testTargets: []
 

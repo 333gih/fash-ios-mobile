@@ -13,7 +13,12 @@
 	<key>uploadSymbols</key>
 	<true/>
 	<key>signingStyle</key>
-	<string>automatic</string>
+	<string>manual</string>
+	<key>provisioningProfiles</key>
+	<dict>
+		<key>BUNDLE_ID_PLACEHOLDER</key>
+		<string>PROFILE_NAME_PLACEHOLDER</string>
+	</dict>
 	<key>stripSwiftSymbols</key>
 	<true/>
 </dict>

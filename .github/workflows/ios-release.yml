@@ -74,6 +74,12 @@ jobs:
           done
           exit "${missing}"
 
+      - name: Patch Fash release signing
+        env:
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          PROFILE_NAME: ${{ secrets.IOS_PROVISIONING_PROFILE_SPECIFIER }}
+        run: bash scripts/ci_patch_release_signing.sh "${TEAM_ID}" "${PROFILE_NAME}"
+
       - name: Prepare Xcode project
         run: bash scripts/ci_ios_prepare.sh "${SCHEME}"
 
@@ -96,30 +102,33 @@ jobs:
           echo "Installed provisioning profile UUID=${UUID}"
 
       - name: Archive (iphoneos)
-        env:
-          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           set -o pipefail
           mkdir -p build
-          # Automatic signing: cert + profile are installed above. Avoid global manual profile (breaks Kingfisher SPM).
+          # Signing is set on the Fash target only (project.yml). No global CODE_SIGN_* (breaks Kingfisher SPM).
           xcodebuild archive \
             -project Fash.xcodeproj \
             -scheme "${SCHEME}" \
             -configuration "${BUILD_CONFIGURATION}" \
             -archivePath "${ARCHIVE_PATH}" \
             -destination 'generic/platform=iOS' \
-            DEVELOPMENT_TEAM="${TEAM_ID}" \
-            CODE_SIGN_STYLE=Automatic \
-            CODE_SIGN_IDENTITY="Apple Distribution" \
-            -allowProvisioningUpdates \
             | tee xcodebuild-archive.log
 
       - name: Prepare ExportOptions.plist
         env:
           TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          PROFILE_NAME: ${{ secrets.IOS_PROVISIONING_PROFILE_SPECIFIER }}
         run: |
           set -euo pipefail
-          sed "s/TEAM_ID_PLACEHOLDER/${TEAM_ID}/g" Config/ExportOptions-AppStore.plist > build/ExportOptions.plist
+          if [[ "${SCHEME}" == "Fash-Prod" ]]; then
+            BUNDLE_ID="com.pc.fash-ios-mobile"
+          else
+            BUNDLE_ID="com.pc.fash-ios-mobile.dev"
+          fi
+          sed -e "s|TEAM_ID_PLACEHOLDER|${TEAM_ID}|g" \
+              -e "s|BUNDLE_ID_PLACEHOLDER|${BUNDLE_ID}|g" \
+              -e "s|PROFILE_NAME_PLACEHOLDER|${PROFILE_NAME}|g" \
+              Config/ExportOptions-AppStore.plist > build/ExportOptions.plist
 
       - name: Export App Store IPA
         run: |
