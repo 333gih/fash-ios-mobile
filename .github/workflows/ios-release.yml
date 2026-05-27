@@ -158,8 +158,25 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
 
+      - name: Verify App Store Connect secrets
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.upload_testflight }}
+        env:
+          ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          API_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_API_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in ISSUER_ID API_KEY_ID API_PRIVATE_KEY; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "::error::Missing GitHub secret for ${name}. See docs/CI.md."
+              missing=1
+            fi
+          done
+          exit "${missing}"
+
       - name: Upload to TestFlight
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.upload_testflight && secrets.APP_STORE_CONNECT_API_KEY_ID != '' }}
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.upload_testflight }}
         uses: apple-actions/upload-testflight-build@v3
         with:
           app-path: build/Fash.ipa
