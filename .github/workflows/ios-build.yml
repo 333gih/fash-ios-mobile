@@ -5,13 +5,24 @@
 #   develop  → Fash-Dev
 #   main     → Fash-Prod
 #   master   → Fash-Prod
+#   release/*, releases/* → Fash-Prod
 name: iOS Build
 
 on:
   push:
-    branches: [main, master, develop]
+    branches:
+      - main
+      - master
+      - develop
+      - "release/**"
+      - "releases/**"
   pull_request:
-    branches: [main, master, develop]
+    branches:
+      - main
+      - master
+      - develop
+      - "release/**"
+      - "releases/**"
   workflow_dispatch:
     inputs:
       scheme:
@@ -62,7 +73,7 @@ jobs:
               develop)
                 schemes='["Fash-Dev"]'
                 ;;
-              main|master)
+              main|master|release/*|releases/*)
                 schemes='["Fash-Prod"]'
                 ;;
               *)
