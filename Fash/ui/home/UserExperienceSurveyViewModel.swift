@@ -67,7 +67,7 @@ final class UserExperienceSurveyViewModel {
         }
         isSubmitting = true
         defer { isSubmitting = false }
-        switch await deps.uxSurveyRepository.submit(surveyKey, answers: answers) {
+        switch await deps.uxSurveyRepository.submit(surveyKey: surveyKey, answers: answers) {
         case .success:
             submitted = true
             return true

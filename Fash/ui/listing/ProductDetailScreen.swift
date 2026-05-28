@@ -171,8 +171,8 @@ struct ProductDetailScreen: View {
 
     private func metaChips(_ item: ListingFeedItem, preview: ListingPreviewDetail?) -> some View {
         var chips: [MetaChip] = []
-        let condition = ProductConditionFormat.label(for: preview?.condition ?? item.condition)
-        if !condition.isEmpty {
+        if let condition = ProductConditionFormat.label(for: preview?.condition ?? item.condition),
+           !condition.isEmpty {
             chips.append(MetaChip(id: "cond", label: condition, categoryId: nil, brandId: nil, aestheticTagId: nil))
         }
         if let size = preview?.size ?? item.size, !size.isEmpty {
@@ -183,7 +183,7 @@ struct ProductDetailScreen: View {
                 id: "brand",
                 label: brand,
                 categoryId: nil,
-                brandId: preview?.brandId ?? item.brandId,
+                brandId: preview?.brandId,
                 aestheticTagId: nil
             ))
         }
@@ -191,7 +191,7 @@ struct ProductDetailScreen: View {
             chips.append(MetaChip(
                 id: "cat",
                 label: category,
-                categoryId: preview?.categoryId ?? item.categoryId,
+                categoryId: preview?.categoryId,
                 brandId: nil,
                 aestheticTagId: nil
             ))
