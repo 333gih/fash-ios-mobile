@@ -152,7 +152,7 @@ final class ChatViewModel {
             sellerHasActiveListings = false
             return
         }
-        switch await deps.listingRepository.getListingsBySeller(userId, status: "active", limit: 1, offset: 0) {
+        switch await deps.listingRepository.getListingsBySeller(sellerId: userId, status: "active", limit: 1, offset: 0) {
         case .success(let list):
             sellerHasActiveListings = !list.isEmpty
         case .failure:
