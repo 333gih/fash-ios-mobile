@@ -83,14 +83,14 @@ Khi đã có **Apple Developer** + GitHub Secrets (mục 6):
 1. **Archive** thiết bị thật (`iphoneos`) + ký **Apple Distribution**
 2. **Export IPA** (`app-store`)
 3. **Artifact:** `fash-ios-ipa-Fash-Prod-<run>` — file `.ipa` tải về hoặc upload App Store Connect thủ công
-4. **Upload TestFlight** — chỉ khi **Run workflow** thủ công và bật checkbox (push chỉ tạo IPA artifact)
+4. **Upload TestFlight** — tự động khi push `releases/**` / `release/**`, hoặc **Run workflow** thủ công (checkbox mặc định bật). Cần 3 secrets App Store Connect API (mục 6).
 
 Trigger release:
 
 | Cách | Hành vi |
 |---|---|
-| **Actions → iOS Release → Run workflow** | Chọn scheme; TestFlight mặc định bật (Fash-Prod) |
-| Push `releases/**` hoặc `release/**` | Archive **Fash-Prod** + artifact IPA (không auto TestFlight) |
+| **Actions → iOS Release → Run workflow** | Chọn scheme; TestFlight mặc định **bật** (Fash-Prod) |
+| Push `releases/**` hoặc `release/**` | Archive **Fash-Prod** + artifact IPA + **upload TestFlight** |
 | Push `main`/`master` hoặc tag `ios/v*` | Archive + IPA artifact (không auto TestFlight) |
 
 Khuyến nghị tag prefix **`ios/v*`** để không trùng tag Android (`v1.0.8`).
