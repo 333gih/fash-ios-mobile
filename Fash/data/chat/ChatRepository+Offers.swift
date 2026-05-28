@@ -136,22 +136,6 @@ extension ChatRepository {
     }
 }
 
-private extension RepositoryHttp {
-    static func optBool(_ o: [String: Any], _ keys: String..., default defaultValue: Bool = false) -> Bool {
-        for key in keys {
-            if let b = o[key] as? Bool { return b }
-        }
-        return defaultValue
-    }
-
-    static func optInt(_ o: [String: Any], _ keys: String..., default defaultValue: Int = 0) -> Int {
-        for key in keys {
-            if let n = o[key] as? NSNumber { return n.intValue }
-        }
-        return defaultValue
-    }
-}
-
 private extension String {
     func ifEmpty(_ fallback: String) -> String { isEmpty ? fallback : self }
 }

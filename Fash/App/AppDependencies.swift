@@ -48,7 +48,10 @@ final class AppDependencies {
     let preferredLocaleSync: PreferredLocaleSync
     let listingPreview = ListingPreviewStore()
 
-    var isGuestBrowseActive = false
+    var isGuestBrowseActive: Bool {
+        get { browseSessionStore.isGuestBrowseActive }
+        set { browseSessionStore.isGuestBrowseActive = newValue }
+    }
 
     // Pending deep links / signals (Android MutableStateFlow equivalents)
     var pendingDeepLinkListingId: String?
@@ -101,7 +104,7 @@ final class AppDependencies {
         feedEventReporter = FeedEventReporter(
             repository: recommendationRepository,
             sessionIdProvider: { [authSessionStore, browseSessionStore] in
-                if AppDependencies.shared.isGuestBrowseActive {
+                if browseSessionStore.isGuestBrowseActive {
                     return browseSessionStore.guestSessionId()
                 }
                 if let uid = authSessionStore.read()?.userId, !uid.isEmpty {
@@ -109,11 +112,11 @@ final class AppDependencies {
                 }
                 return browseSessionStore.guestSessionId()
             },
-            publicBrowse: { AppDependencies.shared.isGuestBrowseActive }
+            publicBrowse: { [browseSessionStore] in browseSessionStore.isGuestBrowseActive }
         )
         uxTabTracker = UxTabTracker(
             repository: recommendationRepository,
-            guestBrowse: { AppDependencies.shared.isGuestBrowseActive }
+            guestBrowse: { [browseSessionStore] in browseSessionStore.isGuestBrowseActive }
         )
         addressLocalStore = AddressLocalStore()
         onboardingLocalStore = OnboardingLocalStore()

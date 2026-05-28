@@ -653,6 +653,7 @@ enum L10n {
     static func dealAgreedPriceNegotiated(_ a1: CVarArg) -> String {
         String(format: t("deal_agreed_price_negotiated"), a1)
     }
+    static var dialogCancel: String { t("dialog_cancel") }
     static var dialogOk: String { t("dialog_ok") }
     static var dialogTitleError: String { t("dialog_title_error") }
     static var dialogTitleInfo: String { t("dialog_title_info") }

@@ -27,6 +27,21 @@ if grep -qE 'listingAestheticTag\)\.flatMap \{ tag in' Fash/ui/feed/ListingGridC
   fail=1
 fi
 
+if grep -q 'static func optBool' Fash/data/chat/ChatRepository+Offers.swift 2>/dev/null; then
+  echo "::error::ChatRepository+Offers redeclares RepositoryHttp.optBool — remove private extension."
+  fail=1
+fi
+
+if grep -q 'AppDependencies.shared.isGuestBrowseActive' Fash/App/AppDependencies.swift 2>/dev/null; then
+  echo "::error::AppDependencies init must not read isGuestBrowseActive via shared from @Sendable closures."
+  fail=1
+fi
+
+if ! grep -q 'dialogCancel' Fash/Localization/L10n.swift 2>/dev/null; then
+  echo "::error::L10n.dialogCancel missing (ChatDetailComponents)."
+  fail=1
+fi
+
 if [[ "${fail}" -ne 0 ]]; then
   exit 1
 fi

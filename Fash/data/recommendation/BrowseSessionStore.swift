@@ -5,6 +5,9 @@ final class BrowseSessionStore {
     private static let prefsName = "fash_browse_session"
     private static let guestKey = "guest_session_id"
 
+    /// Guest browse mode (no login). Stored here so @Sendable feed trackers can read it off the main actor.
+    var isGuestBrowseActive = false
+
     func guestSessionId() -> String {
         let defaults = UserDefaults.standard
         if let existing = defaults.string(forKey: Self.guestKey), !existing.isEmpty {

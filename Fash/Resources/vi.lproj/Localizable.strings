@@ -555,6 +555,7 @@
 "create_listing_upload_error" = "Tải ảnh lên thất bại.";
 "deal_agreed_price_buy_now" = "Mua ngay với giá %1$@ — thêm địa chỉ và thanh toán.";
 "deal_agreed_price_negotiated" = "Đã thỏa thuận giá %1$@ — tiếp tục giao hàng hoặc thanh toán.";
+"dialog_cancel" = "Hủy";
 "dialog_ok" = "Đồng ý";
 "dialog_title_error" = "Lỗi";
 "dialog_title_info" = "Thông tin";
