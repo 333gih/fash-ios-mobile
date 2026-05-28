@@ -43,6 +43,7 @@ final class LoginViewModel {
         switch result {
         case .success(let session):
             sessionStore.save(session)
+            AppDependencies.shared.invalidateSessionValidationForLogin()
             AppDependencies.shared.authManager.onSessionSaved()
             return true
         case .failure(let error):
@@ -84,6 +85,7 @@ final class LoginViewModel {
         switch result {
         case .success(let session):
             sessionStore.save(session)
+            AppDependencies.shared.invalidateSessionValidationForLogin()
             AppDependencies.shared.authManager.onSessionSaved()
             return true
         case .failure(let error):

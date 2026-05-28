@@ -1,12 +1,23 @@
 import Foundation
 
 extension L10n {
-    static func t(_ key: String) -> String {
+    private static var stringsBundle: Bundle {
         let tag = AppLocale.currentTag
-        if let path = Bundle.main.path(forResource: tag, ofType: "lproj"),
-           let bundle = Bundle(path: path) {
-            return bundle.localizedString(forKey: key, value: key, table: nil)
+        let candidates = [
+            Bundle.main.path(forResource: tag, ofType: "lproj"),
+            Bundle.main.path(forResource: tag, ofType: "lproj", inDirectory: "Resources"),
+        ]
+        for path in candidates.compactMap({ $0 }) {
+            if let bundle = Bundle(path: path) {
+                return bundle
+            }
         }
-        return NSLocalizedString(key, comment: "")
+        return Bundle.main
+    }
+
+    static func t(_ key: String) -> String {
+        let value = stringsBundle.localizedString(forKey: key, value: nil, table: nil)
+        if !value.isEmpty, value != key { return value }
+        return NSLocalizedString(key, bundle: stringsBundle, comment: "")
     }
 }

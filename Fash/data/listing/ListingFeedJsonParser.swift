@@ -123,8 +123,9 @@ enum ListingFeedJsonParser {
         guard let id = (row["id"] as? String) ?? (row["ID"] as? String) ?? (row["listing_id"] as? String) else { return nil }
         let title = (row["title"] as? String) ?? (row["Title"] as? String) ?? (row["name"] as? String) ?? ""
         let priceVnd = (row["price"] as? NSNumber)?.int64Value ?? (row["Price"] as? NSNumber)?.int64Value ?? 0
-        let imageUrls = parseImageUrls(from: row)
-        let cover = (row["cover_image_url"] as? String) ?? (row["CoverImageURL"] as? String) ?? imageUrls.first ?? ""
+        let imageUrls = ListingImageUrlsWire.parseUrlStrings(from: row)
+        let coverRoot = RepositoryHttp.optString(row, "cover_image_url", "CoverImageURL")
+        let cover = ListingImageUrlsWire.resolveCoverUrl(coverFromRoot: coverRoot, listing: row)
         let seller = (row["seller"] as? [String: Any]) ?? (row["Seller"] as? [String: Any])
         let sellerUsername = seller?["username"] as? String ?? seller?["Username"] as? String
         let sellerId = seller?["user_id"] as? String ?? seller?["UserID"] as? String ?? row["seller_id"] as? String
@@ -166,13 +167,4 @@ enum ListingFeedJsonParser {
         )
     }
 
-    private static func parseImageUrls(from row: [String: Any]) -> [String] {
-        if let urls = row["image_urls"] as? [String] { return urls }
-        if let urls = row["ImageURLs"] as? [String] { return urls }
-        if let images = row["images"] as? [[String: Any]] {
-            return images.compactMap { $0["url"] as? String }
-        }
-        if let url = row["thumbnail_url"] as? String { return [url] }
-        return []
-    }
 }

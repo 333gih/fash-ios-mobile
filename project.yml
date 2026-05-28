@@ -25,8 +25,8 @@ settings:
   base:
     SWIFT_VERSION: "5.9"
     TARGETED_DEVICE_FAMILY: "1"
-    MARKETING_VERSION: "1.0.7"
-    CURRENT_PROJECT_VERSION: "18"
+    MARKETING_VERSION: "1.0.8"
+    CURRENT_PROJECT_VERSION: "19"
     DEVELOPMENT_TEAM: ""
     CODE_SIGN_STYLE: Automatic
     INFOPLIST_FILE: Fash/Info.plist
@@ -59,9 +59,9 @@ targets:
           # Localizable.strings / fonts only — not Assets.xcassets (must compile via actool).
           - "Resources/**"
     resources:
-      - path: Fash/Resources
-        excludes:
-          - "**/*.md"
+      - path: Fash/Resources/vi.lproj
+      - path: Fash/Resources/en.lproj
+      - path: Fash/Resources/Fonts
     dependencies:
       - package: Kingfisher
       - package: GoogleSignIn

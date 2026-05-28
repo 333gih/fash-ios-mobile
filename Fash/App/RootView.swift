@@ -37,6 +37,12 @@ struct RootView: View {
         .onAppear {
             deps.navigationRouter = router
         }
+        .onChange(of: deps.authManager.isAuthenticated) { _, authed in
+            if authed {
+                router.isGuestMode = false
+                deps.isGuestBrowseActive = false
+            }
+        }
     }
 
     @ViewBuilder
@@ -260,8 +266,9 @@ struct RootView: View {
 
     private func bootstrapSession() async {
         router.setupGateFetchFailed = false
-        let sessionValid = await deps.awaitSessionValidation()
-        if deps.authSessionStore.read() == nil || !sessionValid {
+        let hasSession = deps.authSessionStore.read() != nil
+        let sessionValid = hasSession ? await deps.revalidateSession() : false
+        if !hasSession || !sessionValid {
             if PublicBrowseHttp.isConfigured {
                 router.isGuestMode = true
                 deps.isGuestBrowseActive = true

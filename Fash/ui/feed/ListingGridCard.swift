@@ -45,9 +45,15 @@ struct ListingGridCard: View {
         .aspectRatio(imageAspectRatio, contentMode: .fit)
     }
 
+    private var displayImageUrl: String {
+        let cover = item.coverImageUrl.trimmingCharacters(in: .whitespaces)
+        if !cover.isEmpty { return cover }
+        return item.imageUrls.first?.trimmingCharacters(in: .whitespaces) ?? ""
+    }
+
     @ViewBuilder
     private var imageLayer: some View {
-        if item.coverImageUrl.isEmpty {
+        if displayImageUrl.isEmpty {
             Rectangle()
                 .fill(FashColors.surfaceContainerHigh)
                 .overlay {
@@ -56,7 +62,7 @@ struct ListingGridCard: View {
                         .foregroundStyle(FashColors.textSecondary)
                 }
         } else {
-            FashAsyncImage(url: FeedImageUrl.resolveListingImageUrl(item.coverImageUrl))
+            FashAsyncImage(url: FeedImageUrl.resolveListingImageUrl(displayImageUrl))
         }
     }
 
@@ -263,7 +269,10 @@ struct ListingGridCard: View {
         case "like_new", "like-new": return L10n.conditionLikeNew
         case "good": return L10n.conditionGood
         case "fair": return L10n.conditionFair
-        default: return raw.trimmingCharacters(in: .whitespaces)
+        case "new_with_tags", "new-with-tags": return L10n.conditionNew
+        default:
+            let cleaned = raw.trimmingCharacters(in: .whitespaces)
+            return cleaned.contains("_") ? cleaned.replacingOccurrences(of: "_", with: " ").capitalized : cleaned
         }
     }
 

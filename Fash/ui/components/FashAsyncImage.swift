@@ -20,6 +20,8 @@ struct FashAsyncImage: View {
                     .placeholder { FashAsyncImagePlaceholder() }
                     .resizable()
                     .aspectRatio(contentMode: contentMode)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipped()
                     .background(FashAsyncImageError())
             } else {
                 FashAsyncImageError()
@@ -53,15 +55,18 @@ struct FashAvatarCircle: View {
     }
 
     var body: some View {
-        Group {
+        ZStack {
+            Circle().fill(FashColors.surfaceContainerHigh)
             if let resolvedURL, !resolvedURL.isEmpty {
-                FashAsyncImage(url: resolvedURL)
+                FashAsyncImage(url: resolvedURL, contentMode: .fill)
+                    .frame(width: size, height: size)
+                    .clipShape(Circle())
             } else {
                 FashDefaultProfileAvatar()
+                    .frame(width: size, height: size)
+                    .clipShape(Circle())
             }
         }
         .frame(width: size, height: size)
-        .clipShape(Circle())
-        .background(FashColors.surfaceContainerHigh)
     }
 }

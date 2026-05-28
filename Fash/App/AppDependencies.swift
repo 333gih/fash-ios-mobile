@@ -133,6 +133,22 @@ final class AppDependencies {
         return await sessionValidationTask?.value ?? false
     }
 
+    func invalidateSessionValidationForLogin() {
+        sessionValidationTask?.cancel()
+        sessionValidationTask = nil
+    }
+
+    /// Fresh validation after login/logout — avoids reusing cold-start prefetch (guest shell bug).
+    func revalidateSession() async -> Bool {
+        sessionValidationTask?.cancel()
+        sessionValidationTask = nil
+        await MainActor.run { authManager.hydrateInitialAuthFromStore() }
+        guard authSessionStore.read() != nil else { return false }
+        let ok = await authManager.validateOrClearSession()
+        sessionValidationTask = Task { ok }
+        return ok
+    }
+
     private func startProactiveTokenRefreshLoop() {
         proactiveTokenRefreshTask?.cancel()
         proactiveTokenRefreshTask = Task {

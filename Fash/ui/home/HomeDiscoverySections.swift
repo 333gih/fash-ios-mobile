@@ -74,7 +74,11 @@ private struct HomeCompactSellerStory: View {
                             .frame(width: outer, height: outer)
                     }
                     FashAvatarCircle(url: seller.avatarUrl, size: innerSize)
+                        .frame(width: innerSize, height: innerSize)
+                        .clipShape(Circle())
                 }
+                .frame(width: outer, height: outer)
+                .clipped()
                 Text(handle)
                     .font(FashTypography.labelSmall)
                     .foregroundStyle(FashColors.textPrimary)
