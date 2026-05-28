@@ -48,6 +48,8 @@ struct ExploreScreen: View {
             ExploreFilterSheet(viewModel: viewModel, isGuestMode: isGuestMode) {
                 viewModel.showFilterSheet = false
             }
+            .presentationDetents([.fraction(0.7)])
+            .presentationDragIndicator(.visible)
         }
     }
 
@@ -172,10 +174,14 @@ struct ExploreScreen: View {
                         )
                     }
                     if viewModel.isLoadingMore {
-                        ProgressView()
-                            .frame(maxWidth: .infinity)
-                            .padding()
+                        FashSkeleton.listingGrid(columns: 2, rows: 1)
+                            .padding(.vertical, spacing.spacing2)
                     }
+                    Color.clear
+                        .frame(height: 1)
+                        .onAppear {
+                            Task { await viewModel.loadMore(deps: deps, isGuestMode: isGuestMode) }
+                        }
                     HomeBrandFooterStrip()
                 }
             }

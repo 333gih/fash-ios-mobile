@@ -30,7 +30,7 @@ struct MainNavScreen: View {
             tabContent: { tabContent },
             bottomBar: { bottomBar }
         )
-        .sheet(isPresented: $router.showNotificationScreen) {
+        .fullScreenCover(isPresented: $router.showNotificationScreen) {
             NotificationScreen(
                 userRepository: deps.userRepository,
                 detailId: router.notificationDetailId,
@@ -56,6 +56,7 @@ struct MainNavScreen: View {
                     router.selectedConversationId = conversationId
                 }
             )
+            .environment(\.locale, AppLocale.locale)
         }
         .sheet(isPresented: $router.showSettingsScreen) {
             SettingsScreen(
@@ -109,7 +110,8 @@ struct MainNavScreen: View {
                     router.showExploreOverlay = false
                     router.exploreSearchExpanded = false
                     exploreVM.setSearchBarExpanded(false)
-                }
+                },
+                onRequestSignIn: { reason in onRequestSignIn?(reason) }
             )
             .environment(\.locale, AppLocale.locale)
         }
@@ -496,35 +498,17 @@ private struct MainNavScreenChrome<TopBar: View, TabContent: View, BottomBar: Vi
         }
         .background(FashColors.screen)
         .sheet(isPresented: Binding(
-            get: { listingPreview.state != nil },
+            get: { listingPreview.state != nil && !router.showExploreOverlay },
             set: { presenting in
                 if !presenting { listingPreview.close(deps: deps) }
             }
         )) {
-            if let preview = listingPreview.state {
-                ExploreListingPreviewSheet(
-                    feedItem: preview.feedItem,
-                    detail: preview.detail,
-                    isDetailLoading: preview.isDetailLoading,
-                    isGuestMode: isGuestMode,
-                    onViewDetail: {
-                        listingPreview.openDetail(deps: deps)
-                        router.pendingListingIdAfterPreview = preview.feedItem.id
-                        listingPreview.close(deps: deps)
-                    },
-                    onLike: {},
-                    onSave: {},
-                    onMessageSeller: {
-                        listingPreview.openDetail(deps: deps)
-                        router.pendingListingIdAfterPreview = preview.feedItem.id
-                        listingPreview.close(deps: deps)
-                    },
-                    onRequestLogin: {
-                        onRequestSignIn?(L10n.guestLoginReasonBuy)
-                    }
-                )
-                .environment(\.locale, AppLocale.locale)
-            }
+            ListingPreviewSheetHost(
+                listingPreview: listingPreview,
+                router: router,
+                isGuestMode: isGuestMode,
+                onRequestLogin: { onRequestSignIn?(L10n.guestLoginReasonBuy) }
+            )
         }
         .onChange(of: listingPreview.state?.id) { _, _ in
             if let pending = router.pendingListingIdAfterPreview, listingPreview.state == nil {

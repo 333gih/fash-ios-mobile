@@ -241,6 +241,7 @@ final class ChatRepository {
         let myId = sessionStore.read()?.userId ?? ""
         let senderId = RepositoryHttp.optString(m, "SenderID", "sender_id")
         let isFromMe: Bool = {
+            if let b = m["IsFromMe"] as? Bool { return b }
             if let b = m["is_from_me"] as? Bool { return b }
             if let b = m["from_me"] as? Bool { return b }
             if !myId.isEmpty, !senderId.isEmpty { return senderId == myId }
@@ -262,7 +263,7 @@ final class ChatRepository {
             senderId: senderId,
             messageType: rawType,
             offerAmountVnd: RepositoryHttp.optLong(m, "OfferAmountVND", "offer_amount_vnd"),
-            offerStatus: RepositoryHttp.optString(m, "OfferStatus", "offer_status").ifEmpty("pending"),
+            offerStatus: RepositoryHttp.optString(m, "OfferStatus", "offer_status").lowercased().ifEmpty("pending"),
             outboundState: .none,
             systemSubtype: systemSubtype,
             meetingAppointment: parseMeetingAppointmentPayload(m)

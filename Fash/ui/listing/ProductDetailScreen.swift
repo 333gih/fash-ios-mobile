@@ -155,7 +155,7 @@ struct ProductDetailScreen: View {
 
     private func metaChips(_ item: ListingFeedItem) -> some View {
         let chips: [String] = [
-            viewModel.preview?.condition ?? item.condition,
+            ProductConditionFormat.label(for: viewModel.preview?.condition ?? item.condition),
             viewModel.preview?.size ?? item.size,
             viewModel.preview?.brand ?? item.brand,
             viewModel.preview?.category ?? item.categoryName,

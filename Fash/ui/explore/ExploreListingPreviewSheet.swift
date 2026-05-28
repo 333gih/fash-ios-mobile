@@ -52,8 +52,6 @@ struct ExploreListingPreviewSheet: View {
             Divider().opacity(0.35)
             actionBar
         }
-        .presentationDetents([.fraction(1.0 / 3.0)])
-        .presentationDragIndicator(.visible)
         .environment(\.locale, AppLocale.locale)
         .onChange(of: feedItem.id) { _, _ in
             showScrollHint = true

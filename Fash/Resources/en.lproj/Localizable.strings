@@ -517,8 +517,8 @@
 "create_listing_error" = "Failed to post. Try again.";
 "create_listing_image_error" = "Could not read image.";
 "create_listing_just_now" = "Just now";
-"create_listing_legal_mid" = "\\u00A0and\\u00A0";
-"create_listing_legal_prefix" = "By tapping Post for sale, you agree to our\\u00A0";
+"create_listing_legal_mid" = "\u00A0and\u00A0";
+"create_listing_legal_prefix" = "By tapping Post for sale, you agree to our\u00A0";
 "create_listing_legal_privacy_link" = "Privacy policy";
 "create_listing_legal_suffix" = ".";
 "create_listing_legal_terms_link" = "Terms of use";
@@ -1039,8 +1039,8 @@
 "login_hero_slide1_caption" = "Curated pre-loved";
 "login_hero_slide2_caption" = "Fresh picks daily";
 "login_hero_slide3_caption" = "Style that is yours";
-"login_legal_and" = "\\u00A0&\\u00A0";
-"login_legal_prefix" = "By continuing, you agree to\\u00A0";
+"login_legal_and" = "\u00A0&\u00A0";
+"login_legal_prefix" = "By continuing, you agree to\u00A0";
 "login_or_continue" = "Or continue with";
 "login_otp_failed" = "Could not send OTP. Check network or server.";
 "login_otp_resent" = "We sent another code. Check your inbox.";

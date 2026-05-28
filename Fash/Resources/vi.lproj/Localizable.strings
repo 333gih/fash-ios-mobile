@@ -517,10 +517,10 @@
 "create_listing_error" = "Đăng tin thất bại. Thử lại.";
 "create_listing_image_error" = "Không đọc được ảnh.";
 "create_listing_just_now" = "Vừa xong";
-"create_listing_legal_mid" = "\\u00A0và\\u00A0";
-"create_listing_legal_prefix" = "Bằng cách nhấn Đăng bán, bạn đồng ý với\\u00A0";
+"create_listing_legal_mid" = "\u00A0và\u00A0";
+"create_listing_legal_prefix" = "Bằng cách nhấn Đăng bán, bạn đồng ý với\u00A0";
 "create_listing_legal_privacy_link" = "Chính sách bảo mật";
-"create_listing_legal_suffix" = "\\u00A0của chúng tôi.";
+"create_listing_legal_suffix" = "\u00A0của chúng tôi.";
 "create_listing_legal_terms_link" = "Điều khoản sử dụng";
 "create_listing_location_default" = "Hà Nội";
 "create_listing_next" = "TIẾP THEO";
@@ -1039,8 +1039,8 @@
 "login_hero_slide1_caption" = "Pre-loved được chọn lọc";
 "login_hero_slide2_caption" = "Gợi ý mới mỗi ngày";
 "login_hero_slide3_caption" = "Phong cách là của bạn";
-"login_legal_and" = "\\u00A0&\\u00A0";
-"login_legal_prefix" = "Bằng cách tiếp tục, bạn đồng ý với\\u00A0";
+"login_legal_and" = "\u00A0&\u00A0";
+"login_legal_prefix" = "Bằng cách tiếp tục, bạn đồng ý với\u00A0";
 "login_or_continue" = "Hoặc tiếp tục với";
 "login_otp_failed" = "Không gửi được mã. Kiểm tra mạng hoặc máy chủ.";
 "login_otp_resent" = "Đã gửi lại mã. Kiểm tra hộp thư của bạn.";

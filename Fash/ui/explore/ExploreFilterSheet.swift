@@ -7,6 +7,8 @@ struct ExploreFilterSheet: View {
     var isGuestMode: Bool
     var onDismiss: () -> Void
 
+    @State private var showAestheticPicker = false
+
     private var categoryLeaves: [CategoryTreeNode] {
         viewModel.categoryTree.allLeaves().sorted {
             $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
@@ -67,6 +69,13 @@ struct ExploreFilterSheet: View {
                 }
             }
             .task { await viewModel.loadFilterCatalogIfNeeded(deps: deps) }
+            .sheet(isPresented: $showAestheticPicker) {
+                ExploreAestheticTagPickerSheet(
+                    tags: viewModel.aestheticTags,
+                    selectedIds: $viewModel.selectedAestheticTagIds,
+                    onDismiss: { showAestheticPicker = false }
+                )
+            }
         }
     }
 
@@ -106,48 +115,24 @@ struct ExploreFilterSheet: View {
     }
 
     private var aestheticTagsPicker: some View {
-        VStack(alignment: .leading, spacing: spacing.spacing2) {
-            HStack {
-                Text(L10n.exploreFilterTeaserStyle)
-                    .font(FashTypography.bodyMedium)
-                    .foregroundStyle(FashColors.textSecondary)
-                Spacer()
-                if !viewModel.selectedAestheticTagIds.isEmpty {
-                    Button(L10n.exploreFilterAestheticClear) {
-                        viewModel.selectedAestheticTagIds = []
-                    }
-                    .font(FashTypography.labelMedium)
-                    .foregroundStyle(FashColors.brandPrimary)
-                }
-            }
-            if viewModel.aestheticTags.isEmpty {
-                Text(L10n.exploreFilterAestheticNone)
-                    .font(FashTypography.bodySmall)
-                    .foregroundStyle(FashColors.textSecondary)
-            } else {
-                FlowLayoutTags {
-                    ForEach(viewModel.aestheticTags) { tag in
-                        let selected = viewModel.selectedAestheticTagIds.contains(tag.id)
-                        Button {
-                            if selected {
-                                viewModel.selectedAestheticTagIds.remove(tag.id)
-                            } else {
-                                viewModel.selectedAestheticTagIds.insert(tag.id)
-                            }
-                        } label: {
-                            Text(tag.displayLabel())
-                                .font(FashTypography.labelMedium)
-                                .foregroundStyle(selected ? FashColors.onBrandPrimary : FashColors.textPrimary)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 6)
-                                .background(selected ? FashColors.brandPrimary : FashColors.surfaceContainer)
-                                .clipShape(Capsule())
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
+        Button { showAestheticPicker = true } label: {
+            filterRowLabel(
+                L10n.exploreFilterTeaserStyle,
+                value: aestheticSummaryLabel
+            )
         }
+        .buttonStyle(.plain)
+    }
+
+    private var aestheticSummaryLabel: String {
+        if viewModel.selectedAestheticTagIds.isEmpty { return L10n.exploreFilterAestheticNone }
+        let count = viewModel.selectedAestheticTagIds.count
+        if count == 1,
+           let id = viewModel.selectedAestheticTagIds.first,
+           let tag = viewModel.aestheticTags.first(where: { $0.id == id }) {
+            return tag.displayLabel()
+        }
+        return L10n.exploreFilterAestheticSelectedCount(count)
     }
 
     private var brandPicker: some View {
@@ -278,54 +263,6 @@ struct ExploreFilterSheet: View {
         case "price_asc": return L10n.exploreSortPriceLow
         case "price_desc": return L10n.exploreSortPriceHigh
         default: return L10n.exploreSortRecent
-        }
-    }
-}
-
-/// Simple wrapping tag layout for aesthetic filters.
-private struct FlowLayoutTags<Content: View>: View {
-    @ViewBuilder let content: () -> Content
-
-    var body: some View {
-        _FlowLayout {
-            content()
-        }
-    }
-}
-
-private struct _FlowLayout: Layout {
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let width = proposal.width ?? 0
-        var x: CGFloat = 0
-        var y: CGFloat = 0
-        var rowHeight: CGFloat = 0
-        for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
-            if x + size.width > width, x > 0 {
-                x = 0
-                y += rowHeight + 8
-                rowHeight = 0
-            }
-            rowHeight = max(rowHeight, size.height)
-            x += size.width + 8
-        }
-        return CGSize(width: width, height: y + rowHeight)
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        var x = bounds.minX
-        var y = bounds.minY
-        var rowHeight: CGFloat = 0
-        for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
-            if x + size.width > bounds.maxX, x > bounds.minX {
-                x = bounds.minX
-                y += rowHeight + 8
-                rowHeight = 0
-            }
-            subview.place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
-            rowHeight = max(rowHeight, size.height)
-            x += size.width + 8
         }
     }
 }

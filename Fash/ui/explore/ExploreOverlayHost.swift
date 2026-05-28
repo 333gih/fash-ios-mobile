@@ -9,6 +9,7 @@ struct ExploreOverlayHost: View {
     var expandSearchOnAppear: Bool = false
     var promoSlides: [FashPromoSlideDef] = []
     var onClose: () -> Void
+    var onRequestSignIn: ((String) -> Void)? = nil
 
     var body: some View {
         VStack(spacing: 0) {
@@ -34,6 +35,28 @@ struct ExploreOverlayHost: View {
             )
         }
         .background(FashColors.screen)
+        .sheet(isPresented: Binding(
+            get: { deps.listingPreview.state != nil },
+            set: { presenting in
+                if !presenting { deps.listingPreview.close(deps: deps) }
+            }
+        )) {
+            ListingPreviewSheetHost(
+                listingPreview: deps.listingPreview,
+                router: router,
+                isGuestMode: isGuestMode,
+                onRequestLogin: { onRequestSignIn?(L10n.guestLoginReasonBuy) }
+            )
+        }
+        .onChange(of: deps.listingPreview.state?.id) { _, _ in
+            if let pending = router.pendingListingIdAfterPreview, deps.listingPreview.state == nil {
+                router.pendingListingIdAfterPreview = nil
+                onClose()
+                DispatchQueue.main.async {
+                    deps.presentListingDetail(listingId: pending, router: router)
+                }
+            }
+        }
         .task {
             if expandSearchOnAppear {
                 viewModel.requestSearchBarExpanded()
