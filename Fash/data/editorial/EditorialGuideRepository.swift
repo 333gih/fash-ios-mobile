@@ -3,10 +3,10 @@ import Foundation
 /// Public common-service editorial guides — Android `EditorialGuideRepository`.
 final class EditorialGuideRepository {
     private let session: URLSession = {
-        let c = URLSessionConfiguration.default
-        c.timeoutIntervalForRequest = 20
-        c.timeoutIntervalForResource = 30
-        return c
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 20
+        config.timeoutIntervalForResource = 30
+        return URLSession(configuration: config)
     }()
 
     private func localeSegment() -> String {

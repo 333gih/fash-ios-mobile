@@ -45,7 +45,7 @@ final class AppAuthManager {
             isAuthenticated = true
             return true
         }
-        for attempt in 0..<refreshAttempts {
+        for attempt in 0..<Self.refreshAttempts {
             guard let snapshot = sessionStore.read() else { return false }
             let result = await AuthTokenRefreshCoordinator.refreshIfStillCurrent(
                 sessionStore: sessionStore,
@@ -58,7 +58,7 @@ final class AppAuthManager {
             }
             if case .failure(let err) = result {
                 if AuthRefreshPolicy.isTransientRefreshFailure(err) {
-                    if attempt < refreshAttempts - 1 {
+                    if attempt < Self.refreshAttempts - 1 {
                         try? await Task.sleep(for: .milliseconds(400 * (attempt + 1)))
                         continue
                     }
@@ -79,7 +79,7 @@ final class AppAuthManager {
         if session.expiresInSeconds <= 0 { return 60_000 }
         let issued = sessionStore.issuedAtMillis()
         if issued <= 0 { return 60_000 }
-        let refreshAt = issued + session.expiresInSeconds * 1000 - accessTokenRefreshSkewMs
+        let refreshAt = issued + session.expiresInSeconds * 1000 - Self.accessTokenRefreshSkewMs
         return max(30_000, refreshAt - Int64(Date().timeIntervalSince1970 * 1000))
     }
 
@@ -126,7 +126,7 @@ final class AppAuthManager {
         let issued = sessionStore.issuedAtMillis()
         if issued <= 0 { return false }
         let expMs = issued + session.expiresInSeconds * 1000
-        return Int64(Date().timeIntervalSince1970 * 1000) < expMs - accessTokenRefreshSkewMs
+        return Int64(Date().timeIntervalSince1970 * 1000) < expMs - Self.accessTokenRefreshSkewMs
     }
 
     private static let refreshAttempts = 3

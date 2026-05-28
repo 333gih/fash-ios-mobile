@@ -12,8 +12,8 @@ struct InviteFriendsScreen: View {
 
     private var httpsInviteUrl: String {
         InviteDeepLinks.publicInviteHttpsURL(
-            referrerUsername.isEmpty ? nil : referrerUsername,
-            referralToken
+            referrerUsername: referrerUsername.isEmpty ? nil : referrerUsername,
+            referralToken: referralToken
         )
     }
 

@@ -142,6 +142,15 @@ struct ExploreScreen: View {
                         ForEach(Array(viewModel.items.enumerated()), id: \.element.id) { index, item in
                             ListingGridCard(
                                 item: item,
+                                onTap: {
+                                    deps.presentListingPreview(
+                                        item: item,
+                                        router: router,
+                                        publicBrowse: isGuestMode,
+                                        surface: "explore",
+                                        position: index
+                                    )
+                                },
                                 showQuickActions: true,
                                 onLike: {
                                     if isGuestMode {
@@ -155,15 +164,7 @@ struct ExploreScreen: View {
                                         Task { await viewModel.toggleSave(item, deps: deps) }
                                     }
                                 }
-                            ) {
-                                deps.presentListingPreview(
-                                    item: item,
-                                    router: router,
-                                    publicBrowse: isGuestMode,
-                                    surface: "explore",
-                                    position: index
-                                )
-                            }
+                            )
                             .onAppear {
                                 if index >= viewModel.items.count - 3 {
                                     Task { await viewModel.loadMore(deps: deps, isGuestMode: isGuestMode) }

@@ -149,9 +149,9 @@ private func parseAestheticTag(_ o: [String: Any]) -> CommonAestheticTagDto {
 private func parseCountry(_ o: [String: Any]) -> CommonCountryDto {
     CommonCountryDto(
         id: RepositoryHttp.optString(o, "id", "ID"),
-        name: RepositoryHttp.optString(o, "name", "Name"),
         iso2: RepositoryHttp.optString(o, "iso2", "ISO2", "iso_2"),
         iso3: RepositoryHttp.optString(o, "iso3", "ISO3"),
+        name: RepositoryHttp.optString(o, "name", "Name"),
         phonePrefix: RepositoryHttp.optString(o, "phone_prefix", "phonePrefix"),
         emoji: RepositoryHttp.optString(o, "emoji", "Emoji"),
         sortOrder: RepositoryHttp.optInt(o, "sort_order", "sortOrder"),

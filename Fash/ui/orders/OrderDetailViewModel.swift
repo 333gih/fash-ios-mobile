@@ -44,7 +44,7 @@ final class OrderDetailViewModel {
     }
 
     func isCurrentUserBuyer(deps: AppDependencies) -> Bool {
-        let my = deps.authSessionStore.read()?.userId.trimmingCharacters(in: .whitespaces) ?? ""
+        let my = deps.authSessionStore.read()?.userId?.trimmingCharacters(in: .whitespaces) ?? ""
         guard !my.isEmpty, let d = detail else { return false }
         if !d.buyerUserId.isEmpty, my.caseInsensitiveCompare(d.buyerUserId) == .orderedSame { return true }
         if !d.buyerUsername.isEmpty, my.caseInsensitiveCompare(d.buyerUsername) == .orderedSame { return true }
@@ -52,7 +52,7 @@ final class OrderDetailViewModel {
     }
 
     func isCurrentUserSeller(deps: AppDependencies) -> Bool {
-        let my = deps.authSessionStore.read()?.userId.trimmingCharacters(in: .whitespaces) ?? ""
+        let my = deps.authSessionStore.read()?.userId?.trimmingCharacters(in: .whitespaces) ?? ""
         guard !my.isEmpty, let d = detail else { return false }
         if !d.sellerUserId.isEmpty, my.caseInsensitiveCompare(d.sellerUserId) == .orderedSame { return true }
         if !d.sellerUsername.isEmpty, my.caseInsensitiveCompare(d.sellerUsername) == .orderedSame { return true }

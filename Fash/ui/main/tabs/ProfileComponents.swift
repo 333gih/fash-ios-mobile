@@ -45,9 +45,8 @@ struct ProfileHeroSection: View {
         }
     }
 
-    private var resolvedCover: URL? {
-        guard let raw = coverImageUrl?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else { return nil }
-        return FeedImageUrl.resolveProfileImageUrlOrNil(raw)
+    private var resolvedCover: String? {
+        FeedImageUrl.resolveProfileImageUrlOrNil(coverImageUrl)
     }
 
     private var avatarRing: some View {

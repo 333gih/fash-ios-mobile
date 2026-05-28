@@ -57,7 +57,7 @@ final class CommonServiceRepository {
             let tree = (treeObj["tree"] as? [[String: Any]] ?? []).map(parseAddressTreeNode)
             if let parent = findTreeNodeById(tree, id: pid) {
                 return .success(parent.children.filter { $0.level == childLevel }.map { n in
-                    CommonAddressDto(id: n.id, name: n.name, code: n.code, parentId: n.parentId, level: n.level)
+                    CommonAddressDto(id: n.id, name: n.name, code: n.code, parentId: n.parentId, level: n.level, status: "")
                 })
             }
             return .success([])
@@ -121,7 +121,8 @@ private func parseAddressDto(_ o: [String: Any]) -> CommonAddressDto {
         name: RepositoryHttp.optString(o, "name", "Name"),
         code: RepositoryHttp.optString(o, "code", "Code"),
         parentId: RepositoryHttp.optString(o, "parent_id", "parentId", "ParentID"),
-        level: RepositoryHttp.optInt(o, "level", "Level")
+        level: RepositoryHttp.optInt(o, "level", "Level"),
+        status: RepositoryHttp.optString(o, "status", "Status")
     )
 }
 
@@ -142,7 +143,7 @@ private func flattenAddressesAtLevel(_ nodes: [AddressTreeNodeInternal], targetL
     func walk(_ list: [AddressTreeNodeInternal]) {
         for n in list {
             if n.level == targetLevel {
-                out.append(CommonAddressDto(id: n.id, name: n.name, code: n.code, parentId: n.parentId, level: n.level))
+                out.append(CommonAddressDto(id: n.id, name: n.name, code: n.code, parentId: n.parentId, level: n.level, status: ""))
             }
             if !n.children.isEmpty { walk(n.children) }
         }

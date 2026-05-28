@@ -2,7 +2,7 @@ import Foundation
 
 /// Orders API — Android [OrderRepository] (list endpoints).
 final class OrderRepository {
-    private let client: SecuredApiClient
+    let client: SecuredApiClient
 
     init(client: SecuredApiClient) { self.client = client }
 

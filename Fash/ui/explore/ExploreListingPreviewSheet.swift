@@ -161,7 +161,7 @@ struct ExploreListingPreviewSheet: View {
     private var metaChips: some View {
         let chips = metaChipLabels
         if !chips.isEmpty {
-            FlowLayout(spacing: 4) {
+            PreviewMetaFlowLayout(spacing: 4) {
                 ForEach(Array(chips.enumerated()), id: \.offset) { _, chip in
                     Text(chip)
                         .font(.system(size: 10, weight: .medium))
@@ -543,7 +543,7 @@ private enum FeedEngagementFormat {
 }
 
 /// Simple horizontal flow for meta chips (Android FlowRow).
-private struct FlowLayout: Layout {
+private struct PreviewMetaFlowLayout: Layout {
     var spacing: CGFloat = 4
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
