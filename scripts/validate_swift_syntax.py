@@ -23,6 +23,10 @@ FUNC_DECL = re.compile(
     re.MULTILINE,
 )
 TYPE_DECL = re.compile(r"^(?:final\s+)?(?:class|struct|enum|actor)\s+(\w+)", re.MULTILINE)
+PRIVATE_MEMBER = re.compile(
+    r"^\s+private\s+(?:\(set\)\s+)?(?:(?:let|var)\s+(\w+)|func\s+(\w+)\s*\()",
+    re.MULTILINE,
+)
 
 
 def tokens_from_enum(path: Path) -> set[str]:
@@ -107,6 +111,30 @@ def check_file(
     return errors
 
 
+def check_extension_private_access() -> list[str]:
+    """Swift `private` is file-scoped; Type+Part.swift extensions cannot use private members from Type.swift."""
+    errors: list[str] = []
+    for ext_path in sorted(FASH.rglob("*+*.swift")):
+        type_name = ext_path.stem.split("+", 1)[0]
+        mains = [p for p in FASH.rglob(f"{type_name}.swift") if "+" not in p.name]
+        if not mains:
+            continue
+        private_names: set[str] = set()
+        for main in mains:
+            for m in PRIVATE_MEMBER.finditer(main.read_text(encoding="utf-8")):
+                private_names.add(m.group(1) or m.group(2))
+        if not private_names:
+            continue
+        ext_text = ext_path.read_text(encoding="utf-8")
+        for name in sorted(private_names):
+            if re.search(rf"\b{re.escape(name)}\b", ext_text):
+                errors.append(
+                    f"{ext_path.relative_to(ROOT)}: uses private member '{name}' from "
+                    f"{type_name}.swift (move helper to extension file or remove private)"
+                )
+    return errors
+
+
 def main() -> int:
     valid_typography = load_valid_typography()
     valid_colors = load_valid_colors()
@@ -119,6 +147,7 @@ def main() -> int:
                 valid_colors=valid_colors,
             )
         )
+    all_errors.extend(check_extension_private_access())
 
     if all_errors:
         print("Swift validation failed:\n", file=sys.stderr)
