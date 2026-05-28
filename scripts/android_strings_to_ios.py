@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from fash_paths import android_strings_en, android_strings_vi  # noqa: E402
 OUT_VI = ROOT / "Fash" / "Resources" / "vi.lproj"
 OUT_EN = ROOT / "Fash" / "Resources" / "en.lproj"
+OUT_BASE = ROOT / "Fash" / "Resources" / "Base.lproj"
 OUT_L10N = ROOT / "Fash" / "Localization"
 
 
@@ -129,9 +130,13 @@ def main() -> int:
     en = parse_strings_xml(en_path) if en_path and en_path.exists() else vi
     OUT_VI.mkdir(parents=True, exist_ok=True)
     OUT_EN.mkdir(parents=True, exist_ok=True)
+    OUT_BASE.mkdir(parents=True, exist_ok=True)
     OUT_L10N.mkdir(parents=True, exist_ok=True)
-    (OUT_VI / "Localizable.strings").write_bytes(to_strings_file(vi).encode("utf-8"))
+    vi_bytes = to_strings_file(vi).encode("utf-8")
+    (OUT_VI / "Localizable.strings").write_bytes(vi_bytes)
     (OUT_EN / "Localizable.strings").write_bytes(to_strings_file(en).encode("utf-8"))
+    # XcodeGen / Xcode localization variant group (development language = vi).
+    (OUT_BASE / "Localizable.strings").write_bytes(vi_bytes)
     (OUT_L10N / "L10n.swift").write_text(generate_l10n(vi, en), encoding="utf-8")
     print(f"vi: {len(vi)} keys, en: {len(en)} keys -> {OUT_VI}")
     return 0

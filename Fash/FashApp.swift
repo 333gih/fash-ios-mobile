@@ -9,6 +9,9 @@ struct FashApp: App {
         AppLocale.applyPersistedOrDefault()
         AppThemePreference.shared.loadPersisted()
         GoogleSignInClients.configureIfNeeded()
+        #if DEBUG
+        L10nDiagnostics.verifyBundleOnLaunch()
+        #endif
     }
 
     var body: some Scene {

@@ -12,6 +12,7 @@ for f in \
   vendor/android-res/values-en/strings.xml \
   Fash/Resources/vi.lproj/Localizable.strings \
   Fash/Resources/en.lproj/Localizable.strings \
+  Fash/Resources/Base.lproj/Localizable.strings \
   Fash/Localization/L10n.swift
 do
   if [[ ! -f "$f" ]]; then

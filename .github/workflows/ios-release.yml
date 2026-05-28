@@ -186,6 +186,10 @@ jobs:
         if: env.SCHEME == 'Fash-Prod'
         run: bash scripts/ci_verify_ipa_version.sh build/Fash.ipa
 
+      - name: Verify IPA contains vi/en Localizable.strings
+        if: env.SCHEME == 'Fash-Prod'
+        run: bash scripts/ci_verify_ipa_l10n.sh build/Fash.ipa nav_home
+
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
