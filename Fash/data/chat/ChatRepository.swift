@@ -26,6 +26,18 @@ final class ChatRepository {
         }
     }
 
+    func getConversationsGroupedByListing(limit: Int = 50, offset: Int = 0) async -> Result<[ConversationListingGroup], Error> {
+        do {
+            let data = try await RepositoryHttp.executeCoreGet(
+                relativePath: "api/v1/chat/conversations?limit=\(limit)&offset=\(offset)&group_by=listing",
+                client: client
+            )
+            return .success(parseConversationGroups(data))
+        } catch {
+            return .failure(error)
+        }
+    }
+
     func getUnreadCount() async -> Result<Int, Error> {
         do {
             let data = try await RepositoryHttp.executeCoreGet(
@@ -272,6 +284,77 @@ final class ChatRepository {
 
     private func parseConversations(_ data: Data) -> [ConversationItem] {
         RepositoryHttp.jsonArray(data).map { parseConversationItem($0) }
+    }
+
+    private func parseConversationGroups(_ data: Data) -> [ConversationListingGroup] {
+        let arr = RepositoryHttp.jsonArray(data)
+        if arr.isEmpty, let root = try? RepositoryHttp.jsonObject(data) {
+            let nested = (root["data"] as? [[String: Any]])
+                ?? (root["groups"] as? [[String: Any]])
+                ?? []
+            if !nested.isEmpty {
+                return parseConversationGroupsFromRows(nested)
+            }
+        }
+        if arr.isEmpty { return [] }
+        return parseConversationGroupsFromRows(arr)
+    }
+
+    private func parseConversationGroupsFromRows(_ arr: [[String: Any]]) -> [ConversationListingGroup] {
+        guard let sample = arr.first else { return [] }
+        let groupedShape = sample["conversations"] != nil
+            || sample["Conversations"] != nil
+            || sample["listing"] != nil
+            || sample["Listing"] != nil
+        if groupedShape {
+            return arr.compactMap { g in
+                let listingObj = (g["listing"] as? [String: Any]) ?? (g["Listing"] as? [String: Any])
+                let convArr = (g["conversations"] as? [[String: Any]])
+                    ?? (g["Conversations"] as? [[String: Any]])
+                    ?? []
+                let listingId: String = {
+                    if let lo = listingObj {
+                        let id = RepositoryHttp.optString(lo, "ID", "id", "listing_id")
+                        if !id.isEmpty { return id }
+                    }
+                    return RepositoryHttp.optString(g, "listing_id", "ListingID")
+                }()
+                guard !listingId.isEmpty else { return nil }
+                let card = listingObj.map(parseProductCard)
+                let conversations = convArr.map(parseConversationItem)
+                let count = RepositoryHttp.optInt(g, "conversation_count", "ConversationCount")
+                let badge = count > 0 ? count : conversations.count
+                return ConversationListingGroup(
+                    listingId: listingId,
+                    coverImageUrl: card?.imageUrl ?? conversations.first?.productThumbnailUrl ?? "",
+                    title: card?.title ?? conversations.first?.productTitle ?? "",
+                    priceVnd: card?.priceVnd ?? conversations.first?.productPrice ?? 0,
+                    conversations: conversations,
+                    conversationCountBadge: badge
+                )
+            }
+        }
+        let flat = arr.map(parseConversationItem)
+        return flat
+            .filter { !$0.productId.isEmpty }
+            .reduce(into: [String: [ConversationItem]]()) { acc, item in
+                acc[item.productId, default: []].append(item)
+            }
+            .map { pid, rows in
+                let first = rows[0]
+                let sorted = rows.sorted { $0.timestamp > $1.timestamp }
+                return ConversationListingGroup(
+                    listingId: pid,
+                    coverImageUrl: first.productThumbnailUrl,
+                    title: first.productTitle,
+                    priceVnd: first.productPrice,
+                    conversations: sorted,
+                    conversationCountBadge: sorted.count
+                )
+            }
+            .sorted {
+                ($0.conversations.map(\.timestamp).max() ?? "") > ($1.conversations.map(\.timestamp).max() ?? "")
+            }
     }
 
     private func parseConversationItem(_ o: [String: Any]) -> ConversationItem {

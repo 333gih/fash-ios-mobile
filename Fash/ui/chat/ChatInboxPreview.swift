@@ -49,6 +49,19 @@ enum ChatInboxPreview {
         return rawLast
     }
 
+    static func conversationPreviewIsPlaceholder(_ item: ConversationItem, myUserId: String) -> Bool {
+        let myId = myUserId.trimmingCharacters(in: .whitespacesAndNewlines)
+        let isSeller = !myId.isEmpty && item.sellerUserId == myId
+        if item.pendingOfferAmountVnd > 0, isSeller { return false }
+
+        let isOfferRow = item.lastMessageType.lowercased() == "offer" || item.lastOfferAmountVnd > 0
+        if isOfferRow { return false }
+
+        let rawLast = item.lastMessageText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if isOrderCancelledChatMessage(type: item.lastMessageType, fullText: rawLast) { return false }
+        return rawLast.isEmpty
+    }
+
     private static func isOrderCancelledChatMessage(type: String, fullText: String) -> Bool {
         type.lowercased() == "order_cancelled"
             || fullText.trimmingCharacters(in: .whitespacesAndNewlines)

@@ -114,11 +114,14 @@ struct ConversationDetail: Equatable {
     var hasOrder: Bool { orderId?.isEmpty == false }
 }
 
-struct ConversationListingGroup: Equatable {
+struct ConversationListingGroup: Equatable, Identifiable {
+    var id: String { listingId }
     let listingId: String
-    let listingTitle: String
-    let listingImageUrl: String
+    let coverImageUrl: String
+    let title: String
+    let priceVnd: Int64
     let conversations: [ConversationItem]
+    let conversationCountBadge: Int
 }
 
 struct MeetingCheckInResult: Equatable {

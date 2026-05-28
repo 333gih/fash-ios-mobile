@@ -65,6 +65,7 @@ struct MainNavScreen: View {
                     Task {
                         homeVM.clearCachesForSignedOutUser(deps: deps)
                         profileVM.clearCachedProfile(deps: deps)
+                        chatVM.clearCachesForSignedOutUser()
                         router.selectedTab = .home
                         await deps.authManager.logout()
                         router.showSettingsScreen = false
@@ -75,6 +76,7 @@ struct MainNavScreen: View {
                     Task {
                         homeVM.clearCachesForSignedOutUser(deps: deps)
                         profileVM.clearCachedProfile(deps: deps)
+                        chatVM.clearCachesForSignedOutUser()
                         router.selectedTab = .home
                         await deps.authManager.logoutAll()
                         router.showSettingsScreen = false
@@ -300,7 +302,12 @@ struct MainNavScreen: View {
             if isGuestMode {
                 GuestTabPlaceholder(tab: .chat, onSignIn: { onRequestSignIn?(L10n.guestLoginReasonChat) })
             } else {
-                ChatScreen(viewModel: chatVM, onConversationTap: { router.selectedConversationId = $0 })
+                ChatScreen(
+                    viewModel: chatVM,
+                    promoSlides: homeVM.promoSlides.map(FashPromoSlideDef.fromAdvertising),
+                    onPromoSlideClick: { slide, _ in router.handlePromoSlideClick(slide) },
+                    onConversationTap: { router.selectedConversationId = $0 }
+                )
             }
         case .profile:
             if isGuestMode {
@@ -457,6 +464,7 @@ struct MainNavScreen: View {
     private func logout() {
         Task {
             homeVM.clearCachesForSignedOutUser(deps: deps)
+            chatVM.clearCachesForSignedOutUser()
             router.selectedTab = .home
             await deps.authManager.logout()
             router.loginStep = .email
