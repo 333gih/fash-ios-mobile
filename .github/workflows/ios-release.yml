@@ -230,6 +230,7 @@ jobs:
           exit "${missing}"
 
       - name: Upload to TestFlight
+        id: upload-testflight
         if: >-
           env.SCHEME == 'Fash-Prod' && (
             (github.event_name == 'workflow_dispatch' && inputs.upload_testflight) ||
