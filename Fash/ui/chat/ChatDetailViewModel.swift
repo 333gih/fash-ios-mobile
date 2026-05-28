@@ -29,10 +29,14 @@ final class ChatDetailViewModel {
     var orderExpiryKind: String = ""
     var orderMeetupDeadlineAt: String?
 
+    /// True while the other participant is typing (Android `isOtherTyping`).
+    var isOtherTyping = false
+
     private var pollTask: Task<Void, Never>?
     private var realtimeListenerId: UUID?
     private var silentRefreshTask: Task<Void, Never>?
     private var orderPollTask: Task<Void, Never>?
+    private var typingTimeoutTask: Task<Void, Never>?
     private var loadedConversationId: String?
 
     var hasOrder: Bool { orderId?.isEmpty == false || detail?.hasOrder == true }
@@ -49,7 +53,11 @@ final class ChatDetailViewModel {
         silentRefreshTask = nil
         orderPollTask?.cancel()
         orderPollTask = nil
+        typingTimeoutTask?.cancel()
+        typingTimeoutTask = nil
+        isOtherTyping = false
         if let id = loadedConversationId {
+            AppDependencies.shared.realtimeManager.sendTypingStop(conversationId: id)
             AppDependencies.shared.realtimeManager.unsubscribeFromConversation(id)
         }
     }
@@ -66,6 +74,7 @@ final class ChatDetailViewModel {
             inputText = ""
             orderId = nil
             orderStatus = nil
+            isOtherTyping = false
         }
         loadedConversationId = conversationId
         isLoading = detail == nil
@@ -103,6 +112,7 @@ final class ChatDetailViewModel {
         )
         isSending = true
         inputText = ""
+        deps.realtimeManager.sendTypingStop(conversationId: convId)
         messages.append(optimistic)
 
         let result = await deps.chatRepository.sendMessage(conversationId: convId, text: text)
@@ -277,6 +287,33 @@ final class ChatDetailViewModel {
         return messages.last(where: { $0.offerStatus == "accepted" && $0.offerAmountVnd >= 1000 })?.offerAmountVnd ?? 0
     }
 
+    // MARK: - Typing
+
+    private var isComposerReadOnly: Bool {
+        detail?.isClosed == true || detail?.product?.isSold == true
+    }
+
+    /// Outbound typing — Android `onInputChange`.
+    func onInputChange(deps: AppDependencies) {
+        guard !isComposerReadOnly else { return }
+        let convId = detail?.conversationId ?? loadedConversationId ?? ""
+        guard !convId.isEmpty else { return }
+        if inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            deps.realtimeManager.sendTypingStop(conversationId: convId)
+        } else {
+            deps.realtimeManager.sendTypingStart(conversationId: convId)
+        }
+    }
+
+    private func scheduleTypingTimeout() {
+        typingTimeoutTask?.cancel()
+        typingTimeoutTask = Task {
+            try? await Task.sleep(for: .seconds(5))
+            guard !Task.isCancelled else { return }
+            isOtherTyping = false
+        }
+    }
+
     // MARK: - Refresh
 
     private func refreshAll(conversationId: String, deps: AppDependencies) async {
@@ -354,6 +391,22 @@ final class ChatDetailViewModel {
         realtimeListenerId = deps.realtimeManager.addEventListener { [weak self] event in
             guard let self else { return }
             switch event {
+            case .connected:
+                deps.realtimeManager.subscribeToConversation(conversationId)
+            case .typingStart(let cid, let userId):
+                guard cid == conversationId || cid.isEmpty else { return }
+                let myId = deps.authSessionStore.read()?.userId.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                let other = userId.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !other.isEmpty, other.compare(myId, options: .caseInsensitive) != .orderedSame else { return }
+                isOtherTyping = true
+                scheduleTypingTimeout()
+            case .typingStop(let cid, let userId):
+                guard cid == conversationId || cid.isEmpty else { return }
+                let myId = deps.authSessionStore.read()?.userId.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                let uid = userId.trimmingCharacters(in: .whitespacesAndNewlines)
+                if uid.isEmpty || uid.compare(myId, options: .caseInsensitive) == .orderedSame { return }
+                isOtherTyping = false
+                typingTimeoutTask?.cancel()
             case .messageNew(let cid, _, _, _, _, _, _),
                  .readReceipts(let cid, _, _),
                  .offerLimitReset(_, let cid, _),
@@ -369,7 +422,11 @@ final class ChatDetailViewModel {
                     self.orderStatus = status
                     Task { await self.fetchOrder(orderId: oid.isEmpty ? (self.orderId ?? "") : oid, deps: deps) }
                 }
-            case .listingSold, .listingReserved, .listingAvailable:
+            case .listingSold, .listingReserved:
+                scheduleSilentRefresh(conversationId: conversationId, deps: deps)
+                isOtherTyping = false
+                deps.realtimeManager.sendTypingStop(conversationId: conversationId)
+            case .listingAvailable:
                 scheduleSilentRefresh(conversationId: conversationId, deps: deps)
             default:
                 break

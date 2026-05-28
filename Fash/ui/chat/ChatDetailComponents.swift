@@ -348,3 +348,65 @@ struct ChatCounterOfferSheet: View {
         return v
     }
 }
+
+// MARK: - Typing indicator (Android `TypingIndicator`)
+
+struct ChatTypingIndicator: View {
+    let displayName: String
+
+    var body: some View {
+        HStack(alignment: .bottom, spacing: 8) {
+            Circle()
+                .fill(FashColors.brandPrimary.opacity(0.1))
+                .frame(width: 28, height: 28)
+                .overlay {
+                    FashDefaultProfileAvatar()
+                        .clipShape(Circle())
+                }
+            VStack(alignment: .leading, spacing: 3) {
+                Text(displayName)
+                    .font(FashTypography.labelSmall)
+                    .foregroundStyle(FashColors.textSecondary.opacity(0.55))
+                    .padding(.leading, 2)
+                ChatTypingDots()
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 14)
+                    .background(FashColors.surfaceContainerHigh)
+                    .clipShape(
+                        UnevenRoundedRectangle(
+                            topLeadingRadius: 18,
+                            bottomLeadingRadius: 4,
+                            bottomTrailingRadius: 18,
+                            topTrailingRadius: 18
+                        )
+                    )
+            }
+            Spacer(minLength: 48)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 4)
+    }
+}
+
+private struct ChatTypingDots: View {
+    @State private var animating = false
+
+    var body: some View {
+        HStack(spacing: 5) {
+            ForEach(0..<3, id: \.self) { index in
+                Circle()
+                    .fill(FashColors.textSecondary.opacity(0.55))
+                    .frame(width: 8, height: 8)
+                    .scaleEffect(animating ? 1 : 0.5)
+                    .animation(
+                        .easeInOut(duration: 0.42)
+                            .repeatForever(autoreverses: true)
+                            .delay(Double(index) * 0.11),
+                        value: animating
+                    )
+            }
+        }
+        .frame(height: 16)
+        .onAppear { animating = true }
+    }
+}

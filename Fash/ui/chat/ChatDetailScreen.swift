@@ -95,9 +95,18 @@ private struct ChatDetailScreenBody: View {
                     .padding(.vertical, 8)
                 }
                 messagesList
+                if viewModel.isOtherTyping, let other = viewModel.detail?.otherUser {
+                    let label = {
+                        let n = other.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+                        return n.isEmpty ? other.username : n
+                    }()
+                    ChatTypingIndicator(displayName: label)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
                 composer
             }
         }
+        .animation(.easeInOut(duration: 0.22), value: viewModel.isOtherTyping)
         .background(FashColors.screen)
         .task(id: conversationId) {
             await viewModel.load(conversationId: conversationId, deps: deps)
@@ -328,6 +337,9 @@ private struct ChatDetailScreenBody: View {
                 .background(FashColors.surfaceContainer)
                 .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                 .disabled(readOnly)
+                .onChange(of: viewModel.inputText) { _, _ in
+                    viewModel.onInputChange(deps: deps)
+                }
             Button {
                 composerFocused = false
                 Task { await viewModel.sendMessage(deps: deps) }
