@@ -42,6 +42,16 @@ if grep -q 'L10n\.dialogCancel' Fash/ui/chat/ChatDetailComponents.swift 2>/dev/n
   fail=1
 fi
 
+if grep -q 'private enum OrderCancelledChatPayload' Fash/ui/chat/ChatInboxPreview.swift 2>/dev/null; then
+  echo "::error::Remove private OrderCancelledChatPayload from ChatInboxPreview — use Fash/data/chat/OrderCancelledChatPayload.swift."
+  fail=1
+fi
+
+if ! grep -q 'orderIdPrefix' Fash/data/chat/OrderCancelledChatPayload.swift 2>/dev/null; then
+  echo "::error::OrderCancelledChatPayload.swift must define orderIdPrefix for inbox preview parsing."
+  fail=1
+fi
+
 if [[ "${fail}" -ne 0 ]]; then
   exit 1
 fi

@@ -137,11 +137,13 @@ jobs:
           for log in xcodebuild-archive.log xcodebuild-export.log; do
             [[ -f "${log}" ]] || continue
             echo "::group::${log}"
-            mapfile -t swift_errors < <(grep -E '\.swift:[0-9]+:[0-9]+: error:' "${log}" || true)
-            if [[ ${#swift_errors[@]} -gt 0 ]]; then
-              echo "Swift compile errors (${#swift_errors[@]}):"
-              printf '%s\n' "${swift_errors[@]}" | head -50
-              printf '%s\n' "${swift_errors[@]}" | head -15 | while IFS= read -r line; do
+            swift_errors="$(grep -E '\.swift:[0-9]+:[0-9]+: error:' "${log}" || true)"
+            if [[ -n "${swift_errors}" ]]; then
+              swift_count="$(printf '%s\n' "${swift_errors}" | sed '/^$/d' | wc -l | tr -d ' ')"
+              echo "Swift compile errors (${swift_count}):"
+              printf '%s\n' "${swift_errors}" | head -50
+              printf '%s\n' "${swift_errors}" | head -15 | while IFS= read -r line; do
+                [[ -n "${line}" ]] || continue
                 echo "::error::${line}"
               done
             else
@@ -259,7 +261,17 @@ jobs:
           echo "### iOS release" >> "${GITHUB_STEP_SUMMARY}"
           echo "- Version: **${{ steps.app_version.outputs.marketing }} (${{ steps.app_version.outputs.build }})**" >> "${GITHUB_STEP_SUMMARY}"
           echo "- Scheme: **${SCHEME}** · Event: **${{ github.event_name }}** · Ref: \`${{ github.ref }}\`" >> "${GITHUB_STEP_SUMMARY}"
-          echo "- After upload: App Store Connect → TestFlight → **${{ steps.app_version.outputs.marketing }} (${{ steps.app_version.outputs.build }})**" >> "${GITHUB_STEP_SUMMARY}"
+          echo "- Archive: **${{ steps.archive.outcome }}**" >> "${GITHUB_STEP_SUMMARY}"
+          if [[ "${{ steps.archive.outcome }}" != "success" ]]; then
+            echo "- **Build failed** — expand step **Print xcodebuild errors** or download artifact \`fash-ios-release-logs-${{ github.run_number }}\`" >> "${GITHUB_STEP_SUMMARY}"
+            if [[ -f xcodebuild-archive.log ]]; then
+              echo "" >> "${GITHUB_STEP_SUMMARY}"
+              echo "#### Swift errors (first 10)" >> "${GITHUB_STEP_SUMMARY}"
+              grep -E '\.swift:[0-9]+:[0-9]+: error:' xcodebuild-archive.log | head -10 >> "${GITHUB_STEP_SUMMARY}" || true
+            fi
+          else
+            echo "- After upload: App Store Connect → TestFlight → **${{ steps.app_version.outputs.marketing }} (${{ steps.app_version.outputs.build }})**" >> "${GITHUB_STEP_SUMMARY}"
+          fi
 
       - name: Upload xcodebuild logs on failure
         if: failure()

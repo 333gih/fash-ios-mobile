@@ -63,7 +63,3 @@ enum ChatInboxPreview {
         return rest.isEmpty ? nil : rest
     }
 }
-
-private enum OrderCancelledChatPayload {
-    static let orderIdPrefix = "FASH_ORDER_CANCELLED_ORDER_ID="
-}
