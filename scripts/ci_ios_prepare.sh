@@ -22,6 +22,11 @@ xcodegen --version
 echo "==> Generate Xcode project"
 xcodegen generate
 
+if [[ ! -f "Fash/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png" ]]; then
+  echo "error: Missing AppIcon PNGs (TestFlight upload will fail). Run: powershell -File scripts/generate_app_icon.ps1" >&2
+  exit 1
+fi
+
 if grep -qE 'README\.md.*in Resources|path = .*README\.md' Fash.xcodeproj/project.pbxproj 2>/dev/null; then
   echo "error: README.md must not be a Copy Bundle Resource (breaks archive). Move docs to docs/ and exclude **/*.md in project.yml." >&2
   grep 'README\.md' Fash.xcodeproj/project.pbxproj || true

@@ -216,6 +216,7 @@ Provisioning profile phải khớp bundle id **ProdRelease**: `com.pc.fash-ios-m
 | Không thấy artifact simulator | Build phải **pass**; tên `fash-ios-simulator-*` |
 | iOS Release fail signing | Kiểm tra secrets mục 6; profile name khớp `IOS_PROVISIONING_PROFILE_SPECIFIER` |
 | Archive: `Multiple commands produce .../Fash.app/README.md` | Không đặt `README.md` / `*.md` trong `Fash/` — doc ở `docs/`; `project.yml` exclude `**/*.md`; CI fail sớm nếu pbxproj vẫn tham chiếu README |
+| TestFlight `90022` / `90713` missing app icon / `CFBundleIconName` | `Assets.xcassets` phải nằm trong `sources` (actool), không copy qua `resources`; chạy `scripts/generate_app_icon.ps1` và commit `AppIcon-*.png` |
 | Hết phút macOS (private repo) | Đổi repo public hoặc nâng gói GitHub |
 
 ## 8. Build local (Mac)

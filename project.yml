@@ -56,14 +56,12 @@ targets:
           - "**/.DS_Store"
           # Never ship markdown inside Fash.app (basename collisions break archive).
           - "**/*.md"
-          # Listed explicitly under resources: — avoid duplicate Copy Bundle Resources.
+          # Localizable.strings / fonts only — not Assets.xcassets (must compile via actool).
           - "Resources/**"
-          - "Assets.xcassets/**"
     resources:
       - path: Fash/Resources
         excludes:
           - "**/*.md"
-      - path: Fash/Assets.xcassets
     dependencies:
       - package: Kingfisher
       - package: GoogleSignIn
