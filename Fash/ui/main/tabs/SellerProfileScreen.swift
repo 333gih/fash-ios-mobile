@@ -82,7 +82,7 @@ struct SellerProfileScreen: View {
             .padding(.leading, spacing.editorialStart)
         }
         .padding(.bottom, 28)
-        if let name = viewModel.profile?.displayName.nilIfEmpty {
+        if let name = trimmedNonEmpty(viewModel.profile?.displayName) {
             Text(name)
                 .font(FashTypography.titleMedium.weight(.bold))
                 .foregroundStyle(FashColors.textPrimary)
@@ -99,7 +99,7 @@ struct SellerProfileScreen: View {
 
     @ViewBuilder
     private var coverImage: some View {
-        if let cover = viewModel.profile?.coverImageUrl.nilIfEmpty,
+        if let cover = trimmedNonEmpty(viewModel.profile?.coverImageUrl),
            let resolved = FeedImageUrl.resolveProfileImageUrlOrNil(cover) {
             FashAsyncImage(url: resolved, contentMode: .fill)
         } else {
@@ -205,4 +205,10 @@ struct SellerProfileScreen: View {
             }
         }
     }
+}
+
+private func trimmedNonEmpty(_ value: String?) -> String? {
+    guard let value else { return nil }
+    let t = value.trimmingCharacters(in: .whitespacesAndNewlines)
+    return t.isEmpty ? nil : t
 }
