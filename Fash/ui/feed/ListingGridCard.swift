@@ -53,17 +53,20 @@ struct ListingGridCard: View {
 
     @ViewBuilder
     private var imageLayer: some View {
-        if displayImageUrl.isEmpty {
-            Rectangle()
-                .fill(FashColors.surfaceContainerHigh)
-                .overlay {
-                    Text(L10n.noImage)
-                        .font(FashTypography.bodySmall)
-                        .foregroundStyle(FashColors.textSecondary)
-                }
-        } else {
-            FashAsyncImage(url: FeedImageUrl.resolveListingImageUrl(displayImageUrl))
+        Group {
+            if displayImageUrl.isEmpty {
+                Rectangle()
+                    .fill(FashColors.surfaceContainerHigh)
+                    .overlay {
+                        Text(L10n.noImage)
+                            .font(FashTypography.bodySmall)
+                            .foregroundStyle(FashColors.textSecondary)
+                    }
+            } else {
+                FashAsyncImage(url: displayImageUrl)
+            }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var footerGradient: some View {
@@ -99,19 +102,23 @@ struct ListingGridCard: View {
             }
             let title = item.title.trimmingCharacters(in: .whitespaces)
             if !title.isEmpty {
-                Text(title)
-                    .font(FashTypography.bodySmall)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
+                FashMarqueeText(
+                    text: title,
+                    font: FashTypography.bodySmall,
+                    fontWeight: .semibold,
+                    color: .white,
+                    lineHeight: 16
+                )
             }
             if !compactFooter, metaLine.hasContent {
                 metaRow
             }
-            Text(sellerLine)
-                .font(FashTypography.labelSmall)
-                .foregroundStyle(.white.opacity(0.88))
-                .lineLimit(1)
+            FashMarqueeText(
+                text: sellerLine,
+                font: FashTypography.labelSmall,
+                color: .white.opacity(0.88),
+                lineHeight: 14
+            )
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
@@ -130,36 +137,40 @@ struct ListingGridCard: View {
         let parts = metaLine
         if !parts.conditionLabel.isEmpty, !parts.secondary.isEmpty {
             HStack(spacing: 6) {
-                Text(parts.conditionLabel)
-                    .font(FashTypography.labelSmall)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 3)
-                    .background(Color.white.opacity(0.24))
-                    .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
-                    .lineLimit(1)
-                Text(parts.secondary)
-                    .font(FashTypography.labelSmall)
-                    .foregroundStyle(.white.opacity(0.92))
-                    .lineLimit(1)
+                conditionPill(parts.conditionLabel, maxWidth: 112)
+                FashMarqueeText(
+                    text: parts.secondary,
+                    font: FashTypography.labelSmall,
+                    color: .white.opacity(0.92),
+                    lineHeight: 14
+                )
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         } else if !parts.conditionLabel.isEmpty {
-            Text(parts.conditionLabel)
-                .font(FashTypography.labelSmall)
-                .fontWeight(.semibold)
-                .foregroundStyle(.white)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 3)
-                .background(Color.white.opacity(0.24))
-                .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
-                .lineLimit(1)
+            conditionPill(parts.conditionLabel, maxWidth: 160)
         } else if !parts.secondary.isEmpty {
-            Text(parts.secondary)
-                .font(FashTypography.labelSmall)
-                .foregroundStyle(.white.opacity(0.92))
-                .lineLimit(1)
+            FashMarqueeText(
+                text: parts.secondary,
+                font: FashTypography.labelSmall,
+                color: .white.opacity(0.92),
+                lineHeight: 14
+            )
         }
+    }
+
+    private func conditionPill(_ label: String, maxWidth: CGFloat) -> some View {
+        FashMarqueeText(
+            text: label,
+            font: FashTypography.labelSmall,
+            fontWeight: .semibold,
+            color: .white,
+            lineHeight: 14
+        )
+        .padding(.horizontal, 6)
+        .padding(.vertical, 3)
+        .frame(maxWidth: maxWidth, alignment: .leading)
+        .background(Color.white.opacity(0.24))
+        .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
     }
 
     @ViewBuilder
@@ -240,10 +251,19 @@ struct ListingGridCard: View {
     }
 
     private var secondaryMeta: String {
-        [item.categoryName, item.brand, item.size, item.listingAestheticTag]
-            .compactMap { $0?.trimmingCharacters(in: .whitespaces) }
-            .filter { !$0.isEmpty }
-            .joined(separator: " · ")
+        func p(_ raw: String?) -> String? {
+            guard let trimmed = raw?.trimmingCharacters(in: .whitespaces), !trimmed.isEmpty else { return nil }
+            return trimmed
+        }
+        let cat = p(item.categoryName)
+        let brand = p(item.brand)
+        let size = p(item.size)
+        let sellerStyle = p(item.sellerStyleTag)
+        let vibe = p(item.listingAestheticTag).flatMap { tag in
+            if let sellerStyle, tag.caseInsensitiveCompare(sellerStyle) == .orderedSame { return nil }
+            return tag
+        }
+        return [cat, brand, size, vibe].compactMap { $0 }.joined(separator: " · ")
     }
 
     private var sellerLine: String {
@@ -256,6 +276,21 @@ struct ListingGridCard: View {
 
     private var scarcityBadge: String? {
         guard !compactFooter else { return nil }
+        if let createdAt = item.createdAt?.trimmingCharacters(in: .whitespaces), !createdAt.isEmpty {
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            var date = formatter.date(from: createdAt)
+            if date == nil {
+                formatter.formatOptions = [.withInternetDateTime]
+                date = formatter.date(from: createdAt)
+            }
+            if let date {
+                let ageMs = Date().timeIntervalSince(date) * 1_000
+                if ageMs >= 0, ageMs < 2 * 60 * 60 * 1_000 {
+                    return L10n.listingBadgeJustListed
+                }
+            }
+        }
         if item.saveCount >= 3 {
             return L10n.listingBadgeSavedCount(item.saveCount)
         }

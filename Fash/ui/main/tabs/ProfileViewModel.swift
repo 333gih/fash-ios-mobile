@@ -3,6 +3,11 @@ import Observation
 
 private let profileStaleThresholdSeconds: TimeInterval = 60
 
+struct ProfileTabOpenRequest: Equatable {
+    let tab: ProfileListingTab
+    let scrollToGrid: Bool
+}
+
 @Observable
 @MainActor
 final class ProfileViewModel {
@@ -20,6 +25,9 @@ final class ProfileViewModel {
     var isLoading = false
     var isRefreshing = false
     var loadError = false
+    var profileUxPersonalization = ProfileUxPersonalization()
+    var orderedProfileTabIndices: [Int] = ProfileListingTab.allCases.map(\.rawValue)
+    var profileTabOpenGeneration = 0
 
     var sellingListings: [ListingFeedItem] = []
     var inReviewListings: [ListingFeedItem] = []
@@ -28,6 +36,9 @@ final class ProfileViewModel {
     var wishlistListings: [ListingFeedItem] = []
 
     private var lastSuccessfulRefreshAt: Date?
+    private var profileUxDefaultApplied = false
+    private var pendingDefaultProfileTab: Int?
+    private var profileTabOpenRequest: ProfileTabOpenRequest?
 
     func listings(for tab: ProfileListingTab) -> [ListingFeedItem] {
         switch tab {
@@ -69,9 +80,60 @@ final class ProfileViewModel {
                 aestheticCatalog = tags
             }
             await loadListings(deps: deps)
+            await loadProfileUxPersonalization(deps: deps)
         case .failure:
             loadError = true
         }
+    }
+
+    func onProfileTabSelected(_ tabIndex: Int, deps: AppDependencies) {
+        deps.uxTabTracker.onTabOpened(scope: "profile", tabKey: UxPersonalizationMapping.profileTabKey(from: tabIndex))
+    }
+
+    func requestWishlistTabFromHome() {
+        requestOpenProfileTab(.wishlist, scrollToGrid: true)
+    }
+
+    func requestInReviewTabFromHome() {
+        requestOpenProfileTab(.inReview, scrollToGrid: true)
+    }
+
+    func consumeProfileTabOpenRequest() -> ProfileTabOpenRequest? {
+        guard profileTabOpenGeneration != 0 else { return nil }
+        let req = profileTabOpenRequest
+        profileTabOpenRequest = nil
+        profileTabOpenGeneration = 0
+        return req
+    }
+
+    func consumePendingDefaultProfileTab() -> Int? {
+        if profileUxDefaultApplied { return nil }
+        if profileTabOpenGeneration != 0 { return nil }
+        let tab = pendingDefaultProfileTab
+            ?? UxPersonalizationMapping.profileTabIndex(from: profileUxPersonalization.defaultTabKey)
+        pendingDefaultProfileTab = nil
+        guard let tab else { return nil }
+        profileUxDefaultApplied = true
+        return tab
+    }
+
+    func clearCachedProfile(deps: AppDependencies) {
+        profileUxDefaultApplied = false
+        profileUxPersonalization = ProfileUxPersonalization()
+        orderedProfileTabIndices = ProfileListingTab.allCases.map(\.rawValue)
+        profileTabOpenRequest = nil
+        profileTabOpenGeneration = 0
+        pendingDefaultProfileTab = nil
+        deps.uxTabTracker.closeActiveTab()
+        deps.uxTabTracker.flush()
+        profile = nil
+        sellingListings = []
+        inReviewListings = []
+        rejectedListings = []
+        soldListings = []
+        wishlistListings = []
+        loadError = false
+        lastSuccessfulRefreshAt = nil
     }
 
     private func applyProfile(_ p: ProfileInfo) {
@@ -103,19 +165,43 @@ final class ProfileViewModel {
         }
     }
 
+    private func loadProfileUxPersonalization(deps: AppDependencies) async {
+        let uid = deps.authSessionStore.read()?.userId
+        if let local = UxPersonalizationLocalStore.readProfileDefaultTab(userId: uid),
+           let idx = UxPersonalizationMapping.profileTabIndex(from: local),
+           !profileUxDefaultApplied {
+            profileUxPersonalization.defaultTabKey = local
+            pendingDefaultProfileTab = idx
+        }
+        let result = await deps.recommendationRepository.uxPersonalization(
+            clientHour: UxPersonalizationLocalStore.currentClientHour()
+        )
+        guard case .success(let bundle) = result else { return }
+        profileUxPersonalization = bundle.profile
+        orderedProfileTabIndices = UxPersonalizationMapping.orderedProfileTabIndices(
+            tabOrderKeys: bundle.profile.tabOrderKeys
+        )
+        UxPersonalizationLocalStore.writeProfileDefaultTab(userId: uid, tabKey: bundle.profile.defaultTabKey)
+        if let idx = UxPersonalizationMapping.profileTabIndex(from: bundle.profile.defaultTabKey),
+           !profileUxDefaultApplied {
+            pendingDefaultProfileTab = idx
+        }
+    }
+
+    private func requestOpenProfileTab(_ tab: ProfileListingTab, scrollToGrid: Bool) {
+        profileTabOpenRequest = ProfileTabOpenRequest(tab: tab, scrollToGrid: scrollToGrid)
+        profileTabOpenGeneration += 1
+    }
+
     func toggleLike(_ item: ListingFeedItem, deps: AppDependencies) async {
         guard case .success(let liked) = await deps.listingRepository.toggleLike(listingId: item.id) else { return }
         patchListing(item.id) { cur in
             let delta = (liked && !cur.isLiked) ? 1 : ((!liked && cur.isLiked) ? -1 : 0)
-            return ListingFeedItem(
-                id: cur.id, title: cur.title, coverImageUrl: cur.coverImageUrl, imageUrls: cur.imageUrls,
-                priceVnd: cur.priceVnd, brand: cur.brand, size: cur.size, categoryName: cur.categoryName,
-                listingAestheticTag: cur.listingAestheticTag, condition: cur.condition,
-                likeCount: max(0, cur.likeCount + delta), saveCount: cur.saveCount,
-                sellerId: cur.sellerId, sellerUsername: cur.sellerUsername, sellerStyleTag: cur.sellerStyleTag,
-                createdAt: cur.createdAt, isLiked: liked, isSaved: cur.isSaved,
-                onsiteInspectionCommitment: cur.onsiteInspectionCommitment,
-                listingStatus: cur.listingStatus, descriptionText: cur.descriptionText
+            return cur.withEngagement(
+                likeCount: max(0, cur.likeCount + delta),
+                isLiked: liked,
+                saveCount: cur.saveCount,
+                isSaved: cur.isSaved
             )
         }
     }
@@ -124,15 +210,11 @@ final class ProfileViewModel {
         guard case .success(let saved) = await deps.listingRepository.toggleSave(listingId: item.id, currentlySaved: item.isSaved) else { return }
         patchListing(item.id) { cur in
             let delta = (saved && !cur.isSaved) ? 1 : ((!saved && cur.isSaved) ? -1 : 0)
-            return ListingFeedItem(
-                id: cur.id, title: cur.title, coverImageUrl: cur.coverImageUrl, imageUrls: cur.imageUrls,
-                priceVnd: cur.priceVnd, brand: cur.brand, size: cur.size, categoryName: cur.categoryName,
-                listingAestheticTag: cur.listingAestheticTag, condition: cur.condition,
-                likeCount: cur.likeCount, saveCount: max(0, cur.saveCount + delta),
-                sellerId: cur.sellerId, sellerUsername: cur.sellerUsername, sellerStyleTag: cur.sellerStyleTag,
-                createdAt: cur.createdAt, isLiked: cur.isLiked, isSaved: saved,
-                onsiteInspectionCommitment: cur.onsiteInspectionCommitment,
-                listingStatus: cur.listingStatus, descriptionText: cur.descriptionText
+            return cur.withEngagement(
+                likeCount: cur.likeCount,
+                isLiked: cur.isLiked,
+                saveCount: max(0, cur.saveCount + delta),
+                isSaved: saved
             )
         }
         if !saved && item.isSaved {
@@ -156,8 +238,5 @@ final class ProfileViewModel {
         soldListings = soldListings.map { $0.id == id ? transform($0) : $0 }
         wishlistListings = wishlistListings.map { $0.id == id ? transform($0) : $0 }
     }
-
-    func requestInReviewTabFromHome(deps: AppDependencies) async {
-        await refresh(deps: deps, force: true)
-    }
 }
+

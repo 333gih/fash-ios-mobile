@@ -13,12 +13,32 @@ struct FeaturedSellerItem: Equatable, Identifiable {
     let previewListingIds: [String]
 
     var id: String { userId.isEmpty ? username : userId }
+
+    var sellerKey: String {
+        let uid = userId.trimmingCharacters(in: .whitespaces)
+        if !uid.isEmpty { return uid }
+        return username.trimmingCharacters(in: .whitespaces)
+    }
+}
+
+struct FeaturedSellersPage: Equatable {
+    let items: [FeaturedSellerItem]
+    let total: Int
 }
 
 enum FeaturedSellerParser {
     static func parse(_ data: Data) -> [FeaturedSellerItem] {
         guard let raw = String(data: data, encoding: .utf8) else { return [] }
         return parse(raw)
+    }
+
+    static func parsePage(_ data: Data) -> FeaturedSellersPage {
+        let items = parse(data)
+        guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return FeaturedSellersPage(items: items, total: items.count)
+        }
+        let total = (obj["total"] as? NSNumber)?.intValue ?? items.count
+        return FeaturedSellersPage(items: items, total: max(total, items.count))
     }
 
     static func parse(_ raw: String) -> [FeaturedSellerItem] {

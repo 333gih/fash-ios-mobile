@@ -13,6 +13,9 @@ struct MainNavScreen: View {
     @State private var ordersVM = OrdersViewModel()
     @State private var postVM = PostViewModel()
     @State private var addressBookVM = AddressBookViewModel()
+    @State private var notificationsVM: NotificationsViewModel?
+    @State private var realtimeListenerId: UUID?
+    @State private var realtimePingTask: Task<Void, Never>?
 
     private var isPostListingFlow: Bool { router.selectedTab == .post }
 
@@ -34,6 +37,23 @@ struct MainNavScreen: View {
                 onDismiss: {
                     router.showNotificationScreen = false
                     router.notificationDetailId = nil
+                    Task { await refreshInboxUnreadCount() }
+                },
+                onOpenOrder: { _ in
+                    router.showNotificationScreen = false
+                    router.notificationDetailId = nil
+                    router.selectedTab = .orders
+                },
+                onOpenListing: { listingId in
+                    router.showNotificationScreen = false
+                    router.notificationDetailId = nil
+                    deps.presentListingDetail(listingId: listingId, router: router)
+                },
+                onOpenChat: { conversationId in
+                    router.showNotificationScreen = false
+                    router.notificationDetailId = nil
+                    router.selectedTab = .chat
+                    router.selectedConversationId = conversationId
                 }
             )
         }
@@ -42,7 +62,8 @@ struct MainNavScreen: View {
                 onBack: { router.showSettingsScreen = false },
                 onLogout: {
                     Task {
-                        homeVM.clearCachesForSignedOutUser()
+                        homeVM.clearCachesForSignedOutUser(deps: deps)
+                        profileVM.clearCachedProfile(deps: deps)
                         router.selectedTab = .home
                         await deps.authManager.logout()
                         router.showSettingsScreen = false
@@ -51,7 +72,8 @@ struct MainNavScreen: View {
                 },
                 onLogoutAll: {
                     Task {
-                        homeVM.clearCachesForSignedOutUser()
+                        homeVM.clearCachesForSignedOutUser(deps: deps)
+                        profileVM.clearCachedProfile(deps: deps)
                         router.selectedTab = .home
                         await deps.authManager.logoutAll()
                         router.showSettingsScreen = false
@@ -93,26 +115,46 @@ struct MainNavScreen: View {
         }
         .overlay(alignment: .top) {
             if let banner = deps.inAppNotification {
-                FashInAppNotificationBanner(session: banner) {
-                    deps.inAppNotification = nil
-                }
+                FashInAppNotificationBanner(
+                    session: banner,
+                    onTap: {
+                        RealtimeNotificationRouter.handleInAppBannerTap(
+                            session: banner,
+                            deps: deps,
+                            router: router
+                        )
+                    },
+                    onDismiss: { deps.inAppNotification = nil }
+                )
             }
         }
         .task {
             deps.consumePendingDeepLinks(router: router)
+            if notificationsVM == nil {
+                notificationsVM = NotificationsViewModel(userRepository: deps.userRepository)
+            }
             if !isGuestMode {
-                await deps.realtimeManager.connect { _ in
-                    deps.requestOpenNotificationInbox()
-                }
+                await refreshInboxUnreadCount()
+                startRealtimeServices()
             } else {
-                homeVM.onGuestBrowseEntered()
+                stopRealtimeServices()
+                homeVM.onGuestBrowseEntered(deps: deps)
             }
         }
         .onChange(of: isGuestMode) { _, guest in
             if guest {
-                homeVM.onGuestBrowseEntered()
+                stopRealtimeServices()
+                homeVM.onGuestBrowseEntered(deps: deps)
                 router.selectedTab = .home
+            } else {
+                Task {
+                    await refreshInboxUnreadCount()
+                    startRealtimeServices()
+                }
             }
+        }
+        .onChange(of: deps.inboxUnreadRefreshGeneration) { _, _ in
+            Task { await refreshInboxUnreadCount() }
         }
         .onChange(of: deps.inboxOpenRequestGeneration) { _, _ in
             if !isGuestMode {
@@ -122,13 +164,21 @@ struct MainNavScreen: View {
         .onChange(of: router.pendingExploreProfileFilter) { _, _ in
             Task { await applyPendingExploreProfileFilter() }
         }
+        .onChange(of: router.showEditProfile) { wasOpen, isOpen in
+            if wasOpen, !isOpen, !isGuestMode {
+                homeVM.refreshSizingBannerAfterProfileSave(deps: deps, isGuestMode: isGuestMode)
+            }
+        }
         .onChange(of: router.selectedTab) { _, tab in
             guard !isGuestMode else { return }
             switch tab {
             case .profile:
                 Task { await profileVM.refreshIfStale(deps: deps) }
             case .chat:
-                Task { await chatVM.refresh(deps: deps) }
+                Task {
+                    await chatVM.refresh(deps: deps)
+                    await chatVM.resyncConversationSubscriptions(deps: deps)
+                }
             case .orders:
                 Task { await ordersVM.refresh(deps: deps) }
             default:
@@ -144,12 +194,14 @@ struct MainNavScreen: View {
             HomeTopBar(
                 animateSearch: !router.featureTourActive,
                 showGuestSignIn: isGuestMode,
+                unreadCount: deps.inboxUnreadCount,
                 onSearchClick: openExploreSearch,
                 onNotificationsClick: openNotifications
             )
         case .profile:
             ProfileTopBar(
                 showGuestSignIn: isGuestMode,
+                unreadCount: deps.inboxUnreadCount,
                 onSearchClick: openExploreSearch,
                 onNotificationsClick: openNotifications,
                 onGuestSignIn: { onRequestSignIn?(L10n.guestLoginReasonTopbar) },
@@ -161,6 +213,7 @@ struct MainNavScreen: View {
             MainTopBar(
                 suffix: headerSuffix,
                 showGuestSignIn: isGuestMode,
+                unreadCount: deps.inboxUnreadCount,
                 onSearchClick: openExploreSearch,
                 onNotificationsClick: openNotifications,
                 onGuestSignIn: { onRequestSignIn?(L10n.guestLoginReasonTopbar) }
@@ -198,7 +251,27 @@ struct MainNavScreen: View {
                         router.sellerShopUsername = username
                     }
                 },
-                onRequestSignIn: { reason in onRequestSignIn?(reason) }
+                onRequestSignIn: { reason in onRequestSignIn?(reason) },
+                onOpenSizingSetup: isGuestMode ? nil : { router.showEditProfile = true },
+                onDeliveringJourneyClick: { selectTab(.orders) },
+                onSavedJourneyClick: {
+                    profileVM.requestWishlistTabFromHome()
+                    selectTab(.profile)
+                },
+                onInReviewJourneyClick: {
+                    profileVM.requestInReviewTabFromHome()
+                    selectTab(.profile)
+                },
+                onExploreShortcutClick: { shortcut in
+                    router.pendingExploreProfileFilter = ExploreProfileFilterRequest(
+                        categoryId: shortcut.categoryId,
+                        brandId: shortcut.brandId,
+                        aestheticTagId: shortcut.aestheticTagId,
+                        searchQuery: "",
+                        countryId: nil,
+                        countryIso2: nil
+                    )
+                }
             )
         case .orders:
             if isGuestMode {
@@ -286,6 +359,49 @@ struct MainNavScreen: View {
         }
     }
 
+    private func refreshInboxUnreadCount() async {
+        if notificationsVM == nil {
+            notificationsVM = NotificationsViewModel(userRepository: deps.userRepository)
+        }
+        await notificationsVM?.refreshUnreadSummary()
+        deps.inboxUnreadCount = notificationsVM?.unreadCount ?? 0
+    }
+
+    private func startRealtimeServices() {
+        guard !isGuestMode else { return }
+        stopRealtimeServices()
+        realtimeListenerId = deps.realtimeManager.addEventListener { event in
+            guard let notificationsVM else { return }
+            RealtimeNotificationRouter.handle(
+                event,
+                deps: deps,
+                router: router,
+                notificationsVM: notificationsVM,
+                chatVM: chatVM,
+                homeVM: homeVM,
+                exploreVM: exploreVM,
+                isGuestMode: isGuestMode
+            )
+        }
+        realtimePingTask = Task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(30))
+                guard !Task.isCancelled else { break }
+                deps.realtimeManager.sendPing()
+            }
+        }
+        Task { await deps.realtimeManager.connect() }
+    }
+
+    private func stopRealtimeServices() {
+        if let id = realtimeListenerId {
+            deps.realtimeManager.removeEventListener(id)
+            realtimeListenerId = nil
+        }
+        realtimePingTask?.cancel()
+        realtimePingTask = nil
+    }
+
     private func openExploreOverlay(expandSearch: Bool) {
         router.exploreSearchExpanded = expandSearch
         router.showExploreOverlay = true
@@ -338,7 +454,7 @@ struct MainNavScreen: View {
 
     private func logout() {
         Task {
-            homeVM.clearCachesForSignedOutUser()
+            homeVM.clearCachesForSignedOutUser(deps: deps)
             router.selectedTab = .home
             await deps.authManager.logout()
             router.loginStep = .email
@@ -379,34 +495,44 @@ private struct MainNavScreenChrome<TopBar: View, TabContent: View, BottomBar: Vi
             }
         }
         .background(FashColors.screen)
-        .sheet(item: $listingPreview.state, onDismiss: {
-            if let pending = router.pendingListingIdAfterPreview {
+        .sheet(isPresented: Binding(
+            get: { listingPreview.state != nil },
+            set: { presenting in
+                if !presenting { listingPreview.close(deps: deps) }
+            }
+        )) {
+            if let preview = listingPreview.state {
+                ExploreListingPreviewSheet(
+                    feedItem: preview.feedItem,
+                    detail: preview.detail,
+                    isDetailLoading: preview.isDetailLoading,
+                    isGuestMode: isGuestMode,
+                    onViewDetail: {
+                        listingPreview.openDetail(deps: deps)
+                        router.pendingListingIdAfterPreview = preview.feedItem.id
+                        listingPreview.close(deps: deps)
+                    },
+                    onLike: {},
+                    onSave: {},
+                    onMessageSeller: {
+                        listingPreview.openDetail(deps: deps)
+                        router.pendingListingIdAfterPreview = preview.feedItem.id
+                        listingPreview.close(deps: deps)
+                    },
+                    onRequestLogin: {
+                        onRequestSignIn?(L10n.guestLoginReasonBuy)
+                    }
+                )
+                .environment(\.locale, AppLocale.locale)
+            }
+        }
+        .onChange(of: listingPreview.state?.id) { _, _ in
+            if let pending = router.pendingListingIdAfterPreview, listingPreview.state == nil {
                 router.pendingListingIdAfterPreview = nil
                 DispatchQueue.main.async {
                     deps.presentListingDetail(listingId: pending, router: router)
                 }
             }
-        }) { preview in
-            ExploreListingPreviewSheet(
-                feedItem: preview.feedItem,
-                detail: preview.detail,
-                isDetailLoading: preview.isDetailLoading,
-                isGuestMode: isGuestMode,
-                onViewDetail: {
-                    router.pendingListingIdAfterPreview = preview.feedItem.id
-                    listingPreview.close()
-                },
-                onLike: {},
-                onSave: {},
-                onMessageSeller: {
-                    router.pendingListingIdAfterPreview = preview.feedItem.id
-                    listingPreview.close()
-                },
-                onRequestLogin: {
-                    onRequestSignIn?(L10n.guestLoginReasonBuy)
-                }
-            )
-            .environment(\.locale, AppLocale.locale)
         }
     }
 }
@@ -416,6 +542,7 @@ private struct MainNavScreenChrome<TopBar: View, TabContent: View, BottomBar: Vi
 private struct HomeTopBar: View {
     var animateSearch: Bool = true
     var showGuestSignIn: Bool = false
+    var unreadCount: Int = 0
     let onSearchClick: () -> Void
     let onNotificationsClick: () -> Void
 
@@ -469,19 +596,14 @@ private struct HomeTopBar: View {
     }
 
     private var notificationButton: some View {
-        Button(action: onNotificationsClick) {
-            Image(systemName: "bell")
-                .font(.system(size: 22))
-                .foregroundStyle(FashColors.textPrimary)
-                .frame(width: 48, height: 48)
-        }
-        .buttonStyle(.plain)
+        FashInboxNotificationBellButton(unreadCount: unreadCount, action: onNotificationsClick)
     }
 }
 
 private struct MainTopBar: View {
     let suffix: String
     var showGuestSignIn: Bool = false
+    var unreadCount: Int = 0
     let onSearchClick: () -> Void
     let onNotificationsClick: () -> Void
     var onGuestSignIn: () -> Void = {}
@@ -495,13 +617,7 @@ private struct MainTopBar: View {
                 Button(L10n.guestTopbarSignIn, action: onGuestSignIn)
                     .font(FashTypography.labelLarge)
             } else {
-                Button(action: onNotificationsClick) {
-                    Image(systemName: "bell")
-                        .font(.system(size: 22))
-                        .foregroundStyle(FashColors.textPrimary)
-                        .frame(width: 48, height: 48)
-                }
-                .buttonStyle(.plain)
+                FashInboxNotificationBellButton(unreadCount: unreadCount, action: onNotificationsClick)
             }
         }
         .padding(.leading, 16)
@@ -512,6 +628,7 @@ private struct MainTopBar: View {
 
 private struct ProfileTopBar: View {
     var showGuestSignIn: Bool = false
+    var unreadCount: Int = 0
     let onSearchClick: () -> Void
     let onNotificationsClick: () -> Void
     var onGuestSignIn: () -> Void = {}
@@ -528,13 +645,7 @@ private struct ProfileTopBar: View {
                 Button(L10n.guestTopbarSignIn, action: onGuestSignIn)
                     .font(FashTypography.labelLarge)
             } else {
-                Button(action: onNotificationsClick) {
-                    Image(systemName: "bell")
-                        .font(.system(size: 22))
-                        .foregroundStyle(FashColors.textPrimary)
-                        .frame(width: 48, height: 48)
-                }
-                .buttonStyle(.plain)
+                FashInboxNotificationBellButton(unreadCount: unreadCount, action: onNotificationsClick)
                 Menu {
                     Button(L10n.homeLogout, action: onLogout)
                         .disabled(isLoggingOut)

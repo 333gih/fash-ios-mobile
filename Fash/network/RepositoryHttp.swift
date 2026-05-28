@@ -107,4 +107,57 @@ enum RepositoryHttp {
         }
         return defaultValue
     }
+
+    static func executePost(
+        urlString: String,
+        client: SecuredApiClient,
+        body: Data,
+        publicBrowse: Bool = false
+    ) async throws {
+        guard let url = URL(string: urlString) else { throw URLError(.badURL) }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = body
+        let (_, http): (Data, HTTPURLResponse)
+        if publicBrowse {
+            (_, http) = try await PublicBrowseHttp.data(for: req)
+        } else {
+            (_, http) = try await client.data(for: req)
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            throw URLError(.badServerResponse)
+        }
+    }
+
+    static func executeCorePost(
+        relativePath: String,
+        client: SecuredApiClient,
+        body: Data,
+        publicBrowse: Bool = false
+    ) async throws {
+        let path = relativePath.hasPrefix("api/") ? relativePath : "api/v1/\(relativePath)"
+        if publicBrowse {
+            let stripped = path
+                .replacingOccurrences(of: "api/v1/public/", with: "")
+                .replacingOccurrences(of: "api/v1/", with: "")
+            try await executePost(
+                urlString: PublicBrowseHttp.publicApiPath(stripped),
+                client: client,
+                body: body,
+                publicBrowse: true
+            )
+            return
+        }
+        var lastError: Error = URLError(.cannotConnectToHost)
+        for urlString in AppEnvironment.coreApiCandidateURLs(path) {
+            do {
+                try await executePost(urlString: urlString, client: client, body: body)
+                return
+            } catch {
+                lastError = error
+            }
+        }
+        throw lastError
+    }
 }

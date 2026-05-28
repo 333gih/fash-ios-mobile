@@ -15,6 +15,7 @@ struct ExploreListingPreviewState: Identifiable {
 final class ListingPreviewStore {
     var state: ExploreListingPreviewState?
     private var loadTask: Task<Void, Never>?
+    private var previewContext: (listingId: String, surface: String, position: Int, openedAt: Date)?
 
     func open(
         item: ListingFeedItem,
@@ -24,6 +25,7 @@ final class ListingPreviewStore {
         position: Int = 0
     ) {
         loadTask?.cancel()
+        previewContext = (item.id, surface, position, Date())
         state = ExploreListingPreviewState(
             feedItem: item,
             surface: surface,
@@ -52,9 +54,28 @@ final class ListingPreviewStore {
         }
     }
 
-    func close() {
+    func close(deps: AppDependencies? = nil) {
+        if let deps, let ctx = previewContext {
+            let dwellMs = Int(Date().timeIntervalSince(ctx.openedAt) * 1_000)
+            deps.feedEventReporter.previewDismiss(
+                listingId: ctx.listingId,
+                surface: ctx.surface,
+                position: ctx.position,
+                dwellMs: dwellMs
+            )
+        }
+        previewContext = nil
         loadTask?.cancel()
         loadTask = nil
         state = nil
+    }
+
+    func openDetail(deps: AppDependencies) {
+        guard let preview = state else { return }
+        deps.feedEventReporter.previewDetail(
+            listingId: preview.feedItem.id,
+            surface: preview.surface,
+            position: preview.gridPosition
+        )
     }
 }

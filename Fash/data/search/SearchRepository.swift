@@ -69,28 +69,40 @@ final class SearchRepository {
     }
 
     func getFeaturedSellers(limit: Int = 12, publicBrowse: Bool = false) async -> Result<[FeaturedSellerItem], Error> {
+        switch await getFeaturedSellersPage(limit: limit, offset: 0, publicBrowse: publicBrowse) {
+        case .success(let page): return .success(page.items)
+        case .failure(let error): return .failure(error)
+        }
+    }
+
+    func getFeaturedSellersPage(limit: Int = 50, offset: Int = 0, publicBrowse: Bool = false) async -> Result<FeaturedSellersPage, Error> {
         let capped = min(max(limit, 1), 50)
+        let safeOffset = max(offset, 0)
         if publicBrowse {
             do {
                 let data = try await RepositoryHttp.executeGet(
-                    urlString: PublicBrowseHttp.publicApiPath("browse/featured-sellers") + "?limit=\(capped)&offset=0",
+                    urlString: PublicBrowseHttp.publicApiPath("browse/featured-sellers") + "?limit=\(capped)&offset=\(safeOffset)",
                     client: client,
                     publicBrowse: true
                 )
-                return .success(FeaturedSellerParser.parse(data))
+                return .success(FeaturedSellerParser.parsePage(data))
             } catch {
                 return .failure(error)
             }
         }
         do {
             let data = try await RepositoryHttp.executeCoreGet(
-                relativePath: "api/v1/search/featured-sellers?limit=\(capped)&offset=0",
+                relativePath: "api/v1/search/featured-sellers?limit=\(capped)&offset=\(safeOffset)",
                 client: client
             )
-            return .success(FeaturedSellerParser.parse(data))
+            return .success(FeaturedSellerParser.parsePage(data))
         } catch {
             return .failure(error)
         }
+    }
+
+    func browseFeaturedSellersPage(limit: Int = 50, offset: Int = 0) async -> Result<FeaturedSellersPage, Error> {
+        await getFeaturedSellersPage(limit: limit, offset: offset, publicBrowse: true)
     }
 
     func browseListings(

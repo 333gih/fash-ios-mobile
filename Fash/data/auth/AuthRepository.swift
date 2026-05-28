@@ -22,6 +22,19 @@ final class AuthRepository {
         }
     }
 
+    func login(email: String, password: String) async -> Result<AuthSession, Error> {
+        do {
+            let data = try await HttpJson.post(url: AppEnvironment.authServicePath(AppEnvironment.authLoginPath), body: [
+                "email": email.trimmingCharacters(in: .whitespaces),
+                "password": password,
+                "application_id": applicationId,
+            ])
+            return .success(try parseLoginResponse(data))
+        } catch {
+            return .failure(error)
+        }
+    }
+
     func verifyOtp(email: String, otp: String) async -> Result<AuthSession, Error> {
         do {
             let data = try await HttpJson.post(url: AppEnvironment.authServicePath(AppEnvironment.authOtpVerifyPath), body: [

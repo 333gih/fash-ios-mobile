@@ -8,6 +8,7 @@ struct RootView: View {
     @State private var loginVM = LoginViewModel()
     @State private var addressBookVM = AddressBookViewModel()
     @State private var changePasswordVM = ChangePasswordViewModel()
+    @State private var featuredSellersVM = FeaturedSellersViewModel()
 
     var body: some View {
         FashTheme {
@@ -173,7 +174,22 @@ struct RootView: View {
                 }
             )
         case .featuredSellers:
-            FeaturedSellersScreen(onDismiss: { router.showFeaturedSellersAll = false })
+            FeaturedSellersScreen(
+                viewModel: featuredSellersVM,
+                isGuestMode: router.isGuestMode,
+                onDismiss: { router.showFeaturedSellersAll = false },
+                onSellerClick: { seller in
+                    router.showFeaturedSellersAll = false
+                    let username = seller.username.trimmingCharacters(in: .whitespaces)
+                    if !username.isEmpty {
+                        router.sellerShopUsername = username
+                    }
+                },
+                onListingClick: { listingId, _ in
+                    router.showFeaturedSellersAll = false
+                    deps.presentListingDetail(listingId: listingId, router: router)
+                }
+            )
         case .inviteFriends:
             InviteFriendsScreen(onDismiss: { router.showInviteFriendsScreen = false })
         case .changePassword:
@@ -227,6 +243,10 @@ struct RootView: View {
                     router.loginStep = nil
                 },
                 onSocialLoginVerified: {
+                    router.loginStep = nil
+                    Task { await bootstrapSession() }
+                },
+                onPasswordLoginVerified: {
                     router.loginStep = nil
                     Task { await bootstrapSession() }
                 }

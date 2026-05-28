@@ -4,11 +4,24 @@ struct NotificationScreen: View {
     @State private var viewModel: NotificationsViewModel
     var detailId: String?
     var onDismiss: () -> Void
+    var onOpenOrder: (String) -> Void = { _ in }
+    var onOpenListing: (String) -> Void = { _ in }
+    var onOpenChat: (String) -> Void = { _ in }
 
-    init(userRepository: UserRepository, detailId: String? = nil, onDismiss: @escaping () -> Void) {
+    init(
+        userRepository: UserRepository,
+        detailId: String? = nil,
+        onDismiss: @escaping () -> Void,
+        onOpenOrder: @escaping (String) -> Void = { _ in },
+        onOpenListing: @escaping (String) -> Void = { _ in },
+        onOpenChat: @escaping (String) -> Void = { _ in }
+    ) {
         _viewModel = State(initialValue: NotificationsViewModel(userRepository: userRepository))
         self.detailId = detailId
         self.onDismiss = onDismiss
+        self.onOpenOrder = onOpenOrder
+        self.onOpenListing = onOpenListing
+        self.onOpenChat = onOpenChat
     }
 
     var body: some View {
@@ -21,7 +34,10 @@ struct NotificationScreen: View {
                             onDismiss: {
                                 viewModel.closeDetail()
                                 if self.detailId != nil { onDismiss() }
-                            }
+                            },
+                            onOpenOrder: onOpenOrder,
+                            onOpenListing: onOpenListing,
+                            onOpenChat: onOpenChat
                         )
                     } else {
                         ProgressView()

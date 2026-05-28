@@ -61,6 +61,11 @@ private struct ProfileScrollOffsetKey: PreferenceKey {
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }
 
+private struct ProfileHeaderBoundsKey: PreferenceKey {
+    static var defaultValue: CGRect = .zero
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) { value = nextValue() }
+}
+
 /// Collapsing profile scroll — Android [ProfileCollapsingScrollLayout].
 struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>: View {
     @Environment(\.fashSpacing) private var spacing
@@ -70,6 +75,8 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     var showQuickActions: Bool = false
     var showStatusOverlay: Bool = false
     var additionalBottomInset: CGFloat = 0
+    /// Seller profile promo dock — Android [rememberProfilePromoFooterVisible].
+    var onTabsPinnedAtTopChange: ((Bool) -> Void)? = nil
     var onListingClick: (ListingFeedItem) -> Void
     var onLike: ((ListingFeedItem) -> Void)?
     var onSave: ((ListingFeedItem) -> Void)?
@@ -78,12 +85,6 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
 
     @State private var showCompactHeader = false
     @State private var showSectionTitle = false
-    @State private var dragOffset: CGFloat = 0
-
-    private let columns = [
-        GridItem(.flexible(), spacing: 8),
-        GridItem(.flexible(), spacing: 8),
-    ]
 
     var body: some View {
         ScrollView {
@@ -92,35 +93,43 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                     expandedHeader()
                         .background(
                             GeometryReader { geo in
-                                Color.clear.preference(
-                                    key: ProfileScrollOffsetKey.self,
-                                    value: geo.frame(in: .named("profileScroll")).minY
-                                )
+                                let frame = geo.frame(in: .named("profileScroll"))
+                                Color.clear
+                                    .preference(key: ProfileScrollOffsetKey.self, value: frame.minY)
+                                    .preference(key: ProfileHeaderBoundsKey.self, value: frame)
                             }
                         )
                 }
                 Section {
-                    if items.isEmpty {
-                        emptyBlock
-                    } else {
-                        LazyVGrid(columns: columns, spacing: 8) {
-                            ForEach(items) { item in
+                    Group {
+                        if items.isEmpty {
+                            emptyBlock
+                        } else {
+                            ListingMasonryGridView(items: items) { item, _ in
                                 ListingGridCard(
                                     item: item,
                                     onTap: { onListingClick(item) },
+                                    imageAspectRatio: ListingMasonryGrid.staggerAspectRatio(for: item.id),
                                     showQuickActions: showQuickActions,
                                     onLike: onLike.map { h in { h(item) } },
                                     onSave: onSave.map { h in { h(item) } }
                                 )
                             }
+                            .padding(.top, 4)
                         }
-                        .padding(.horizontal, spacing.editorialStart)
-                        .padding(.top, 4)
                     }
+                    .animation(.easeInOut(duration: 0.2), value: selectedTab)
+
                     Color.clear.frame(height: max(120, additionalBottomInset + 80))
                 } header: {
                     stickyChrome
                 }
+            }
+            .fashScrollViewTabSwipe(
+                currentIndex: selectedTab,
+                tabCount: tabSet.tabCount
+            ) { index in
+                selectedTab = index
             }
         }
         .coordinateSpace(name: "profileScroll")
@@ -129,7 +138,10 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             showCompactHeader = progress > 0.52
             showSectionTitle = progress > 0.55
         }
-        .simultaneousGesture(horizontalSwipeGesture)
+        .onPreferenceChange(ProfileHeaderBoundsKey.self) { frame in
+            // Android: listState.firstVisibleItemIndex > 0 — hero scrolled off, tabs pinned under top bar.
+            onTabsPinnedAtTopChange?(frame.maxY <= 1)
+        }
     }
 
     private var stickyChrome: some View {
@@ -174,25 +186,6 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         }
         .padding(.vertical, 24)
     }
-
-    private var horizontalSwipeGesture: some Gesture {
-        DragGesture(minimumDistance: 24, coordinateSpace: .local)
-            .onChanged { value in
-                if abs(value.translation.width) > abs(value.translation.height) {
-                    dragOffset = value.translation.width
-                }
-            }
-            .onEnded { value in
-                let threshold: CGFloat = 72
-                let maxTab = tabSet.tabCount - 1
-                if value.translation.width <= -threshold, selectedTab < maxTab {
-                    selectedTab += 1
-                } else if value.translation.width >= threshold, selectedTab > 0 {
-                    selectedTab -= 1
-                }
-                dragOffset = 0
-            }
-    }
 }
 
 /// Scrollable tab row with primary underline — Android [ProfileTabSwitcher].
@@ -202,33 +195,44 @@ struct ProfileTabSwitcher: View {
     @Binding var selectedTab: Int
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 0) {
-                ForEach(0..<tabSet.tabCount, id: \.self) { index in
-                    let selected = selectedTab == index
-                    Button {
-                        selectedTab = index
-                    } label: {
-                        VStack(spacing: 6) {
-                            Text(tabSet.title(for: index))
-                                .font(FashTypography.labelLarge.weight(selected ? .bold : .regular))
-                                .foregroundStyle(selected ? FashColors.textPrimary : FashColors.textSecondary.opacity(0.75))
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.85)
-                            Rectangle()
-                                .fill(selected ? FashColors.brandPrimary : Color.clear)
-                                .frame(height: 2)
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 0) {
+                    ForEach(0..<tabSet.tabCount, id: \.self) { index in
+                        let selected = selectedTab == index
+                        Button {
+                            selectedTab = index
+                        } label: {
+                            VStack(spacing: 6) {
+                                Text(tabSet.title(for: index))
+                                    .font(FashTypography.labelLarge.weight(selected ? .bold : .regular))
+                                    .foregroundStyle(selected ? FashColors.textPrimary : FashColors.textSecondary.opacity(0.75))
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.85)
+                                Rectangle()
+                                    .fill(selected ? FashColors.brandPrimary : Color.clear)
+                                    .frame(height: 2)
+                            }
+                            .frame(minWidth: tabMinWidth)
+                            .padding(.horizontal, 8)
+                            .padding(.top, 10)
                         }
-                        .frame(minWidth: tabMinWidth)
-                        .padding(.horizontal, 8)
-                        .padding(.top, 10)
+                        .buttonStyle(.plain)
+                        .id(index)
                     }
-                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, spacing.editorialStart)
+            }
+            .background(FashColors.screen)
+            .onChange(of: selectedTab) { _, tab in
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    proxy.scrollTo(tab, anchor: .center)
                 }
             }
-            .padding(.horizontal, spacing.editorialStart)
+            .onAppear {
+                proxy.scrollTo(selectedTab, anchor: .center)
+            }
         }
-        .background(FashColors.screen)
     }
 
     private var tabMinWidth: CGFloat {

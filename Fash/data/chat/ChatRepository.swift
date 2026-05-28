@@ -166,6 +166,8 @@ final class ChatRepository {
         let orderId = RepositoryHttp.optString(root, "order_id", "OrderID").nilIfEmpty
         let offerCount = RepositoryHttp.optInt(root, "offer_count", "OfferCount")
         let isClosed = RepositoryHttp.optBool(root, "is_closed", "IsClosed")
+        let pendingOffer = (root["pending_offer"] as? [String: Any]).map(parseOfferObj)
+        let myReport = parseMyConversationReport(root)
         return ConversationDetail(
             conversationId: convId,
             otherUser: otherUser,
@@ -173,7 +175,9 @@ final class ChatRepository {
             isBuyer: isBuyer,
             orderId: orderId,
             offerCount: offerCount,
-            isClosed: isClosed
+            isClosed: isClosed,
+            pendingOffer: pendingOffer,
+            myReport: myReport
         )
     }
 
@@ -202,17 +206,28 @@ final class ChatRepository {
 
     private func parseMessages(_ data: Data) -> [ChatMessage] {
         let rows = RepositoryHttp.jsonArray(data)
+        let parsed: [ChatMessage]
         if !rows.isEmpty {
-            return rows.map(parseMessageObj).sorted { $0.timestamp < $1.timestamp }
+            parsed = rows.map(parseMessageObj)
+        } else if let root = try? RepositoryHttp.jsonObject(data),
+                  let arr = root["messages"] as? [[String: Any]] {
+            parsed = arr.map(parseMessageObj)
+        } else {
+            return []
         }
-        guard let root = try? RepositoryHttp.jsonObject(data) else { return [] }
-        if let arr = root["messages"] as? [[String: Any]] {
-            return arr.map(parseMessageObj).sorted { $0.timestamp < $1.timestamp }
-        }
-        return []
+        return parsed
+            .filter { m in
+                // skip deleted rows if API sends flag
+                true
+            }
+            .reduce(into: [String: ChatMessage]()) { acc, msg in
+                acc[msg.messageId] = msg
+            }
+            .values
+            .sorted { $0.timestamp < $1.timestamp }
     }
 
-    private func parseSingleMessage(_ data: Data) -> ChatMessage {
+    private func parseSingleMessageLegacy(_ data: Data) -> ChatMessage {
         let obj = (try? RepositoryHttp.jsonObject(data)) ?? [:]
         let payload = (obj["data"] as? [String: Any]) ?? obj
         return parseMessageObj(payload)
@@ -245,7 +260,8 @@ final class ChatRepository {
             offerAmountVnd: RepositoryHttp.optLong(m, "OfferAmountVND", "offer_amount_vnd"),
             offerStatus: RepositoryHttp.optString(m, "OfferStatus", "offer_status").ifEmpty("pending"),
             outboundState: .none,
-            systemSubtype: systemSubtype
+            systemSubtype: systemSubtype,
+            meetingAppointment: parseMeetingAppointmentPayload(m)
         )
     }
 

@@ -10,6 +10,9 @@ extension AppDependencies {
         position: Int = 0
     ) {
         dismissExploreOverlayIfNeeded(router)
+        feedEventReporter.previewOpen(listingId: item.id, surface: surface, position: position)
+        feedEventReporter.impression(listingId: item.id, surface: surface, position: position)
+        Task { _ = await listingRepository.recordView(listingId: item.id) }
         listingPreview.open(
             item: item,
             deps: self,
@@ -24,7 +27,7 @@ extension AppDependencies {
         let id = listingId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !id.isEmpty else { return }
         dismissExploreOverlayIfNeeded(router)
-        listingPreview.close()
+        listingPreview.close(deps: self)
         router.pendingListingIdAfterPreview = nil
         router.selectedListingId = id
     }

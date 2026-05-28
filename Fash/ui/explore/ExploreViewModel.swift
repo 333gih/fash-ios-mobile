@@ -46,7 +46,7 @@ final class ExploreViewModel {
     var minPriceText = ""
     var maxPriceText = ""
     var selectedConditionFilter: String?
-    var sizingModeFilter: String?
+    var sizingModeFilter: String? = ExploreViewModel.initialSizingModeFilter()
     var sortMode = "recent"
     var categoryTree: [CategoryTreeNode] = []
     var aestheticTags: [CommonAestheticTagDto] = []
@@ -55,6 +55,35 @@ final class ExploreViewModel {
     var filterCatalogLoading = false
 
     private var listingsFetchGeneration = 0
+
+    private static func initialSizingModeFilter() -> String? {
+        let mode = ExploreSizingPreference.read()
+        return mode == ExploreSizingPreference.modeMatchProfile ? mode : nil
+    }
+
+    func setSizingModeFilter(_ mode: String?) {
+        if let mode, mode.lowercased() == ExploreSizingPreference.modeMatchProfile {
+            sizingModeFilter = ExploreSizingPreference.modeMatchProfile
+            ExploreSizingPreference.write(ExploreSizingPreference.modeMatchProfile)
+        } else {
+            sizingModeFilter = nil
+            ExploreSizingPreference.write(ExploreSizingPreference.modeAll)
+        }
+    }
+
+    func recordView(item: ListingFeedItem, position: Int, deps: AppDependencies) {
+        deps.feedEventReporter.impression(listingId: item.id, surface: "explore", position: position)
+        Task { _ = await deps.listingRepository.recordView(listingId: item.id) }
+    }
+
+    func recordDwell(item: ListingFeedItem, position: Int, dwellMs: Int, deps: AppDependencies) {
+        guard dwellMs >= 800 else { return }
+        deps.feedEventReporter.dwell(listingId: item.id, surface: "explore", position: position, dwellMs: dwellMs)
+    }
+
+    func reportListingClick(item: ListingFeedItem, position: Int, deps: AppDependencies) {
+        deps.feedEventReporter.click(listingId: item.id, surface: "explore", position: position)
+    }
 
     var hasActiveFilters: Bool {
         selectedCategoryId != nil
@@ -265,7 +294,7 @@ final class ExploreViewModel {
         minPriceText = ""
         maxPriceText = ""
         selectedConditionFilter = nil
-        sizingModeFilter = nil
+        setSizingModeFilter(nil)
         await refresh(deps: deps, isGuestMode: isGuestMode)
     }
 
@@ -324,7 +353,8 @@ final class ExploreViewModel {
                 countryIso2: selectedCountryIso2,
                 limit: exploreFeedPageSize,
                 offset: offset,
-                sizingMode: sizingModeFilter
+                sizingMode: sizingModeFilter,
+                surface: "explore"
             )
         } else if isGuestMode {
             result = await deps.searchRepository.browseListings(
@@ -396,8 +426,11 @@ final class ExploreViewModel {
         }
     }
 
-    func toggleLike(_ item: ListingFeedItem, deps: AppDependencies) async {
+    func toggleLike(_ item: ListingFeedItem, position: Int = 0, deps: AppDependencies) async {
         guard case .success(let liked) = await deps.listingRepository.toggleLike(listingId: item.id) else { return }
+        if liked {
+            deps.feedEventReporter.like(listingId: item.id, surface: "explore", position: position)
+        }
         patchListing(item.id) { cur in
             let delta = (liked && !cur.isLiked) ? 1 : ((!liked && cur.isLiked) ? -1 : 0)
             return ListingFeedItem(
@@ -413,8 +446,11 @@ final class ExploreViewModel {
         }
     }
 
-    func toggleSave(_ item: ListingFeedItem, deps: AppDependencies) async {
+    func toggleSave(_ item: ListingFeedItem, position: Int = 0, deps: AppDependencies) async {
         guard case .success(let saved) = await deps.listingRepository.toggleSave(listingId: item.id, currentlySaved: item.isSaved) else { return }
+        if saved {
+            deps.feedEventReporter.save(listingId: item.id, surface: "explore", position: position)
+        }
         patchListing(item.id) { cur in
             let delta = (saved && !cur.isSaved) ? 1 : ((!saved && cur.isSaved) ? -1 : 0)
             return ListingFeedItem(
@@ -482,6 +518,12 @@ final class ExploreViewModel {
         isSearchMode = !committedListingSearchQuery.isEmpty
         await refresh(deps: deps, isGuestMode: false)
         isLoading = false
+    }
+
+    /// Realtime `feed.refresh` — Android ExploreViewModel first-page reload.
+    func handleFeedRefresh(deps: AppDependencies, isGuestMode: Bool) async {
+        guard primarySection == .listings, !isSearchModeActive else { return }
+        await refresh(deps: deps, isGuestMode: isGuestMode)
     }
 }
 

@@ -7,6 +7,25 @@ final class ListingRepository {
         self.client = client
     }
 
+    func recordView(listingId: String) async -> Result<Void, Error> {
+        let id = listingId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !id.isEmpty else { return .success(()) }
+        let urls = AppEnvironment.coreApiCandidateURLs("api/v1/listings/\(id)/view")
+        for urlString in urls {
+            guard let url = URL(string: urlString) else { continue }
+            var req = URLRequest(url: url)
+            req.httpMethod = "POST"
+            do {
+                let (_, http) = try await client.data(for: req)
+                guard (200..<300).contains(http.statusCode) else { continue }
+                return .success(())
+            } catch {
+                continue
+            }
+        }
+        return .failure(URLError(.cannotConnectToHost))
+    }
+
     func getHomeFeed(limit: Int = 20, offset: Int = 0) async -> Result<[ListingFeedItem], Error> {
         let path = "api/v1/listings/home?limit=\(limit)&offset=\(offset)"
         let urls = AppEnvironment.coreApiCandidateURLs(path)
@@ -148,6 +167,29 @@ final class ListingRepository {
                 client: client
             )
             return .success(try ListingFeedJsonParser.parseFeed(data))
+        } catch {
+            return .failure(error)
+        }
+    }
+
+    /// Saved-listings count for buyer stats — Android [getWishlistSavedCount].
+    func getWishlistSavedCount(limit: Int = 100, offset: Int = 0) async -> Result<Int, Error> {
+        do {
+            let data = try await RepositoryHttp.executeCoreGet(
+                relativePath: "api/v1/listings/wishlist?limit=\(limit)&offset=\(offset)",
+                client: client
+            )
+            let obj = try RepositoryHttp.jsonObject(data)
+            let root = (obj["data"] as? [String: Any]) ?? obj
+            for key in ["total", "Total"] {
+                if let n = root[key] as? NSNumber {
+                    return .success(n.intValue)
+                }
+            }
+            let arr = (root["listings"] as? [[String: Any]])
+                ?? (root["Listings"] as? [[String: Any]])
+                ?? []
+            return .success(arr.count)
         } catch {
             return .failure(error)
         }

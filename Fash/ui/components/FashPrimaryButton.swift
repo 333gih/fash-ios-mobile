@@ -4,27 +4,37 @@ import SwiftUI
 struct FashPrimaryButton: View {
     let title: String
     var isLoading = false
+    var showsArrow = false
     var cornerRadius: CGFloat = 12
+    var height: CGFloat = 48
+    var enabled: Bool = true
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             ZStack {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(FashGradients.primaryCta(in: CGSize(width: 320, height: 48)))
+                    .fill(FashGradients.primaryCta(in: CGSize(width: 320, height: height)))
                 HStack(spacing: 8) {
                     if isLoading {
                         ProgressView().tint(.white)
+                    } else {
+                        Text(title)
+                            .font(FashTypography.labelLarge.weight(.bold))
+                            .foregroundStyle(FashColors.readableOnBrandPrimary)
+                        if showsArrow {
+                            Image(systemName: "arrow.right")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundStyle(FashColors.readableOnBrandPrimary)
+                        }
                     }
-                    Text(title)
-                        .font(FashTypography.labelLarge)
-                        .foregroundStyle(.white)
                 }
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 48)
+            .frame(height: height)
         }
-        .disabled(isLoading)
+        .disabled(isLoading || !enabled)
+        .opacity(enabled ? 1 : 0.55)
         .buttonStyle(.plain)
     }
 }

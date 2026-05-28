@@ -99,7 +99,12 @@ extension PushNotificationCoordinator: UNUserNotificationCenterDelegate {
         await MainActor.run {
             PushNotificationCoordinator.shared.handleForegroundNotification(userInfo: userInfo)
         }
-        // When WS is connected, Android suppresses tray; iOS still shows banner if server sends notification payload.
+        let suppressTray = await MainActor.run {
+            AppDependencies.shared.realtimeManager.isConnected
+        }
+        if suppressTray {
+            return [.badge]
+        }
         return [.banner, .list, .sound, .badge]
     }
 

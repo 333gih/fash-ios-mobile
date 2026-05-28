@@ -6,6 +6,7 @@ struct FashInAppNotificationSession: Equatable {
     let title: String
     let body: String
     let userNotificationId: String?
+    var dataMap: [String: String] = [:]
 }
 
 /// Application-scoped dependencies — Android [FashApplication].
@@ -37,6 +38,8 @@ final class AppDependencies {
     let userShippingAddressRepository: UserShippingAddressRepository
     let corePaymentRepository: CorePaymentRepository
     let browseSessionStore: BrowseSessionStore
+    let feedEventReporter: FeedEventReporter
+    let uxTabTracker: UxTabTracker
     let addressLocalStore: AddressLocalStore
     let onboardingLocalStore: OnboardingLocalStore
     let orderCancelCoordinator: OrderCancelCoordinator
@@ -55,6 +58,8 @@ final class AppDependencies {
     var pendingReferrerUsername: String?
     var pendingOpenInviteFriends = false
     var inboxOpenRequestGeneration: Int = 0
+    var inboxUnreadRefreshGeneration: Int = 0
+    var inboxUnreadCount: Int = 0
     var inAppNotification: FashInAppNotificationSession?
 
     /// Set from [RootView] so push notification taps can open overlays while the app is running.
@@ -62,6 +67,7 @@ final class AppDependencies {
 
     private var sessionValidationTask: Task<Bool, Never>?
     private var proactiveTokenRefreshTask: Task<Void, Never>?
+    private var inboxRefreshDebounceTask: Task<Void, Never>?
 
     private init() {
         authRepository = AuthRepository()
@@ -92,6 +98,23 @@ final class AppDependencies {
         userShippingAddressRepository = UserShippingAddressRepository(client: securedClient)
         corePaymentRepository = CorePaymentRepository(client: securedClient)
         browseSessionStore = BrowseSessionStore()
+        feedEventReporter = FeedEventReporter(
+            repository: recommendationRepository,
+            sessionIdProvider: { [authSessionStore, browseSessionStore] in
+                if AppDependencies.shared.isGuestBrowseActive {
+                    return browseSessionStore.guestSessionId()
+                }
+                if let uid = authSessionStore.read()?.userId, !uid.isEmpty {
+                    return browseSessionStore.sessionIdForUser(uid)
+                }
+                return browseSessionStore.guestSessionId()
+            },
+            publicBrowse: { AppDependencies.shared.isGuestBrowseActive }
+        )
+        uxTabTracker = UxTabTracker(
+            repository: recommendationRepository,
+            guestBrowse: { AppDependencies.shared.isGuestBrowseActive }
+        )
         addressLocalStore = AddressLocalStore()
         onboardingLocalStore = OnboardingLocalStore()
         orderCancelCoordinator = OrderCancelCoordinator(orderRepository: orderRepository, chatRepository: chatRepository)
@@ -165,6 +188,12 @@ final class AppDependencies {
     }
 
     func handleSessionCleared(reason: String?) {
+        uxTabTracker.closeActiveTab()
+        uxTabTracker.flush()
+        feedEventReporter.clearPending()
+        inboxRefreshDebounceTask?.cancel()
+        inboxUnreadCount = 0
+        inAppNotification = nil
         authSessionStore.clear()
         isGuestBrowseActive = false
         onboardingLocalStore.clearAll()
@@ -196,6 +225,20 @@ final class AppDependencies {
 
     func requestOpenNotificationInbox() {
         inboxOpenRequestGeneration += 1
+    }
+
+    /// Debounced unread badge refresh — Android inboxUnreadRefreshSignals.
+    func requestInboxUnreadRefresh() {
+        inboxRefreshDebounceTask?.cancel()
+        inboxRefreshDebounceTask = Task {
+            try? await Task.sleep(for: .milliseconds(800))
+            guard !Task.isCancelled else { return }
+            inboxUnreadRefreshGeneration += 1
+        }
+    }
+
+    func showInAppNotification(_ session: FashInAppNotificationSession) {
+        inAppNotification = session
     }
 }
 

@@ -9,27 +9,32 @@ enum FashSkeleton {
             .fashShimmer()
     }
 
-    /// 2-column grid matching Home/Explore loading.
-    static func listingGrid(columns: Int = 2, rows: Int = 4) -> some View {
+    /// 2-column masonry grid matching Home/Explore loading.
+    static func listingGrid(columns: Int = 2, rows: Int = 4, staggered: Bool = true) -> some View {
         let spacing = FashSpacing()
-        return LazyVGrid(
-            columns: Array(repeating: GridItem(.flexible(), spacing: spacing.spacing2), count: columns),
-            spacing: spacing.spacing3
-        ) {
-            ForEach(0..<(columns * rows), id: \.self) { _ in
-                listingCardPlaceholder
+        let ratios: [CGFloat] = [3.0 / 4.0, 4.0 / 5.0, 5.0 / 6.0]
+        return VStack(spacing: spacing.spacing3) {
+            ForEach(0..<rows, id: \.self) { row in
+                HStack(spacing: spacing.spacing2) {
+                    listingCardPlaceholder(
+                        aspectRatio: staggered ? ratios[row % ratios.count] : 4.0 / 5.0
+                    )
+                    listingCardPlaceholder(
+                        aspectRatio: staggered ? ratios[(row + 1) % ratios.count] : 4.0 / 5.0
+                    )
+                }
             }
         }
         .padding(.horizontal, spacing.editorialStart)
         .padding(.vertical, spacing.spacing4)
     }
 
-    private static var listingCardPlaceholder: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            box(height: 180, cornerRadius: 16)
-            box(height: 12)
-            box(width: 80, height: 12)
-            box(width: 64, height: 14)
+    private static func listingCardPlaceholder(aspectRatio: CGFloat = 4.0 / 5.0) -> some View {
+        GeometryReader { geo in
+            VStack(alignment: .leading, spacing: 6) {
+                box(height: geo.size.width / aspectRatio, cornerRadius: 16)
+            }
         }
+        .aspectRatio(aspectRatio, contentMode: .fit)
     }
 }

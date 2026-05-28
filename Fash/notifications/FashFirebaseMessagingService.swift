@@ -12,18 +12,23 @@ enum FashFirebaseMessagingService {
         let data = stringDataMap(from: userInfo)
         guard isNotificationForLoggedInUser(data) else { return }
 
+        if data["type"] == "account.notification_pending" {
+            return
+        }
+
         if data["inbox_refresh"] == "1" {
-            AppDependencies.shared.requestOpenNotificationInbox()
+            AppDependencies.shared.requestInboxUnreadRefresh()
         }
 
         let title = data["title"]?.trimmingCharacters(in: .whitespacesAndNewlines)
         let body = data["body"]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if let title, !title.isEmpty {
-            AppDependencies.shared.inAppNotification = FashInAppNotificationSession(
+            AppDependencies.shared.showInAppNotification(FashInAppNotificationSession(
                 title: title,
                 body: body,
-                userNotificationId: data["user_notification_id"]
-            )
+                userNotificationId: data["user_notification_id"],
+                dataMap: data
+            ))
         }
     }
 

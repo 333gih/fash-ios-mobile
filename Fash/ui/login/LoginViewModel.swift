@@ -1,12 +1,19 @@
 import Foundation
 import Observation
 
+private let otpLength = 6
+private let defaultResendCooldownSec = 60
+
 @Observable
 @MainActor
 final class LoginViewModel {
     var email = ""
+    var password = ""
     var otp = ""
+    var usePasswordLogin = false
     var isOtpLoading = false
+    var isVerifyLoading = false
+    var isPasswordLoading = false
     var isSocialLoading = false
     var errorMessage: String?
     var resendCooldownSec = 0
@@ -18,9 +25,13 @@ final class LoginViewModel {
         GoogleSignInClients.isConfigured()
     }
 
+    func togglePasswordLogin() {
+        usePasswordLogin.toggle()
+    }
+
     func requestOtp() async -> Bool {
         let trimmed = email.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmed.contains("@") else {
+        guard LoginEmailValidation.isValid(trimmed) else {
             errorMessage = L10n.loginEmailInvalid
             return false
         }
@@ -29,6 +40,7 @@ final class LoginViewModel {
         let result = await auth.requestOtp(email: trimmed)
         switch result {
         case .success:
+            startResendCooldown(defaultResendCooldownSec)
             return true
         case .failure(let error):
             handleOtpRequestFailure(error)
@@ -37,8 +49,12 @@ final class LoginViewModel {
     }
 
     func verifyOtp(sessionStore: AuthSessionStore) async -> Bool {
-        isOtpLoading = true
-        defer { isOtpLoading = false }
+        guard otp.count == otpLength else {
+            errorMessage = L10n.otpInvalidLength
+            return false
+        }
+        isVerifyLoading = true
+        defer { isVerifyLoading = false }
         let result = await auth.verifyOtp(email: email, otp: otp)
         switch result {
         case .success(let session):
@@ -48,6 +64,31 @@ final class LoginViewModel {
             return true
         case .failure(let error):
             errorMessage = authFailureMessage(error, otpContext: true, fallback: L10n.otpVerifyFailed)
+            return false
+        }
+    }
+
+    func loginWithPassword(sessionStore: AuthSessionStore) async -> Bool {
+        let trimmed = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard LoginEmailValidation.isValid(trimmed) else {
+            errorMessage = L10n.loginEmailInvalid
+            return false
+        }
+        guard !password.isEmpty else {
+            errorMessage = L10n.loginPasswordInvalid
+            return false
+        }
+        isPasswordLoading = true
+        defer { isPasswordLoading = false }
+        let result = await auth.login(email: trimmed, password: password)
+        switch result {
+        case .success(let session):
+            sessionStore.save(session)
+            AppDependencies.shared.invalidateSessionValidationForLogin()
+            AppDependencies.shared.authManager.onSessionSaved()
+            return true
+        case .failure(let error):
+            errorMessage = authFailureMessage(error, otpContext: false, fallback: L10n.loginPasswordFailed)
             return false
         }
     }

@@ -11,11 +11,6 @@ struct ExploreScreen: View {
     var onPromoSlideClick: (FashPromoSlideDef, Int) -> Void = { _, _ in }
     var onFeaturedSellerClick: (UserSearchResult) -> Void = { _ in }
 
-    private let columns = [
-        GridItem(.flexible(), spacing: 8),
-        GridItem(.flexible(), spacing: 8),
-    ]
-
     private let gridSpacing: CGFloat = 8
 
     private var promoDockInset: CGFloat {
@@ -138,41 +133,17 @@ struct ExploreScreen: View {
                         subtitle: L10n.feedEmptySubtitle
                     )
                 } else {
-                    LazyVGrid(columns: columns, spacing: gridSpacing) {
-                        ForEach(Array(viewModel.items.enumerated()), id: \.element.id) { index, item in
-                            ListingGridCard(
-                                item: item,
-                                onTap: {
-                                    deps.presentListingPreview(
-                                        item: item,
-                                        router: router,
-                                        publicBrowse: isGuestMode,
-                                        surface: "explore",
-                                        position: index
-                                    )
-                                },
-                                showQuickActions: true,
-                                onLike: {
-                                    if isGuestMode {
-                                        // Guest gate handled at tab level; like requires login on Android too
-                                    } else {
-                                        Task { await viewModel.toggleLike(item, deps: deps) }
-                                    }
-                                },
-                                onSave: {
-                                    if !isGuestMode {
-                                        Task { await viewModel.toggleSave(item, deps: deps) }
-                                    }
-                                }
-                            )
-                            .onAppear {
-                                if index >= viewModel.items.count - 3 {
-                                    Task { await viewModel.loadMore(deps: deps, isGuestMode: isGuestMode) }
-                                }
-                            }
-                        }
+                    ListingMasonryGridView(items: viewModel.items, columnSpacing: gridSpacing) { item, index in
+                        ExploreListingCell(
+                            item: item,
+                            index: index,
+                            isGuestMode: isGuestMode,
+                            viewModel: viewModel,
+                            router: router,
+                            deps: deps,
+                            nearEndThreshold: viewModel.items.count - 3
+                        )
                     }
-                    .padding(.horizontal, spacing.editorialStart)
                     if viewModel.isLoadingMore {
                         ProgressView()
                             .frame(maxWidth: .infinity)
@@ -220,6 +191,60 @@ struct ExploreScreen: View {
                 .padding(.vertical, spacing.spacing4)
                 .padding(.bottom, promoDockInset)
             }
+        }
+    }
+}
+
+private struct ExploreListingCell: View {
+    let item: ListingFeedItem
+    let index: Int
+    let isGuestMode: Bool
+    @Bindable var viewModel: ExploreViewModel
+    @Bindable var router: AppRouter
+    let deps: AppDependencies
+    let nearEndThreshold: Int
+
+    @State private var appearedAt: Date?
+
+    var body: some View {
+        ListingGridCard(
+            item: item,
+            onTap: {
+                viewModel.reportListingClick(item: item, position: index, deps: deps)
+                deps.presentListingPreview(
+                    item: item,
+                    router: router,
+                    publicBrowse: isGuestMode,
+                    surface: "explore",
+                    position: index
+                )
+            },
+            imageAspectRatio: ListingMasonryGrid.staggerAspectRatio(for: item.id),
+            showQuickActions: true,
+            onLike: {
+                if !isGuestMode {
+                    Task { await viewModel.toggleLike(item, position: index, deps: deps) }
+                }
+            },
+            onSave: {
+                if !isGuestMode {
+                    Task { await viewModel.toggleSave(item, position: index, deps: deps) }
+                }
+            }
+        )
+        .onAppear {
+            appearedAt = Date()
+            viewModel.recordView(item: item, position: index, deps: deps)
+            if index >= nearEndThreshold {
+                Task { await viewModel.loadMore(deps: deps, isGuestMode: isGuestMode) }
+            }
+        }
+        .onDisappear {
+            if let appearedAt {
+                let dwellMs = Int(Date().timeIntervalSince(appearedAt) * 1_000)
+                viewModel.recordDwell(item: item, position: index, dwellMs: dwellMs, deps: deps)
+            }
+            self.appearedAt = nil
         }
     }
 }

@@ -39,13 +39,16 @@ struct ChatProductCard: Equatable {
     let priceVnd: Int64
     let imageUrl: String
     let listingStatus: String
+
+    var isSold: Bool { listingStatus == "sold" }
+    var isReserved: Bool { listingStatus == "reserved" }
 }
 
 struct PriceOffer: Equatable {
     let offerId: String
     let amountVnd: Int64
     let status: String
-    let proposedByUserId: String
+    var proposedByMe: Bool
 }
 
 struct MeetingAppointmentPayload: Equatable {
@@ -53,6 +56,23 @@ struct MeetingAppointmentPayload: Equatable {
     let status: String
     let locationUrl: String
     let scheduledAt: String
+    let reminderOffsetMinutes: Int
+    let reminderEnabled: Bool
+    let proposerId: String
+    let isProposerMe: Bool
+    let buyerCheckInAt: String
+    let sellerCheckInAt: String
+    let buyerOnMyWayAt: String
+    let sellerOnMyWayAt: String
+    let safeZoneName: String
+}
+
+struct MyConversationReport: Equatable {
+    let reportId: String
+    let reportedUserId: String
+    let category: String
+    let createdAt: String
+    let status: String
 }
 
 struct ChatMessage: Identifiable, Equatable {
@@ -68,6 +88,11 @@ struct ChatMessage: Identifiable, Equatable {
     let offerStatus: String
     let outboundState: OutboundSendState
     let systemSubtype: String?
+    let meetingAppointment: MeetingAppointmentPayload?
+
+    var isOfferType: Bool {
+        messageType == "offer" || messageType == "counter_offer"
+    }
 }
 
 struct ConversationDetail: Equatable {
@@ -78,8 +103,10 @@ struct ConversationDetail: Equatable {
     let orderId: String?
     let offerCount: Int
     let isClosed: Bool
-    var messages: [ChatMessage] = []
     var pendingOffer: PriceOffer?
+    var myReport: MyConversationReport?
+
+    var hasOrder: Bool { orderId?.isEmpty == false }
 }
 
 struct ConversationListingGroup: Equatable {
@@ -90,12 +117,19 @@ struct ConversationListingGroup: Equatable {
 }
 
 struct MeetingCheckInResult: Equatable {
-    let appointmentId: String
-    let buyerCheckInAt: String?
-    let sellerCheckInAt: String?
+    let endpointAvailable: Bool
+    let alreadyCheckedIn: Bool
+    let yourCheckInAt: String?
+    let role: String?
+    let meetingAppointment: MeetingAppointmentPayload?
 }
 
 struct MeetingCancelResult: Equatable {
-    let appointmentId: String
-    let status: String
+    let suggestSellerReopenListing: Bool
+}
+
+struct CounterOfferSheetArgs: Equatable, Identifiable {
+    var id: String { buyerOfferMessageId }
+    let buyerOfferMessageId: String
+    let buyerOfferAmountVnd: Int64
 }

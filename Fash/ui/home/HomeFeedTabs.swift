@@ -27,6 +27,20 @@ enum HomeFeedTab: String, CaseIterable, Identifiable {
         }
     }
 
+    var analyticsSurface: String {
+        switch self {
+        case .huntToday: return "hunt_today"
+        case .forYou: return "recommendation_for_you"
+        case .following: return "home"
+        case .stylePicks: return "style_picks"
+        case .similarSaved: return "similar_to_saved"
+        }
+    }
+
+    static var recommendationSectionTabs: Set<HomeFeedTab> {
+        [.forYou, .stylePicks, .similarSaved]
+    }
+
     var guestTitle: String {
         switch self {
         case .forYou: return L10n.homeGuestTabForYouTitle
@@ -73,47 +87,60 @@ enum HomeFeedTab: String, CaseIterable, Identifiable {
 }
 
 struct HomeFeedTabSwitcher: View {
+    @Environment(\.fashSpacing) private var spacing
     let tabs: [HomeFeedTab]
     let selectedTab: HomeFeedTab
     var isGuestBrowse: Bool = false
     let onSelect: (HomeFeedTab) -> Void
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 4) {
-                ForEach(tabs) { tab in
-                    let selected = tab == selectedTab
-                    Button {
-                        onSelect(tab)
-                    } label: {
-                        HStack(spacing: 4) {
-                            if isGuestBrowse && tab.requiresAuth {
-                                Image(systemName: "lock")
-                                    .font(.system(size: 14))
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 4) {
+                    ForEach(tabs) { tab in
+                        let selected = tab == selectedTab
+                        Button {
+                            onSelect(tab)
+                        } label: {
+                            HStack(spacing: 4) {
+                                if isGuestBrowse && tab.requiresAuth {
+                                    Image(systemName: "lock")
+                                        .font(.system(size: 14))
+                                        .foregroundStyle(selected ? FashColors.textPrimary : FashColors.textSecondary.opacity(0.75))
+                                }
+                                Text(tab.title)
+                                    .font(FashTypography.labelLarge)
+                                    .fontWeight(selected ? .bold : .regular)
                                     .foregroundStyle(selected ? FashColors.textPrimary : FashColors.textSecondary.opacity(0.75))
+                                    .lineLimit(1)
                             }
-                            Text(tab.title)
-                                .font(FashTypography.labelLarge)
-                                .fontWeight(selected ? .bold : .regular)
-                                .foregroundStyle(selected ? FashColors.textPrimary : FashColors.textSecondary.opacity(0.75))
-                                .lineLimit(1)
-                        }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 12)
-                        .overlay(alignment: .bottom) {
-                            if selected {
-                                Capsule()
-                                    .fill(FashColors.brandPrimary)
-                                    .frame(height: 2)
-                                    .padding(.horizontal, 6)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 12)
+                            .overlay(alignment: .bottom) {
+                                if selected {
+                                    Capsule()
+                                        .fill(FashColors.brandPrimary)
+                                        .frame(height: 2)
+                                        .padding(.horizontal, 6)
+                                }
                             }
                         }
+                        .buttonStyle(.plain)
+                        .id(tab.id)
                     }
-                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, spacing.editorialStart)
+            }
+            .background(FashColors.screen)
+            .onChange(of: selectedTab.id) { _, _ in
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    proxy.scrollTo(selectedTab.id, anchor: .center)
                 }
             }
+            .onAppear {
+                proxy.scrollTo(selectedTab.id, anchor: .center)
+            }
         }
-        .background(FashColors.screen)
     }
 }
 
@@ -140,5 +167,55 @@ struct HomeFeedTabGenericEmpty: View {
     var body: some View {
         FashEmptyStateView(title: tab.emptyTitle, subtitle: tab.emptySubtitle)
             .padding(.vertical, 32)
+    }
+}
+
+/// Rich empty state for the Following tab — Android [HomePersonalizedFeedEmptyCard].
+struct HomePersonalizedFeedEmptyCard: View {
+    @Environment(\.fashSpacing) private var spacing
+    var onExploreClick: () -> Void
+    var onFeaturedSellersClick: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: spacing.spacing2) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(L10n.homeTopSectionTitle)
+                    .font(FashTypography.titleMedium.weight(.bold))
+                    .foregroundStyle(FashColors.textPrimary)
+                Text(L10n.homeTopSectionSubtitle)
+                    .font(FashTypography.bodySmall)
+                    .foregroundStyle(FashColors.textSecondary)
+            }
+            .padding(.horizontal, spacing.editorialStart)
+
+            VStack(spacing: spacing.spacing2) {
+                Image(systemName: "heart")
+                    .font(.system(size: 28))
+                    .foregroundStyle(FashColors.brandPrimary)
+                    .frame(width: 56, height: 56)
+                    .background(FashColors.brandPrimary.opacity(0.12))
+                    .clipShape(Circle())
+                Text(L10n.homeFeedEmptyTitle)
+                    .font(FashTypography.titleSmall.weight(.bold))
+                    .foregroundStyle(FashColors.textPrimary)
+                    .multilineTextAlignment(.center)
+                Text(L10n.homeFeedEmptySubtitle)
+                    .font(FashTypography.bodySmall)
+                    .foregroundStyle(FashColors.textSecondary)
+                    .multilineTextAlignment(.center)
+                FashPrimaryButton(title: L10n.homeEmptyCtaExplore, action: onExploreClick)
+                Button(L10n.homeFeedEmptyCtaFeatured, action: onFeaturedSellersClick)
+                    .buttonStyle(.bordered)
+                    .tint(FashColors.brandPrimary)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, spacing.spacing3)
+            .padding(.vertical, spacing.spacing4)
+            .background(FashColors.surfaceContainerLow)
+            .clipShape(RoundedRectangle(cornerRadius: spacing.radiusCard, style: .continuous))
+            .padding(.horizontal, spacing.editorialStart)
+        }
+        .padding(.top, spacing.spacing2)
+        .padding(.bottom, spacing.spacing4)
     }
 }

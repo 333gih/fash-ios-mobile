@@ -7,14 +7,10 @@ struct OtpVerifyScreen: View {
     var onBack: () -> Void
 
     private let otpLength = 6
+    @State private var showHelpCard = false
 
     private var maskedEmail: String {
-        let email = viewModel.email.trimmingCharacters(in: .whitespaces)
-        guard let at = email.firstIndex(of: "@"), at != email.startIndex else { return email }
-        let local = String(email[..<at])
-        let domain = String(email[at...])
-        if local.count <= 2 { return "\(local.prefix(1))***\(domain)" }
-        return "\(local.prefix(1))***\(local.suffix(1))\(domain)"
+        LoginEmailValidation.maskForDisplay(viewModel.email)
     }
 
     private var otpComplete: Bool { viewModel.otp.count == otpLength }
@@ -32,7 +28,10 @@ struct OtpVerifyScreen: View {
                     }
                     .padding(.leading, -8)
 
-                    FashBrandMarkText(style: FashBrandTypography.markBoldItalic)
+                    FashBrandMarkText(
+                        style: FashBrandTypography.markBoldItalic,
+                        textAlign: .leading
+                    )
                         .padding(.top, 8)
 
                     Text(L10n.otpTitle)
@@ -50,7 +49,10 @@ struct OtpVerifyScreen: View {
 
                     FashPrimaryButton(
                         title: L10n.otpVerify,
-                        isLoading: viewModel.isOtpLoading
+                        isLoading: viewModel.isVerifyLoading,
+                        cornerRadius: 24,
+                        height: 52,
+                        enabled: otpComplete && !viewModel.isVerifyLoading && !viewModel.isOtpLoading
                     ) {
                         Task {
                             if await viewModel.verifyOtp(sessionStore: AppDependencies.shared.authSessionStore) {
@@ -58,31 +60,38 @@ struct OtpVerifyScreen: View {
                             }
                         }
                     }
-                    .disabled(!otpComplete || viewModel.isOtpLoading)
                     .padding(.top, 28)
 
-                    Button {
-                        guard canResend else { return }
-                        Task {
-                            if await viewModel.requestOtp() {
-                                viewModel.otp = ""
+                    HStack {
+                        Spacer()
+                        Button {
+                            guard canResend else { return }
+                            Task {
+                                if await viewModel.requestOtp() {
+                                    viewModel.otp = ""
+                                }
                             }
-                        }
-                    } label: {
-                        Group {
-                            if viewModel.isOtpLoading {
-                                ProgressView().scaleEffect(0.9)
-                            } else if viewModel.resendCooldownSec > 0 {
-                                Text(L10n.otpResendWait(viewModel.resendCooldownSec))
-                            } else {
-                                Text(L10n.otpResend)
+                        } label: {
+                            Group {
+                                if viewModel.isOtpLoading {
+                                    HStack(spacing: 8) {
+                                        ProgressView()
+                                            .scaleEffect(0.8)
+                                            .tint(FashColors.brandPrimary)
+                                        Text(L10n.otpResendSending)
+                                    }
+                                } else if viewModel.resendCooldownSec > 0 {
+                                    Text(L10n.otpResendWait(viewModel.resendCooldownSec))
+                                } else {
+                                    Text(L10n.otpResend)
+                                }
                             }
+                            .font(FashTypography.labelLarge)
+                            .foregroundStyle(canResend ? FashColors.brandPrimary : FashColors.textSecondary.opacity(0.6))
                         }
-                        .font(FashTypography.labelLarge)
-                        .foregroundStyle(canResend ? FashColors.brandPrimary : FashColors.textSecondary.opacity(0.6))
+                        .disabled(!canResend)
+                        Spacer()
                     }
-                    .disabled(!canResend)
-                    .frame(maxWidth: .infinity)
                     .padding(.top, 24)
                 }
                 .padding(.horizontal, spacing.editorialStart)
@@ -90,11 +99,23 @@ struct OtpVerifyScreen: View {
                 .padding(.bottom, 24)
             }
 
-            otpHelpCard
-                .padding(.horizontal, spacing.editorialStart)
-                .padding(.bottom, 32)
+            if showHelpCard {
+                OtpHelpBottomCard()
+                    .padding(.horizontal, spacing.editorialStart)
+                    .padding(.bottom, 32)
+                    .transition(
+                        .opacity.combined(with: .offset(y: 24))
+                    )
+            }
         }
         .background(FashColors.screen)
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.14) {
+                withAnimation(.easeOut(duration: 0.38)) {
+                    showHelpCard = true
+                }
+            }
+        }
         .alert(L10n.dialogTitleError, isPresented: Binding(
             get: { viewModel.errorMessage != nil },
             set: { if !$0 { viewModel.errorMessage = nil } }
@@ -104,23 +125,44 @@ struct OtpVerifyScreen: View {
             Text(viewModel.errorMessage ?? "")
         }
     }
+}
 
-    private var otpHelpCard: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: "info.circle")
-                .foregroundStyle(FashColors.brandPrimary)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(L10n.otpHelpTitle)
-                    .font(FashTypography.labelLarge.weight(.semibold))
-                    .foregroundStyle(FashColors.textPrimary)
-                Text("\(L10n.otpHelpLine1)\n\(L10n.otpHelpLine2)\n\(L10n.otpHelpLine3)")
-                    .font(FashTypography.bodySmall)
-                    .foregroundStyle(FashColors.textSecondary)
+private struct OtpHelpBottomCard: View {
+    @Environment(\.fashSpacing) private var spacing
+
+    private let tips = [L10n.otpHelpLine1, L10n.otpHelpLine2, L10n.otpHelpLine3]
+
+    var body: some View {
+        HStack(alignment: .top, spacing: spacing.spacing3) {
+            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                .fill(FashColors.brandPrimary.opacity(0.58))
+                .frame(width: 3, height: 68)
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 8) {
+                    Image(systemName: "info.circle")
+                        .font(.system(size: 20))
+                        .foregroundStyle(FashColors.brandPrimary)
+                    Text(L10n.otpHelpTitle)
+                        .font(FashTypography.titleSmall.weight(.semibold))
+                        .foregroundStyle(FashColors.textPrimary)
+                }
+                ForEach(tips, id: \.self) { line in
+                    HStack(alignment: .top, spacing: 8) {
+                        Text("•")
+                            .font(FashTypography.bodySmall)
+                            .foregroundStyle(FashColors.brandPrimary.opacity(0.72))
+                            .padding(.top, 2)
+                        Text(line)
+                            .font(FashTypography.bodySmall)
+                            .foregroundStyle(FashColors.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
             }
-            Spacer(minLength: 0)
         }
-        .padding(16)
-        .background(FashColors.surfaceContainer)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .padding(spacing.spacing4)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(FashColors.surfaceContainerLow)
+        .clipShape(RoundedRectangle(cornerRadius: spacing.radiusCard, style: .continuous))
     }
 }

@@ -38,4 +38,24 @@ final class ChatViewModel {
         defer { isRefreshing = false }
         await refresh(deps: deps)
     }
+
+    func silentRefresh(deps: AppDependencies) async {
+        async let inbox = deps.chatRepository.getConversations()
+        async let unread = deps.chatRepository.getUnreadCount()
+        let inboxResult = await inbox
+        let unreadResult = await unread
+        if case .success(let list) = inboxResult {
+            conversations = list
+            loadError = false
+        }
+        if case .success(let count) = unreadResult {
+            unreadTotal = count
+        }
+    }
+
+    func resyncConversationSubscriptions(deps: AppDependencies) async {
+        for id in conversations.prefix(50).map(\.conversationId) {
+            deps.realtimeManager.subscribeToConversation(id)
+        }
+    }
 }

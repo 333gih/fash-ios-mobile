@@ -4,7 +4,10 @@ struct FashWaitingScreen: View {
     var body: some View {
         VStack(spacing: 24) {
             Spacer()
-            FashBrandMarkText(text: L10n.splashWordmark)
+            FashBrandMarkText(
+                text: L10n.splashWordmark,
+                style: FashBrandTypography.markSplashCenter
+            )
             Text(L10n.waitingScreenHeadline)
                 .font(FashTypography.headlineMedium)
                 .multilineTextAlignment(.center)

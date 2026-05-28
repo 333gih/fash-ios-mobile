@@ -86,7 +86,41 @@ struct ListingFeedItem: Identifiable, Hashable {
     }
 }
 
+extension ListingFeedItem {
+    func withEngagement(likeCount: Int, isLiked: Bool, saveCount: Int, isSaved: Bool) -> ListingFeedItem {
+        ListingFeedItem(
+            id: id,
+            title: title,
+            coverImageUrl: coverImageUrl,
+            imageUrls: imageUrls,
+            priceVnd: priceVnd,
+            brand: brand,
+            size: size,
+            categoryName: categoryName,
+            listingAestheticTag: listingAestheticTag,
+            condition: condition,
+            likeCount: likeCount,
+            saveCount: saveCount,
+            sellerId: sellerId,
+            sellerUsername: sellerUsername,
+            sellerStyleTag: sellerStyleTag,
+            createdAt: createdAt,
+            isLiked: isLiked,
+            isSaved: isSaved,
+            onsiteInspectionCommitment: onsiteInspectionCommitment,
+            listingStatus: listingStatus,
+            descriptionText: descriptionText
+        )
+    }
+}
+
 enum ListingFeedJsonParser {
+    /// Home recommendation section arrays — Android `parseItemsArray`.
+    static func parseItemsArray(_ arr: [[String: Any]]?) -> [ListingFeedItem] {
+        guard let arr else { return [] }
+        return arr.compactMap(parseRow)
+    }
+
     static func parseFeed(_ data: Data) throws -> [ListingFeedItem] {
         let root = try JSONSerialization.jsonObject(with: data)
         let rows: [[String: Any]]
@@ -119,7 +153,7 @@ enum ListingFeedJsonParser {
         return parseRow(obj)
     }
 
-    private static func parseRow(_ row: [String: Any]) -> ListingFeedItem? {
+    static func parseRow(_ row: [String: Any]) -> ListingFeedItem? {
         guard let id = (row["id"] as? String) ?? (row["ID"] as? String) ?? (row["listing_id"] as? String) else { return nil }
         let title = (row["title"] as? String) ?? (row["Title"] as? String) ?? (row["name"] as? String) ?? ""
         let priceVnd = (row["price"] as? NSNumber)?.int64Value ?? (row["Price"] as? NSNumber)?.int64Value ?? 0

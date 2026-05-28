@@ -142,8 +142,10 @@ struct ExploreFilterSheet: View {
 
     private var sizingPicker: some View {
         Menu {
-            Button(L10n.exploreFilterSizingAll) { viewModel.sizingModeFilter = nil }
-            Button(L10n.exploreFilterSizingMatchProfile) { viewModel.sizingModeFilter = "match_profile" }
+            Button(L10n.exploreFilterSizingAll) { viewModel.setSizingModeFilter(nil) }
+            Button(L10n.exploreFilterSizingMatchProfile) {
+                viewModel.setSizingModeFilter(ExploreSizingPreference.modeMatchProfile)
+            }
         } label: {
             filterRowLabel(
                 L10n.exploreFilterSizingTitle,

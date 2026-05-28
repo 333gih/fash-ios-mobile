@@ -19,47 +19,66 @@ struct SellerProfileScreen: View {
 
     @State private var viewModel = SellerProfileViewModel()
     @State private var promoSlides: [FashPromoSlideDef] = []
+    @State private var showPromoFooter = false
+
+    private var promoBottomInset: CGFloat {
+        showPromoFooter && !promoSlides.isEmpty ? FashStickyPromoDockHeight : 0
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             sellerTopBar
-            Group {
-                if viewModel.isLoading && viewModel.profile == nil {
-                    ProgressView()
-                        .tint(FashColors.brandPrimary)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if viewModel.loadError && viewModel.profile == nil {
-                    FashEmptyStateView(title: L10n.profileLoadError, actionTitle: L10n.feedRetry) {
-                        Task { await viewModel.loadForSeller(username, deps: deps, isGuestMode: isGuestMode) }
+            ZStack(alignment: .bottom) {
+                Group {
+                    if viewModel.isLoading && viewModel.profile == nil {
+                        ProgressView()
+                            .tint(FashColors.brandPrimary)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else if viewModel.loadError && viewModel.profile == nil {
+                        FashEmptyStateView(title: L10n.profileLoadError, actionTitle: L10n.feedRetry) {
+                            Task { await viewModel.loadForSeller(username, deps: deps, isGuestMode: isGuestMode) }
+                        }
+                    } else {
+                        ProfileCollapsingScrollLayout(
+                            selectedTab: $viewModel.selectedTab,
+                            tabSet: .sellerStorefront,
+                            items: viewModel.listingsForSelectedTab,
+                            showQuickActions: true,
+                            additionalBottomInset: promoBottomInset,
+                            onTabsPinnedAtTopChange: { pinned in
+                                showPromoFooter = pinned
+                            },
+                            onListingClick: { item in onListingClick(item.id) },
+                            onLike: { item in
+                                if isGuestMode { onRequestSignIn?() }
+                                else { Task { await viewModel.toggleLike(item, deps: deps) } }
+                            },
+                            onSave: { item in
+                                if isGuestMode { onRequestSignIn?() }
+                                else { Task { await viewModel.toggleSave(item, deps: deps) } }
+                            },
+                            expandedHeader: { expandedHeader },
+                            compactHeader: { ProfileCompactHeaderBar(profile: viewModel.profile) }
+                        )
                     }
-                } else {
-                    ProfileCollapsingScrollLayout(
-                        selectedTab: $viewModel.selectedTab,
-                        tabSet: .sellerStorefront,
-                        items: viewModel.listingsForSelectedTab,
-                        showQuickActions: true,
-                        additionalBottomInset: promoSlides.isEmpty ? 0 : FashStickyPromoDockHeight,
-                        onListingClick: { item in onListingClick(item.id) },
-                        onLike: { item in
-                            if isGuestMode { onRequestSignIn?() }
-                            else { Task { await viewModel.toggleLike(item, deps: deps) } }
-                        },
-                        onSave: { item in
-                            if isGuestMode { onRequestSignIn?() }
-                            else { Task { await viewModel.toggleSave(item, deps: deps) } }
-                        },
-                        expandedHeader: { expandedHeader },
-                        compactHeader: { ProfileCompactHeaderBar(profile: viewModel.profile) }
+                }
+
+                if showPromoFooter, !promoSlides.isEmpty {
+                    StickyBottomPromoBar {
+                        FashPromoSliderView(slides: promoSlides) { slide, _ in
+                            onDismiss()
+                            deps.navigationRouter?.handlePromoSlideClick(slide)
+                        }
+                    }
+                    .transition(
+                        .asymmetric(
+                            insertion: .move(edge: .bottom).combined(with: .opacity),
+                            removal: .move(edge: .bottom).combined(with: .opacity)
+                        )
                     )
                 }
             }
-            if !promoSlides.isEmpty {
-                StickyBottomPromoBar {
-                    FashPromoSliderView(slides: promoSlides) { slide, _ in
-                        onDismiss()
-                        deps.navigationRouter?.handlePromoSlideClick(slide)
-                    }
-                }
-            }
+            .animation(.easeInOut(duration: 0.24), value: showPromoFooter)
         }
         .background(FashColors.screen)
         .task(id: username) {
