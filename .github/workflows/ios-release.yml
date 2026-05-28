@@ -2,7 +2,7 @@
 # Requires Apple Developer signing secrets (see docs/CI.md).
 #
 # Triggers:
-#   - Push releases/** or release/** (Fash-Prod): archive + IPA + TestFlight upload
+#   - Push releases/** or release/** (Fash-Prod): archive + IPA artifact (no auto TestFlight)
 #   - Push main/master or tag ios/v*: archive + IPA artifact only
 #   - Manual: Actions -> iOS Release -> Run workflow (optional TestFlight checkbox)
 name: iOS Release
@@ -19,9 +19,9 @@ on:
           - Fash-Prod
           - Fash-Dev
       upload_testflight:
-        description: Upload IPA to TestFlight (Fash-Prod only; auto on releases/** push)
+        description: Upload IPA to TestFlight (Fash-Prod only; not run on git push)
         required: false
-        default: true
+        default: false
         type: boolean
   push:
     branches:
@@ -211,13 +211,9 @@ jobs:
 
       - name: Verify App Store Connect secrets
         if: >-
-          env.SCHEME == 'Fash-Prod' && (
-            (github.event_name == 'workflow_dispatch' && inputs.upload_testflight) ||
-            (github.event_name == 'push' && (
-              startsWith(github.ref, 'refs/heads/releases/') ||
-              startsWith(github.ref, 'refs/heads/release/')
-            ))
-          )
+          env.SCHEME == 'Fash-Prod'
+          && github.event_name == 'workflow_dispatch'
+          && inputs.upload_testflight
         env:
           ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
@@ -236,13 +232,9 @@ jobs:
       - name: Upload to TestFlight
         id: upload-testflight
         if: >-
-          env.SCHEME == 'Fash-Prod' && (
-            (github.event_name == 'workflow_dispatch' && inputs.upload_testflight) ||
-            (github.event_name == 'push' && (
-              startsWith(github.ref, 'refs/heads/releases/') ||
-              startsWith(github.ref, 'refs/heads/release/')
-            ))
-          )
+          env.SCHEME == 'Fash-Prod'
+          && github.event_name == 'workflow_dispatch'
+          && inputs.upload_testflight
         uses: apple-actions/upload-testflight-build@v3
         with:
           app-path: build/Fash.ipa
