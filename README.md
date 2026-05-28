@@ -55,7 +55,7 @@ Windows prep (no Mac build):
 | Path | Role |
 |------|------|
 | `Fash/` | Swift sources (~290 files, mirrors Android packages) |
-| `Fash/data/` | Repositories + DTOs — see `Fash/data/README.md` |
+| `Fash/data/` | Repositories + DTOs — see `docs/ios-data-layer.md` |
 | `IOS_ARCHITECTURE.md` | Layer map, services, navigation, porting workflow |
 | `docs/IOS_BUSINESS_MODELS.md` | Business model catalog (Android ↔ iOS) |
 | `docs/DATA_LAYER.md` | Repository & JSON parsing conventions |

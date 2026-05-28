@@ -215,7 +215,7 @@ Provisioning profile phải khớp bundle id **ProdRelease**: `com.pc.fash-ios-m
 | Build fail Kingfisher / Swift | Xem log artifact `xcodebuild-log-*`; cần Xcode 15+ |
 | Không thấy artifact simulator | Build phải **pass**; tên `fash-ios-simulator-*` |
 | iOS Release fail signing | Kiểm tra secrets mục 6; profile name khớp `IOS_PROVISIONING_PROFILE_SPECIFIER` |
-| Archive: `Multiple commands produce .../Fash.app/README.md` | Nhiều `README.md` trong `Fash/` bị copy vào bundle — `project.yml` phải exclude `**/README.md` (chỉ doc, không ship) |
+| Archive: `Multiple commands produce .../Fash.app/README.md` | Không đặt `README.md` / `*.md` trong `Fash/` — doc ở `docs/`; `project.yml` exclude `**/*.md`; CI fail sớm nếu pbxproj vẫn tham chiếu README |
 | Hết phút macOS (private repo) | Đổi repo public hoặc nâng gói GitHub |
 
 ## 8. Build local (Mac)

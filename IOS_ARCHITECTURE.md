@@ -26,7 +26,7 @@ Manual JSON parse → *Models.swift (DTOs)
 | DI | `App/AppDependencies.swift` | Replaces `FashApplication` service locator |
 | Config | `config/AppEnvironment.swift`, `config/generated/` | `apiPath`, `authServicePath`, `commonServicePath` |
 | Network | `network/SecuredApiClient.swift`, `PublicBrowseHttp.swift` | JWT refresh, guest browse attestation |
-| Data | `data/**` | Repositories + DTOs — see `Fash/data/README.md` |
+| Data | `data/**` | Repositories + DTOs — see `docs/ios-data-layer.md` |
 | UI | `ui/**` | Feature folders match Android `ui/*` |
 
 There is **no** `domain/` use-case layer on either platform.
@@ -109,7 +109,7 @@ FASH_ANDROID_ROOT=../fash-android-mobile python3 scripts/generate_swift_from_and
 
 | Document | Purpose |
 |----------|---------|
-| `Fash/data/README.md` | Data package index |
+| `docs/ios-data-layer.md` | Data package index |
 | `docs/IOS_BUSINESS_MODELS.md` | DTO catalog Android ↔ iOS |
 | `docs/DATA_LAYER.md` | Repository & parsing patterns |
 | `docs/common-service-api.md` | common-service for iOS |

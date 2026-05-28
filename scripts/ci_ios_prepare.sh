@@ -22,6 +22,12 @@ xcodegen --version
 echo "==> Generate Xcode project"
 xcodegen generate
 
+if grep -qE 'README\.md.*in Resources|path = .*README\.md' Fash.xcodeproj/project.pbxproj 2>/dev/null; then
+  echo "error: README.md must not be a Copy Bundle Resource (breaks archive). Move docs to docs/ and exclude **/*.md in project.yml." >&2
+  grep 'README\.md' Fash.xcodeproj/project.pbxproj || true
+  exit 1
+fi
+
 object_version="$(sed -n 's/.*objectVersion = \([0-9]*\);.*/\1/p' Fash.xcodeproj/project.pbxproj | head -1)"
 echo "objectVersion=${object_version}"
 if [[ "${object_version}" -gt 60 ]]; then
