@@ -28,6 +28,16 @@ final class ChatDetailViewModel {
     var orderRemainingSeconds: Int64 = 0
     var orderExpiryKind: String = ""
     var orderMeetupDeadlineAt: String?
+    var orderMeetingAppointmentStatus = ""
+    var orderMeetingScheduledAt = ""
+    var orderMeetupBothPartiesCheckedIn = false
+
+    var meetingBrowseProvinceId: String?
+    var meetingBrowseDistrictId: String?
+    var isProposingMeeting = false
+    var meetingMutationInFlight = false
+    var showMeetingIdentityReverify = false
+    var ackMeetingReverifyInFlight = false
 
     /// True while the other participant is typing (Android `isOtherTyping`).
     var isOtherTyping = false
@@ -41,6 +51,14 @@ final class ChatDetailViewModel {
 
     var hasOrder: Bool { orderId?.isEmpty == false || detail?.hasOrder == true }
     var maxOffers: Int { BusinessFlowConfig.maxOffersPerConversation }
+
+    var shouldHideScheduleMeetup: Bool {
+        ChatMeetupSchedulingPolicy.dealBannerShouldHideScheduleMeetup(
+            orderStatus: orderStatus,
+            orderApptStatus: orderMeetingAppointmentStatus,
+            messages: messages
+        )
+    }
 
     func stopPolling() {
         pollTask?.cancel()
@@ -287,6 +305,156 @@ final class ChatDetailViewModel {
         return messages.last(where: { $0.offerStatus == "accepted" && $0.offerAmountVnd >= 1000 })?.offerAmountVnd ?? 0
     }
 
+    // MARK: - Fulfillment & meetup
+
+    func loadMeetingBrowseLocation(deps: AppDependencies) async {
+        _ = deps
+        meetingBrowseProvinceId = nil
+        meetingBrowseDistrictId = nil
+    }
+
+    func ensureFulfillmentCashMeetup(deps: AppDependencies) async -> Bool {
+        await ensureFulfillmentChosen(channel: "cash_meetup", deps: deps)
+    }
+
+    private func ensureFulfillmentChosen(channel: String, deps: AppDependencies) async -> Bool {
+        guard let oid = orderId?.trimmingCharacters(in: .whitespacesAndNewlines), !oid.isEmpty else { return false }
+        let st = orderStatus?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? ""
+        if st != "fulfillment_pending" { return true }
+        switch await deps.orderRepository.chooseOrderFulfillment(orderId: oid, fulfillment: channel) {
+        case .success:
+            await fetchOrder(orderId: oid, deps: deps)
+            return true
+        case .failure(let err):
+            eventMessage = FashErrorPresentation.userMessage(for: err).isEmpty ? L10n.chatFulfillmentChooseFailed : FashErrorPresentation.userMessage(for: err)
+            return false
+        }
+    }
+
+    func proposeMeeting(
+        conversationId: String,
+        locationUrl: String,
+        scheduledAtIso: String,
+        reminderEnabled: Bool,
+        reminderOffsetMinutes: Int,
+        safeZoneId: String?,
+        safeZoneName: String?,
+        deps: AppDependencies
+    ) async -> Bool {
+        let convId = conversationId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !convId.isEmpty else {
+            eventMessage = L10n.chatMeetingError
+            return false
+        }
+        let hasZone = !(safeZoneId?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+        if !hasZone, !ChatMapsUrlRules.isLenientMeetingMapsUrl(locationUrl) {
+            eventMessage = L10n.chatMeetingMapsUrlInvalid
+            return false
+        }
+        isProposingMeeting = true
+        defer { isProposingMeeting = false }
+        switch await deps.chatRepository.proposeMeeting(
+            conversationId: convId,
+            locationUrl: locationUrl,
+            scheduledAtRfc3339: scheduledAtIso,
+            reminderEnabled: reminderEnabled,
+            reminderOffsetMinutes: reminderOffsetMinutes,
+            safeZoneId: safeZoneId,
+            safeZoneName: safeZoneName
+        ) {
+        case .success:
+            eventMessage = L10n.chatMeetingProposedOk
+            await refreshMessages(conversationId: convId, deps: deps)
+            if let oid = orderId, !oid.isEmpty { await fetchOrder(orderId: oid, deps: deps) }
+            return true
+        case .failure(let err):
+            let msg = FashErrorPresentation.userMessage(for: err)
+            if MeetingTrustErrorCodes.isIdentityReverifyRequired(msg) {
+                showMeetingIdentityReverify = true
+            } else {
+                eventMessage = msg
+            }
+            return false
+        }
+    }
+
+    func confirmMeeting(appointmentId: String, deps: AppDependencies) async {
+        guard let convId = detail?.conversationId else { return }
+        meetingMutationInFlight = true
+        defer { meetingMutationInFlight = false }
+        switch await deps.chatRepository.confirmMeeting(appointmentId: appointmentId) {
+        case .success:
+            eventMessage = L10n.chatMeetingConfirmedOk
+            await refreshMessages(conversationId: convId, deps: deps)
+            if let oid = orderId, !oid.isEmpty { await fetchOrder(orderId: oid, deps: deps) }
+        case .failure(let err):
+            eventMessage = FashErrorPresentation.userMessage(for: err)
+        }
+    }
+
+    func cancelMeeting(appointmentId: String, deps: AppDependencies) async {
+        guard let convId = detail?.conversationId else { return }
+        meetingMutationInFlight = true
+        defer { meetingMutationInFlight = false }
+        switch await deps.chatRepository.cancelMeeting(appointmentId: appointmentId) {
+        case .success(let meta):
+            eventMessage = L10n.chatMeetingCancelledOk
+            await refreshMessages(conversationId: convId, deps: deps)
+            if let oid = orderId, !oid.isEmpty { await fetchOrder(orderId: oid, deps: deps) }
+            if meta.suggestSellerReopenListing, detail?.isBuyer == false {
+                eventMessage = L10n.chatMeetingCancelSuggestReopen
+            }
+        case .failure(let err):
+            eventMessage = FashErrorPresentation.userMessage(for: err)
+        }
+    }
+
+    func onMyWayMeeting(appointmentId: String, deps: AppDependencies) async {
+        guard let convId = detail?.conversationId else { return }
+        meetingMutationInFlight = true
+        defer { meetingMutationInFlight = false }
+        switch await deps.chatRepository.meetingOnMyWay(appointmentId: appointmentId) {
+        case .success:
+            eventMessage = L10n.meetingOnMyWayOk
+            await refreshMessages(conversationId: convId, deps: deps)
+        case .failure(let err):
+            eventMessage = FashErrorPresentation.userMessage(for: err)
+        }
+    }
+
+    func checkInMeeting(appointmentId: String, deps: AppDependencies) async {
+        guard let convId = detail?.conversationId else { return }
+        meetingMutationInFlight = true
+        defer { meetingMutationInFlight = false }
+        switch await deps.chatRepository.checkInMeeting(appointmentId: appointmentId) {
+        case .success(let r):
+            if !r.endpointAvailable {
+                eventMessage = L10n.chatMeetingCheckInRefreshOnly
+            } else if r.alreadyCheckedIn {
+                eventMessage = L10n.chatMeetingCheckInAlready
+            } else {
+                eventMessage = L10n.chatMeetingCheckInOk
+            }
+            await refreshMessages(conversationId: convId, deps: deps)
+            if let oid = orderId, !oid.isEmpty { await fetchOrder(orderId: oid, deps: deps) }
+        case .failure(let err):
+            eventMessage = FashErrorPresentation.userMessage(for: err)
+        }
+    }
+
+    func ackMeetingIdentityReverify(deps: AppDependencies) async {
+        guard !ackMeetingReverifyInFlight else { return }
+        ackMeetingReverifyInFlight = true
+        defer { ackMeetingReverifyInFlight = false }
+        switch await deps.userRepository.ackMeetingIdentityReverify() {
+        case .success:
+            showMeetingIdentityReverify = false
+            eventMessage = L10n.meetingIdentityReverifyAckOk
+        case .failure(let err):
+            eventMessage = FashErrorPresentation.userMessage(for: err)
+        }
+    }
+
     // MARK: - Typing
 
     private var isComposerReadOnly: Bool {
@@ -362,6 +530,9 @@ final class ChatDetailViewModel {
         orderRemainingSeconds = payload.remainingSeconds
         orderExpiryKind = payload.expiryKind
         orderMeetupDeadlineAt = payload.meetupDeadlineAt
+        orderMeetingAppointmentStatus = payload.meetingAppointment?.status ?? ""
+        orderMeetingScheduledAt = payload.meetingAppointment?.scheduledAt ?? ""
+        orderMeetupBothPartiesCheckedIn = payload.meetingGrace?.sosUnlocked == true
     }
 
     private func scheduleSilentRefresh(conversationId: String, deps: AppDependencies) {

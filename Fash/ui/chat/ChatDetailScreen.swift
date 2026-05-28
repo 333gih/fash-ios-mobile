@@ -10,6 +10,8 @@ struct ChatDetailScreen: View {
     @State private var offerAmountText = ""
     @State private var counterAmountText = ""
     @State private var presentedOrderId: String?
+    @State private var showFulfillmentChoiceSheet = false
+    @State private var showMeetingSheet = false
 
     var body: some View {
         ChatDetailScreenBody(
@@ -70,19 +72,27 @@ private struct ChatDetailScreenBody: View {
             } else {
                 productHeader
                 if viewModel.hasOrder {
+                    let isBuyer = viewModel.detail?.isBuyer == true
+                    let norm = ChatOrderStatusCopy.normalize(viewModel.orderStatus)
                     ChatDealBanner(
-                        isBuyer: viewModel.detail?.isBuyer == true,
+                        isBuyer: isBuyer,
                         orderStatus: viewModel.orderStatus,
                         agreedAmountVnd: viewModel.agreedAmountVnd(),
                         statusSubtitle: ChatOrderStatusCopy.subtitle(
-                            isBuyer: viewModel.detail?.isBuyer == true,
+                            isBuyer: isBuyer,
                             orderStatus: viewModel.orderStatus
                         ),
                         onViewOrder: {
                             if let oid = viewModel.orderId ?? viewModel.detail?.orderId, !oid.isEmpty {
                                 presentedOrderId = oid
                             }
-                        }
+                        },
+                        onOpenFulfillmentChoice: isBuyer && norm == "fulfillment_pending"
+                            ? { showFulfillmentChoiceSheet = true }
+                            : nil,
+                        onScheduleMeetup: isBuyer && norm == "cash_meetup_open" && !viewModel.shouldHideScheduleMeetup
+                            ? { showMeetingSheet = true }
+                            : nil
                     )
                     Divider().overlay(FashColors.outlineMuted.opacity(0.5))
                 }
@@ -146,6 +156,58 @@ private struct ChatDetailScreenBody: View {
                 onDismiss: { viewModel.counterOfferSheet = nil }
             )
             .presentationDetents([.medium])
+        }
+        .sheet(isPresented: $showFulfillmentChoiceSheet) {
+            FulfillmentChoiceBottomSheet(
+                shipFulfillmentEnabled: BusinessFlowConfig.c2cShipAndPaymentEnabled,
+                orderCancellable: false,
+                onChooseMeetup: {
+                    Task {
+                        if await viewModel.ensureFulfillmentCashMeetup(deps: deps) {
+                            showMeetingSheet = true
+                        }
+                    }
+                },
+                onChooseShip: { }
+            )
+        }
+        .sheet(isPresented: $showMeetingSheet) {
+            MeetingProposalBottomSheet(
+                conversationId: conversationId,
+                linkedOrderId: viewModel.orderId,
+                browseProvinceId: viewModel.meetingBrowseProvinceId,
+                browseDistrictId: viewModel.meetingBrowseDistrictId,
+                isLoading: viewModel.isProposingMeeting,
+                onSubmit: { url, iso, reminderOn, offset, zoneId, zoneName in
+                    Task {
+                        if await viewModel.proposeMeeting(
+                            conversationId: conversationId,
+                            locationUrl: url,
+                            scheduledAtIso: iso,
+                            reminderEnabled: reminderOn,
+                            reminderOffsetMinutes: offset,
+                            safeZoneId: zoneId,
+                            safeZoneName: zoneName,
+                            deps: deps
+                        ) {
+                            showMeetingSheet = false
+                        }
+                    }
+                }
+            )
+        }
+        .onChange(of: showMeetingSheet) { _, open in
+            if open { Task { await viewModel.loadMeetingBrowseLocation(deps: deps) } }
+        }
+        .alert(L10n.meetingIdentityReverifyDialogTitle, isPresented: $viewModel.showMeetingIdentityReverify) {
+            Button(L10n.meetingIdentityReverifyAckDone) {
+                Task { await viewModel.ackMeetingIdentityReverify(deps: deps) }
+            }
+            Button(L10n.meetingIdentityReverifyClose, role: .cancel) {
+                viewModel.showMeetingIdentityReverify = false
+            }
+        } message: {
+            Text(L10n.meetingIdentityReverifyDialogBody)
         }
     }
 
@@ -273,7 +335,20 @@ private struct ChatDetailScreenBody: View {
             ChatSystemMessageBubble(text: message.text.isEmpty ? (message.systemSubtype ?? "") : message.text)
         case "meeting_proposal":
             if let appt = message.meetingAppointment {
-                ChatMeetingProposalCard(appointment: appt, formatTime: viewModel.formatTime)
+                ChatMeetingProposalCard(
+                    appointment: appt,
+                    isViewerBuyer: viewModel.detail?.isBuyer == true,
+                    formatTime: viewModel.formatTime,
+                    mutationInFlight: viewModel.meetingMutationInFlight,
+                    onConfirm: { Task { await viewModel.confirmMeeting(appointmentId: appt.appointmentId, deps: deps) } },
+                    onWithdrawOrReject: { Task { await viewModel.cancelMeeting(appointmentId: appt.appointmentId, deps: deps) } },
+                    onOnMyWay: ChatMapsUrlRules.isLenientMeetingMapsUrl(appt.locationUrl) && !appt.scheduledAt.isEmpty
+                        ? { Task { await viewModel.onMyWayMeeting(appointmentId: appt.appointmentId, deps: deps) } }
+                        : nil,
+                    onCheckIn: ChatMapsUrlRules.isLenientMeetingMapsUrl(appt.locationUrl) && !appt.scheduledAt.isEmpty
+                        ? { Task { await viewModel.checkInMeeting(appointmentId: appt.appointmentId, deps: deps) } }
+                        : nil
+                )
             } else {
                 ChatSystemMessageBubble(text: message.text)
             }

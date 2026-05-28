@@ -8,6 +8,8 @@ struct ChatDealBanner: View {
     let agreedAmountVnd: Int64
     let statusSubtitle: String?
     let onViewOrder: () -> Void
+    var onOpenFulfillmentChoice: (() -> Void)?
+    var onScheduleMeetup: (() -> Void)?
 
     private var norm: String { ChatOrderStatusCopy.normalize(orderStatus) }
 
@@ -49,8 +51,32 @@ struct ChatDealBanner: View {
                     .padding(.horizontal, 12)
                     .padding(.bottom, 8)
             }
+
+            if isBuyer, norm == "fulfillment_pending", let onOpenFulfillmentChoice {
+                dealCtaButton(title: L10n.chatFulfillmentBannerCta, systemImage: "shippingbox", action: onOpenFulfillmentChoice)
+            }
+            if isBuyer, norm == "cash_meetup_open", let onScheduleMeetup {
+                dealCtaButton(title: L10n.chatDealScheduleMeetupCta, systemImage: "calendar", action: onScheduleMeetup)
+            }
         }
         .background(FashColors.surfaceContainerHigh)
+    }
+
+    private func dealCtaButton(title: String, systemImage: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(systemName: systemImage)
+                Text(title)
+                    .font(FashTypography.labelLarge.weight(.semibold))
+            }
+            .foregroundStyle(FashColors.brandPrimary)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(FashColors.brandPrimary.opacity(0.55)))
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
     }
 }
 
@@ -226,33 +252,110 @@ struct ChatSystemMessageBubble: View {
 
 struct ChatMeetingProposalCard: View {
     let appointment: MeetingAppointmentPayload
+    let isViewerBuyer: Bool
     let formatTime: (String) -> String
+    let mutationInFlight: Bool
+    let onConfirm: () -> Void
+    let onWithdrawOrReject: () -> Void
+    var onOnMyWay: (() -> Void)?
+    var onCheckIn: (() -> Void)?
+
+    private var status: String { appointment.status.lowercased() }
+    private var preferVi: Bool { AppLocale.currentTag != AppLocale.tagEN }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             Text(L10n.chatMeetingCardTitle)
                 .font(FashTypography.labelMedium.weight(.semibold))
                 .foregroundStyle(FashColors.brandPrimary)
-            if !appointment.scheduledAt.isEmpty {
-                Text(appointment.scheduledAt)
-                    .font(FashTypography.bodySmall)
-                    .foregroundStyle(FashColors.textPrimary)
-            }
-            if !appointment.locationUrl.isEmpty {
-                Text(appointment.locationUrl)
-                    .font(FashTypography.bodySmall)
-                    .foregroundStyle(FashColors.textSecondary)
-                    .lineLimit(2)
-            }
-            Text(appointment.status.capitalized)
-                .font(FashTypography.labelSmall)
+            Text(statusLabel)
+                .font(FashTypography.labelSmall.weight(.semibold))
                 .foregroundStyle(FashColors.textSecondary)
+            if !appointment.scheduledAt.isEmpty {
+                Text(MeetingUi.formatMeetingWhen(appointment.scheduledAt, preferVi: preferVi))
+                    .font(FashTypography.bodyMedium)
+            }
+            if !appointment.safeZoneName.isEmpty {
+                Text(appointment.safeZoneName)
+                    .font(FashTypography.bodySmall.weight(.medium))
+            }
+            if !appointment.locationUrl.isEmpty, let url = URL(string: appointment.locationUrl) {
+                Link(L10n.chatMeetingOpenMaps, destination: url)
+                    .font(FashTypography.labelMedium)
+            }
+            if showOnMyWay, let onOnMyWay {
+                outlineAction(L10n.meetingOnMyWay, action: onOnMyWay)
+            }
+            if showCheckIn, let onCheckIn {
+                FashPrimaryButton(title: L10n.chatMeetingCheckInCta, isLoading: mutationInFlight) {
+                    onCheckIn()
+                }
+            }
+            if showConfirmReject {
+                HStack(spacing: 10) {
+                    Button(L10n.chatMeetingReject, action: onWithdrawOrReject)
+                        .buttonStyle(.bordered)
+                    FashPrimaryButton(title: L10n.chatMeetingConfirm, isLoading: mutationInFlight) {
+                        onConfirm()
+                    }
+                }
+            } else if showWithdrawOnly {
+                Button(L10n.chatMeetingWithdraw, action: onWithdrawOrReject)
+                    .buttonStyle(.bordered)
+            }
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(FashColors.surfaceContainerLow)
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .padding(.horizontal, 4)
+    }
+
+    private var statusLabel: String {
+        switch status {
+        case "confirmed": return L10n.chatMeetingStatusConfirmed
+        case "cancelled": return L10n.chatMeetingStatusCancelled
+        default: return L10n.chatMeetingStatusPending
+        }
+    }
+
+    private var showConfirmReject: Bool {
+        status == "pending" && !appointment.isProposerMe
+    }
+
+    private var showWithdrawOnly: Bool {
+        status == "pending" && appointment.isProposerMe
+    }
+
+    private var myOnMyWayAt: String {
+        isViewerBuyer ? appointment.buyerOnMyWayAt : appointment.sellerOnMyWayAt
+    }
+
+    private var myCheckInAt: String {
+        isViewerBuyer ? appointment.buyerCheckInAt : appointment.sellerCheckInAt
+    }
+
+    private var showOnMyWay: Bool {
+        status == "confirmed" && onOnMyWay != nil && myOnMyWayAt.isEmpty && myCheckInAt.isEmpty
+    }
+
+    private var showCheckIn: Bool {
+        status == "confirmed"
+            && onCheckIn != nil
+            && myCheckInAt.isEmpty
+            && !myOnMyWayAt.isEmpty
+            && MeetingUi.isWithinMeetingActionWindow(scheduledAtIso: appointment.scheduledAt)
+    }
+
+    private func outlineAction(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(FashTypography.labelLarge)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+        }
+        .buttonStyle(.bordered)
+        .disabled(mutationInFlight)
     }
 }
 

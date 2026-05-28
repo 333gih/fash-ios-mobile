@@ -104,6 +104,19 @@ final class UserRepository {
         }
     }
 
+    func ackMeetingIdentityReverify() async -> Result<Void, Error> {
+        do {
+            _ = try await RepositoryHttp.executeCorePost(
+                relativePath: "api/v1/users/me/meeting-trust/ack-identity-reverify",
+                client: client,
+                body: Data("{}".utf8)
+            )
+            return .success(())
+        } catch {
+            return .failure(error)
+        }
+    }
+
     func getMeProfile() async -> Result<ProfileInfo, Error> {
         do {
             let data = try await RepositoryHttp.executeCoreGet(relativePath: "api/v1/users/me", client: client)

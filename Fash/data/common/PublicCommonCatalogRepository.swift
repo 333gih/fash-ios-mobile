@@ -88,6 +88,24 @@ final class PublicCommonCatalogRepository {
         }
     }
 
+    func getSafeMeetupZones(provinceId: String? = nil, districtId: String? = nil, limit: Int = 30) async -> Result<[SafeMeetupZoneDto], Error> {
+        var parts = ["limit=\(min(max(limit, 1), 100))"]
+        if let p = provinceId?.trimmingCharacters(in: .whitespaces), !p.isEmpty {
+            parts.append("province_id=\(p.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? p)")
+        }
+        if let d = districtId?.trimmingCharacters(in: .whitespaces), !d.isEmpty {
+            parts.append("district_id=\(d.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? d)")
+        }
+        do {
+            let data = try await executeGet(publicPath("safe-meetup-zones") + "?" + parts.joined(separator: "&"))
+            let obj = try RepositoryHttp.jsonObject(data)
+            let rows = obj["zones"] as? [[String: Any]] ?? []
+            return .success(rows.map(parseSafeMeetupZone))
+        } catch {
+            return .failure(error)
+        }
+    }
+
     func getCountries(all: Bool = false, q: String? = nil, offset: Int = 0, limit: Int = 20) async -> Result<[CommonCountryDto], Error> {
         var parts: [String] = []
         if all {
@@ -143,6 +161,20 @@ private func parseAestheticTag(_ o: [String: Any]) -> CommonAestheticTagDto {
         displayNameVi: RepositoryHttp.optString(o, "display_name_vi", "displayNameVi", "DisplayNameVi"),
         sortOrder: RepositoryHttp.optInt(o, "sort_order", "sortOrder"),
         status: RepositoryHttp.optString(o, "status", "Status")
+    )
+}
+
+private func parseSafeMeetupZone(_ o: [String: Any]) -> SafeMeetupZoneDto {
+    SafeMeetupZoneDto(
+        id: RepositoryHttp.optString(o, "id", "ID"),
+        name: RepositoryHttp.optString(o, "name", "Name"),
+        nameVi: RepositoryHttp.optString(o, "name_vi", "nameVi", "NameVi"),
+        zoneType: RepositoryHttp.optString(o, "zone_type", "zoneType", "ZoneType"),
+        provinceId: RepositoryHttp.optString(o, "province_id", "provinceId", "ProvinceID"),
+        districtId: optionalNonEmpty(RepositoryHttp.optString(o, "district_id", "districtId", "DistrictID")),
+        addressLine: RepositoryHttp.optString(o, "address_line", "addressLine", "AddressLine"),
+        locationUrl: RepositoryHttp.optString(o, "location_url", "locationUrl", "LocationURL"),
+        sortOrder: RepositoryHttp.optInt(o, "sort_order", "sortOrder", default: 0)
     )
 }
 

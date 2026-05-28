@@ -99,8 +99,10 @@ extension ChatRepository {
     }
 
     func parseMeetingAppointmentPayload(_ m: [String: Any]) -> MeetingAppointmentPayload? {
-        guard let o = m["meeting_appointment"] as? [String: Any]
-            ?? m["MeetingAppointment"] as? [String: Any] else { return nil }
+        let o: [String: Any]? = m["meeting_appointment"] as? [String: Any]
+            ?? m["MeetingAppointment"] as? [String: Any]
+            ?? (RepositoryHttp.optString(m, "id", "ID").isEmpty ? nil : m)
+        guard let o else { return nil }
         let id = RepositoryHttp.optString(o, "id", "ID")
         guard !id.isEmpty else { return nil }
         let myId = currentUserId
