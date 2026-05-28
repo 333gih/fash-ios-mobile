@@ -84,12 +84,12 @@ extension ChatRepository {
             return .success(parseMeetingCheckInResponse(data))
         } catch let err as CoreServiceHttpException where [404, 405, 501].contains(err.statusCode) {
             return .success(MeetingCheckInResult(endpointAvailable: false, alreadyCheckedIn: false, yourCheckInAt: nil, role: nil, meetingAppointment: nil))
-        } catch {
-            let msg = (err as? CoreServiceHttpException)?.message ?? err.localizedDescription
+        } catch let error {
+            let msg = (error as? CoreServiceHttpException)?.message ?? error.localizedDescription
             if msg.contains("404") || msg.contains("405") || msg.contains("501") {
                 return .success(MeetingCheckInResult(endpointAvailable: false, alreadyCheckedIn: false, yourCheckInAt: nil, role: nil, meetingAppointment: nil))
             }
-            return .failure(err)
+            return .failure(error)
         }
     }
 

@@ -566,14 +566,14 @@ final class ChatDetailViewModel {
                 deps.realtimeManager.subscribeToConversation(conversationId)
             case .typingStart(let cid, let userId):
                 guard cid == conversationId || cid.isEmpty else { return }
-                let myId = deps.authSessionStore.read()?.userId.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                let myId = deps.authSessionStore.read()?.userId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
                 let other = userId.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !other.isEmpty, other.compare(myId, options: .caseInsensitive) != .orderedSame else { return }
                 isOtherTyping = true
                 scheduleTypingTimeout()
             case .typingStop(let cid, let userId):
                 guard cid == conversationId || cid.isEmpty else { return }
-                let myId = deps.authSessionStore.read()?.userId.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                let myId = deps.authSessionStore.read()?.userId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
                 let uid = userId.trimmingCharacters(in: .whitespacesAndNewlines)
                 if uid.isEmpty || uid.compare(myId, options: .caseInsensitive) == .orderedSame { return }
                 isOtherTyping = false

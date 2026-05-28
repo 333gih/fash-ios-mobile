@@ -21,6 +21,8 @@ struct ChatDetailScreen: View {
             offerAmountText: $offerAmountText,
             counterAmountText: $counterAmountText,
             presentedOrderId: $presentedOrderId,
+            showFulfillmentChoiceSheet: $showFulfillmentChoiceSheet,
+            showMeetingSheet: $showMeetingSheet,
             onDismiss: onDismiss,
             onProductClick: onProductClick
         )
@@ -52,6 +54,8 @@ private struct ChatDetailScreenBody: View {
     @Binding var offerAmountText: String
     @Binding var counterAmountText: String
     @Binding var presentedOrderId: String?
+    @Binding var showFulfillmentChoiceSheet: Bool
+    @Binding var showMeetingSheet: Bool
     var onDismiss: () -> Void
     var onProductClick: (String) -> Void
 
