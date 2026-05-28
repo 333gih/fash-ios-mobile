@@ -5,6 +5,7 @@ import UIKit
 enum FashColors {
     static var brandPrimary: Color { FashColorTokens.LightEditorial.brandPrimary }
     static var brandSecondary: Color { FashColorTokens.LightEditorial.brandPrimaryDeep }
+    static var onBrandPrimary: Color { FashColorTokens.LightEditorial.onBrandPrimary }
     static var screen: Color {
         FashThemeState.shared.isDark
             ? FashColorTokens.Dark.screen
@@ -17,6 +18,12 @@ enum FashColors {
     }
     static var textSecondary: Color {
         FashThemeState.shared.isDark ? FashColorTokens.Dark.textSecondary : FashColorTokens.LightEditorial.textSecondary
+    }
+    static var surfaceContainerLow: Color {
+        if FashThemeState.shared.isDark { return FashColorTokens.Dark.surfaceContainerLow }
+        return FashThemeState.shared.lightAppearance == .pureWhite
+            ? FashColorTokens.LightPureWhite.surfaceContainerLow
+            : FashColorTokens.LightEditorial.surfaceContainerLow
     }
     static var surfaceContainer: Color {
         FashThemeState.shared.isDark ? FashColorTokens.Dark.surfaceContainer : FashColorTokens.LightEditorial.surfaceContainer
