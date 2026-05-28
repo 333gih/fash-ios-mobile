@@ -5,19 +5,37 @@ import Observation
 @MainActor
 final class ProductDetailViewModel {
     var item: ListingFeedItem?
+    var preview: ListingPreviewDetail?
     var isLoading = false
     var isOpeningChat = false
     var isLiked = false
     var isSaved = false
     var errorMessage: String?
     var galleryIndex = 0
-    var sellerAvatarUrl: String?
 
     var resolvedImageUrls: [String] {
-        imageUrls.compactMap { raw in
-            let resolved = FeedImageUrl.resolveListingImageUrl(raw)
-            return resolved.isEmpty ? nil : resolved
+        if let preview, !preview.imageURLs.isEmpty {
+            return preview.imageURLs.compactMap { FeedImageUrl.resolveListingImageUrlOrNil($0) }
         }
+        return imageUrls.compactMap { FeedImageUrl.resolveListingImageUrlOrNil($0) }
+    }
+
+    var sellerDisplayName: String {
+        if let name = preview?.sellerDisplayName?.trimmingCharacters(in: .whitespaces), !name.isEmpty {
+            return name
+        }
+        if let u = item?.sellerUsername, !u.isEmpty { return "@\(u)" }
+        return L10n.navProfile
+    }
+
+    var sellerAvatarUrl: String? {
+        let raw = preview?.sellerAvatarURL ?? ""
+        return raw.isEmpty ? nil : FeedImageUrl.resolveListingImageUrlOrNil(raw)
+    }
+
+    var isSold: Bool {
+        let status = (preview?.status ?? item?.listingStatus ?? "").lowercased()
+        return status == "sold"
     }
 
     func load(listingId: String, deps: AppDependencies) async {
@@ -25,26 +43,28 @@ final class ProductDetailViewModel {
         errorMessage = nil
         defer { isLoading = false }
         let publicBrowse = deps.isGuestBrowseActive
-        let result = await deps.listingRepository.getListingDetail(listingId: listingId, publicBrowse: publicBrowse)
-        switch result {
+        async let detailResult = deps.listingRepository.getListingDetail(listingId: listingId, publicBrowse: publicBrowse)
+        async let previewResult = deps.listingRepository.getListingPreviewDetail(listingId: listingId, publicBrowse: publicBrowse)
+        switch await detailResult {
         case .success(let detail):
             item = detail
             isLiked = detail.isLiked
             isSaved = detail.isSaved
             galleryIndex = 0
-            sellerAvatarUrl = nil
-            if case .success(let preview) = await deps.listingRepository.getListingPreviewDetail(
-                listingId: listingId,
-                publicBrowse: publicBrowse
-            ), let preview {
-                sellerAvatarUrl = preview.sellerAvatarURL
-            }
         case .failure(let error):
             errorMessage = error.localizedDescription
+        }
+        if case .success(let p) = await previewResult {
+            preview = p
+            if let p {
+                isLiked = p.isLiked
+                isSaved = p.isSaved
+            }
         }
     }
 
     var imageUrls: [String] {
+        if let preview, !preview.imageURLs.isEmpty { return preview.imageURLs }
         guard let item else { return [] }
         if !item.imageUrls.isEmpty { return item.imageUrls }
         if !item.coverImageUrl.isEmpty { return [item.coverImageUrl] }
@@ -74,5 +94,11 @@ final class ProductDetailViewModel {
             errorMessage = error.localizedDescription
             return nil
         }
+    }
+}
+
+private extension String {
+    func ifEmpty(_ fallback: String) -> String {
+        trimmingCharacters(in: .whitespaces).isEmpty ? fallback : self
     }
 }

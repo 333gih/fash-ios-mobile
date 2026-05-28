@@ -35,6 +35,68 @@ final class AppAuthManager {
         sessionExpiredMessage = nil
     }
 
+    /**
+     * Cold-start validation: refresh when the access token is likely expired.
+     * Skips the network when still within [accessTokenRefreshSkewMs] of expiry.
+     */
+    func validateOrClearSession() async -> Bool {
+        guard let session = sessionStore.read() else { return false }
+        if isAccessTokenLikelyValid(session) {
+            isAuthenticated = true
+            return true
+        }
+        for attempt in 0..<refreshAttempts {
+            guard let snapshot = sessionStore.read() else { return false }
+            let result = await AuthTokenRefreshCoordinator.refreshIfStillCurrent(
+                sessionStore: sessionStore,
+                authRepository: authRepository,
+                accessTokenWhenUnauthorized: snapshot.accessToken
+            )
+            if case .success = result {
+                onSessionSaved()
+                return true
+            }
+            if case .failure(let err) = result {
+                if AuthRefreshPolicy.isTransientRefreshFailure(err) {
+                    if attempt < refreshAttempts - 1 {
+                        try? await Task.sleep(for: .milliseconds(400 * (attempt + 1)))
+                        continue
+                    }
+                    isAuthenticated = sessionStore.read() != nil
+                    return true
+                }
+                sessionStore.clear()
+                isAuthenticated = false
+                return false
+            }
+        }
+        return true
+    }
+
+    /// Milliseconds until proactive refresh; `Int64.max` when logged out.
+    func millisUntilProactiveRefresh() -> Int64 {
+        guard let session = sessionStore.read() else { return Int64.max }
+        if session.expiresInSeconds <= 0 { return 60_000 }
+        let issued = sessionStore.issuedAtMillis()
+        if issued <= 0 { return 60_000 }
+        let refreshAt = issued + session.expiresInSeconds * 1000 - accessTokenRefreshSkewMs
+        return max(30_000, refreshAt - Int64(Date().timeIntervalSince1970 * 1000))
+    }
+
+    /** Background refresh before JWT expiry — avoids 401 → refresh → retry on API calls. */
+    func proactiveRefreshIfNeeded() async {
+        guard let session = sessionStore.read() else { return }
+        if isAccessTokenLikelyValid(session) { return }
+        let result = await AuthTokenRefreshCoordinator.refreshIfStillCurrent(
+            sessionStore: sessionStore,
+            authRepository: authRepository,
+            accessTokenWhenUnauthorized: session.accessToken
+        )
+        if case .success = result {
+            onSessionSaved()
+        }
+    }
+
     func logout() async {
         let session = sessionStore.read()
         let userId = session?.userId
@@ -58,4 +120,15 @@ final class AppAuthManager {
         SocialAuthCacheClear.clearCachedSocialSignInForLogout()
         onSessionCleared()
     }
+
+    private func isAccessTokenLikelyValid(_ session: AuthSession) -> Bool {
+        if session.expiresInSeconds <= 0 { return false }
+        let issued = sessionStore.issuedAtMillis()
+        if issued <= 0 { return false }
+        let expMs = issued + session.expiresInSeconds * 1000
+        return Int64(Date().timeIntervalSince1970 * 1000) < expMs - accessTokenRefreshSkewMs
+    }
+
+    private static let refreshAttempts = 3
+    private static let accessTokenRefreshSkewMs: Int64 = 60_000
 }

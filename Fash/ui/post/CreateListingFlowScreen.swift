@@ -10,18 +10,15 @@ struct CreateListingFlowScreen: View {
     @State private var showAddAddress = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            CreateListingFlowHeader(
-                step: postVM.step,
-                canProceed: postVM.draft.canProceedFromStep(postVM.step),
-                isSubmitting: postVM.isSubmitting || postVM.isUploading,
-                onBack: handleBack,
-                onClose: handleCloseAttempt,
-                onNext: handleNext
-            )
-            stepContent
+        Group {
+            if postVM.step == createListingModeStep {
+                CreateListingModeStep(postVM: postVM, onClose: handleCloseAttempt)
+            } else {
+                postStepsShell
+            }
         }
-        .background(FashColors.screen)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(PostListingColors.stepCanvas)
         .task {
             await postVM.loadCatalogIfNeeded(deps: deps)
             await addressVM.refresh(deps: deps)
@@ -51,14 +48,25 @@ struct CreateListingFlowScreen: View {
         }
     }
 
+    private var postStepsShell: some View {
+        VStack(spacing: 0) {
+            CreateListingFlowHeader(
+                step: postVM.step,
+                showBack: postVM.step > 1,
+                canProceed: postVM.draft.canProceedFromStep(postVM.step),
+                isSubmitting: postVM.isSubmitting || postVM.isUploading,
+                onBack: { postVM.prevStep() },
+                onClose: handleCloseAttempt,
+                onNext: handleNext
+            )
+            stepContent
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
     @ViewBuilder
     private var stepContent: some View {
         switch postVM.step {
-        case createListingModeStep:
-            CreateListingModeStep(
-                onManual: { Task { await postVM.selectFillMode(deps: deps, mode: .manual) } },
-                onFromProfile: { Task { await postVM.selectFillMode(deps: deps, mode: .fromProfileStyle) } }
-            )
         case 1...5:
             CreateListingPostSteps(postVM: postVM, step: postVM.step)
         case 6...10:
@@ -70,14 +78,6 @@ struct CreateListingFlowScreen: View {
             )
         default:
             EmptyView()
-        }
-    }
-
-    private func handleBack() {
-        if postVM.step <= createListingModeStep {
-            handleCloseAttempt()
-        } else {
-            postVM.prevStep()
         }
     }
 

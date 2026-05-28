@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
-# Standalone Mac build: xcodegen → xcodebuild (iOS Simulator). No Android checkout required.
+# Standalone Mac build: validate → xcodegen → xcodebuild (iOS Simulator).
+# Default destination matches .github/workflows/ios-build.yml (iPhone 15, iOS 17.5).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 SCHEME="${1:-Fash-Dev}"
-SIMULATOR="${2:-iPhone 16}"
+# Match GitHub Actions ios-build.yml destination when possible.
+SIMULATOR_OS="${SIMULATOR_OS:-iPhone 15,OS=17.5}"
+SIMULATOR="${2:-${SIMULATOR_OS}}"
 
 die() { echo "error: $*" >&2; exit 1; }
 
@@ -16,6 +19,10 @@ fi
 
 command -v xcodegen >/dev/null 2>&1 || die "XcodeGen not found — brew install xcodegen"
 command -v xcodebuild >/dev/null 2>&1 || die "xcodebuild not found — install Xcode from the App Store"
+
+echo "==> Validate (same as CI)"
+python3 scripts/validate_strings.py
+python3 scripts/validate_swift_syntax.py
 
 echo "==> Generate Xcode project"
 xcodegen generate

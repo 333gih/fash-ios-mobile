@@ -604,8 +604,8 @@ enum L10n {
     static var createListingSelectCategory: String { t("create_listing_select_category") }
     static var createListingSellerJustActive: String { t("create_listing_seller_just_active") }
     static var createListingSizeLabel: String { t("create_listing_size_label") }
-    static func createListingStep(_ a1: CVarArg, _ a2: CVarArg) -> String {
-        String(format: t("create_listing_step"), a1, a2)
+    static func createListingStep(_ step: Int, _ total: Int) -> String {
+        String(format: t("create_listing_step"), step, total)
     }
     static var createListingStep2IncompleteHeader: String { t("create_listing_step2_incomplete_header") }
     static var createListingStep2NeedCategory: String { t("create_listing_step2_need_category") }
@@ -2040,7 +2040,9 @@ enum L10n {
     static var profileSellerFollowCtaHint: String { t("profile_seller_follow_cta_hint") }
     static var profileSellerRatingPending: String { t("profile_seller_rating_pending") }
     static var profileSellerRatingPendingHint: String { t("profile_seller_rating_pending_hint") }
-    static var profileSellerTrustReviewsCount: String { t("profile_seller_trust_reviews_count") }
+    static func profileSellerTrustReviewsCount(_ count: Int) -> String {
+        String(format: t("profile_seller_trust_reviews_count"), count)
+    }
     static var profileSellerTrustSubtitleScoreOnly: String { t("profile_seller_trust_subtitle_score_only") }
     static var profileSetupChooseName: String { t("profile_setup_choose_name") }
     static var profileSetupComplete: String { t("profile_setup_complete") }
@@ -2096,27 +2098,27 @@ enum L10n {
     static var profileShareShopSubtitle: String { t("profile_share_shop_subtitle") }
     static var profileShareShopTitle: String { t("profile_share_shop_title") }
     static var profileShippingAddresses: String { t("profile_shipping_addresses") }
-    static func profileSizingRefChest(_ a1: CVarArg) -> String {
-        String(format: t("profile_sizing_ref_chest"), a1)
+    static func profileSizingRefChest(_ value: Double, _ unit: String) -> String {
+        String(format: t("profile_sizing_ref_chest"), value, unit)
     }
     static var profileSizingRefCompletedOnly: String { t("profile_sizing_ref_completed_only") }
     static var profileSizingRefEdit: String { t("profile_sizing_ref_edit") }
     static var profileSizingRefEmptyHint: String { t("profile_sizing_ref_empty_hint") }
-    static func profileSizingRefHem(_ a1: CVarArg) -> String {
-        String(format: t("profile_sizing_ref_hem"), a1)
+    static func profileSizingRefHem(_ value: Double, _ unit: String) -> String {
+        String(format: t("profile_sizing_ref_hem"), value, unit)
     }
-    static func profileSizingRefLength(_ a1: CVarArg) -> String {
-        String(format: t("profile_sizing_ref_length"), a1)
+    static func profileSizingRefLength(_ value: Double, _ unit: String) -> String {
+        String(format: t("profile_sizing_ref_length"), value, unit)
     }
     static var profileSizingRefSeparator: String { t("profile_sizing_ref_separator") }
-    static func profileSizingRefShoulders(_ a1: CVarArg) -> String {
-        String(format: t("profile_sizing_ref_shoulders"), a1)
+    static func profileSizingRefShoulders(_ value: Double, _ unit: String) -> String {
+        String(format: t("profile_sizing_ref_shoulders"), value, unit)
     }
     static func profileSizingRefSize(_ a1: CVarArg) -> String {
         String(format: t("profile_sizing_ref_size"), a1)
     }
-    static func profileSizingRefSleeve(_ a1: CVarArg) -> String {
-        String(format: t("profile_sizing_ref_sleeve"), a1)
+    static func profileSizingRefSleeve(_ value: Double, _ unit: String) -> String {
+        String(format: t("profile_sizing_ref_sleeve"), value, unit)
     }
     static var profileSizingRefSubtitle: String { t("profile_sizing_ref_subtitle") }
     static var profileSizingRefTitle: String { t("profile_sizing_ref_title") }

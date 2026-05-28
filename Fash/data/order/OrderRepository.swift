@@ -56,7 +56,8 @@ final class OrderRepository {
         let rawStatus = RepositoryHttp.optString(o, "status", "Status").lowercased()
         let coverUrl = RepositoryHttp.optString(listing, "cover_image_url", "CoverImageURL", "thumbnail_url")
         let imageUrls = listing["image_urls"] as? [String] ?? listing["ImageURLs"] as? [String]
-        let imageUrl = coverUrl.isEmpty ? (imageUrls?.first ?? "") : coverUrl
+        let rawImage = coverUrl.isEmpty ? (imageUrls?.first ?? "") : coverUrl
+        let imageUrl = FeedImageUrl.resolveListingImageUrl(rawImage)
         let canConfirm = RepositoryHttp.optBool(o, "can_confirm", "CanConfirm", default: rawStatus == "in_transit")
         let canReview = RepositoryHttp.optBool(o, "can_review", "CanReview", default: rawStatus == "delivered_confirmed")
         return OrderItem(

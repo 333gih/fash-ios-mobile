@@ -13,50 +13,20 @@ struct MainNavScreen: View {
     @State private var ordersVM = OrdersViewModel()
     @State private var postVM = PostViewModel()
     @State private var addressBookVM = AddressBookViewModel()
-    @State private var listingPreview = ListingPreviewStore()
 
     private var isPostListingFlow: Bool { router.selectedTab == .post }
 
     var body: some View {
-        VStack(spacing: 0) {
-            if !isPostListingFlow {
-                topBar
-            }
-            tabContent.frame(maxWidth: .infinity, maxHeight: .infinity)
-            if !isPostListingFlow {
-                bottomBar
-            }
-        }
-        .background(FashColors.screen)
-        .sheet(item: $listingPreview.state, onDismiss: {
-            if let pending = router.pendingListingIdAfterPreview {
-                router.pendingListingIdAfterPreview = nil
-                DispatchQueue.main.async {
-                    router.selectedListingId = pending
-                }
-            }
-        }) { preview in
-            ExploreListingPreviewSheet(
-                feedItem: preview.feedItem,
-                detail: preview.detail,
-                isDetailLoading: preview.isDetailLoading,
-                isGuestMode: isGuestMode,
-                onViewDetail: {
-                    router.pendingListingIdAfterPreview = preview.feedItem.id
-                    listingPreview.close()
-                },
-                onLike: {},
-                onSave: {},
-                onMessageSeller: {
-                    router.selectedListingId = preview.feedItem.id
-                    listingPreview.close()
-                },
-                onRequestLogin: {
-                    onRequestSignIn?(L10n.guestLoginReasonBuy)
-                }
-            )
-            .environment(\.locale, AppLocale.locale)
-        }
+        MainNavScreenChrome(
+            router: router,
+            listingPreview: deps.listingPreview,
+            isGuestMode: isGuestMode,
+            isPostListingFlow: isPostListingFlow,
+            onRequestSignIn: onRequestSignIn,
+            topBar: { topBar },
+            tabContent: { tabContent },
+            bottomBar: { bottomBar }
+        )
         .sheet(isPresented: $router.showNotificationScreen) {
             NotificationScreen(
                 userRepository: deps.userRepository,
@@ -109,7 +79,6 @@ struct MainNavScreen: View {
         .fullScreenCover(isPresented: $router.showExploreOverlay) {
             ExploreOverlayHost(
                 viewModel: exploreVM,
-                listingPreview: listingPreview,
                 router: router,
                 isGuestMode: isGuestMode,
                 expandSearchOnAppear: router.exploreSearchExpanded,
@@ -149,6 +118,9 @@ struct MainNavScreen: View {
             if !isGuestMode {
                 router.showNotificationScreen = true
             }
+        }
+        .onChange(of: router.pendingExploreProfileFilter) { _, _ in
+            Task { await applyPendingExploreProfileFilter() }
         }
         .onChange(of: router.selectedTab) { _, tab in
             guard !isGuestMode else { return }
@@ -214,7 +186,6 @@ struct MainNavScreen: View {
         case .home:
             HomeFeedContent(
                 viewModel: homeVM,
-                listingPreview: listingPreview,
                 router: router,
                 isGuestMode: isGuestMode,
                 onOpenExplore: { openExploreOverlay(expandSearch: false) },
@@ -269,7 +240,8 @@ struct MainNavScreen: View {
                     },
                     onShippingAddressesClick: { router.showShippingAddressList = true },
                     onInviteFriendsClick: { router.showInviteFriendsScreen = true },
-                    onListingClick: { id, _ in router.selectedListingId = id }
+                    onListingClick: { id, _ in deps.presentListingDetail(listingId: id, router: router) },
+                    onNavigateToExploreFromProfile: scheduleExploreFromProfile
                 )
             }
         }
@@ -319,6 +291,39 @@ struct MainNavScreen: View {
         router.showExploreOverlay = true
     }
 
+    private func scheduleExploreFromProfile(
+        _ categoryId: String?,
+        _ brandId: String?,
+        _ aestheticTagId: String?,
+        _ searchQuery: String,
+        _ countryId: String?,
+        _ countryIso2: String?
+    ) {
+        router.pendingExploreProfileFilter = ExploreProfileFilterRequest(
+            categoryId: categoryId,
+            brandId: brandId,
+            aestheticTagId: aestheticTagId,
+            searchQuery: searchQuery,
+            countryId: countryId,
+            countryIso2: countryIso2
+        )
+    }
+
+    private func applyPendingExploreProfileFilter() async {
+        guard let req = router.pendingExploreProfileFilter else { return }
+        router.pendingExploreProfileFilter = nil
+        await exploreVM.openFromProfileFilter(
+            deps: deps,
+            categoryId: req.categoryId,
+            brandId: req.brandId,
+            aestheticTagId: req.aestheticTagId,
+            searchQuery: req.searchQuery,
+            countryId: req.countryId,
+            countryIso2: req.countryIso2
+        )
+        openExploreOverlay(expandSearch: false)
+    }
+
     private func openExploreSearch() {
         openExploreOverlay(expandSearch: true)
     }
@@ -347,6 +352,61 @@ struct MainNavScreen: View {
         case .chat: return L10n.guestLoginReasonChat
         case .profile: return L10n.guestLoginReasonProfile
         default: return L10n.guestLoginSheetTitle
+        }
+    }
+}
+
+/// Hosts main chrome + listing preview sheet with a valid `@Bindable` projection.
+private struct MainNavScreenChrome<TopBar: View, TabContent: View, BottomBar: View>: View {
+    @Environment(AppDependencies.self) private var deps
+    @Bindable var router: AppRouter
+    @Bindable var listingPreview: ListingPreviewStore
+    var isGuestMode: Bool
+    var isPostListingFlow: Bool
+    var onRequestSignIn: ((String) -> Void)?
+    @ViewBuilder var topBar: () -> TopBar
+    @ViewBuilder var tabContent: () -> TabContent
+    @ViewBuilder var bottomBar: () -> BottomBar
+
+    var body: some View {
+        VStack(spacing: 0) {
+            if !isPostListingFlow {
+                topBar()
+            }
+            tabContent().frame(maxWidth: .infinity, maxHeight: .infinity)
+            if !isPostListingFlow {
+                bottomBar()
+            }
+        }
+        .background(FashColors.screen)
+        .sheet(item: $listingPreview.state, onDismiss: {
+            if let pending = router.pendingListingIdAfterPreview {
+                router.pendingListingIdAfterPreview = nil
+                DispatchQueue.main.async {
+                    deps.presentListingDetail(listingId: pending, router: router)
+                }
+            }
+        }) { preview in
+            ExploreListingPreviewSheet(
+                feedItem: preview.feedItem,
+                detail: preview.detail,
+                isDetailLoading: preview.isDetailLoading,
+                isGuestMode: isGuestMode,
+                onViewDetail: {
+                    router.pendingListingIdAfterPreview = preview.feedItem.id
+                    listingPreview.close()
+                },
+                onLike: {},
+                onSave: {},
+                onMessageSeller: {
+                    router.pendingListingIdAfterPreview = preview.feedItem.id
+                    listingPreview.close()
+                },
+                onRequestLogin: {
+                    onRequestSignIn?(L10n.guestLoginReasonBuy)
+                }
+            )
+            .environment(\.locale, AppLocale.locale)
         }
     }
 }

@@ -4,7 +4,6 @@ struct HomeFeedContent: View {
     @Environment(\.fashSpacing) private var spacing
     @Environment(AppDependencies.self) private var deps
     @Bindable var viewModel: HomeViewModel
-    @Bindable var listingPreview: ListingPreviewStore
     @Bindable var router: AppRouter
     var isGuestMode: Bool
     var onOpenExplore: () -> Void = {}
@@ -116,12 +115,12 @@ struct HomeFeedContent: View {
         } else if viewModel.items.isEmpty {
             HomeFeedTabGenericEmpty(tab: viewModel.selectedFeedTab)
         } else {
-            LazyVGrid(columns: columns, spacing: 12) {
+            LazyVGrid(columns: columns, spacing: 8) {
                 ForEach(Array(viewModel.items.enumerated()), id: \.element.id) { index, item in
                     ListingGridCard(item: item) {
-                        listingPreview.open(
+                        deps.presentListingPreview(
                             item: item,
-                            deps: deps,
+                            router: router,
                             publicBrowse: isGuestMode,
                             surface: viewModel.selectedFeedTab.rawValue,
                             position: index

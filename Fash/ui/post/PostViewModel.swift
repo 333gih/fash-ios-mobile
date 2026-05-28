@@ -50,7 +50,7 @@ final class PostViewModel {
         }
         if case .success(let tags) = await deps.commonCatalogRepository.getAestheticTags(all: true) {
             aestheticTags = tags
-            aestheticTagsById = Dictionary(uniqueKeysWithValues: tags.map { ($0.id, $0) })
+            aestheticTagsById = Dictionary(tags.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         }
         if case .success(let page) = await deps.commonCatalogRepository.getBrands(limit: 50) {
             brandsFeatured = page.items
@@ -87,7 +87,15 @@ final class PostViewModel {
     func selectFillMode(deps: AppDependencies, mode: CreateListingFillMode) async {
         if mode == .fromProfileStyle {
             await loadProfileForPreview(deps: deps)
-            draft.fillMode = .fromProfileStyle
+            if let profile = meProfile {
+                draft = draft.applyProfileStyleIfEmpty(profile: profile)
+                if !profile.hasStyleReferenceForListing() {
+                    eventMessage = L10n.postFillModeProfileEmpty
+                }
+            } else {
+                draft.fillMode = .fromProfileStyle
+                eventMessage = L10n.postFillModeProfileEmpty
+            }
         } else {
             draft.fillMode = .manual
         }

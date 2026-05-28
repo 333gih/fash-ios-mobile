@@ -77,6 +77,17 @@ final class UserRepository {
         let following = (obj["is_following"] as? Bool)
             ?? (obj["isFollowing"] as? Bool)
             ?? false
+        let (aestheticTags, aestheticTagSnapshots) = parseAestheticTagsField(obj)
+        let ratingCandidates: [Double] = [
+            obj["rating"] as? Double,
+            obj["Rating"] as? Double,
+            obj["average_rating"] as? Double,
+        ].compactMap { $0 }.filter { $0 >= 0 }
+        let rating = ratingCandidates.first.map { Float($0) }
+        let reviewCount = RepositoryHttp.optInt(obj, "review_count", "ReviewCount")
+        let reviewCountOpt = reviewCount >= 0 ? reviewCount : nil
+        let heightRaw = RepositoryHttp.optInt(obj, "height_cm", "heightCm")
+        let heightCm = (100...250).contains(heightRaw) ? heightRaw : nil
         return ProfileInfo(
             userId: RepositoryHttp.optString(obj, "user_id", "UserID", "id", "ID"),
             username: RepositoryHttp.optString(obj, "username", "Username"),
@@ -87,8 +98,160 @@ final class UserRepository {
             followingCount: RepositoryHttp.optInt(obj, "following_count", "FollowingCount"),
             productCount: RepositoryHttp.optInt(obj, "product_count", "ProductCount", "listing_count", "ListingCount"),
             bio: RepositoryHttp.optString(obj, "bio", "Bio"),
-            isFollowing: following
+            isFollowing: following,
+            aestheticTags: aestheticTags,
+            aestheticTagSnapshots: aestheticTagSnapshots,
+            referenceSize: optionalNonEmpty(RepositoryHttp.optString(obj, "reference_size", "referenceSize")),
+            referenceMeasurementUnit: optionalNonEmpty(
+                RepositoryHttp.optString(obj, "reference_measurement_unit", "referenceMeasurementUnit")
+            ),
+            referenceMeasurementChest: optDoubleIfPresent(obj, "reference_measurement_chest"),
+            referenceMeasurementHem: optDoubleIfPresent(obj, "reference_measurement_hem"),
+            referenceMeasurementLength: optDoubleIfPresent(obj, "reference_measurement_length"),
+            referenceMeasurementShoulders: optDoubleIfPresent(obj, "reference_measurement_shoulders"),
+            referenceMeasurementSleeveLength: optDoubleIfPresent(obj, "reference_measurement_sleeve_length"),
+            gender: RepositoryHttp.optString(obj, "gender", "Gender").trimmingCharacters(in: .whitespaces).lowercased(),
+            soldCount: RepositoryHttp.optInt(obj, "sold_count", "SoldCount"),
+            rating: rating,
+            reviewCount: reviewCountOpt,
+            verified: (obj["verified"] as? Bool) ?? (obj["Verified"] as? Bool) ?? false,
+            hasFastDelivery: (obj["has_fast_delivery"] as? Bool) ?? (obj["hasFastDelivery"] as? Bool) ?? false,
+            reputationPoints: optIntIfPresent(obj, "reputation_points", "ReputationPoints", "reputationPoints"),
+            meetingNoShowWarning: (obj["meeting_no_show_warning"] as? Bool)
+                ?? (obj["MeetingNoShowWarning"] as? Bool) ?? false,
+            sizingReferenceCompleted: (obj["sizing_reference_completed"] as? Bool)
+                ?? (obj["SizingReferenceCompleted"] as? Bool) ?? false,
+            heightCm: heightCm,
+            weightKg: optDoubleIfPresent(obj, "weight_kg"),
+            accountEmail: RepositoryHttp.optString(obj, "account_email", "accountEmail"),
+            accountPhone: RepositoryHttp.optString(obj, "account_phone", "accountPhone"),
+            topBadges: parseTopBadges(obj["top_badges"] ?? obj["TopBadges"])
         )
+    }
+
+    func getSellerListingFocus(_ userIdOrUsername: String) async -> Result<SellerListingFocus, Error> {
+        let raw = userIdOrUsername.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: "@", with: "")
+        guard !raw.isEmpty else { return .failure(URLError(.badURL)) }
+        let encoded = raw.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? raw
+        do {
+            let data = try await RepositoryHttp.executeCoreGet(
+                relativePath: "api/v1/users/\(encoded)/seller-focus",
+                client: client
+            )
+            let root = try RepositoryHttp.jsonObject(data)
+            let inner = (root["data"] as? [String: Any]) ?? root
+            return .success(try parseSellerListingFocus(inner))
+        } catch let err as CoreServiceHttpException where err.statusCode == 403 {
+            return .failure(SellerFocusError.forbidden)
+        } catch let err as CoreServiceHttpException where err.statusCode == 401 {
+            return .failure(SellerFocusError.unauthorized)
+        } catch {
+            return .failure(error)
+        }
+    }
+
+    private func parseSellerListingFocus(_ obj: [String: Any]) throws -> SellerListingFocus {
+        var categories: [SellerFocusCategory] = []
+        if let arr = obj["categories"] as? [[String: Any]] {
+            for c in arr {
+                let id = RepositoryHttp.optString(c, "id", "ID")
+                let name = RepositoryHttp.optString(c, "name", "Name")
+                guard !id.isEmpty || !name.isEmpty else { continue }
+                categories.append(SellerFocusCategory(
+                    id: id,
+                    name: name.isEmpty ? "—" : name,
+                    parentId: optionalNonEmpty(RepositoryHttp.optString(c, "parent_id", "parentId")),
+                    parentName: optionalNonEmpty(RepositoryHttp.optString(c, "parent_name", "parentName"))
+                ))
+            }
+        }
+        var brands: [SellerFocusBrand] = []
+        if let arr = obj["brands"] as? [[String: Any]] {
+            for b in arr {
+                let id = RepositoryHttp.optString(b, "id", "ID")
+                let name = RepositoryHttp.optString(b, "name", "Name")
+                guard !id.isEmpty || !name.isEmpty else { continue }
+                brands.append(SellerFocusBrand(id: id, name: name.isEmpty ? "—" : name))
+            }
+        }
+        var tags: [SellerFocusTag] = []
+        if let arr = obj["aesthetic_tags"] as? [[String: Any]] {
+            for t in arr {
+                let id = RepositoryHttp.optString(t, "id", "ID")
+                let name = RepositoryHttp.optString(t, "name", "Name")
+                guard !id.isEmpty || !name.isEmpty else { continue }
+                tags.append(SellerFocusTag(id: id, name: name.isEmpty ? "—" : name))
+            }
+        }
+        return SellerListingFocus(categories: categories, brands: brands, aestheticTags: tags)
+    }
+
+    private func parseTopBadges(_ raw: Any?) -> [SellerBadgeSummary] {
+        guard let arr = raw as? [[String: Any]] else { return [] }
+        return arr.compactMap { row -> SellerBadgeSummary? in
+            let id = RepositoryHttp.optString(row, "badge_id", "badgeId", "id", "ID")
+            let slug = RepositoryHttp.optString(row, "slug", "Slug")
+            let label = RepositoryHttp.optString(row, "label", "Label")
+            let emoji = RepositoryHttp.optString(row, "emoji", "Emoji")
+            let count = RepositoryHttp.optInt(row, "count", "Count")
+            guard !label.isEmpty || !slug.isEmpty else { return nil }
+            return SellerBadgeSummary(
+                badgeId: id,
+                slug: slug,
+                label: label.isEmpty ? slug : label,
+                emoji: emoji,
+                count: count
+            )
+        }
+    }
+
+    private func optIntIfPresent(_ obj: [String: Any], _ keys: String...) -> Int? {
+        for key in keys {
+            guard obj[key] != nil else { continue }
+            let v = RepositoryHttp.optInt(obj, key)
+            return v > 0 ? v : nil
+        }
+        return nil
+    }
+
+    private func parseAestheticTagsField(_ obj: [String: Any]) -> ([String], [AestheticTagPutItem]) {
+        guard let raw = obj["aesthetic_tags"] ?? obj["aestheticTags"] else { return ([], []) }
+        var labels: [String] = []
+        var snapshots: [AestheticTagPutItem] = []
+        if let strings = raw as? [String] {
+            labels = strings.map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+            return (labels, snapshots)
+        }
+        guard let arr = raw as? [Any] else { return ([], []) }
+        for item in arr {
+            if let s = item as? String {
+                let t = s.trimmingCharacters(in: .whitespaces)
+                if !t.isEmpty { labels.append(t) }
+                continue
+            }
+            guard let row = item as? [String: Any] else { continue }
+            let id = RepositoryHttp.optString(row, "id", "ID").trimmingCharacters(in: .whitespaces)
+            let name = RepositoryHttp.optString(row, "name", "display_name", "displayName").trimmingCharacters(in: .whitespaces)
+            let label = name.isEmpty ? id : name
+            if !label.isEmpty { labels.append(label) }
+            if !id.isEmpty {
+                snapshots.append(AestheticTagPutItem(id: id, name: name.isEmpty ? id : name))
+            }
+        }
+        return (labels, snapshots)
+    }
+
+    private func optionalNonEmpty(_ value: String) -> String? {
+        let t = value.trimmingCharacters(in: .whitespaces)
+        return t.isEmpty ? nil : t
+    }
+
+    private func optDoubleIfPresent(_ obj: [String: Any], _ key: String) -> Double? {
+        guard obj[key] != nil else { return nil }
+        if let n = obj[key] as? Double, !n.isNaN { return n }
+        if let n = obj[key] as? Int { return Double(n) }
+        if let s = obj[key] as? String, let n = Double(s.trimmingCharacters(in: .whitespaces)) { return n }
+        return nil
     }
 
     func getProfile(_ userIdOrUsername: String) async -> Result<ProfileInfo, Error> {

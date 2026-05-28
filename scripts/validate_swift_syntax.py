@@ -82,12 +82,12 @@ def check_file(
     sigs: dict[str, int] = {}
     for line in text.splitlines():
         stripped = line.strip()
+        type_decl = TYPE_DECL.match(line)
+        if type_decl:
+            scope = type_decl.group(1)
+            sigs = {}
         if stripped.endswith("{"):
             depth += 1
-            m = TYPE_DECL.match(line)
-            if m and depth == 1:
-                scope = m.group(1)
-                sigs = {}
         if stripped == "}":
             depth = max(0, depth - 1)
             if depth == 0:

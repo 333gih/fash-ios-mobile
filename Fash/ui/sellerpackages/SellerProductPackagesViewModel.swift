@@ -1,16 +1,30 @@
 import Foundation
 import Observation
 
-/// Observable port of Android `SellerProductPackagesViewModel` (ui.sellerpackages).
 @Observable
 @MainActor
 final class SellerProductPackagesViewModel {
-    var isLoading = false
-    var errorMessage: String?
+    private let repository: SellerProductPackageRepository
+
+    var packages: [SellerProductPackage] = []
+    var isLoading = true
+    var loadError: String?
+
+    init(repository: SellerProductPackageRepository = AppDependencies.shared.sellerProductPackageRepository) {
+        self.repository = repository
+    }
 
     func refresh() async {
         isLoading = true
-        defer { isLoading = false }
-        // Port logic from Android SellerProductPackagesViewModel.kt
+        loadError = nil
+        let result = await repository.listPackages(activeOnly: true)
+        isLoading = false
+        switch result {
+        case .success(let res):
+            packages = res.packages
+        case .failure(let err):
+            packages = []
+            loadError = err.localizedDescription
+        }
     }
 }

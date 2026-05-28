@@ -1,8 +1,13 @@
 import SwiftUI
 
+/// Top row + progress for post steps — mirrors Android [CreateListingFlowHeader].
 struct CreateListingFlowHeader: View {
     @Environment(\.fashSpacing) private var spacing
     let step: Int
+    var showBack: Bool = true
+    var centerTitle: String? = nil
+    var showStepCaptionUnderTitle: Bool = false
+    var showPrimaryAction: Bool = true
     let canProceed: Bool
     let isSubmitting: Bool
     let onBack: () -> Void
@@ -11,39 +16,84 @@ struct CreateListingFlowHeader: View {
 
     var body: some View {
         VStack(spacing: spacing.spacing2) {
-            HStack {
-                Button(action: onBack) {
-                    Image(systemName: "chevron.left")
-                        .foregroundStyle(FashColors.textPrimary)
+            HStack(alignment: .center, spacing: 0) {
+                HStack(spacing: 0) {
+                    if showBack {
+                        Button(action: onBack) {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundStyle(FashColors.brandPrimary)
+                                .frame(width: 44, height: 44)
+                        }
+                    }
+                    Button(action: onClose) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(FashColors.textPrimary)
+                            .frame(width: 44, height: 44)
+                    }
                 }
-                Spacer()
-                if step > 0 {
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                centerColumn
+                    .frame(maxWidth: .infinity)
+
+                Group {
+                    if showPrimaryAction {
+                        nextPill
+                    } else {
+                        Color.clear.frame(width: 72, height: 36)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .trailing)
+            }
+
+            OnboardingProgressBar(step: step, total: totalPostSteps)
+        }
+        .padding(.horizontal, spacing.spacing1)
+        .padding(.bottom, spacing.spacing2)
+    }
+
+    @ViewBuilder
+    private var centerColumn: some View {
+        if let centerTitle {
+            VStack(spacing: 2) {
+                Text(centerTitle)
+                    .font(FashTypography.titleMedium.weight(.semibold))
+                    .foregroundStyle(FashColors.textPrimary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                if showStepCaptionUnderTitle {
                     Text(L10n.createListingStep(step, totalPostSteps))
-                        .font(FashTypography.labelLarge)
+                        .font(FashTypography.bodySmall)
                         .foregroundStyle(FashColors.textSecondary)
                 }
-                Spacer()
-                Button(action: onClose) {
-                    Image(systemName: "xmark")
-                        .foregroundStyle(FashColors.textPrimary)
+            }
+        } else {
+            Text(L10n.createListingStep(step, totalPostSteps))
+                .font(FashTypography.titleMedium.weight(.semibold))
+                .foregroundStyle(FashColors.textPrimary)
+                .multilineTextAlignment(.center)
+        }
+    }
+
+    private var nextPill: some View {
+        Button(action: onNext) {
+            Group {
+                if isSubmitting {
+                    ProgressView()
+                        .tint(FashColors.readableOnBrandPrimary)
+                } else {
+                    Text(step == totalPostSteps ? L10n.createListingPostForSale : L10n.createListingNext)
+                        .font(FashTypography.labelLarge.weight(.bold))
                 }
             }
-            if step > 0 {
-                ProgressView(value: Double(step), total: Double(totalPostSteps))
-                    .tint(FashColors.brandPrimary)
-            }
-            if step > 0, step < totalPostSteps {
-                FashPrimaryButton(title: L10n.createListingNext, isLoading: isSubmitting, action: onNext)
-                    .disabled(!canProceed || isSubmitting)
-                    .opacity(canProceed ? 1 : 0.5)
-            } else if step == totalPostSteps {
-                FashPrimaryButton(title: L10n.createListingPostForSale, isLoading: isSubmitting, action: onNext)
-                    .disabled(!canProceed || isSubmitting)
-                    .opacity(canProceed ? 1 : 0.5)
-            }
+            .foregroundStyle(canProceed ? FashColors.readableOnBrandPrimary : FashColors.textSecondary)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 8)
+            .background(canProceed ? FashColors.brandPrimary : FashColors.surfaceContainerHighest)
+            .clipShape(Capsule())
         }
-        .padding(.horizontal, spacing.editorialStart)
-        .padding(.vertical, spacing.spacing3)
-        .background(FashColors.surfaceContainerHighest)
+        .disabled(!canProceed || isSubmitting)
     }
 }

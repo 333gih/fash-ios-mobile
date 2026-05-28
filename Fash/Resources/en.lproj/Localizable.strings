@@ -519,7 +519,7 @@
 "create_listing_select_category" = "Select category";
 "create_listing_seller_just_active" = "Just active";
 "create_listing_size_label" = "Size";
-"create_listing_step" = "Step %@ / %@";
+"create_listing_step" = "Step %d / %d";
 "create_listing_step2_incomplete_header" = "To enable Next, still needed:";
 "create_listing_step2_need_category" = "Pick a category (loaded from server)";
 "create_listing_step2_need_condition" = "Pick a condition (chips above)";

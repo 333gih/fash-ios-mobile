@@ -1,18 +1,21 @@
 import SwiftUI
 
-/// Space reserved above bottom nav / tab bar for sticky promo slider.
-let FashStickyPromoDockHeight: CGFloat = 128
+/// Space reserved above bottom nav — Android [FashStickyPromoDockHeight] (divider + slider + dots).
+let FashStickyPromoDockHeight: CGFloat = 144
 
-/// Bottom-docked promo chrome — Android `StickyBottomPromoBar`.
+/// Bottom-docked promo chrome — Android [StickyBottomPromoBar].
 struct StickyBottomPromoBar<Content: View>: View {
+    var elevated: Bool = false
     @ViewBuilder var content: () -> Content
 
     var body: some View {
         VStack(spacing: 0) {
-            Divider().opacity(0.35)
+            Divider()
+                .overlay(FashColors.outlineMuted.opacity(elevated ? 0.55 : 0.32))
             content()
         }
         .frame(maxWidth: .infinity)
         .background(FashColors.surfaceContainerLow)
+        .shadow(color: elevated ? Color.black.opacity(0.12) : .clear, radius: elevated ? 10 : 0, y: elevated ? -2 : 0)
     }
 }

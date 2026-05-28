@@ -11,7 +11,7 @@ Windows / bất kỳ máy nào
         ▼ mirror (đã cấu hình)
    GitHub
         │
-        ▼ GitHub Actions (macOS + Xcode 15.4)
+        ▼ GitHub Actions (macOS + Xcode — xem mục 3)
    Build iOS Simulator (Fash-Dev + Fash-Prod)
 ```
 
@@ -97,7 +97,12 @@ Khuyến nghị tag prefix **`ios/v*`** để không trùng tag Android (`v1.0.8
 
 Mỗi push CI chỉ build **một scheme** theo branch (`develop` → Dev, `main`/`master` → Prod).
 
-Runner: `macos-14` + **Xcode 16.2** (iOS 17 SDK; `project.yml` pin `projectFormat: xcode15_0`).
+| Workflow | Runner | Xcode | Mục đích |
+|---|---|---|---|
+| **iOS Build** (`ios-build.yml`) | `macos-14` | **16.2** | Simulator compile (`iPhone 15`, iOS 17.5), `CODE_SIGNING_ALLOWED=NO` |
+| **iOS Release** (`ios-release.yml`) | `macos-26` | **26.4** | Archive `iphoneos` + IPA + TestFlight |
+
+Cả hai đều chạy `scripts/ci_ios_prepare.sh` (validate strings/Swift → XcodeGen → resolve SPM). `project.yml` pin `projectFormat: xcode15_0` (tương thích Xcode 15–16); release job hạ `objectVersion` về 60 nếu XcodeGen tạo > 60.
 
 ## 4. Chi phí GitHub
 
@@ -219,4 +224,4 @@ Provisioning profile phải khớp bundle id **ProdRelease**: `com.pc.fash-ios-m
 ./scripts/build_mac.sh Fash-Prod    # Fash-Prod
 ```
 
-Yêu cầu: macOS 14.7+ , Xcode 15.4+ (xem README).
+Yêu cầu local: macOS 14.7+ , Xcode 16.2+ (khớp iOS Build CI) hoặc Xcode mới hơn cho archive release.

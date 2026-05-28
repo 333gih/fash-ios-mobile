@@ -61,7 +61,7 @@ struct SettingsScreen: View {
                     Link(L10n.loginTerms, destination: URL(string: AppEnvironment.legalTermsURL(languageTag: AppLocale.currentTag))!)
                     Link(L10n.loginPrivacy, destination: URL(string: AppEnvironment.legalPrivacyURL(languageTag: AppLocale.currentTag))!)
                     Text(L10n.settingsAboutVersionValue(
-                        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.5",
+                        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.7",
                         BuildConfig.flavor
                     ))
                     .font(FashTypography.bodyMedium)

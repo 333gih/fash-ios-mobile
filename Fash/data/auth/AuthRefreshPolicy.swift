@@ -7,6 +7,7 @@ enum AuthRefreshPolicy {
     static func isTransientRefreshFailure(_ error: Error) -> Bool {
         var current: Error? = error
         while let e = current {
+            if case AuthSessionMissingError.noStoredSession = e { return false }
             if e is DecodingError { return true }
             if let urlError = e as? URLError {
                 switch urlError.code {

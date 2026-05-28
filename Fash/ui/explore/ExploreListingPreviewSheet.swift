@@ -162,7 +162,7 @@ struct ExploreListingPreviewSheet: View {
         let chips = metaChipLabels
         if !chips.isEmpty {
             FlowLayout(spacing: 4) {
-                ForEach(chips, id: \.self) { chip in
+                ForEach(Array(chips.enumerated()), id: \.offset) { _, chip in
                     Text(chip)
                         .font(.system(size: 10, weight: .medium))
                         .foregroundStyle(FashColors.textPrimary)
@@ -515,7 +515,7 @@ private struct PreviewImageThumb: View {
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 .overlay(alignment: .bottomTrailing) {
-                    Text(L10n.explorePreviewImagePage(page + 1, urls.count))
+                    Text("\(page + 1) / \(urls.count)")
                         .font(.system(size: 9, weight: .semibold))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 5)

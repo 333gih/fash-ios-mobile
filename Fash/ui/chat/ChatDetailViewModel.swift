@@ -59,13 +59,8 @@ final class ChatDetailViewModel {
         startPolling(conversationId: conversationId, deps: deps)
     }
 
-    func onInputChange(_ text: String) {
-        guard !(detail?.isClosed ?? false) else { return }
-        inputText = text
-    }
-
     func sendMessage(deps: AppDependencies) async {
-        guard !(detail?.isClosed ?? false) else { return }
+        guard detail?.isClosed != true else { return }
         let convId = detail?.conversationId ?? loadedConversationId ?? ""
         let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !convId.isEmpty, !text.isEmpty, !isSending else { return }

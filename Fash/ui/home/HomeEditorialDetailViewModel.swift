@@ -1,16 +1,30 @@
 import Foundation
 import Observation
 
-/// Observable port of Android `HomeEditorialDetailViewModel` (ui.home).
 @Observable
 @MainActor
 final class HomeEditorialDetailViewModel {
-    var isLoading = false
-    var errorMessage: String?
+    private let repository: EditorialGuideRepository
 
-    func refresh() async {
-        isLoading = true
-        defer { isLoading = false }
-        // Port logic from Android HomeEditorialDetailViewModel.kt
+    var loading = true
+    var error = false
+    var guide: EditorialGuideDetail?
+
+    init(repository: EditorialGuideRepository = AppDependencies.shared.editorialGuideRepository) {
+        self.repository = repository
+    }
+
+    func load(slug: String) async {
+        loading = true
+        error = false
+        guide = nil
+        let result = await repository.getBySlug(slug)
+        loading = false
+        switch result {
+        case .success(let detail):
+            guide = detail
+        case .failure:
+            error = true
+        }
     }
 }

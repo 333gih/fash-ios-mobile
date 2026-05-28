@@ -1,9 +1,29 @@
 import Foundation
 
+// MARK: - Chat / C2C DTOs (Android: data/chat/ChatRepository.kt model section)
+
 enum OutboundSendState: Equatable {
     case none
     case sending
     case failed
+}
+
+struct ConversationItem: Identifiable, Hashable {
+    var id: String { conversationId }
+    let conversationId: String
+    let otherUserId: String
+    let username: String
+    let displayName: String
+    let avatarUrl: String
+    let lastMessageText: String
+    let lastMessageType: String
+    let timestamp: String
+    let productThumbnailUrl: String
+    let productTitle: String
+    let productId: String
+    let productPrice: Int64
+    let hasUnread: Bool
+    let unreadCount: Int
 }
 
 struct ChatOtherUser: Equatable {
@@ -19,6 +39,20 @@ struct ChatProductCard: Equatable {
     let priceVnd: Int64
     let imageUrl: String
     let listingStatus: String
+}
+
+struct PriceOffer: Equatable {
+    let offerId: String
+    let amountVnd: Int64
+    let status: String
+    let proposedByUserId: String
+}
+
+struct MeetingAppointmentPayload: Equatable {
+    let appointmentId: String
+    let status: String
+    let locationUrl: String
+    let scheduledAt: String
 }
 
 struct ChatMessage: Identifiable, Equatable {
@@ -44,39 +78,24 @@ struct ConversationDetail: Equatable {
     let orderId: String?
     let offerCount: Int
     let isClosed: Bool
+    var messages: [ChatMessage] = []
+    var pendingOffer: PriceOffer?
 }
 
-struct UserSearchResult: Identifiable, Equatable {
-    var id: String { userId.isEmpty ? username : userId }
-    let userId: String
-    let username: String
-    let displayName: String
-    let avatarUrl: String
-    let followerCount: Int
-    let verified: Bool
-    let followingCount: Int
-    let listingCount: Int
+struct ConversationListingGroup: Equatable {
+    let listingId: String
+    let listingTitle: String
+    let listingImageUrl: String
+    let conversations: [ConversationItem]
 }
 
-struct FollowListPage: Equatable {
-    let items: [UserSearchResult]
-    let total: Int
+struct MeetingCheckInResult: Equatable {
+    let appointmentId: String
+    let buyerCheckInAt: String?
+    let sellerCheckInAt: String?
 }
 
-struct PaymentGatewayOption: Equatable {
-    let id: String
-    let name: String
-}
-
-struct PaymentInitiateResult: Equatable {
-    let paymentUrl: String
-    let transactionId: String?
-}
-
-struct CheckoutAddressPayload: Equatable {
-    let fullName: String
-    let phone: String
-    let address: String
-    let district: String
-    let city: String
+struct MeetingCancelResult: Equatable {
+    let appointmentId: String
+    let status: String
 }

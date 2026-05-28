@@ -55,14 +55,12 @@ final class PublicCommonCatalogRepository {
             let data = try await executeGet(publicPath("brands") + "?" + parts.joined(separator: "&"))
             let obj = try RepositoryHttp.jsonObject(data)
             let rows = obj["brands"] as? [[String: Any]] ?? obj["items"] as? [[String: Any]] ?? []
-            let items = rows.map { o in
-                CommonBrandDto(
-                    id: RepositoryHttp.optString(o, "id", "ID"),
-                    name: RepositoryHttp.optString(o, "name", "Name")
-                )
-            }
+            let items = rows.map(parseBrandDto)
             let total = RepositoryHttp.optInt(obj, "total", default: items.count)
-            return .success(BrandsPage(items: items, total: total))
+            let offset = RepositoryHttp.optInt(obj, "offset", default: 0)
+            let limit = RepositoryHttp.optInt(obj, "limit", default: 20)
+            let hasMore = RepositoryHttp.optBool(obj, "has_more", default: false)
+            return .success(BrandsPage(items: items, total: total, offset: offset, limit: limit, hasMore: hasMore))
         } catch {
             return .failure(error)
         }
@@ -113,11 +111,26 @@ final class PublicCommonCatalogRepository {
     }
 }
 
+private func parseBrandDto(_ o: [String: Any]) -> CommonBrandDto {
+    CommonBrandDto(
+        id: RepositoryHttp.optString(o, "id", "ID"),
+        name: RepositoryHttp.optString(o, "name", "Name"),
+        slug: RepositoryHttp.optString(o, "slug", "Slug"),
+        country: RepositoryHttp.optString(o, "country", "Country"),
+        logoUrl: RepositoryHttp.optString(o, "logo_url", "logoUrl", "LogoUrl"),
+        status: RepositoryHttp.optString(o, "status", "Status")
+    )
+}
+
 private func parseCategoryTreeNode(_ o: [String: Any]) -> CategoryTreeNode {
     let children = (o["children"] as? [[String: Any]] ?? []).map(parseCategoryTreeNode)
     return CategoryTreeNode(
         id: RepositoryHttp.optString(o, "id", "ID"),
         name: RepositoryHttp.optString(o, "name", "Name"),
+        slug: RepositoryHttp.optString(o, "slug", "Slug"),
+        parentId: optionalNonEmpty(RepositoryHttp.optString(o, "parent_id", "parentId")),
+        sortOrder: RepositoryHttp.optInt(o, "sort_order", "sortOrder"),
+        status: RepositoryHttp.optString(o, "status", "Status"),
         children: children
     )
 }
@@ -127,7 +140,9 @@ private func parseAestheticTag(_ o: [String: Any]) -> CommonAestheticTagDto {
         id: RepositoryHttp.optString(o, "id", "ID"),
         name: RepositoryHttp.optString(o, "name", "Name"),
         displayName: RepositoryHttp.optString(o, "display_name", "displayName", "DisplayName"),
-        displayNameVi: RepositoryHttp.optString(o, "display_name_vi", "displayNameVi", "DisplayNameVi")
+        displayNameVi: RepositoryHttp.optString(o, "display_name_vi", "displayNameVi", "DisplayNameVi"),
+        sortOrder: RepositoryHttp.optInt(o, "sort_order", "sortOrder"),
+        status: RepositoryHttp.optString(o, "status", "Status")
     )
 }
 
@@ -135,6 +150,16 @@ private func parseCountry(_ o: [String: Any]) -> CommonCountryDto {
     CommonCountryDto(
         id: RepositoryHttp.optString(o, "id", "ID"),
         name: RepositoryHttp.optString(o, "name", "Name"),
-        iso2: RepositoryHttp.optString(o, "iso2", "ISO2", "iso_2")
+        iso2: RepositoryHttp.optString(o, "iso2", "ISO2", "iso_2"),
+        iso3: RepositoryHttp.optString(o, "iso3", "ISO3"),
+        phonePrefix: RepositoryHttp.optString(o, "phone_prefix", "phonePrefix"),
+        emoji: RepositoryHttp.optString(o, "emoji", "Emoji"),
+        sortOrder: RepositoryHttp.optInt(o, "sort_order", "sortOrder"),
+        status: RepositoryHttp.optString(o, "status", "Status")
     )
+}
+
+private func optionalNonEmpty(_ value: String) -> String? {
+    let t = value.trimmingCharacters(in: .whitespacesAndNewlines)
+    return t.isEmpty ? nil : t
 }

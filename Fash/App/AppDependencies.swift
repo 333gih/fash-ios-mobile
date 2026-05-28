@@ -43,6 +43,7 @@ final class AppDependencies {
     let realtimeManager: RealtimeManager
     let fcmTokenRegistrar: FcmTokenRegistrar
     let preferredLocaleSync: PreferredLocaleSync
+    let listingPreview = ListingPreviewStore()
 
     var isGuestBrowseActive = false
 
@@ -58,6 +59,9 @@ final class AppDependencies {
 
     /// Set from [RootView] so push notification taps can open overlays while the app is running.
     weak var navigationRouter: AppRouter?
+
+    private var sessionValidationTask: Task<Bool, Never>?
+    private var proactiveTokenRefreshTask: Task<Void, Never>?
 
     private init() {
         authRepository = AuthRepository()
@@ -109,6 +113,39 @@ final class AppDependencies {
             Task { await preferredLocaleSync.syncIfSession(locale: tag) }
         }
         authManager.hydrateInitialAuthFromStore()
+        prefetchSessionValidation()
+        startProactiveTokenRefreshLoop()
+    }
+
+    /// Starts cold-start token validation early so splash can overlap the refresh HTTP call.
+    func prefetchSessionValidation() {
+        guard sessionValidationTask == nil else { return }
+        sessionValidationTask = Task {
+            let hasSession = authSessionStore.read() != nil
+            await MainActor.run { authManager.hydrateInitialAuthFromStore() }
+            guard hasSession else { return false }
+            return await authManager.validateOrClearSession()
+        }
+    }
+
+    func awaitSessionValidation() async -> Bool {
+        prefetchSessionValidation()
+        return await sessionValidationTask?.value ?? false
+    }
+
+    private func startProactiveTokenRefreshLoop() {
+        proactiveTokenRefreshTask?.cancel()
+        proactiveTokenRefreshTask = Task {
+            while !Task.isCancelled {
+                let waitMs = await MainActor.run { authManager.millisUntilProactiveRefresh() }
+                if waitMs == Int64.max {
+                    try? await Task.sleep(for: .seconds(60))
+                    continue
+                }
+                try? await Task.sleep(for: .milliseconds(min(waitMs, 3_600_000)))
+                await authManager.proactiveRefreshIfNeeded()
+            }
+        }
     }
 
     func handleSessionCleared(reason: String?) {
@@ -123,7 +160,7 @@ final class AppDependencies {
 
     func consumePendingDeepLinks(router: AppRouter) {
         if let id = pendingDeepLinkListingId {
-            router.selectedListingId = id
+            presentListingDetail(listingId: id, router: router)
             pendingDeepLinkListingId = nil
         }
         if let user = pendingDeepLinkSellerUsername {

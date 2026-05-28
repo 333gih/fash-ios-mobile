@@ -26,12 +26,17 @@ struct ExploreCategoryStrip: View {
     private func categoryChip(title: String, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
-                .font(FashTypography.labelMedium)
-                .foregroundStyle(selected ? FashColors.brandPrimary : FashColors.textSecondary)
+                .font(FashTypography.labelMedium.weight(selected ? .semibold : .regular))
+                .foregroundStyle(selected ? FashColors.brandPrimary : FashColors.textPrimary)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
-                .background(selected ? FashColors.surfaceContainerHigh : FashColors.surfaceContainer)
+                .background(selected ? FashColors.brandPrimary.opacity(0.12) : FashColors.surfaceContainerLow)
                 .clipShape(Capsule())
+                .overlay {
+                    if selected {
+                        Capsule().strokeBorder(FashColors.brandPrimary.opacity(0.35), lineWidth: 1)
+                    }
+                }
         }
         .buttonStyle(.plain)
     }

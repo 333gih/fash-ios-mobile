@@ -96,10 +96,27 @@ enum ListingFeedJsonParser {
             rows = items
         } else if let obj = root as? [String: Any], let dataArr = obj["data"] as? [[String: Any]] {
             rows = dataArr
+        } else if let obj = root as? [String: Any], let single = obj["data"] as? [String: Any] {
+            rows = [single]
+        } else if let obj = root as? [String: Any], let listing = obj["listing"] as? [String: Any] {
+            rows = [listing]
+        } else if let obj = root as? [String: Any], obj["id"] != nil || obj["ID"] != nil {
+            rows = [obj]
         } else {
             rows = []
         }
         return rows.compactMap(parseRow)
+    }
+
+    /// Single listing from `GET /listings/{id}` (object or `{ data: {...} }`).
+    static func parseListingDetail(_ data: Data) throws -> ListingFeedItem? {
+        let items = try parseFeed(data)
+        if let first = items.first { return first }
+        let root = try JSONSerialization.jsonObject(with: data)
+        guard let obj = root as? [String: Any] else { return nil }
+        if let nested = obj["data"] as? [String: Any], let item = parseRow(nested) { return item }
+        if let listing = obj["listing"] as? [String: Any], let item = parseRow(listing) { return item }
+        return parseRow(obj)
     }
 
     private static func parseRow(_ row: [String: Any]) -> ListingFeedItem? {

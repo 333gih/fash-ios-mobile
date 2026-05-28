@@ -9,6 +9,27 @@ struct ChatDetailScreen: View {
     @State private var viewModel = ChatDetailViewModel()
 
     var body: some View {
+        ChatDetailScreenBody(
+            viewModel: viewModel,
+            conversationId: conversationId,
+            deps: deps,
+            onDismiss: onDismiss,
+            onProductClick: onProductClick
+        )
+    }
+}
+
+private struct ChatDetailScreenBody: View {
+    @Environment(\.fashSpacing) private var spacing
+    @Bindable var viewModel: ChatDetailViewModel
+    let conversationId: String
+    let deps: AppDependencies
+    var onDismiss: () -> Void
+    var onProductClick: (String) -> Void
+
+    @FocusState private var composerFocused: Bool
+
+    var body: some View {
         VStack(spacing: 0) {
             headerBar
             Divider().overlay(FashColors.outlineMuted.opacity(0.72))
@@ -76,7 +97,7 @@ struct ChatDetailScreen: View {
                 onProductClick(product.listingId)
             } label: {
                 HStack(spacing: 12) {
-                    FashAsyncImage(url: product.imageUrl)
+                    FashAsyncImage(url: FeedImageUrl.resolveListingImageUrlOrNil(product.imageUrl) ?? product.imageUrl)
                         .frame(width: 56, height: 56)
                         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                     VStack(alignment: .leading, spacing: 4) {
@@ -115,6 +136,8 @@ struct ChatDetailScreen: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
             }
+            .scrollDismissesKeyboard(.interactively)
+            .onTapGesture { composerFocused = false }
             .onChange(of: viewModel.messages.count) { _, _ in
                 if let last = viewModel.messages.last {
                     withAnimation { proxy.scrollTo(last.messageId, anchor: .bottom) }
@@ -155,30 +178,30 @@ struct ChatDetailScreen: View {
 
     private var composer: some View {
         let readOnly = viewModel.detail?.isClosed == true || viewModel.detail?.product?.listingStatus == "sold"
+        let trimmed = viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         return HStack(spacing: 10) {
-            TextField(L10n.chatInputHint, text: Binding(
-                get: { viewModel.inputText },
-                set: { viewModel.onInputChange($0) }
-            ), axis: .vertical)
-            .lineLimit(1...4)
-            .textFieldStyle(.plain)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .background(FashColors.surfaceContainer)
-            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .disabled(readOnly)
+            TextField(L10n.chatInputHint, text: $viewModel.inputText, axis: .vertical)
+                .lineLimit(1...4)
+                .textFieldStyle(.plain)
+                .focused($composerFocused)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(FashColors.surfaceContainer)
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .disabled(readOnly)
 
             Button {
+                composerFocused = false
                 Task { await viewModel.sendMessage(deps: deps) }
             } label: {
                 Image(systemName: "paperplane.fill")
                     .font(.system(size: 18))
                     .foregroundStyle(.white)
                     .frame(width: 44, height: 44)
-                    .background(FashColors.brandPrimary.opacity(readOnly || viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.4 : 1))
+                    .background(FashColors.brandPrimary.opacity(readOnly || trimmed.isEmpty ? 0.4 : 1))
                     .clipShape(Circle())
             }
-            .disabled(readOnly || viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || viewModel.isSending)
+            .disabled(readOnly || trimmed.isEmpty || viewModel.isSending)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)

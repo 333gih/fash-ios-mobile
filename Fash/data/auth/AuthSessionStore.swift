@@ -9,6 +9,8 @@ struct AuthSession: Codable, Equatable {
     var expiresInSeconds: Int64 = 0
     var isNewUser: Bool = false
     var unreadCount: Int64 = 0
+    /// UTC millis when this pair was issued (login / refresh). Used for proactive refresh.
+    var issuedAtMillis: Int64 = 0
 }
 
 /// Encrypted session storage (Android [AuthSessionStore]).
@@ -21,8 +23,14 @@ final class AuthSessionStore {
     }
 
     func save(_ session: AuthSession) {
-        guard let data = try? JSONEncoder().encode(session) else { return }
+        var copy = session
+        copy.issuedAtMillis = Int64(Date().timeIntervalSince1970 * 1000)
+        guard let data = try? JSONEncoder().encode(copy) else { return }
         KeychainHelper.save(data, key: key)
+    }
+
+    func issuedAtMillis() -> Int64 {
+        read()?.issuedAtMillis ?? 0
     }
 
     func clear() {

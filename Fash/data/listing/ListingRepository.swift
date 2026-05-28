@@ -50,17 +50,8 @@ final class ListingRepository {
             guard (200..<300).contains(http.statusCode) else {
                 throw CoreServiceHttpException(statusCode: http.statusCode, message: CoreServiceErrors.parseMessage(data: data, statusCode: http.statusCode))
             }
-            let items = try ListingFeedJsonParser.parseFeed(data)
-            if let first = items.first { return .success(first) }
-            let obj = try HttpJson.dictionary(data)
-            if let id = obj["id"] as? String {
-                return .success(ListingFeedItem(
-                    id: id,
-                    title: obj["title"] as? String ?? "",
-                    price: (obj["price"] as? NSNumber)?.int64Value ?? 0,
-                    imageURL: nil,
-                    sellerUsername: nil
-                ))
+            if let item = try ListingFeedJsonParser.parseListingDetail(data) {
+                return .success(item)
             }
             return .failure(URLError(.cannotParseResponse))
         } catch {

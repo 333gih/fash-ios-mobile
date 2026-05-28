@@ -55,6 +55,12 @@ Windows prep (no Mac build):
 | Path | Role |
 |------|------|
 | `Fash/` | Swift sources (~290 files, mirrors Android packages) |
+| `Fash/data/` | Repositories + DTOs — see `Fash/data/README.md` |
+| `IOS_ARCHITECTURE.md` | Layer map, services, navigation, porting workflow |
+| `docs/IOS_BUSINESS_MODELS.md` | Business model catalog (Android ↔ iOS) |
+| `docs/DATA_LAYER.md` | Repository & JSON parsing conventions |
+| `docs/common-service-api.md` | common-service endpoints for iOS |
+| `docs/end-to-end-business-flow.md` | Commerce journeys → iOS screens |
 | `env/` | Dev/prod API URLs and feature flags |
 | `project.yml` | XcodeGen spec |
 | `scripts/` | Sync, vendor, Mac build |
@@ -62,6 +68,8 @@ Windows prep (no Mac build):
 See **[PARITY.md](PARITY.md)** for Android ↔ iOS feature matrix.
 
 ## Architecture
+
+See **[IOS_ARCHITECTURE.md](IOS_ARCHITECTURE.md)** for the full layer map and Android parity notes.
 
 - **UI:** SwiftUI (`FashTheme`, editorial palette, Be Vietnam Pro)
 - **State:** `@Observable` ViewModels + `AppRouter`
@@ -77,7 +85,7 @@ See **[PARITY.md](PARITY.md)** for Android ↔ iOS feature matrix.
 
 ## CI (GitLab → GitHub → build iOS)
 
-No Mac required for **compile checks**: push to GitLab (mirrored to GitHub) triggers [GitHub Actions](.github/workflows/ios-build.yml) on `macos-14` + Xcode 15.4.
+No Mac required for **compile checks**: push to GitLab (mirrored to GitHub) triggers [GitHub Actions](.github/workflows/ios-build.yml) on `macos-14` + **Xcode 16.2** (Simulator, iOS 17.5). Release/TestFlight uses [ios-release.yml](.github/workflows/ios-release.yml) (`macos-26`, Xcode 26.4).
 
 ```text
 git push origin develop  →  GitLab mirror  →  GitHub Actions  →  xcodebuild (simulator)

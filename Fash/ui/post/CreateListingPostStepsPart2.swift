@@ -12,6 +12,7 @@ struct CreateListingPostStepsPart2: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: spacing.spacing4) {
+                stepTitle
                 switch step {
                 case 6: sizeStep
                 case 7: photosStep
@@ -21,16 +22,35 @@ struct CreateListingPostStepsPart2: View {
                 default: EmptyView()
                 }
             }
-            .padding(spacing.spacing4)
+            .padding(.horizontal, spacing.editorialStart)
+            .padding(.bottom, spacing.spacing6)
+        }
+        .background(PostListingColors.stepCanvas)
+    }
+
+    @ViewBuilder
+    private var stepTitle: some View {
+        let title: String = switch step {
+        case 6: L10n.postStepMeasure
+        case 7: L10n.postStepPhotos
+        case 8: L10n.postStepPrice
+        case 9: L10n.postStepShipping
+        case 10: L10n.postStepReview
+        default: ""
+        }
+        if !title.isEmpty {
+            Text(title)
+                .font(FashTypography.titleLarge.weight(.semibold))
+                .foregroundStyle(FashColors.textPrimary)
         }
     }
 
     private var sizeStep: some View {
-        VStack(alignment: .leading, spacing: spacing.spacing3) {
-            Text(L10n.postStepMeasure)
-                .font(FashTypography.titleMedium)
+        PostStepSectionCard {
             TextField(L10n.createListingSizeLabel, text: sizeBinding)
-                .textFieldStyle(.roundedBorder)
+                .padding(spacing.spacing3)
+                .background(FashColors.surfaceContainerLow)
+                .clipShape(RoundedRectangle(cornerRadius: spacing.radiusSoftMin, style: .continuous))
             measurementField(L10n.postMeasurementChest, binding: chestBinding)
             measurementField(L10n.postMeasurementLength, binding: lengthBinding)
         }
@@ -40,18 +60,19 @@ struct CreateListingPostStepsPart2: View {
         HStack {
             Text(label)
                 .font(FashTypography.bodyMedium)
+                .foregroundStyle(FashColors.textSecondary)
             TextField("0", text: binding)
                 .keyboardType(.decimalPad)
-                .textFieldStyle(.roundedBorder)
+                .padding(spacing.spacing3)
+                .background(FashColors.surfaceContainerLow)
+                .clipShape(RoundedRectangle(cornerRadius: spacing.radiusSoftMin, style: .continuous))
         }
     }
 
     private var photosStep: some View {
-        VStack(alignment: .leading, spacing: spacing.spacing3) {
-            Text(L10n.postStepPhotos)
-                .font(FashTypography.titleMedium)
+        PostStepSectionCard {
             if postVM.listingPhotoSetupLoading {
-                ProgressView()
+                ProgressView().tint(FashColors.brandPrimary)
             }
             ForEach(postVM.draft.listingPhotoSlots) { slot in
                 photoSlotRow(slot)
@@ -64,13 +85,18 @@ struct CreateListingPostStepsPart2: View {
         VStack(alignment: .leading, spacing: spacing.spacing2) {
             Text(slot.label)
                 .font(FashTypography.labelLarge)
+                .foregroundStyle(FashColors.textPrimary)
             PhotosPicker(selection: photoPickerBinding(for: slot.stepKey), matching: .images) {
-                HStack {
+                HStack(spacing: spacing.spacing2) {
                     Image(systemName: slot.hasImageSelected() ? "checkmark.circle.fill" : "photo.badge.plus")
                     Text(slot.hasImageSelected() ? L10n.createListingAddPhoto : L10n.createListingAddPhotos)
                 }
                 .font(FashTypography.bodyMedium)
                 .foregroundStyle(FashColors.brandPrimary)
+                .padding(spacing.spacing3)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(FashColors.surfaceContainerLow)
+                .clipShape(RoundedRectangle(cornerRadius: spacing.radiusSoftMin, style: .continuous))
             }
         }
     }
@@ -91,36 +117,40 @@ struct CreateListingPostStepsPart2: View {
     }
 
     private var priceStep: some View {
-        VStack(alignment: .leading, spacing: spacing.spacing3) {
-            Text(L10n.postStepPrice)
-                .font(FashTypography.titleMedium)
+        PostStepSectionCard {
             TextField(L10n.createListingPricePlaceholder, text: priceBinding)
                 .keyboardType(.numberPad)
-                .textFieldStyle(.roundedBorder)
+                .padding(spacing.spacing3)
+                .background(FashColors.surfaceContainerLow)
+                .clipShape(RoundedRectangle(cornerRadius: spacing.radiusSoftMin, style: .continuous))
             Toggle(L10n.postAcceptOffers, isOn: acceptOffersBinding)
             Toggle(L10n.postAutoPriceDrop, isOn: autoDropBinding)
             if postVM.draft.autoPriceDropEnabled {
                 TextField(L10n.postFloorPrice, text: floorBinding)
                     .keyboardType(.numberPad)
-                    .textFieldStyle(.roundedBorder)
+                    .padding(spacing.spacing3)
+                    .background(FashColors.surfaceContainerLow)
+                    .clipShape(RoundedRectangle(cornerRadius: spacing.radiusSoftMin, style: .continuous))
             }
         }
     }
 
     private var shippingStep: some View {
-        VStack(alignment: .leading, spacing: spacing.spacing3) {
-            Text(L10n.postStepShipping)
-                .font(FashTypography.titleMedium)
+        PostStepSectionCard {
             Toggle(L10n.listingCommitmentTitle, isOn: commitmentBinding)
             if !postVM.draft.shippingAddressLabel.isEmpty {
                 Text(postVM.draft.shippingAddressLabel)
                     .font(FashTypography.bodyMedium)
+                    .foregroundStyle(FashColors.textPrimary)
             }
             ForEach(postVM.localAddresses, id: \.id) { addr in
+                let selected = postVM.draft.shippingAddressId == addr.id
                 Button(addr.formattedSingleLine()) {
                     postVM.selectShippingAddressForListing(deps: deps, addressId: addr.id)
                 }
-                .foregroundStyle(FashColors.textPrimary)
+                .font(FashTypography.bodyMedium.weight(selected ? .semibold : .regular))
+                .foregroundStyle(selected ? FashColors.brandPrimary : FashColors.textPrimary)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             Button(L10n.postAddShippingAddress, action: onAddAddress)
                 .font(FashTypography.labelLarge)
@@ -129,9 +159,7 @@ struct CreateListingPostStepsPart2: View {
     }
 
     private var reviewStep: some View {
-        VStack(alignment: .leading, spacing: spacing.spacing3) {
-            Text(L10n.postStepReview)
-                .font(FashTypography.titleMedium)
+        PostStepSectionCard {
             reviewRow(L10n.createListingCategoryLabel, postVM.draft.categoryName)
             reviewRow(L10n.createListingTitleLabel, postVM.draft.title)
             reviewRow(L10n.createListingPriceLabel, postVM.draft.priceVnd)

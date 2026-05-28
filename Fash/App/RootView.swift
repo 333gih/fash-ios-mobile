@@ -27,7 +27,10 @@ struct RootView: View {
             }
         }
         .task {
+            deps.prefetchSessionValidation()
+            async let sessionValidated = deps.awaitSessionValidation()
             try? await Task.sleep(for: .seconds(splashDisplaySeconds))
+            _ = await sessionValidated
             router.showSplash = false
             await bootstrapSession()
         }
@@ -80,8 +83,18 @@ struct RootView: View {
                 onDismiss: { router.sellerShopUsername = nil },
                 onListingClick: { id in
                     router.sellerShopUsername = nil
-                    router.pendingListingIdAfterPreview = nil
-                    router.selectedListingId = id
+                    deps.presentListingDetail(listingId: id, router: router)
+                },
+                onNavigateToExploreFromProfile: { cat, brand, tag, q, countryId, iso in
+                    router.sellerShopUsername = nil
+                    router.pendingExploreProfileFilter = ExploreProfileFilterRequest(
+                        categoryId: cat,
+                        brandId: brand,
+                        aestheticTagId: tag,
+                        searchQuery: q,
+                        countryId: countryId,
+                        countryIso2: iso
+                    )
                 }
             )
         case .editListing(let id):
@@ -94,13 +107,32 @@ struct RootView: View {
                 onDismiss: { router.selectedConversationId = nil },
                 onProductClick: { listingId in
                     router.selectedConversationId = nil
-                    router.selectedListingId = listingId
+                    deps.presentListingDetail(listingId: listingId, router: router)
                 }
             )
         case .orders:
             OrdersScreen(onDismiss: { router.showOrdersScreen = false }, onSelectOrder: { router.selectedOrderId = $0 })
         case .order(let id):
-            OrderDetailScreen(orderId: id, onDismiss: { router.selectedOrderId = nil })
+            OrderDetailScreen(
+                orderId: id,
+                onDismiss: { router.selectedOrderId = nil },
+                onNavigateToPayment: { listingId, _, _ in
+                    router.selectedOrderId = nil
+                    router.selectedCheckoutListingId = listingId
+                },
+                onNavigateToChat: { convId in
+                    router.selectedOrderId = nil
+                    router.selectedConversationId = convId
+                },
+                onOpenListing: { listingId, _ in
+                    router.selectedOrderId = nil
+                    deps.presentListingDetail(listingId: listingId, router: router)
+                },
+                onOpenUserProfile: { username in
+                    router.selectedOrderId = nil
+                    router.sellerShopUsername = username
+                }
+            )
         case .checkout(let id):
             CheckoutScreen(listingId: id, onDismiss: { router.selectedCheckoutListingId = nil })
         case .shippingAddresses:
@@ -119,7 +151,10 @@ struct RootView: View {
         case .homeDelivering:
             HomeDeliveringScreen(onDismiss: { router.showHomeDeliveringScreen = false })
         case .sellerPackages:
-            SellerProductPackagesScreen(onDismiss: { router.showSellerPackagesScreen = false })
+            SellerProductPackagesScreen(
+                onDismiss: { router.showSellerPackagesScreen = false },
+                onBuyPackage: { pkg in router.sellerPackageCheckoutId = pkg.code }
+            )
         case .followConnections:
             FollowConnectionsScreen(
                 initialTab: router.followConnectionsInitialTab,
@@ -141,13 +176,35 @@ struct RootView: View {
                 onDismiss: { router.showChangePasswordScreen = false }
             )
         case .editorialList:
-            HomeEditorialListScreen(onDismiss: { router.showEditorialListScreen = false })
+            HomeEditorialListScreen(
+                onDismiss: { router.showEditorialListScreen = false },
+                onPostClick: { post in
+                    let slug = post.slug.isEmpty ? post.id : post.slug
+                    guard !slug.isEmpty else { return }
+                    router.homeEditorialSlug = slug
+                }
+            )
         case .uxSurvey(let key):
             UserExperienceSurveyScreen(surveyKey: key, onDismiss: { router.uxSurveyKey = nil })
         case .sellerPackageCheckout(let id):
             SellerPackageCheckoutScreen(packageId: id, onDismiss: { router.sellerPackageCheckoutId = nil })
         case .chatOrderDetail(let id):
-            OrderDetailScreen(orderId: id, onDismiss: { router.chatOrderDetailOverlayId = nil })
+            OrderDetailScreen(
+                orderId: id,
+                onDismiss: { router.chatOrderDetailOverlayId = nil },
+                onNavigateToChat: { convId in
+                    router.chatOrderDetailOverlayId = nil
+                    router.selectedConversationId = convId
+                },
+                onOpenListing: { listingId, _ in
+                    router.chatOrderDetailOverlayId = nil
+                    deps.presentListingDetail(listingId: listingId, router: router)
+                },
+                onOpenUserProfile: { username in
+                    router.chatOrderDetailOverlayId = nil
+                    router.sellerShopUsername = username
+                }
+            )
         }
     }
 
@@ -203,7 +260,8 @@ struct RootView: View {
 
     private func bootstrapSession() async {
         router.setupGateFetchFailed = false
-        if deps.authSessionStore.read() == nil {
+        let sessionValid = await deps.awaitSessionValidation()
+        if deps.authSessionStore.read() == nil || !sessionValid {
             if PublicBrowseHttp.isConfigured {
                 router.isGuestMode = true
                 deps.isGuestBrowseActive = true

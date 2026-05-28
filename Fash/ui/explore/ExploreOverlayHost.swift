@@ -4,7 +4,6 @@ import SwiftUI
 struct ExploreOverlayHost: View {
     @Environment(AppDependencies.self) private var deps
     @Bindable var viewModel: ExploreViewModel
-    @Bindable var listingPreview: ListingPreviewStore
     @Bindable var router: AppRouter
     var isGuestMode: Bool
     var expandSearchOnAppear: Bool = false
@@ -16,7 +15,7 @@ struct ExploreOverlayHost: View {
             ExploreTopBar(viewModel: viewModel, isGuestMode: isGuestMode, onCloseOverlay: onClose)
             ExploreScreen(
                 viewModel: viewModel,
-                listingPreview: listingPreview,
+                router: router,
                 isGuestMode: isGuestMode,
                 hideInlineSearch: true,
                 promoSlides: promoSlides,

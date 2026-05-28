@@ -4,7 +4,7 @@ struct ExploreScreen: View {
     @Environment(\.fashSpacing) private var spacing
     @Environment(AppDependencies.self) private var deps
     @Bindable var viewModel: ExploreViewModel
-    @Bindable var listingPreview: ListingPreviewStore
+    @Bindable var router: AppRouter
     var isGuestMode: Bool
     var hideInlineSearch: Bool = false
     var promoSlides: [FashPromoSlideDef] = []
@@ -15,6 +15,8 @@ struct ExploreScreen: View {
         GridItem(.flexible(), spacing: 8),
         GridItem(.flexible(), spacing: 8),
     ]
+
+    private let gridSpacing: CGFloat = 8
 
     private var promoDockInset: CGFloat {
         promoSlides.isEmpty ? 0 : FashStickyPromoDockHeight
@@ -66,67 +68,40 @@ struct ExploreScreen: View {
     }
 
     private var sectionToggle: some View {
-        HStack(spacing: spacing.spacing2) {
-            sectionButton(L10n.exploreSectionListings, .listings)
-            sectionButton(L10n.exploreSectionSellers, .sellers)
-            Spacer()
+        VStack(spacing: spacing.spacing2) {
+            ExplorePrimarySectionSwitcher(selected: viewModel.primarySection) { section in
+                Task { await viewModel.setPrimarySection(section, deps: deps, isGuestMode: isGuestMode) }
+            }
+            .padding(.horizontal, spacing.editorialStart)
+
             if viewModel.isSearchModeActive {
-                Button(L10n.exploreSearchClearActive) {
-                    Task { await viewModel.clearListingSearch(deps: deps, isGuestMode: isGuestMode) }
+                HStack {
+                    Spacer()
+                    Button(L10n.exploreSearchClearActive) {
+                        Task { await viewModel.clearListingSearch(deps: deps, isGuestMode: isGuestMode) }
+                    }
+                    .font(FashTypography.labelMedium)
+                    .foregroundStyle(FashColors.brandPrimary)
                 }
-                .font(FashTypography.labelMedium)
-                .foregroundStyle(FashColors.brandPrimary)
+                .padding(.horizontal, spacing.editorialStart)
             }
         }
-        .padding(.horizontal, spacing.editorialStart)
         .padding(.top, spacing.spacing2)
     }
 
-    private func sectionButton(_ title: String, _ section: ExplorePrimarySection) -> some View {
-        let selected = viewModel.primarySection == section
-        return Button {
-            Task { await viewModel.setPrimarySection(section, deps: deps, isGuestMode: isGuestMode) }
-        } label: {
-            Text(title)
-                .font(FashTypography.labelLarge)
-                .foregroundStyle(selected ? FashColors.brandPrimary : FashColors.textSecondary)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(selected ? FashColors.surfaceContainerHigh : Color.clear)
-                .clipShape(Capsule())
-        }
-        .buttonStyle(.plain)
-    }
-
+    @ViewBuilder
     private var filterBar: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(L10n.exploreFiltersBarTitle)
-                    .font(FashTypography.labelLarge)
-                    .foregroundStyle(FashColors.textPrimary)
-                Text(viewModel.hasActiveFilters || viewModel.isSearchModeActive
-                     ? L10n.exploreFiltersBarSubtitleActive
-                     : L10n.exploreFiltersBarSubtitleIdle)
-                    .font(FashTypography.bodySmall)
-                    .foregroundStyle(FashColors.textSecondary)
-            }
-            Spacer()
-            Button {
-                viewModel.showFilterSheet = true
-            } label: {
-                Image(systemName: "line.3.horizontal.decrease.circle")
-                    .font(.system(size: 22))
-                    .foregroundStyle(FashColors.textPrimary)
-            }
-            if viewModel.hasActiveFilters {
-                Button(L10n.exploreFiltersClear) {
+        if viewModel.primarySection == .listings {
+            ExploreFiltersBar(
+                hasActiveFilters: viewModel.hasActiveFilters,
+                filterSummaryParts: viewModel.filterSummaryParts,
+                isSearchMode: viewModel.isSearchModeActive,
+                onOpenFilters: { viewModel.showFilterSheet = true },
+                onClearFilters: viewModel.hasActiveFilters ? {
                     Task { await viewModel.clearAllFilters(deps: deps, isGuestMode: isGuestMode) }
-                }
-                .font(FashTypography.labelMedium)
-            }
+                } : nil
+            )
         }
-        .padding(.horizontal, spacing.editorialStart)
-        .padding(.vertical, spacing.spacing2)
     }
 
     @ViewBuilder
@@ -148,7 +123,7 @@ struct ExploreScreen: View {
 
     private var listingsGrid: some View {
         ScrollView {
-            LazyVStack(spacing: 12) {
+            LazyVStack(spacing: gridSpacing) {
                 if viewModel.isLoading && viewModel.items.isEmpty {
                     FashSkeleton.listingGrid()
                 } else if viewModel.loadError && viewModel.items.isEmpty {
@@ -163,12 +138,27 @@ struct ExploreScreen: View {
                         subtitle: L10n.feedEmptySubtitle
                     )
                 } else {
-                    LazyVGrid(columns: columns, spacing: 12) {
+                    LazyVGrid(columns: columns, spacing: gridSpacing) {
                         ForEach(Array(viewModel.items.enumerated()), id: \.element.id) { index, item in
-                            ListingGridCard(item: item) {
-                                listingPreview.open(
+                            ListingGridCard(
+                                item: item,
+                                showQuickActions: true,
+                                onLike: {
+                                    if isGuestMode {
+                                        // Guest gate handled at tab level; like requires login on Android too
+                                    } else {
+                                        Task { await viewModel.toggleLike(item, deps: deps) }
+                                    }
+                                },
+                                onSave: {
+                                    if !isGuestMode {
+                                        Task { await viewModel.toggleSave(item, deps: deps) }
+                                    }
+                                }
+                            ) {
+                                deps.presentListingPreview(
                                     item: item,
-                                    deps: deps,
+                                    router: router,
                                     publicBrowse: isGuestMode,
                                     surface: "explore",
                                     position: index

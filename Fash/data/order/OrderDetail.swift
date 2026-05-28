@@ -1,5 +1,4 @@
 import Foundation
 
-/// Port of Android `OrderDetail` (data.order).
-enum OrderDetail {
-}
+/// Type alias for order detail payload — screen layer uses `OrderDetailScreen`.
+typealias OrderDetail = OrderDetailPayload

@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct OrdersScreen: View {
+    @Environment(\.fashSpacing) private var spacing
     @Environment(AppDependencies.self) private var deps
     @State private var internalViewModel = OrdersViewModel()
     var viewModel: OrdersViewModel? = nil
@@ -35,54 +36,89 @@ struct OrdersScreen: View {
                 Text(L10n.ordersTabSelling).tag(OrdersViewModel.OrderRole.selling)
             }
             .pickerStyle(.segmented)
-            .padding(.horizontal, 24)
+            .padding(.horizontal, spacing.editorialStart)
             .padding(.vertical, 12)
 
-            if activeVM.isLoading && activeVM.activeOrders.isEmpty {
-                ProgressView()
+            orderFilterBar
+
+            Group {
+                if activeVM.isLoading, activeVM.buyingOrders.isEmpty, activeVM.sellingOrders.isEmpty {
+                    ProgressView()
+                        .tint(FashColors.brandPrimary)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if let error = activeVM.errorMessage, activeVM.sourceOrders.isEmpty {
+                    FashEmptyStateView(
+                        title: L10n.ordersErrorTitle,
+                        subtitle: error,
+                        systemImage: "exclamationmark.triangle",
+                        actionTitle: L10n.feedRetry
+                    ) {
+                        Task { await activeVM.refresh(deps: deps) }
+                    }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if let error = activeVM.errorMessage, activeVM.activeOrders.isEmpty {
-                FashEmptyStateView(
-                    title: L10n.feedLoadError,
-                    subtitle: error,
-                    actionTitle: L10n.feedRetry
-                ) {
-                    Task { await activeVM.refresh(deps: deps) }
-                }
-            } else if activeVM.activeOrders.isEmpty {
-                FashEmptyStateView(
-                    title: activeVM.selectedRole == .buying ? L10n.ordersEmptyBuying : L10n.ordersEmptySelling,
-                    subtitle: activeVM.selectedRole == .buying ? L10n.ordersEmptyBuyingSub : L10n.ordersEmptySellingSub
-                )
-            } else {
-                List(activeVM.activeOrders) { order in
-                    Button {
-                        onSelectOrder(order.orderId)
-                    } label: {
-                        HStack(spacing: 12) {
-                            FashAsyncImage(url: order.imageUrl)
-                                .frame(width: 56, height: 56)
-                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(order.title)
-                                    .font(FashTypography.titleSmall)
-                                    .foregroundStyle(FashColors.textPrimary)
-                                    .lineLimit(2)
-                                Text(order.sellerUsername.isEmpty ? order.status : "@\(order.sellerUsername)")
-                                    .font(FashTypography.bodySmall)
-                                    .foregroundStyle(FashColors.textSecondary)
-                                    .lineLimit(1)
+                } else if activeVM.sourceOrders.isEmpty {
+                    FashEmptyStateView(
+                        title: activeVM.selectedRole == .buying ? L10n.ordersEmptyBuying : L10n.ordersEmptySelling,
+                        subtitle: activeVM.selectedRole == .buying ? L10n.ordersEmptyBuyingSub : L10n.ordersEmptySellingSub,
+                        systemImage: activeVM.selectedRole == .buying ? "bag" : "storefront"
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if activeVM.filteredOrders.isEmpty {
+                    FashEmptyStateView(
+                        title: L10n.ordersEmptyFilteredTitle,
+                        subtitle: L10n.ordersEmptyFilteredSub,
+                        actionTitle: L10n.ordersFilterClear
+                    ) {
+                        activeVM.selectStatusFilter(.all)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 12) {
+                            ForEach(activeVM.filteredOrders) { order in
+                                OrderListCard(
+                                    order: order,
+                                    showReviewButton: activeVM.selectedRole == .buying,
+                                    isConfirming: activeVM.confirmingOrderId == order.orderId,
+                                    onConfirm: {
+                                        Task { await activeVM.confirmReceipt(orderId: order.orderId, deps: deps) }
+                                    },
+                                    onTap: { onSelectOrder(order.orderId) }
+                                )
                             }
-                            Spacer()
-                            Text(formatVnd(order.priceVnd))
-                                .font(FashTypography.labelLarge)
-                                .foregroundStyle(FashColors.brandPrimary)
                         }
-                        .padding(.vertical, 4)
+                        .padding(.horizontal, spacing.editorialStart)
+                        .padding(.vertical, 16)
                     }
                 }
-                .listStyle(.plain)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .background(FashColors.screen)
+    }
+
+    private var orderFilterBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(OrderStatusFilter.allCases, id: \.self) { filter in
+                    let selected = activeVM.activeStatusFilter == filter
+                    let count = activeVM.sourceOrders.filter { filter.matches($0) }.count
+                    Button {
+                        activeVM.selectStatusFilter(filter)
+                    } label: {
+                        Text(count > 0 && filter != .all ? "\(filter.label) (\(count))" : filter.label)
+                            .font(FashTypography.labelMedium.weight(selected ? .semibold : .regular))
+                            .foregroundStyle(selected ? FashColors.onBrandPrimary : FashColors.textPrimary)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(selected ? FashColors.brandPrimary : FashColors.surfaceContainer)
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, spacing.editorialStart)
+            .padding(.bottom, 8)
         }
     }
 
@@ -92,11 +128,75 @@ struct OrdersScreen: View {
             set: { activeVM.selectedRole = $0 }
         )
     }
+}
 
-    private func formatVnd(_ amount: Int64) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.groupingSeparator = "."
-        return (formatter.string(from: NSNumber(value: amount)) ?? "\(amount)") + "đ"
+private struct OrderListCard: View {
+    let order: OrderItem
+    let showReviewButton: Bool
+    let isConfirming: Bool
+    let onConfirm: () -> Void
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(alignment: .top, spacing: 12) {
+                let img = FeedImageUrl.resolveListingImageUrlOrNil(order.imageUrl)
+                Group {
+                    if let img {
+                        FashAsyncImage(url: img, contentMode: .fill)
+                    } else {
+                        FashColors.surfaceVariant
+                    }
+                }
+                .frame(width: 80, height: 80)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(alignment: .top) {
+                        Text(order.title)
+                            .font(FashTypography.titleSmall.weight(.bold))
+                            .foregroundStyle(FashColors.textPrimary)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
+                        Spacer(minLength: 8)
+                        Text(OrderFormatting.statusLabel(order.status))
+                            .font(FashTypography.labelSmall.weight(.semibold))
+                            .foregroundStyle(FashColors.brandPrimary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(FashColors.brandPrimary.opacity(0.1))
+                            .clipShape(Capsule())
+                    }
+                    Text("@\(order.sellerUsername.isEmpty ? "—" : order.sellerUsername)")
+                        .font(FashTypography.bodySmall)
+                        .foregroundStyle(FashColors.textSecondary)
+                    Text(FeedPriceFormat.format(order.priceVnd))
+                        .font(FashTypography.labelLarge)
+                        .foregroundStyle(FashColors.brandPrimary)
+
+                    if order.canConfirm {
+                        Button(action: onConfirm) {
+                            HStack(spacing: 6) {
+                                if isConfirming { ProgressView().scaleEffect(0.75) }
+                                Text(L10n.ordersConfirmReceived)
+                            }
+                            .font(FashTypography.labelMedium)
+                            .foregroundStyle(FashColors.brandPrimary)
+                        }
+                        .buttonStyle(.plain)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                    } else if showReviewButton, order.canReview {
+                        Text(L10n.ordersReview)
+                            .font(FashTypography.labelMedium)
+                            .foregroundStyle(FashColors.brandPrimary)
+                            .frame(maxWidth: .infinity, alignment: .trailing)
+                    }
+                }
+            }
+            .padding(12)
+            .background(FashColors.surfaceContainer)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .buttonStyle(.plain)
     }
 }

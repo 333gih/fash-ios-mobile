@@ -22,6 +22,15 @@ enum LoginStep {
     case otp
 }
 
+struct ExploreProfileFilterRequest: Equatable {
+    var categoryId: String?
+    var brandId: String?
+    var aestheticTagId: String?
+    var searchQuery: String = ""
+    var countryId: String?
+    var countryIso2: String?
+}
+
 enum OnboardingStep: String, CaseIterable {
     case aestheticTags
     case shoppingPreferences
@@ -44,6 +53,7 @@ final class AppRouter {
     var selectedTab: MainTab = .home
     var showExploreOverlay = false
     var exploreSearchExpanded = false
+    var pendingExploreProfileFilter: ExploreProfileFilterRequest?
 
     // MainNav overlays
     var showNotificationScreen = false

@@ -18,7 +18,7 @@ enum DeepLinkRouter {
         switch url.host {
         case "listing":
             deps.pendingDeepLinkListingId = path
-            router.selectedListingId = path
+            deps.presentListingDetail(listingId: path, router: router)
         case "profile":
             deps.pendingDeepLinkSellerUsername = path
             router.sellerShopUsername = path
@@ -41,7 +41,7 @@ enum DeepLinkRouter {
         if parts.count >= 3, parts[1] == "l" {
             let id = parts[2]
             deps.pendingDeepLinkListingId = id
-            router.selectedListingId = id
+            deps.presentListingDetail(listingId: id, router: router)
         }
         if parts.count >= 3, parts[1] == "u" {
             let user = parts[2]

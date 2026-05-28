@@ -71,6 +71,32 @@ final class ExploreViewModel {
         isSearchMode && !committedListingSearchQuery.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
+    var filterSummaryParts: [String] {
+        var parts: [String] = []
+        if let name = selectedCategoryName?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty {
+            parts.append(name)
+        }
+        if let brand = selectedBrandName?.trimmingCharacters(in: .whitespacesAndNewlines), !brand.isEmpty {
+            parts.append(brand)
+        }
+        if let country = selectedCountryName?.trimmingCharacters(in: .whitespacesAndNewlines), !country.isEmpty {
+            parts.append(country)
+        }
+        if let condition = selectedConditionFilter?.trimmingCharacters(in: .whitespacesAndNewlines), !condition.isEmpty {
+            parts.append(condition)
+        }
+        let minP = minPriceText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let maxP = maxPriceText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !minP.isEmpty || !maxP.isEmpty {
+            parts.append([minP, maxP].filter { !$0.isEmpty }.joined(separator: "–"))
+        }
+        if let sizing = sizingModeFilter?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !sizing.isEmpty, sizing.lowercased() != "all" {
+            parts.append(sizing)
+        }
+        return parts
+    }
+
     func requestSearchBarExpanded() {
         searchBarExpanded = true
         if primarySection == .listings, isSearchMode, !committedListingSearchQuery.isEmpty {
@@ -368,5 +394,100 @@ final class ExploreViewModel {
             sellerResults = []
             loadError = true
         }
+    }
+
+    func toggleLike(_ item: ListingFeedItem, deps: AppDependencies) async {
+        guard case .success(let liked) = await deps.listingRepository.toggleLike(listingId: item.id) else { return }
+        patchListing(item.id) { cur in
+            let delta = (liked && !cur.isLiked) ? 1 : ((!liked && cur.isLiked) ? -1 : 0)
+            return ListingFeedItem(
+                id: cur.id, title: cur.title, coverImageUrl: cur.coverImageUrl, imageUrls: cur.imageUrls,
+                priceVnd: cur.priceVnd, brand: cur.brand, size: cur.size, categoryName: cur.categoryName,
+                listingAestheticTag: cur.listingAestheticTag, condition: cur.condition,
+                likeCount: max(0, cur.likeCount + delta), saveCount: cur.saveCount,
+                sellerId: cur.sellerId, sellerUsername: cur.sellerUsername, sellerStyleTag: cur.sellerStyleTag,
+                createdAt: cur.createdAt, isLiked: liked, isSaved: cur.isSaved,
+                onsiteInspectionCommitment: cur.onsiteInspectionCommitment,
+                listingStatus: cur.listingStatus, descriptionText: cur.descriptionText
+            )
+        }
+    }
+
+    func toggleSave(_ item: ListingFeedItem, deps: AppDependencies) async {
+        guard case .success(let saved) = await deps.listingRepository.toggleSave(listingId: item.id, currentlySaved: item.isSaved) else { return }
+        patchListing(item.id) { cur in
+            let delta = (saved && !cur.isSaved) ? 1 : ((!saved && cur.isSaved) ? -1 : 0)
+            return ListingFeedItem(
+                id: cur.id, title: cur.title, coverImageUrl: cur.coverImageUrl, imageUrls: cur.imageUrls,
+                priceVnd: cur.priceVnd, brand: cur.brand, size: cur.size, categoryName: cur.categoryName,
+                listingAestheticTag: cur.listingAestheticTag, condition: cur.condition,
+                likeCount: cur.likeCount, saveCount: max(0, cur.saveCount + delta),
+                sellerId: cur.sellerId, sellerUsername: cur.sellerUsername, sellerStyleTag: cur.sellerStyleTag,
+                createdAt: cur.createdAt, isLiked: cur.isLiked, isSaved: saved,
+                onsiteInspectionCommitment: cur.onsiteInspectionCommitment,
+                listingStatus: cur.listingStatus, descriptionText: cur.descriptionText
+            )
+        }
+    }
+
+    private func patchListing(_ id: String, transform: (ListingFeedItem) -> ListingFeedItem) {
+        items = items.map { $0.id == id ? transform($0) : $0 }
+    }
+
+    /// Opens Explore with filters from profile chips — mirrors Android [openExploreFromProfileFilter].
+    func openFromProfileFilter(
+        deps: AppDependencies,
+        categoryId: String? = nil,
+        brandId: String? = nil,
+        aestheticTagId: String? = nil,
+        searchQuery: String = "",
+        countryId: String? = nil,
+        countryIso2: String? = nil
+    ) async {
+        primarySection = .listings
+        searchBarExpanded = false
+        isLoading = true
+        loadError = false
+        items = []
+        hasMore = true
+        if aestheticTags.isEmpty {
+            if case .success(let tags) = await deps.commonCatalogRepository.getAestheticTags(all: true) {
+                aestheticTags = tags
+            }
+        }
+        if categoryTree.isEmpty {
+            if case .success(let tree) = await deps.commonCatalogRepository.getCategoryTree() {
+                categoryTree = tree
+            }
+        }
+        let q = searchQuery.trimmingCharacters(in: .whitespaces)
+        let cat = categoryId?.trimmingCharacters(in: .whitespaces).nilIfEmpty
+        let brand = brandId?.trimmingCharacters(in: .whitespaces).nilIfEmpty
+        var tag = aestheticTagId?.trimmingCharacters(in: .whitespaces).nilIfEmpty
+        if tag == nil, cat == nil, brand == nil, !q.isEmpty {
+            tag = aestheticTags.first(where: { t in
+                t.name.caseInsensitiveCompare(q) == .orderedSame
+                    || t.displayName.caseInsensitiveCompare(q) == .orderedSame
+                    || t.displayNameVi.caseInsensitiveCompare(q) == .orderedSame
+            })?.id
+        }
+        selectedCategoryId = cat
+        selectedCategoryName = nil
+        selectedBrandId = brand
+        selectedBrandName = nil
+        selectedAestheticTagIds = tag.map { Set([$0]) } ?? []
+        selectedCountryIso2 = countryIso2?.trimmingCharacters(in: .whitespaces).nilIfEmpty
+        selectedCountryName = nil
+        committedListingSearchQuery = (cat == nil && brand == nil && tag == nil) ? q : ""
+        isSearchMode = !committedListingSearchQuery.isEmpty
+        await refresh(deps: deps, isGuestMode: false)
+        isLoading = false
+    }
+}
+
+private extension String {
+    var nilIfEmpty: String? {
+        let t = trimmingCharacters(in: .whitespacesAndNewlines)
+        return t.isEmpty ? nil : t
     }
 }

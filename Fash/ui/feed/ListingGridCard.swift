@@ -2,6 +2,7 @@ import SwiftUI
 
 /// Discovery grid cell — Android [ListingGridCard].
 struct ListingGridCard: View {
+    @Environment(\.fashSpacing) private var spacing
     let item: ListingFeedItem
     var onTap: () -> Void
     var imageAspectRatio: CGFloat = 3 / 4
@@ -10,7 +11,9 @@ struct ListingGridCard: View {
     var onLike: (() -> Void)? = nil
     var onSave: (() -> Void)? = nil
 
-    private let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
+    private var shape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: spacing.radiusSoftMin, style: .continuous)
+    }
 
     var body: some View {
         GeometryReader { geo in
@@ -187,29 +190,35 @@ struct ListingGridCard: View {
 
     @ViewBuilder
     private var quickActions: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: 4) {
             if let onLike {
-                Button(action: onLike) {
-                    Image(systemName: item.isLiked ? "heart.fill" : "heart")
-                        .font(.system(size: 20))
-                        .foregroundStyle(item.isLiked ? FashColors.brandPrimary : .white)
-                        .frame(width: 36, height: 36)
-                        .background(Color.black.opacity(0.35))
-                        .clipShape(Circle())
-                }
+                quickActionButton(
+                    systemName: item.isLiked ? "heart.fill" : "heart",
+                    active: item.isLiked,
+                    action: onLike
+                )
             }
             if let onSave {
-                Button(action: onSave) {
-                    Image(systemName: item.isSaved ? "bookmark.fill" : "bookmark")
-                        .font(.system(size: 20))
-                        .foregroundStyle(item.isSaved ? FashColors.brandPrimary : .white)
-                        .frame(width: 36, height: 36)
-                        .background(Color.black.opacity(0.35))
-                        .clipShape(Circle())
-                }
+                quickActionButton(
+                    systemName: item.isSaved ? "bookmark.fill" : "bookmark",
+                    active: item.isSaved,
+                    action: onSave
+                )
             }
         }
-        .padding(4)
+        .padding(6)
+    }
+
+    private func quickActionButton(systemName: String, active: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(active ? FashColors.brandPrimary : .white)
+                .frame(width: 34, height: 34)
+                .background(Color.black.opacity(0.38))
+                .clipShape(Circle())
+        }
+        .buttonStyle(.plain)
     }
 
     private func badgePill(_ text: String, color: Color) -> some View {
