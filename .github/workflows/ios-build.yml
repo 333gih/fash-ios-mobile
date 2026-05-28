@@ -5,7 +5,10 @@
 #   develop  → Fash-Dev
 #   main     → Fash-Prod
 #   master   → Fash-Prod
-#   release/*, releases/* → Fash-Prod
+#   release/*, releases/* (PR only) → Fash-Prod
+#
+# Push to release/** or releases/** does NOT run this workflow — use iOS Release
+# (archive + IPA already compiles the app; avoids duplicate macOS jobs).
 name: iOS Build
 
 on:
@@ -14,8 +17,6 @@ on:
       - main
       - master
       - develop
-      - "release/**"
-      - "releases/**"
   pull_request:
     branches:
       - main

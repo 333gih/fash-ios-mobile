@@ -50,11 +50,15 @@ Scheme theo branch (tự động):
 | `main` / `master` | **Fash-Prod** |
 | PR vào `develop` | **Fash-Dev** |
 | PR vào `main` / `master` | **Fash-Prod** |
+| PR vào `release/**` / `releases/**` | **Fash-Prod** (simulator compile check) |
+| Push `release/**` / `releases/**` | *(không chạy iOS Build — xem iOS Release)* |
 | Run workflow thủ công | Chọn scheme (hoặc `both`) |
 
 ## 3. Workflow làm gì?
 
-### iOS Build (`ios-build.yml`) — mỗi push/PR
+### iOS Build (`ios-build.yml`) — push (develop/main) + PR
+
+**Không chạy khi push `release/**` hoặc `releases/**`** — nhánh đó chỉ dùng **iOS Release** (tránh 2 job macOS trùng việc).
 
 Giống `./scripts/build_mac.sh` trên Mac cloud:
 
