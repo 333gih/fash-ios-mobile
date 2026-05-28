@@ -8,7 +8,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 FASH = ROOT / "Fash"
-L10N = FASH / "Localization" / "L10n.swift"
+L10N_API_FILES = (
+    FASH / "Localization" / "L10n.swift",
+    FASH / "Localization" / "L10nBundle.swift",
+)
 
 STATIC_VAR = re.compile(r"static var (\w+): String")
 STATIC_FUNC = re.compile(r"static func (\w+)\(([^)]*)\)")
@@ -71,16 +74,28 @@ def count_call_args(arg_text: str) -> int:
     return count
 
 
+def load_l10n_api() -> dict[str, int | None]:
+    api: dict[str, int | None] = {}
+    for path in L10N_API_FILES:
+        if not path.is_file():
+            print(f"Missing {path}", file=sys.stderr)
+            raise FileNotFoundError(path)
+        for name, arity in parse_l10n(path).items():
+            api[name] = arity
+    return api
+
+
 def main() -> int:
-    if not L10N.is_file():
-        print(f"Missing {L10N}", file=sys.stderr)
+    try:
+        api = load_l10n_api()
+    except FileNotFoundError:
         return 1
 
-    api = parse_l10n(L10N)
     errors: list[str] = []
+    skip_names = {p.name for p in L10N_API_FILES}
 
     for swift in sorted(FASH.rglob("*.swift")):
-        if swift.name == "L10n.swift":
+        if swift.name in skip_names:
             continue
         rel = swift.relative_to(ROOT)
         text = swift.read_text(encoding="utf-8")
@@ -98,7 +113,7 @@ def main() -> int:
             arity = count_call_args(args.strip()) if args.strip() else 0
             pos = end
             if name not in api:
-                errors.append(f"{rel}:{line}: L10n.{name}(...) — symbol missing from L10n.swift")
+                errors.append(f"{rel}:{line}: L10n.{name}(...) — symbol missing from L10n API")
                 continue
             expected = api[name]
             if expected is None:
