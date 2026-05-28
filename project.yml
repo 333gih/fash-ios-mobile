@@ -54,8 +54,12 @@ targets:
       - path: Fash
         excludes:
           - "**/.DS_Store"
+          # Doc-only; flat copy name README.md collides in Fash.app (archive fails on CI).
+          - "**/README.md"
     resources:
       - path: Fash/Resources
+        excludes:
+          - "**/README.md"
       - path: Fash/Assets.xcassets
     dependencies:
       - package: Kingfisher
