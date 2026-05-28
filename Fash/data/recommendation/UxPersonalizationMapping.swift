@@ -30,7 +30,7 @@ enum UxPersonalizationMapping {
         return ordered + remainder
     }
 
-    static func recommendationSectionTabs: Set<HomeFeedTab> {
+    static var recommendationSectionTabs: Set<HomeFeedTab> {
         [.forYou, .stylePicks, .similarSaved]
     }
 
