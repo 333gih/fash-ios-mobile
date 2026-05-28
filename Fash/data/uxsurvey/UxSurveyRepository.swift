@@ -93,8 +93,8 @@ final class UxSurveyRepository {
         do {
             try await RepositoryHttp.executeCorePost(
                 relativePath: "api/v1/app/ux-surveys/\(enc)/responses",
-                body: payload,
-                client: securedClient
+                client: securedClient,
+                body: payload
             )
             return .success(())
         } catch {
