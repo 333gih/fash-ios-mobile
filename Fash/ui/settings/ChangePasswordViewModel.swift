@@ -49,7 +49,7 @@ final class ChangePasswordViewModel {
     }
 
     private func mapPasswordError(_ error: Error) -> String {
-        let raw = error.localizedDescription
+        let raw = FashErrorPresentation.userMessage(for: error)
         if raw.contains("PASSWORD_LENGTH") { return L10n.passwordErrorLength }
         if raw.contains("INVALID_CURRENT_PASSWORD") { return L10n.passwordErrorInvalidCurrent }
         if raw.contains("CURRENT_PASSWORD_REQUIRED") { return L10n.passwordErrorCurrentRequired }

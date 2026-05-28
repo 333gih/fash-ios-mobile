@@ -604,8 +604,8 @@ enum L10n {
     static var createListingSelectCategory: String { t("create_listing_select_category") }
     static var createListingSellerJustActive: String { t("create_listing_seller_just_active") }
     static var createListingSizeLabel: String { t("create_listing_size_label") }
-    static func createListingStep(_ step: Int, _ total: Int) -> String {
-        String(format: t("create_listing_step"), step, total)
+    static func createListingStep(_ a1: CVarArg, _ a2: CVarArg) -> String {
+        String(format: t("create_listing_step"), a1, a2)
     }
     static var createListingStep2IncompleteHeader: String { t("create_listing_step2_incomplete_header") }
     static var createListingStep2NeedCategory: String { t("create_listing_step2_need_category") }
@@ -715,6 +715,25 @@ enum L10n {
     static var editProfileUploadError: String { t("edit_profile_upload_error") }
     static var editProfileUsernameLabel: String { t("edit_profile_username_label") }
     static var editProfileUsernamePlaceholder: String { t("edit_profile_username_placeholder") }
+    static var errorGeneric: String { t("error_generic") }
+    static var errorHttpBadRequest: String { t("error_http_bad_request") }
+    static var errorHttpConflict: String { t("error_http_conflict") }
+    static var errorHttpForbidden: String { t("error_http_forbidden") }
+    static var errorHttpNotFound: String { t("error_http_not_found") }
+    static var errorHttpServer: String { t("error_http_server") }
+    static func errorHttpStatus(_ a1: CVarArg) -> String {
+        String(format: t("error_http_status"), a1)
+    }
+    static var errorHttpUnauthorized: String { t("error_http_unauthorized") }
+    static var errorNetworkUnavailable: String { t("error_network_unavailable") }
+    static var errorRateLimitGeneric: String { t("error_rate_limit_generic") }
+    static var errorRateLimitOtp: String { t("error_rate_limit_otp") }
+    static func errorRateLimitOtpWait(_ a1: CVarArg) -> String {
+        String(format: t("error_rate_limit_otp_wait"), a1)
+    }
+    static func errorRateLimitWait(_ a1: CVarArg) -> String {
+        String(format: t("error_rate_limit_wait"), a1)
+    }
     static var exploreAll: String { t("explore_all") }
     static var exploreCategoryAll: String { t("explore_category_all") }
     static var exploreCategorySectionTitle: String { t("explore_category_section_title") }
@@ -994,10 +1013,6 @@ enum L10n {
     static var guestTopbarSignInCd: String { t("guest_topbar_sign_in_cd") }
     static var homeBrandFooterSub: String { t("home_brand_footer_sub") }
     static var homeBrandMarketplace: String { t("home_brand_marketplace") }
-    static var homeDeliveringComingSoonBody: String { t("home_delivering_coming_soon_body") }
-    static var homeDeliveringComingSoonTitle: String { t("home_delivering_coming_soon_title") }
-    static var homeDeliveringListIntro: String { t("home_delivering_list_intro") }
-    static var homeDeliveringScreenTitle: String { t("home_delivering_screen_title") }
     static var homeEditedByFashBadge: String { t("home_edited_by_fash_badge") }
     static var homeEditorialListSubtitle: String { t("home_editorial_list_subtitle") }
     static var homeEditorialListTitle: String { t("home_editorial_list_title") }
@@ -1172,10 +1187,6 @@ enum L10n {
     static var loginOtpFailed: String { t("login_otp_failed") }
     static var loginOtpResent: String { t("login_otp_resent") }
     static var loginOtpSent: String { t("login_otp_sent") }
-    static var errorRateLimitGeneric: String { t("error_rate_limit_generic") }
-    static func errorRateLimitWait(_ seconds: Int) -> String { String(format: t("error_rate_limit_wait"), seconds) }
-    static var errorRateLimitOtp: String { t("error_rate_limit_otp") }
-    static func errorRateLimitOtpWait(_ seconds: Int) -> String { String(format: t("error_rate_limit_otp_wait"), seconds) }
     static var loginPasswordFailed: String { t("login_password_failed") }
     static var loginPasswordHideCd: String { t("login_password_hide_cd") }
     static var loginPasswordInvalid: String { t("login_password_invalid") }
@@ -2040,9 +2051,7 @@ enum L10n {
     static var profileSellerFollowCtaHint: String { t("profile_seller_follow_cta_hint") }
     static var profileSellerRatingPending: String { t("profile_seller_rating_pending") }
     static var profileSellerRatingPendingHint: String { t("profile_seller_rating_pending_hint") }
-    static func profileSellerTrustReviewsCount(_ count: Int) -> String {
-        String(format: t("profile_seller_trust_reviews_count"), count)
-    }
+    static var profileSellerTrustReviewsCount: String { t("profile_seller_trust_reviews_count") }
     static var profileSellerTrustSubtitleScoreOnly: String { t("profile_seller_trust_subtitle_score_only") }
     static var profileSetupChooseName: String { t("profile_setup_choose_name") }
     static var profileSetupComplete: String { t("profile_setup_complete") }
@@ -2098,27 +2107,27 @@ enum L10n {
     static var profileShareShopSubtitle: String { t("profile_share_shop_subtitle") }
     static var profileShareShopTitle: String { t("profile_share_shop_title") }
     static var profileShippingAddresses: String { t("profile_shipping_addresses") }
-    static func profileSizingRefChest(_ value: Double, _ unit: String) -> String {
-        String(format: t("profile_sizing_ref_chest"), value, unit)
+    static func profileSizingRefChest(_ a1: CVarArg) -> String {
+        String(format: t("profile_sizing_ref_chest"), a1)
     }
     static var profileSizingRefCompletedOnly: String { t("profile_sizing_ref_completed_only") }
     static var profileSizingRefEdit: String { t("profile_sizing_ref_edit") }
     static var profileSizingRefEmptyHint: String { t("profile_sizing_ref_empty_hint") }
-    static func profileSizingRefHem(_ value: Double, _ unit: String) -> String {
-        String(format: t("profile_sizing_ref_hem"), value, unit)
+    static func profileSizingRefHem(_ a1: CVarArg) -> String {
+        String(format: t("profile_sizing_ref_hem"), a1)
     }
-    static func profileSizingRefLength(_ value: Double, _ unit: String) -> String {
-        String(format: t("profile_sizing_ref_length"), value, unit)
+    static func profileSizingRefLength(_ a1: CVarArg) -> String {
+        String(format: t("profile_sizing_ref_length"), a1)
     }
     static var profileSizingRefSeparator: String { t("profile_sizing_ref_separator") }
-    static func profileSizingRefShoulders(_ value: Double, _ unit: String) -> String {
-        String(format: t("profile_sizing_ref_shoulders"), value, unit)
+    static func profileSizingRefShoulders(_ a1: CVarArg) -> String {
+        String(format: t("profile_sizing_ref_shoulders"), a1)
     }
     static func profileSizingRefSize(_ a1: CVarArg) -> String {
         String(format: t("profile_sizing_ref_size"), a1)
     }
-    static func profileSizingRefSleeve(_ value: Double, _ unit: String) -> String {
-        String(format: t("profile_sizing_ref_sleeve"), value, unit)
+    static func profileSizingRefSleeve(_ a1: CVarArg) -> String {
+        String(format: t("profile_sizing_ref_sleeve"), a1)
     }
     static var profileSizingRefSubtitle: String { t("profile_sizing_ref_subtitle") }
     static var profileSizingRefTitle: String { t("profile_sizing_ref_title") }
@@ -2188,6 +2197,7 @@ enum L10n {
     }
     static var sellerPackagesScreenSubtitle: String { t("seller_packages_screen_subtitle") }
     static var sellerPackagesScreenTitle: String { t("seller_packages_screen_title") }
+    static var sessionExpiredMessage: String { t("session_expired_message") }
     static func settingsAboutEnvLine(_ a1: CVarArg, _ a2: CVarArg) -> String {
         String(format: t("settings_about_env_line"), a1, a2)
     }

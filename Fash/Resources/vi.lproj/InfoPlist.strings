@@ -1,0 +1,5 @@
+/* Localized Info.plist strings — Vietnamese */
+"NSPhotoLibraryUsageDescription" = "Fash cần quyền truy cập ảnh để tải ảnh sản phẩm và ảnh đại diện.";
+"NSCameraUsageDescription" = "Fash cần quyền camera để chụp ảnh sản phẩm và ảnh đại diện.";
+"NSLocationWhenInUseUsageDescription" = "Fash có thể dùng vị trí của bạn khi check-in gặp mặt nếu bạn chọn chia sẻ.";
+"CFBundleDisplayName" = "FASH.";

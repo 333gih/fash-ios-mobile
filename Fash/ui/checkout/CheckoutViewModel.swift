@@ -48,7 +48,7 @@ final class CheckoutViewModel {
         case .success(let detail):
             item = detail
         case .failure(let error):
-            loadError = error.localizedDescription
+            loadError = FashErrorPresentation.userMessage(for: error)
         }
 
         switch await methodsResult {
@@ -121,7 +121,7 @@ final class CheckoutViewModel {
                 statusMessage = L10n.checkoutPaymentInitFailed
             }
         case .failure(let error):
-            statusMessage = error.localizedDescription
+            statusMessage = FashErrorPresentation.userMessage(for: error)
         }
     }
 }

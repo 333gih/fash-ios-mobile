@@ -24,7 +24,7 @@ final class SellerProductPackagesViewModel {
             packages = res.packages
         case .failure(let err):
             packages = []
-            loadError = err.localizedDescription
+            loadError = FashErrorPresentation.userMessage(for: err)
         }
     }
 }

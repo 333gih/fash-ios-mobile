@@ -102,7 +102,7 @@ struct AddEditAddressScreen: View {
             onSaved(id)
             onDismiss()
         case .failure(let err):
-            errorMessage = err.localizedDescription.isEmpty ? L10n.addressValidationRequired : err.localizedDescription
+            errorMessage = FashErrorPresentation.userMessage(for: err)
         }
     }
 

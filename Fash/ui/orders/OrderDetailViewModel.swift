@@ -39,7 +39,7 @@ final class OrderDetailViewModel {
         case .success(let payload):
             detail = payload
         case .failure(let error):
-            if detail == nil { loadError = error.localizedDescription }
+            if detail == nil { loadError = FashErrorPresentation.userMessage(for: error) }
         }
     }
 

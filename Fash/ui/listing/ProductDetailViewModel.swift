@@ -52,7 +52,7 @@ final class ProductDetailViewModel {
             isSaved = detail.isSaved
             galleryIndex = 0
         case .failure(let error):
-            errorMessage = error.localizedDescription
+            errorMessage = FashErrorPresentation.userMessage(for: error)
         }
         if case .success(let p) = await previewResult {
             preview = p
@@ -91,7 +91,7 @@ final class ProductDetailViewModel {
         case .success(let convId):
             return convId
         case .failure(let error):
-            errorMessage = error.localizedDescription
+            errorMessage = FashErrorPresentation.userMessage(for: error)
             return nil
         }
     }

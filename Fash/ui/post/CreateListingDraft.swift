@@ -28,6 +28,10 @@ struct ListingPhotoSlotDraft: Equatable, Identifiable {
         !(localImageUri?.trimmingCharacters(in: .whitespaces).isEmpty ?? true)
             || !(uploadedImageUrl?.trimmingCharacters(in: .whitespaces).isEmpty ?? true)
     }
+
+    func displayLabel() -> String {
+        BilingualLabel.resolve(en: label, vi: labelVi)
+    }
 }
 
 struct CreateListingDraft: Equatable {

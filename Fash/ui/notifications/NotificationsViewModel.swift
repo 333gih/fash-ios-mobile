@@ -97,7 +97,7 @@ final class NotificationsViewModel {
             groups = mergeGroupSummaries(page.groups)
             await refreshUnreadSummary()
         case .failure(let error):
-            loadError = error.localizedDescription
+            loadError = FashErrorPresentation.userMessage(for: error)
             if loadError?.contains("503") == true || loadError?.contains("404") == true {
                 inboxUnavailable = true
             }
@@ -117,7 +117,7 @@ final class NotificationsViewModel {
             hasMore = page.items.count >= 30
             await refreshUnreadSummary()
         case .failure(let error):
-            loadError = error.localizedDescription
+            loadError = FashErrorPresentation.userMessage(for: error)
             items = []
             hasMore = false
         }

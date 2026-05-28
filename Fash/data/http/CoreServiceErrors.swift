@@ -97,14 +97,14 @@ enum CoreServiceErrors {
 
     private static func fallbackMessage(_ statusCode: Int) -> String {
         switch statusCode {
-        case 400: return "Bad request"
-        case 401: return "Authentication required"
-        case 403: return "Permission denied"
-        case 404: return "Not found"
-        case 409: return "Not available"
-        case 429: return "Too many requests. Please try again later."
-        case 500: return "Server error"
-        default: return "HTTP \(statusCode)"
+        case 400: return L10n.errorHttpBadRequest
+        case 401: return L10n.errorHttpUnauthorized
+        case 403: return L10n.errorHttpForbidden
+        case 404: return L10n.errorHttpNotFound
+        case 409: return L10n.errorHttpConflict
+        case 429: return L10n.errorRateLimitGeneric
+        case 500: return L10n.errorHttpServer
+        default: return L10n.errorHttpStatus(statusCode)
         }
     }
 }
@@ -123,5 +123,5 @@ struct CoreServiceHttpException: Error, LocalizedError {
     var errorCode: String? { serviceError.code }
     var isRateLimited: Bool { serviceError.isRateLimited }
     var retryAfterSeconds: Int? { serviceError.retryAfterSeconds }
-    var errorDescription: String? { message }
+    var errorDescription: String? { CoreServiceErrors.localizedMessage(serviceError) }
 }

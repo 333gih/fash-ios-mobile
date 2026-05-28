@@ -59,7 +59,7 @@ final class OrdersViewModel {
         case .success:
             await fetchOrders(deps: deps)
         case .failure(let error):
-            errorMessage = error.localizedDescription
+            errorMessage = FashErrorPresentation.userMessage(for: error)
         }
     }
 
@@ -72,7 +72,7 @@ final class OrdersViewModel {
         case .success(let orders):
             buyingOrders = orders
         case .failure(let error):
-            errorMessage = error.localizedDescription
+            errorMessage = FashErrorPresentation.userMessage(for: error)
         }
         if case .success(let orders) = sellingResult {
             sellingOrders = orders

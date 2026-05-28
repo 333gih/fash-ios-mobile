@@ -1,7 +1,7 @@
 import Foundation
 
 private let fashUserAgent = "Fash-iOS/1.0.3"
-private let sessionExpiredMessage = "Session expired. Please sign in again."
+private var sessionExpiredMessage: String { L10n.sessionExpiredMessage }
 
 /// OkHttp [SecuredApiClient] equivalent.
 final class SecuredApiClient {

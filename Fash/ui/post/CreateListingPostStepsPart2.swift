@@ -83,7 +83,7 @@ struct CreateListingPostStepsPart2: View {
 
     private func photoSlotRow(_ slot: ListingPhotoSlotDraft) -> some View {
         VStack(alignment: .leading, spacing: spacing.spacing2) {
-            Text(slot.label)
+            Text(slot.displayLabel())
                 .font(FashTypography.labelLarge)
                 .foregroundStyle(FashColors.textPrimary)
             PhotosPicker(selection: photoPickerBinding(for: slot.stepKey), matching: .images) {

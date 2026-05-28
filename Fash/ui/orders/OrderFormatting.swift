@@ -39,6 +39,7 @@ enum OrderFormatting {
         }
         guard let date else { return String(trimmed.prefix(16)) }
         let out = DateFormatter()
+        out.locale = AppLocale.locale
         out.dateStyle = .medium
         out.timeStyle = .short
         return out.string(from: date)

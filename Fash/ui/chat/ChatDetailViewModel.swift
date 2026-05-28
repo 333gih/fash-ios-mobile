@@ -43,7 +43,7 @@ final class ChatDetailViewModel {
         case .success(let d):
             detail = d
         case .failure(let error):
-            loadError = error.localizedDescription
+            loadError = FashErrorPresentation.userMessage(for: error)
         }
 
         isMessagesLoading = true
@@ -51,7 +51,7 @@ final class ChatDetailViewModel {
         case .success(let msgs):
             messages = msgs.sorted { $0.timestamp < $1.timestamp }
         case .failure(let error):
-            if loadError == nil { loadError = error.localizedDescription }
+            if loadError == nil { loadError = FashErrorPresentation.userMessage(for: error) }
         }
         isMessagesLoading = false
 
@@ -110,7 +110,7 @@ final class ChatDetailViewModel {
                 ) : row
             }
             inputText = text
-            loadError = error.localizedDescription
+            loadError = FashErrorPresentation.userMessage(for: error)
         }
     }
 
@@ -141,6 +141,7 @@ final class ChatDetailViewModel {
         let normalized = timestamp.contains("T") ? timestamp : timestamp.replacingOccurrences(of: " ", with: "T")
         if let date = ISO8601DateFormatter().date(from: normalized) {
             let fmt = DateFormatter()
+            fmt.locale = AppLocale.locale
             fmt.timeStyle = .short
             return fmt.string(from: date)
         }

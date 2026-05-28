@@ -1,0 +1,5 @@
+/* Localized Info.plist strings — English */
+"NSPhotoLibraryUsageDescription" = "Fash needs photo access to upload listing images and profile photos.";
+"NSCameraUsageDescription" = "Fash needs camera access to take listing and profile photos.";
+"NSLocationWhenInUseUsageDescription" = "Fash may use your location for meetup check-in when you choose to share it.";
+"CFBundleDisplayName" = "FASH.";

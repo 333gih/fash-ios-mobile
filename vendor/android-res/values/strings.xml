@@ -1999,4 +1999,16 @@
 
     <!-- Phase 1: Explore interest chips -->
     <string name="explore_interest_chips_label">Lọc nhanh theo style</string>
+
+    <!-- iOS backfill / shared HTTP errors -->
+    <string name="error_generic">Đã xảy ra lỗi. Vui lòng thử lại.</string>
+    <string name="error_http_bad_request">Yêu cầu không hợp lệ</string>
+    <string name="error_http_conflict">Không khả dụng</string>
+    <string name="error_http_forbidden">Không có quyền truy cập</string>
+    <string name="error_http_not_found">Không tìm thấy</string>
+    <string name="error_http_server">Lỗi máy chủ</string>
+    <string name="error_http_status">Lỗi HTTP %1$s</string>
+    <string name="error_http_unauthorized">Cần đăng nhập</string>
+    <string name="error_network_unavailable">Không có kết nối mạng. Kiểm tra Internet và thử lại.</string>
+    <string name="session_expired_message">Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.</string>
 </resources>

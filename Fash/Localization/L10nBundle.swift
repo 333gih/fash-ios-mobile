@@ -18,6 +18,12 @@ extension L10n {
     static func t(_ key: String) -> String {
         let value = stringsBundle.localizedString(forKey: key, value: nil, table: nil)
         if !value.isEmpty, value != key { return value }
+        if AppLocale.currentTag == AppLocale.tagEN,
+           let viPath = Bundle.main.path(forResource: AppLocale.tagVI, ofType: "lproj"),
+           let viBundle = Bundle(path: viPath) {
+            let viValue = viBundle.localizedString(forKey: key, value: nil, table: nil)
+            if !viValue.isEmpty, viValue != key { return viValue }
+        }
         return NSLocalizedString(key, bundle: stringsBundle, comment: "")
     }
 }

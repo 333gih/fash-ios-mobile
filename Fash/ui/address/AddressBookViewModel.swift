@@ -97,7 +97,7 @@ final class AddressBookViewModel {
                 addresses = merged
             }
         case .failure(let err):
-            eventMessage = err.localizedDescription.isEmpty ? L10n.addressDefaultFailed : err.localizedDescription
+            eventMessage = FashErrorPresentation.userMessage(for: err)
         }
     }
 

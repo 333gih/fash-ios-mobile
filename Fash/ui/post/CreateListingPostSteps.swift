@@ -156,10 +156,10 @@ struct CreateListingPostSteps: View {
     private var detailsStep: some View {
         PostStepSectionCard {
             Picker(L10n.createListingConditionLabel, selection: conditionBinding) {
-                Text("new").tag("new")
-                Text("like_new").tag("like_new")
-                Text("good").tag("good")
-                Text("fair").tag("fair")
+                Text(L10n.conditionNew).tag("new")
+                Text(L10n.conditionLikeNew).tag("like_new")
+                Text(L10n.conditionGood).tag("good")
+                Text(L10n.conditionFair).tag("fair")
             }
             .pickerStyle(.segmented)
             TextField(L10n.createListingTitlePlaceholder, text: titleBinding)
@@ -175,7 +175,7 @@ struct CreateListingPostSteps: View {
                 value: Binding(get: { postVM.draft.conditionScore }, set: { v in postVM.updateDraft { $0.conditionScore = v } }),
                 in: 80...99
             ) {
-                Text("Score: \(postVM.draft.conditionScore)")
+                Text(L10n.postConditionScoreLabel(postVM.draft.conditionScore))
                     .font(FashTypography.bodyMedium)
                     .foregroundStyle(FashColors.textSecondary)
             }

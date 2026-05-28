@@ -267,7 +267,7 @@ final class PostViewModel {
             resetDraft()
             onSuccess()
         case .failure(let err):
-            eventMessage = err.localizedDescription.isEmpty ? L10n.createListingError : err.localizedDescription
+            eventMessage = FashErrorPresentation.userMessage(for: err)
         }
     }
 

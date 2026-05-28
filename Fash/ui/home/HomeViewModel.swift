@@ -60,7 +60,7 @@ final class HomeViewModel {
                 await loadFollowFeedFallback(deps: deps)
             }
         case .failure(let error):
-            errorMessage = error.localizedDescription
+            errorMessage = FashErrorPresentation.userMessage(for: error)
             if !isGuestMode, selectedFeedTabKey == "following" {
                 await loadFollowFeedFallback(deps: deps)
             }

@@ -130,6 +130,10 @@ struct ListingImageStepCatalog: Equatable {
     var labelVi: String
     var sortOrder: Int
     var required: Bool
+
+    func displayLabel() -> String {
+        BilingualLabel.resolve(en: label, vi: labelVi)
+    }
 }
 
 struct ListingImageSetupDto: Equatable {
