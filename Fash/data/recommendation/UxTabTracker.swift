@@ -21,14 +21,14 @@ final class UxTabTracker: @unchecked Sendable {
         activeScope = scope
         activeTabKey = tabKey
         openedAt = Date()
-        enqueue(UxEventPayload(scope: scope, tabKey: tabKey, clientHour: UxPersonalizationLocalStore.currentClientHour, dwellMs: nil))
+        enqueue(UxEventPayload(scope: scope, tabKey: tabKey, clientHour: UxPersonalizationLocalStore.currentClientHour(), dwellMs: nil))
     }
 
     func closeActiveTab() {
         guard let scope = activeScope, let tabKey = activeTabKey, let openedAt else { return }
         let dwellMs = Int(Date().timeIntervalSince(openedAt) * 1_000)
         if dwellMs >= 800 {
-            enqueue(UxEventPayload(scope: scope, tabKey: tabKey, clientHour: UxPersonalizationLocalStore.currentClientHour, dwellMs: dwellMs))
+            enqueue(UxEventPayload(scope: scope, tabKey: tabKey, clientHour: UxPersonalizationLocalStore.currentClientHour(), dwellMs: dwellMs))
         }
         activeScope = nil
         activeTabKey = nil
