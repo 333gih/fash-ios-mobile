@@ -1,29 +1,28 @@
 #!/usr/bin/env python3
-"""DEPRECATED — use scripts/sync_from_android.py (Android is the source of truth)."""
+"""
+Ensure fash-android-mobile has complete vi/en strings, then vendor + generate iOS L10n.
+
+Android is the single source of truth for labels. iOS never hand-edits Localizable.strings.
+
+Usage (from fash-ios-mobile):
+  FASH_ANDROID_ROOT=../fash-android-mobile python3 scripts/sync_from_android.py
+"""
 from __future__ import annotations
 
 import re
+import subprocess
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-EN_PATH = ROOT / "vendor" / "android-res" / "values-en" / "strings.xml"
-VI_PATH = ROOT / "vendor" / "android-res" / "values" / "strings.xml"
+SCRIPTS = ROOT / "scripts"
+sys.path.insert(0, str(SCRIPTS))
+from fash_paths import android_root  # noqa: E402
 
-IOS_ONLY_VI: dict[str, str] = {
-    "home_delivering_coming_soon_body": "Tính năng giao hàng với thanh toán trong app sắp ra mắt. Bạn sẽ quản lý giao hàng tại đây khi tính năng mở.",
-    "home_delivering_coming_soon_title": "Sắp ra mắt",
-    "home_delivering_list_intro": "Đơn hàng đang giao tới người mua. Theo dõi trạng thái và cập nhật thông tin giao hàng tại đây.",
-    "home_delivering_screen_title": "Đang giao",
-}
+XML_KEY = re.compile(r'<string\s+name="([^"]+)"')
 
-IOS_ONLY_EN: dict[str, str] = {
-    "home_delivering_coming_soon_body": "Shipping with in-app payment is coming soon. You'll manage deliveries here when it launches.",
-    "home_delivering_coming_soon_title": "Coming soon",
-    "home_delivering_list_intro": "Orders on the way to buyers. Track status and update delivery details here.",
-    "home_delivering_screen_title": "In transit",
-}
-
-MISSING_EN: dict[str, str] = {
+# English for keys present in Android values/ but missing in values-en/
+EN_FROM_VI: dict[str, str] = {
     "appointment_card_ticket": "Viewing appointment ticket",
     "badge_review_load_error": "Could not load badges. Try again later.",
     "badge_review_required": "Select at least 1 badge to submit a review",
@@ -47,7 +46,7 @@ MISSING_EN: dict[str, str] = {
     "home_section_trending_styles_subtitle": "Tap to filter on Explore",
     "home_section_trending_styles_title": "Trending styles",
     "listing_badge_just_listed": "Just listed",
-    "listing_badge_saved_count": "%1$s saves",
+    "listing_badge_saved_count": "%1$d saves",
     "listing_commitment_badge": "On-site check",
     "listing_commitment_body": "I agree to let the buyer inspect the item on-site and cancel the deal at no cost if it does not match the description.",
     "listing_commitment_title": "Safe transaction commitment",
@@ -69,12 +68,16 @@ MISSING_EN: dict[str, str] = {
     "product_save_nudge": "Saved — Message the seller?",
     "product_save_nudge_cta": "Message now",
     "product_save_nudge_dismiss": "Dismiss",
-    "profile_height_cm": "Height %1$s cm",
+    "profile_height_cm": "Height %1$d cm",
     "profile_weight_kg": "Weight %1$s kg",
 }
 
-# iOS + Android shared HTTP / auth fallbacks (also added to vi).
-IOS_HTTP_ERRORS_VI: dict[str, str] = {
+# Shared vi/en keys used by both apps (HTTP errors, delivering screen, …)
+SHARED_VI: dict[str, str] = {
+    "home_delivering_coming_soon_body": "Tính năng giao hàng với thanh toán trong app sắp ra mắt. Bạn sẽ quản lý giao hàng tại đây khi tính năng mở.",
+    "home_delivering_coming_soon_title": "Sắp ra mắt",
+    "home_delivering_list_intro": "Đơn hàng đang giao tới người mua. Theo dõi trạng thái và cập nhật thông tin giao hàng tại đây.",
+    "home_delivering_screen_title": "Đang giao",
     "error_generic": "Đã xảy ra lỗi. Vui lòng thử lại.",
     "error_http_bad_request": "Yêu cầu không hợp lệ",
     "error_http_unauthorized": "Cần đăng nhập",
@@ -87,7 +90,11 @@ IOS_HTTP_ERRORS_VI: dict[str, str] = {
     "session_expired_message": "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
 }
 
-IOS_HTTP_ERRORS_EN: dict[str, str] = {
+SHARED_EN: dict[str, str] = {
+    "home_delivering_coming_soon_body": "Shipping with in-app payment is coming soon. You'll manage deliveries here when it launches.",
+    "home_delivering_coming_soon_title": "Coming soon",
+    "home_delivering_list_intro": "Orders on the way to buyers. Track status and update delivery details here.",
+    "home_delivering_screen_title": "In transit",
     "error_generic": "Something went wrong. Please try again.",
     "error_http_bad_request": "Bad request",
     "error_http_unauthorized": "Authentication required",
@@ -101,19 +108,18 @@ IOS_HTTP_ERRORS_EN: dict[str, str] = {
 }
 
 
-def existing_names(path: Path) -> set[str]:
-    text = path.read_text(encoding="utf-8")
-    return set(re.findall(r'<string\s+name="([^"]+)"', text))
+def xml_keys(path: Path) -> set[str]:
+    return set(XML_KEY.findall(path.read_text(encoding="utf-8")))
 
 
-def append_strings(path: Path, entries: dict[str, str]) -> int:
+def append_android_strings(path: Path, entries: dict[str, str], comment: str) -> int:
     if not path.is_file():
         raise SystemExit(f"Missing {path}")
-    present = existing_names(path)
+    present = xml_keys(path)
     to_add = {k: v for k, v in entries.items() if k not in present}
     if not to_add:
         return 0
-    lines = ["", "    <!-- iOS backfill / shared HTTP errors -->"]
+    lines = ["", f"    <!-- {comment} -->"]
     for key in sorted(to_add.keys()):
         val = (
             to_add[key]
@@ -132,10 +138,51 @@ def append_strings(path: Path, entries: dict[str, str]) -> int:
     return len(to_add)
 
 
+def patch_android_strings(android: Path) -> None:
+    vi_path = android / "app/src/main/res/values/strings.xml"
+    en_path = android / "app/src/main/res/values-en/strings.xml"
+    vi_keys = xml_keys(vi_path)
+    en_keys = xml_keys(en_path)
+    missing_en = {k: EN_FROM_VI[k] for k in sorted(vi_keys - en_keys) if k in EN_FROM_VI}
+    # Fallback: copy vi text for keys we lack explicit EN (should not happen)
+    for k in sorted(vi_keys - en_keys):
+        if k not in missing_en:
+            print(f"warning: no EN translation map for {k}", file=sys.stderr)
+    n_vi = append_android_strings(vi_path, SHARED_VI, "sync_from_android — shared vi")
+    n_en_shared = append_android_strings(en_path, SHARED_EN, "sync_from_android — shared en")
+    n_en_missing = append_android_strings(en_path, missing_en, "sync_from_android — en parity")
+    print(
+        f"Patched Android strings: vi+{n_vi}, en+{n_en_shared + n_en_missing} "
+        f"({len(missing_en)} vi-to-en parity keys)"
+    )
+
+
+def run_py(script: str) -> None:
+    rc = subprocess.call([sys.executable, str(SCRIPTS / script)], cwd=ROOT)
+    if rc != 0:
+        raise SystemExit(rc)
+
+
 def main() -> int:
-    n_en = append_strings(EN_PATH, {**MISSING_EN, **IOS_ONLY_EN, **IOS_HTTP_ERRORS_EN})
-    n_vi = append_strings(VI_PATH, {**IOS_ONLY_VI, **IOS_HTTP_ERRORS_VI})
-    print(f"Added {n_en} keys to values-en, {n_vi} keys to values")
+    android = android_root()
+    if not android:
+        print(
+            "error: set FASH_ANDROID_ROOT or clone fash-android-mobile next to fash-ios-mobile",
+            file=sys.stderr,
+        )
+        return 1
+
+    patch_android_strings(android)
+    run_py("vendor_from_android.py")
+    run_py("android_strings_to_ios.py")
+    run_py("validate_strings.py")
+    run_py("validate_l10n_swift.py")
+
+    vi = xml_keys(ROOT / "vendor/android-res/values/strings.xml")
+    en = xml_keys(ROOT / "vendor/android-res/values-en/strings.xml")
+    print(f"Done: Android vi={len(vi)} en={len(en)} -> iOS Localizable.strings + L10n.swift")
+    if vi - en:
+        print(f"warning: {len(vi - en)} keys still missing in values-en", file=sys.stderr)
     return 0
 
 

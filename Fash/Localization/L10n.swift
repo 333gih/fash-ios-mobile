@@ -145,7 +145,9 @@ enum L10n {
     static var chatConversationSoldReadonly: String { t("chat_conversation_sold_readonly") }
     static var chatCounterOfferLabel: String { t("chat_counter_offer_label") }
     static var chatCounterOfferMin: String { t("chat_counter_offer_min") }
-    static var chatCounterSheetBuyerOffer: String { t("chat_counter_sheet_buyer_offer") }
+    static func chatCounterSheetBuyerOffer(_ a1: CVarArg) -> String {
+        String(format: t("chat_counter_sheet_buyer_offer"), a1)
+    }
     static var chatCounterSheetSubmit: String { t("chat_counter_sheet_submit") }
     static var chatCounterSheetTitle: String { t("chat_counter_sheet_title") }
     static var chatCounterWaitingBuyer: String { t("chat_counter_waiting_buyer") }
@@ -185,12 +187,16 @@ enum L10n {
     static var chatDetailAccept: String { t("chat_detail_accept") }
     static var chatDetailActive: String { t("chat_detail_active") }
     static var chatDetailBackCd: String { t("chat_detail_back_cd") }
-    static var chatDetailBackInboxUnreadCd: String { t("chat_detail_back_inbox_unread_cd") }
+    static func chatDetailBackInboxUnreadCd(_ a1: CVarArg) -> String {
+        String(format: t("chat_detail_back_inbox_unread_cd"), a1)
+    }
     static var chatDetailDecline: String { t("chat_detail_decline") }
     static var chatDetailHeaderProfileCd: String { t("chat_detail_header_profile_cd") }
     static var chatDetailMessagePlaceholder: String { t("chat_detail_message_placeholder") }
     static var chatDetailOfferPrompt: String { t("chat_detail_offer_prompt") }
-    static var chatDetailOtherInboxUnread: String { t("chat_detail_other_inbox_unread") }
+    static func chatDetailOtherInboxUnread(_ a1: CVarArg) -> String {
+        String(format: t("chat_detail_other_inbox_unread"), a1)
+    }
     static var chatDetailPriceProposal: String { t("chat_detail_price_proposal") }
     static var chatDetailRead: String { t("chat_detail_read") }
     static var chatDetailSetPrice: String { t("chat_detail_set_price") }
@@ -231,9 +237,13 @@ enum L10n {
     static var chatFulfillmentSheetTitle: String { t("chat_fulfillment_sheet_title") }
     static var chatFulfillmentShipDisabledBody: String { t("chat_fulfillment_ship_disabled_body") }
     static var chatFulfillmentShipDisabledTitle: String { t("chat_fulfillment_ship_disabled_title") }
-    static var chatGroupUnreadCd: String { t("chat_group_unread_cd") }
+    static func chatGroupUnreadCd(_ a1: CVarArg) -> String {
+        String(format: t("chat_group_unread_cd"), a1)
+    }
     static var chatHasUnreadCd: String { t("chat_has_unread_cd") }
-    static var chatHoursAgo: String { t("chat_hours_ago") }
+    static func chatHoursAgo(_ a1: CVarArg) -> String {
+        String(format: t("chat_hours_ago"), a1)
+    }
     static var chatInboxAdCta: String { t("chat_inbox_ad_cta") }
     static var chatInboxAdSubtitle: String { t("chat_inbox_ad_subtitle") }
     static var chatInboxAdTitle: String { t("chat_inbox_ad_title") }
@@ -257,7 +267,9 @@ enum L10n {
     static var chatInboxPreviewOrderCancelledSeller: String { t("chat_inbox_preview_order_cancelled_seller") }
     static var chatInboxPreviewOrderCancelledShort: String { t("chat_inbox_preview_order_cancelled_short") }
     static var chatInboxPreviewPlaceholder: String { t("chat_inbox_preview_placeholder") }
-    static var chatInboxUnreadBanner: String { t("chat_inbox_unread_banner") }
+    static func chatInboxUnreadBanner(_ a1: CVarArg) -> String {
+        String(format: t("chat_inbox_unread_banner"), a1)
+    }
     static var chatInputHint: String { t("chat_input_hint") }
     static var chatJustNow: String { t("chat_just_now") }
     static var chatListingSoldLabel: String { t("chat_listing_sold_label") }
@@ -322,7 +334,9 @@ enum L10n {
         String(format: t("chat_meeting_you_checked_in_at"), a1)
     }
     static var chatMessageOrderCancelledByBuyer: String { t("chat_message_order_cancelled_by_buyer") }
-    static var chatMinsAgo: String { t("chat_mins_ago") }
+    static func chatMinsAgo(_ a1: CVarArg) -> String {
+        String(format: t("chat_mins_ago"), a1)
+    }
     static var chatOfferAccept: String { t("chat_offer_accept") }
     static var chatOfferAccepted: String { t("chat_offer_accepted") }
     static var chatOfferAcceptedInChat: String { t("chat_offer_accepted_in_chat") }
@@ -333,7 +347,9 @@ enum L10n {
     static var chatOfferDecline: String { t("chat_offer_decline") }
     static var chatOfferDialogHelper: String { t("chat_offer_dialog_helper") }
     static var chatOfferDialogHint: String { t("chat_offer_dialog_hint") }
-    static var chatOfferDialogListedPrice: String { t("chat_offer_dialog_listed_price") }
+    static func chatOfferDialogListedPrice(_ a1: CVarArg) -> String {
+        String(format: t("chat_offer_dialog_listed_price"), a1)
+    }
     static var chatOfferDialogPlaceholder: String { t("chat_offer_dialog_placeholder") }
     static var chatOfferDialogSubmit: String { t("chat_offer_dialog_submit") }
     static var chatOfferDialogTitle: String { t("chat_offer_dialog_title") }
@@ -355,7 +371,9 @@ enum L10n {
     static func chatOfferPolicyLast(_ a1: CVarArg) -> String {
         String(format: t("chat_offer_policy_last"), a1)
     }
-    static var chatOfferPolicyProgress: String { t("chat_offer_policy_progress") }
+    static func chatOfferPolicyProgress(_ a1: CVarArg, _ a2: CVarArg) -> String {
+        String(format: t("chat_offer_policy_progress"), a1, a2)
+    }
     static var chatOfferSending: String { t("chat_offer_sending") }
     static var chatOfferStatusAccepted: String { t("chat_offer_status_accepted") }
     static var chatOfferStatusCancelled: String { t("chat_offer_status_cancelled") }
@@ -500,7 +518,9 @@ enum L10n {
         String(format: t("chat_ship_flow_total_hint"), a1)
     }
     static var chatTitle: String { t("chat_title") }
-    static var chatUnreadMessagesCd: String { t("chat_unread_messages_cd") }
+    static func chatUnreadMessagesCd(_ a1: CVarArg) -> String {
+        String(format: t("chat_unread_messages_cd"), a1)
+    }
     static var checkoutAddress: String { t("checkout_address") }
     static var checkoutAddressLabel: String { t("checkout_address_label") }
     static var checkoutAwaitingGateway: String { t("checkout_awaiting_gateway") }
@@ -709,7 +729,9 @@ enum L10n {
     static var editProfileStyleLabel: String { t("edit_profile_style_label") }
     static var editProfileStyleSearchPlaceholder: String { t("edit_profile_style_search_placeholder") }
     static var editProfileStyleSectionSubtitle: String { t("edit_profile_style_section_subtitle") }
-    static var editProfileStyleSelectedCount: String { t("edit_profile_style_selected_count") }
+    static func editProfileStyleSelectedCount(_ a1: CVarArg) -> String {
+        String(format: t("edit_profile_style_selected_count"), a1)
+    }
     static var editProfileTitle: String { t("edit_profile_title") }
     static var editProfileUnitSt: String { t("edit_profile_unit_st") }
     static var editProfileUploadError: String { t("edit_profile_upload_error") }
@@ -949,7 +971,9 @@ enum L10n {
     static func featuredSellersPreviewListingCd(_ a1: CVarArg) -> String {
         String(format: t("featured_sellers_preview_listing_cd"), a1)
     }
-    static var featuredSellersRatingValue: String { t("featured_sellers_rating_value") }
+    static func featuredSellersRatingValue(_ a1: CVarArg) -> String {
+        String(format: t("featured_sellers_rating_value"), a1)
+    }
     static func featuredSellersStatFollowers(_ a1: CVarArg) -> String {
         String(format: t("featured_sellers_stat_followers"), a1)
     }
@@ -1013,6 +1037,10 @@ enum L10n {
     static var guestTopbarSignInCd: String { t("guest_topbar_sign_in_cd") }
     static var homeBrandFooterSub: String { t("home_brand_footer_sub") }
     static var homeBrandMarketplace: String { t("home_brand_marketplace") }
+    static var homeDeliveringComingSoonBody: String { t("home_delivering_coming_soon_body") }
+    static var homeDeliveringComingSoonTitle: String { t("home_delivering_coming_soon_title") }
+    static var homeDeliveringListIntro: String { t("home_delivering_list_intro") }
+    static var homeDeliveringScreenTitle: String { t("home_delivering_screen_title") }
     static var homeEditedByFashBadge: String { t("home_edited_by_fash_badge") }
     static var homeEditorialListSubtitle: String { t("home_editorial_list_subtitle") }
     static var homeEditorialListTitle: String { t("home_editorial_list_title") }
@@ -1141,7 +1169,9 @@ enum L10n {
         String(format: t("listing_badge_saved_count"), a1)
     }
     static var listingCardA11ySellerRole: String { t("listing_card_a11y_seller_role") }
-    static var listingCardPhotoStackA11y: String { t("listing_card_photo_stack_a11y") }
+    static func listingCardPhotoStackA11y(_ a1: CVarArg) -> String {
+        String(format: t("listing_card_photo_stack_a11y"), a1)
+    }
     static var listingCommitmentBadge: String { t("listing_commitment_badge") }
     static var listingCommitmentBody: String { t("listing_commitment_body") }
     static var listingCommitmentTitle: String { t("listing_commitment_title") }
@@ -1156,6 +1186,7 @@ enum L10n {
     static var listingStatusRejected: String { t("listing_status_rejected") }
     static var listingStatusReserved: String { t("listing_status_reserved") }
     static var listingStatusSold: String { t("listing_status_sold") }
+    static var loginApiNetworkError: String { t("login_api_network_error") }
     static var loginContinueWithoutAccount: String { t("login_continue_without_account") }
     static var loginEmailIconCd: String { t("login_email_icon_cd") }
     static var loginEmailInvalid: String { t("login_email_invalid") }
@@ -1173,6 +1204,10 @@ enum L10n {
     }
     static var loginGoogleNetworkError: String { t("login_google_network_error") }
     static var loginGoogleNotConfigured: String { t("login_google_not_configured") }
+    static var loginGooglePlayServicesError: String { t("login_google_play_services_error") }
+    static func loginGooglePlayServicesErrorDetail(_ a1: CVarArg) -> String {
+        String(format: t("login_google_play_services_error_detail"), a1)
+    }
     static var loginGoogleSuccess: String { t("login_google_success") }
     static var loginHeroCd: String { t("login_hero_cd") }
     static func loginHeroPagerCd(_ a1: CVarArg, _ a2: CVarArg) -> String {
@@ -2039,11 +2074,13 @@ enum L10n {
     static var profilePreviewSlotEmptyLabel: String { t("profile_preview_slot_empty_label") }
     static var profileProducts: String { t("profile_products") }
     static var profileQuickActionsTitle: String { t("profile_quick_actions_title") }
-    static func profileRatingFormat(_ a1: CVarArg) -> String {
-        String(format: t("profile_rating_format"), a1)
+    static func profileRatingFormat(_ a1: CVarArg, _ a2: CVarArg) -> String {
+        String(format: t("profile_rating_format"), a1, a2)
     }
     static var profileRatingNoneSeller: String { t("profile_rating_none_seller") }
-    static var profileRatingScoreOnly: String { t("profile_rating_score_only") }
+    static func profileRatingScoreOnly(_ a1: CVarArg) -> String {
+        String(format: t("profile_rating_score_only"), a1)
+    }
     static func profileReputationPoints(_ a1: CVarArg) -> String {
         String(format: t("profile_reputation_points"), a1)
     }
@@ -2051,7 +2088,9 @@ enum L10n {
     static var profileSellerFollowCtaHint: String { t("profile_seller_follow_cta_hint") }
     static var profileSellerRatingPending: String { t("profile_seller_rating_pending") }
     static var profileSellerRatingPendingHint: String { t("profile_seller_rating_pending_hint") }
-    static var profileSellerTrustReviewsCount: String { t("profile_seller_trust_reviews_count") }
+    static func profileSellerTrustReviewsCount(_ a1: CVarArg) -> String {
+        String(format: t("profile_seller_trust_reviews_count"), a1)
+    }
     static var profileSellerTrustSubtitleScoreOnly: String { t("profile_seller_trust_subtitle_score_only") }
     static var profileSetupChooseName: String { t("profile_setup_choose_name") }
     static var profileSetupComplete: String { t("profile_setup_complete") }
@@ -2077,7 +2116,9 @@ enum L10n {
         String(format: t("profile_setup_size_recommendation_alternate"), a1)
     }
     static var profileSetupSizeRecommendationApply: String { t("profile_setup_size_recommendation_apply") }
-    static var profileSetupSizeRecommendationBannerBoth: String { t("profile_setup_size_recommendation_banner_both") }
+    static func profileSetupSizeRecommendationBannerBoth(_ a1: CVarArg, _ a2: CVarArg, _ a3: CVarArg) -> String {
+        String(format: t("profile_setup_size_recommendation_banner_both"), a1, a2, a3)
+    }
     static func profileSetupSizeRecommendationBannerHeight(_ a1: CVarArg, _ a2: CVarArg) -> String {
         String(format: t("profile_setup_size_recommendation_banner_height"), a1, a2)
     }
@@ -2107,27 +2148,27 @@ enum L10n {
     static var profileShareShopSubtitle: String { t("profile_share_shop_subtitle") }
     static var profileShareShopTitle: String { t("profile_share_shop_title") }
     static var profileShippingAddresses: String { t("profile_shipping_addresses") }
-    static func profileSizingRefChest(_ a1: CVarArg) -> String {
-        String(format: t("profile_sizing_ref_chest"), a1)
+    static func profileSizingRefChest(_ a1: CVarArg, _ a2: CVarArg) -> String {
+        String(format: t("profile_sizing_ref_chest"), a1, a2)
     }
     static var profileSizingRefCompletedOnly: String { t("profile_sizing_ref_completed_only") }
     static var profileSizingRefEdit: String { t("profile_sizing_ref_edit") }
     static var profileSizingRefEmptyHint: String { t("profile_sizing_ref_empty_hint") }
-    static func profileSizingRefHem(_ a1: CVarArg) -> String {
-        String(format: t("profile_sizing_ref_hem"), a1)
+    static func profileSizingRefHem(_ a1: CVarArg, _ a2: CVarArg) -> String {
+        String(format: t("profile_sizing_ref_hem"), a1, a2)
     }
-    static func profileSizingRefLength(_ a1: CVarArg) -> String {
-        String(format: t("profile_sizing_ref_length"), a1)
+    static func profileSizingRefLength(_ a1: CVarArg, _ a2: CVarArg) -> String {
+        String(format: t("profile_sizing_ref_length"), a1, a2)
     }
     static var profileSizingRefSeparator: String { t("profile_sizing_ref_separator") }
-    static func profileSizingRefShoulders(_ a1: CVarArg) -> String {
-        String(format: t("profile_sizing_ref_shoulders"), a1)
+    static func profileSizingRefShoulders(_ a1: CVarArg, _ a2: CVarArg) -> String {
+        String(format: t("profile_sizing_ref_shoulders"), a1, a2)
     }
     static func profileSizingRefSize(_ a1: CVarArg) -> String {
         String(format: t("profile_sizing_ref_size"), a1)
     }
-    static func profileSizingRefSleeve(_ a1: CVarArg) -> String {
-        String(format: t("profile_sizing_ref_sleeve"), a1)
+    static func profileSizingRefSleeve(_ a1: CVarArg, _ a2: CVarArg) -> String {
+        String(format: t("profile_sizing_ref_sleeve"), a1, a2)
     }
     static var profileSizingRefSubtitle: String { t("profile_sizing_ref_subtitle") }
     static var profileSizingRefTitle: String { t("profile_sizing_ref_title") }
@@ -2231,11 +2272,15 @@ enum L10n {
     static var setupGateSignOut: String { t("setup_gate_sign_out") }
     static var share: String { t("share") }
     static var shareListingSubject: String { t("share_listing_subject") }
-    static var shareListingText: String { t("share_listing_text") }
+    static func shareListingText(_ a1: CVarArg, _ a2: CVarArg, _ a3: CVarArg) -> String {
+        String(format: t("share_listing_text"), a1, a2, a3)
+    }
     static func shareProfileSubject(_ a1: CVarArg) -> String {
         String(format: t("share_profile_subject"), a1)
     }
-    static var shareProfileText: String { t("share_profile_text") }
+    static func shareProfileText(_ a1: CVarArg, _ a2: CVarArg, _ a3: CVarArg) -> String {
+        String(format: t("share_profile_text"), a1, a2, a3)
+    }
     static var shippingAddressRowUntitled: String { t("shipping_address_row_untitled") }
     static var splashFooterGenZ: String { t("splash_footer_gen_z") }
     static var splashLogoCd: String { t("splash_logo_cd") }

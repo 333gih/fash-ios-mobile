@@ -27,22 +27,24 @@ def env_dir() -> Path:
 
 
 def android_strings_vi() -> Path | None:
+    android = android_root()
+    if android:
+        live = android / "app/src/main/res/values/strings.xml"
+        if live.is_file():
+            return live
     vendored = ROOT / "vendor" / "android-res" / "values" / "strings.xml"
     if vendored.is_file():
         return vendored
-    android = android_root()
-    if not android:
-        return None
-    p = android / "app/src/main/res/values/strings.xml"
-    return p if p.is_file() else None
+    return None
 
 
 def android_strings_en() -> Path | None:
+    android = android_root()
+    if android:
+        live = android / "app/src/main/res/values-en/strings.xml"
+        if live.is_file():
+            return live
     vendored = ROOT / "vendor" / "android-res" / "values-en" / "strings.xml"
     if vendored.is_file():
         return vendored
-    android = android_root()
-    if not android:
-        return None
-    p = android / "app/src/main/res/values-en/strings.xml"
-    return p if p.is_file() else None
+    return None

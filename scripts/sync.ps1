@@ -20,8 +20,23 @@ if (-not $python) {
     Write-Error "Python 3 not found. Install from https://www.python.org/downloads/"
 }
 
-Write-Host "Syncing strings and build config..."
-& $python (Join-Path $Root "scripts\android_strings_to_ios.py")
+Write-Host "Syncing from fash-android-mobile (Android = source of truth for labels)..."
+
+$androidRoot = $env:FASH_ANDROID_ROOT
+if (-not $androidRoot) {
+    $sibling = Join-Path (Split-Path $Root -Parent) "fash-android-mobile"
+    if (Test-Path $sibling) {
+        $androidRoot = $sibling
+        $env:FASH_ANDROID_ROOT = $androidRoot
+    }
+}
+if ($androidRoot) {
+    Write-Host "  Android root: $androidRoot"
+    & $python (Join-Path $Root "scripts\sync_from_android.py")
+} else {
+    Write-Host "  No FASH_ANDROID_ROOT — regenerating from vendor/android-res only"
+    & $python (Join-Path $Root "scripts\android_strings_to_ios.py")
+}
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 & $python (Join-Path $Root "scripts\env_to_xcconfig.py")

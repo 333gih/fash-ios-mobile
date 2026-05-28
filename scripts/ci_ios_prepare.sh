@@ -7,8 +7,15 @@ cd "$ROOT"
 
 SCHEME="${1:?usage: ci_ios_prepare.sh <Fash-Dev|Fash-Prod>}"
 
-echo "==> Validate localization"
-python3 scripts/validate_strings.py
+echo "==> Sync i18n from Android (source of truth)"
+if [[ -n "${FASH_ANDROID_ROOT:-}" ]] || [[ -d "../fash-android-mobile" ]]; then
+  python3 scripts/sync_from_android.py
+else
+  echo "    (no sibling checkout — using committed vendor/android-res)"
+  python3 scripts/android_strings_to_ios.py
+  python3 scripts/validate_strings.py
+  python3 scripts/validate_l10n_swift.py
+fi
 
 echo "==> Validate Swift syntax"
 python3 scripts/validate_swift_syntax.py

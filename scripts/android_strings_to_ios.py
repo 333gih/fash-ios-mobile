@@ -32,11 +32,27 @@ def parse_strings_xml(path: Path) -> dict[str, str]:
         value = value.replace("&gt;", ">")
         value = value.replace("&quot;", '"')
         value = value.replace("&#39;", "'")
-        # Android %1$s -> iOS %@
-        value = re.sub(r"%(\d+)\$[sd]", r"%@", value)
-        value = value.replace("%%", "%")
+        value = android_to_ios_format(value)
         entries[name] = value
     return entries
+
+
+def android_to_ios_format(value: str) -> str:
+    """Convert Android format placeholders to iOS Localizable.strings style."""
+    escaped = value.replace("%%", "\x00ESCAPED_PERCENT\x00")
+    escaped = re.sub(r"%(\d+)\$s", r"%\1$@", escaped)
+    escaped = escaped.replace("%s", "%@")
+    # Keep %d, %1$d, %1$.0f — valid in iOS String(format:)
+    return escaped.replace("\x00ESCAPED_PERCENT\x00", "%%")
+
+
+def format_arg_count(sample: str) -> int:
+    """Count format arguments for Swift String(format:) wrapper generation."""
+    s = sample.replace("%%", "")
+    positional = [int(m.group(1)) for m in re.finditer(r"%(\d+)\$", s)]
+    if positional:
+        return max(positional)
+    return len(re.findall(r"%[@df]|%\.\d+f", s))
 
 
 def escape_strings_value(value: str) -> str:
@@ -77,9 +93,8 @@ def generate_l10n(vi: dict[str, str], en: dict[str, str]) -> str:
     ]
     for key in keys:
         ident = swift_ident(key)
-        # detect format args
         sample = vi.get(key) or en.get(key) or ""
-        arg_count = sample.count("%@")
+        arg_count = format_arg_count(sample)
         if arg_count == 0:
             lines.append(f"    static var {ident}: String {{ t(\"{key}\") }}")
         elif arg_count == 1:
@@ -89,6 +104,10 @@ def generate_l10n(vi: dict[str, str], en: dict[str, str]) -> str:
         elif arg_count == 2:
             lines.append(f"    static func {ident}(_ a1: CVarArg, _ a2: CVarArg) -> String {{")
             lines.append(f"        String(format: t(\"{key}\"), a1, a2)")
+            lines.append("    }")
+        elif arg_count == 3:
+            lines.append(f"    static func {ident}(_ a1: CVarArg, _ a2: CVarArg, _ a3: CVarArg) -> String {{")
+            lines.append(f"        String(format: t(\"{key}\"), a1, a2, a3)")
             lines.append("    }")
         else:
             lines.append(f"    static var {ident}: String {{ t(\"{key}\") }}")
