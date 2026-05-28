@@ -75,6 +75,8 @@ final class AppRouter {
     var sellerPackageCheckoutId: String?
     var chatOrderDetailOverlayId: String?
     var orderIdPendingCancel: String?
+    /// Set when closing listing preview sheet before opening product detail.
+    var pendingListingIdAfterPreview: String?
 
     var hasBlockingOverlay: Bool {
         selectedListingId != nil

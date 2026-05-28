@@ -62,9 +62,7 @@ final class SellerProfileViewModel {
         }
         guard case .success = result else { return }
         isFollowing.toggle()
-        var updated = prof
-        updated.isFollowing = isFollowing
-        updated = ProfileInfo(
+        profile = ProfileInfo(
             userId: prof.userId,
             username: prof.username,
             displayName: prof.displayName,
@@ -76,7 +74,6 @@ final class SellerProfileViewModel {
             bio: prof.bio,
             isFollowing: isFollowing
         )
-        profile = updated
     }
 
     func canFollow(deps: AppDependencies) -> Bool {

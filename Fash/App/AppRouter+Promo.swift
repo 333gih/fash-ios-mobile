@@ -2,8 +2,6 @@ import Foundation
 import UIKit
 
 extension AppRouter {
-    var pendingListingIdAfterPreview: String?
-
     func handlePromoSlideClick(_ slide: FashPromoSlideDef) {
         let navType = slide.navigationType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         let payload = slide.navigationPayload.trimmingCharacters(in: .whitespacesAndNewlines)
