@@ -1,4 +1,4 @@
-"""Resolve paths for iOS repo; Android sibling is optional (maintainer sync only)."""
+"""Resolve paths for iOS repo; vendor/android-res is the committed string source for CI/build."""
 from __future__ import annotations
 
 import os
@@ -7,9 +7,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 IOS_ENV = ROOT / "env"
 ANDROID_SIBLING = ROOT.parent / "fash-android-mobile"
+VENDOR_VI = ROOT / "vendor" / "android-res" / "values" / "strings.xml"
+VENDOR_EN = ROOT / "vendor" / "android-res" / "values-en" / "strings.xml"
 
 
 def android_root() -> Path | None:
+    """Live Android checkout — maintainer sync only (sync_from_android.py)."""
     override = os.environ.get("FASH_ANDROID_ROOT", "").strip()
     if override:
         p = Path(override).expanduser().resolve()
@@ -27,24 +30,23 @@ def env_dir() -> Path:
 
 
 def android_strings_vi() -> Path | None:
+    """Committed vendor first — CI and archive use this, not a sibling checkout."""
+    if VENDOR_VI.is_file():
+        return VENDOR_VI
     android = android_root()
     if android:
         live = android / "app/src/main/res/values/strings.xml"
         if live.is_file():
             return live
-    vendored = ROOT / "vendor" / "android-res" / "values" / "strings.xml"
-    if vendored.is_file():
-        return vendored
     return None
 
 
 def android_strings_en() -> Path | None:
+    if VENDOR_EN.is_file():
+        return VENDOR_EN
     android = android_root()
     if android:
         live = android / "app/src/main/res/values-en/strings.xml"
         if live.is_file():
             return live
-    vendored = ROOT / "vendor" / "android-res" / "values-en" / "strings.xml"
-    if vendored.is_file():
-        return vendored
     return None

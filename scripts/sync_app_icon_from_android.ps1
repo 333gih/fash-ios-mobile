@@ -1,4 +1,4 @@
-# Sync iOS AppIcon.appiconset from fash-android-mobile launcher assets (no separate iOS generator).
+# Sync iOS AppIcon.appiconset from Android mipmap-xxxhdpi/ic_launcher.png (exact asset, no redesign).
 # Usage: .\scripts\sync_app_icon_from_android.ps1 [-AndroidRoot D:\Project\fash\fash-android-mobile]
 param(
     [string]$AndroidRoot = (Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) "fash-android-mobile")
@@ -8,16 +8,16 @@ $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $outDir = Join-Path $Root "Fash\Assets.xcassets\AppIcon.appiconset"
 
-$candidates = @(
-    (Join-Path $AndroidRoot "app\src\main\res\drawable\ic_launcher_brand.png"),
-    (Join-Path $AndroidRoot "app\src\main\res\drawable-xxhdpi\ic_launcher_brand.png"),
-    (Join-Path $AndroidRoot "app\src\main\res\drawable-xxxhdpi\ic_launcher_brand.png"),
+# Source of truth: mipmap-xxxhdpi/ic_launcher.png (same pixels Android ships on device).
+$mipmapCandidates = @(
     (Join-Path $AndroidRoot "app\src\main\res\mipmap-xxxhdpi\ic_launcher.png"),
-    (Join-Path $AndroidRoot "app\src\main\res\mipmap-xxhdpi\ic_launcher.png")
+    (Join-Path $AndroidRoot "app\src\main\res\mipmap-xxhdpi\ic_launcher.png"),
+    (Join-Path $AndroidRoot "app\src\main\res\mipmap-xhdpi\ic_launcher.png"),
+    (Join-Path $AndroidRoot "app\src\main\res\mipmap-hdpi\ic_launcher.png")
 )
 
 $srcPath = $null
-foreach ($c in $candidates) {
+foreach ($c in $mipmapCandidates) {
     if (Test-Path $c) { $srcPath = $c; break }
 }
 
@@ -32,9 +32,8 @@ if (-not $srcPath) {
 
 if (-not (Test-Path $srcPath)) {
     Write-Error @"
-Android launcher icon not found. Expected one of:
-  drawable/ic_launcher_brand.png
-  mipmap-xxxhdpi/ic_launcher.png
+Android launcher icon not found. Expected:
+  app\src\main\res\mipmap-xxxhdpi\ic_launcher.png
 Run in fash-android-mobile: powershell -File tools/generate_launcher_mipmap.ps1
 "@
 }
@@ -42,11 +41,9 @@ Run in fash-android-mobile: powershell -File tools/generate_launcher_mipmap.ps1
 if (-not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir -Force | Out-Null }
 
 Add-Type -AssemblyName System.Drawing
-# Matches Android ic_launcher_background (#F04170). App Store requires opaque RGB (no alpha).
-$bgColor = [System.Drawing.Color]::FromArgb(255, 0xF0, 0x41, 0x70)
 
 function Save-AppIconPng {
-    param([string]$name, [int]$px, [System.Drawing.Image]$src)
+    param([string]$name, [int]$px, [System.Drawing.Image]$src, [System.Drawing.Color]$bgColor)
     $canvas = New-Object System.Drawing.Bitmap $px, $px, ([System.Drawing.Imaging.PixelFormat]::Format24bppRgb)
     $g = [System.Drawing.Graphics]::FromImage($canvas)
     $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
@@ -66,18 +63,20 @@ function Save-AppIconPng {
 }
 
 $src = [System.Drawing.Image]::FromFile($srcPath)
+$bgColor = $src.GetPixel([Math]::Min(1, $src.Width - 1), [Math]::Min(1, $src.Height - 1))
 Write-Host ('Source: ' + $srcPath + ' (' + $src.Width + 'x' + $src.Height + ')')
-Write-Host "Writing AppIcon.appiconset:"
-Save-AppIconPng "AppIcon-40.png" 40 $src
-Save-AppIconPng "AppIcon-58.png" 58 $src
-Save-AppIconPng "AppIcon-60.png" 60 $src
-Save-AppIconPng "AppIcon-80.png" 80 $src
-Save-AppIconPng "AppIcon-87.png" 87 $src
-Save-AppIconPng "AppIcon-120.png" 120 $src
-Save-AppIconPng "AppIcon-152.png" 152 $src
-Save-AppIconPng "AppIcon-167.png" 167 $src
-Save-AppIconPng "AppIcon-180.png" 180 $src
-Save-AppIconPng "AppIcon-1024.png" 1024 $src
+Write-Host ('Pad color sampled from source: #' + $bgColor.R.ToString('X2') + $bgColor.G.ToString('X2') + $bgColor.B.ToString('X2'))
+Write-Host "Writing AppIcon.appiconset (aspect-fit resize, no redraw):"
+Save-AppIconPng "AppIcon-40.png" 40 $src $bgColor
+Save-AppIconPng "AppIcon-58.png" 58 $src $bgColor
+Save-AppIconPng "AppIcon-60.png" 60 $src $bgColor
+Save-AppIconPng "AppIcon-80.png" 80 $src $bgColor
+Save-AppIconPng "AppIcon-87.png" 87 $src $bgColor
+Save-AppIconPng "AppIcon-120.png" 120 $src $bgColor
+Save-AppIconPng "AppIcon-152.png" 152 $src $bgColor
+Save-AppIconPng "AppIcon-167.png" 167 $src $bgColor
+Save-AppIconPng "AppIcon-180.png" 180 $src $bgColor
+Save-AppIconPng "AppIcon-1024.png" 1024 $src $bgColor
 $src.Dispose()
 
 $contents = @'

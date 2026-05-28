@@ -14,14 +14,14 @@ SIMULATOR="${2:-${SIMULATOR_OS}}"
 die() { echo "error: $*" >&2; exit 1; }
 
 if [[ "$(uname -s)" != "Darwin" ]]; then
-  die "iOS builds require macOS + Xcode. On Windows run: .\\scripts\\sync.ps1 (optional) then build on a Mac."
+  die "iOS builds require macOS + Xcode. On Windows: sync locally, commit, then build on Mac."
 fi
 
 command -v xcodegen >/dev/null 2>&1 || die "XcodeGen not found — brew install xcodegen"
 command -v xcodebuild >/dev/null 2>&1 || die "xcodebuild not found — install Xcode from the App Store"
 
 echo "==> Validate (same as CI)"
-python3 scripts/validate_strings.py
+bash scripts/ci_validate_i18n.sh
 python3 scripts/validate_swift_syntax.py
 
 echo "==> Generate Xcode project"

@@ -1,7 +1,13 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-  Sync i18n strings and build config from Android (Windows/macOS/Linux).
+  LOCAL ONLY — sync from fash-android-mobile into this repo, then COMMIT before push/CI.
+
+  GitHub Actions does NOT run this. TestFlight uses committed:
+    vendor/android-res/
+    Fash/Resources/*.lproj/
+    Fash/Localization/L10n.swift
+    Fash/Assets.xcassets/AppIcon.appiconset/
 #>
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
@@ -20,8 +26,6 @@ if (-not $python) {
     Write-Error "Python 3 not found. Install from https://www.python.org/downloads/"
 }
 
-Write-Host "Syncing from fash-android-mobile (Android = source of truth for labels)..."
-
 $androidRoot = $env:FASH_ANDROID_ROOT
 if (-not $androidRoot) {
     $sibling = Join-Path (Split-Path $Root -Parent) "fash-android-mobile"
@@ -30,23 +34,21 @@ if (-not $androidRoot) {
         $env:FASH_ANDROID_ROOT = $androidRoot
     }
 }
-if ($androidRoot) {
-    Write-Host "  Android root: $androidRoot"
-    & $python (Join-Path $Root "scripts\sync_from_android.py")
-} else {
-    Write-Host "  No FASH_ANDROID_ROOT — regenerating from vendor/android-res only"
-    & $python (Join-Path $Root "scripts\android_strings_to_ios.py")
+if (-not $androidRoot) {
+    Write-Error "Set FASH_ANDROID_ROOT to fash-android-mobile (required for local sync)."
 }
+
+Write-Host "LOCAL sync from: $androidRoot"
+& $python (Join-Path $Root "scripts\sync_from_android.py")
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 & $python (Join-Path $Root "scripts\env_to_xcconfig.py")
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host ""
-Write-Host "Done. Generated:"
-Write-Host "  - Fash/Resources/*.lproj/Localizable.strings"
-Write-Host "  - Fash/Localization/L10n.swift"
-Write-Host "  - Config/*.xcconfig"
-Write-Host "  - Fash/config/generated/GeneratedBuildConfig_*.swift"
-Write-Host ""
-Write-Host "Next (Mac only): ./scripts/build_mac.sh"
+Write-Host "Done. COMMIT before push (CI uses committed files only):"
+Write-Host "  vendor/android-res/"
+Write-Host "  Fash/Resources/*.lproj/Localizable.strings"
+Write-Host "  Fash/Localization/L10n.swift"
+Write-Host "  Fash/Assets.xcassets/AppIcon.appiconset/*.png"
+Write-Host "  Config/*.xcconfig (if env changed)"

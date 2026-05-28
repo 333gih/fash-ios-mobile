@@ -26,37 +26,25 @@ extension L10n {
     }
 
     private static func resolve(_ key: String, tag: String) -> String? {
-        guard let bundle = L10nStringTableStore.shared.bundle(for: tag) else { return nil }
-
-        let fromBundleAPI = bundle.localizedString(forKey: key, value: key, table: stringsTable)
-        if isUsable(fromBundleAPI, for: key) { return fromBundleAPI }
-
-        return L10nStringTableStore.shared.directLookup(key, tag: tag)
+        L10nStringTableStore.shared.lookup(key, tag: tag)
     }
 }
 
-/// Resolves `vi.lproj` / `en.lproj` inside the app bundle (supports root and `Resources/` layouts).
+/// Loads `Localizable.strings` from the app bundle (vi/en `.lproj`).
+/// Supports layouts: `vi.lproj/`, `Resources/vi.lproj/`, and nested search under `Bundle.main`.
 private final class L10nStringTableStore {
     static let shared = L10nStringTableStore()
 
-    private let stringsTable = "Localizable"
-    private var bundleCache: [String: Bundle] = [:]
+    private let stringsFileName = "Localizable"
     private var tableCache: [String: [String: String]] = [:]
+    private var stringsPathCache: [String: String] = [:]
 
     func clear() {
-        bundleCache.removeAll()
         tableCache.removeAll()
+        stringsPathCache.removeAll()
     }
 
-    func bundle(for tag: String) -> Bundle? {
-        if let cached = bundleCache[tag] { return cached }
-        guard let url = discoverLprojURL(for: tag) else { return nil }
-        guard let bundle = Bundle(url: url) else { return nil }
-        bundleCache[tag] = bundle
-        return bundle
-    }
-
-    func directLookup(_ key: String, tag: String) -> String? {
+    func lookup(_ key: String, tag: String) -> String? {
         table(for: tag)[key]
     }
 
@@ -66,8 +54,7 @@ private final class L10nStringTableStore {
         var loaded: [String: String] = [:]
         defer { tableCache[tag] = loaded }
 
-        guard let bundle = bundle(for: tag),
-              let path = bundle.path(forResource: stringsTable, ofType: "strings"),
+        guard let path = stringsPath(for: tag),
               let dict = NSDictionary(contentsOfFile: path) as? [String: String] else {
             return loaded
         }
@@ -75,36 +62,37 @@ private final class L10nStringTableStore {
         return loaded
     }
 
-    private func discoverLprojURL(for tag: String) -> URL? {
+    private func stringsPath(for tag: String) -> String? {
+        if let cached = stringsPathCache[tag] { return cached }
+        let path = discoverLocalizableStringsPath(for: tag)
+        if let path { stringsPathCache[tag] = path }
+        return path
+    }
+
+    private func discoverLocalizableStringsPath(for tag: String) -> String? {
         let main = Bundle.main
-        let directCandidates = [
-            main.url(forResource: tag, withExtension: "lproj"),
-            main.url(forResource: tag, withExtension: "lproj", subdirectory: "Resources"),
+        let lprojName = "\(tag).lproj"
+        let relativeDirs = [
+            lprojName,
+            "Resources/\(lprojName)",
         ]
-        for url in directCandidates.compactMap({ $0 }) {
-            var isDir: ObjCBool = false
-            if FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir), isDir.boolValue {
-                return url
+        for dir in relativeDirs {
+            if let path = main.path(forResource: stringsFileName, ofType: "strings", inDirectory: dir) {
+                return path
             }
         }
 
         guard let resourceURL = main.resourceURL else { return nil }
-        return findLprojDirectory(named: "\(tag).lproj", under: resourceURL)
-    }
-
-    private func findLprojDirectory(named dirName: String, under root: URL) -> URL? {
+        let suffix = "\(lprojName)/\(stringsFileName).strings"
         guard let enumerator = FileManager.default.enumerator(
-            at: root,
-            includingPropertiesForKeys: [.isDirectoryKey],
+            at: resourceURL,
+            includingPropertiesForKeys: [.isRegularFileKey],
             options: [.skipsHiddenFiles]
         ) else { return nil }
 
         for case let url as URL in enumerator {
-            guard url.lastPathComponent == dirName else { continue }
-            var isDir: ObjCBool = false
-            if FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir), isDir.boolValue {
-                return url
-            }
+            guard url.path.hasSuffix(suffix) else { continue }
+            return url.path
         }
         return nil
     }

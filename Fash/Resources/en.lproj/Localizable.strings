@@ -1018,7 +1018,6 @@
 "listing_status_rejected" = "Rejected";
 "listing_status_reserved" = "Reserved";
 "listing_status_sold" = "Sold";
-"login_api_network_error" = "Cannot resolve the API hostname (DNS). Postman on your PC may still work while the emulator or device has broken DNS. Turn off Private DNS, cold boot the emulator, or try another network.";
 "login_continue_without_account" = "Continue without signing in";
 "login_email_icon_cd" = "Email";
 "login_email_invalid" = "Please enter a valid email address.";
@@ -1034,8 +1033,6 @@
 "login_google_error_code" = "Google sign-in failed (code %1$d — %2$@).";
 "login_google_network_error" = "Cannot reach Google's servers (network or DNS). Check your connection, turn off VPN or Private DNS, or try another Wi‑Fi or mobile data.";
 "login_google_not_configured" = "Add GOOGLE_WEB_CLIENT_ID (OAuth Web client) to env, plus an Android OAuth client with your package name and SHA-1 in Google Cloud.";
-"login_google_play_services_error" = "Google Play Services is unavailable on this device. Update Play Services or use an emulator image with the Play Store icon.";
-"login_google_play_services_error_detail" = "Google Play Services: %1$@";
 "login_google_success" = "Signed in with Google.";
 "login_hero_cd" = "Fashion illustration";
 "login_hero_pager_cd" = "Fashion illustration, slide %1$d of %2$d";

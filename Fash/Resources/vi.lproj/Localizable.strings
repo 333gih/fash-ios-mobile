@@ -1018,7 +1018,6 @@
 "listing_status_rejected" = "Từ chối";
 "listing_status_reserved" = "Giữ chỗ";
 "listing_status_sold" = "Đã bán";
-"login_api_network_error" = "Không phân giải được tên miền API (DNS). Postman trên PC có thể vẫn chạy — emulator/thiết bị cần Internet ổn định. Tắt Private DNS, cold boot emulator, hoặc thử mạng khác.";
 "login_continue_without_account" = "Tiếp tục xem không đăng nhập";
 "login_email_icon_cd" = "Email";
 "login_email_invalid" = "Vui lòng nhập email hợp lệ.";
@@ -1034,8 +1033,6 @@
 "login_google_error_code" = "Đăng nhập Google thất bại (mã %1$d — %2$@).";
 "login_google_network_error" = "Không kết nối được máy chủ Google (mạng hoặc DNS). Kiểm tra Internet, tắt VPN hoặc DNS riêng (Private DNS), thử Wi‑Fi khác hoặc mạng dữ liệu.";
 "login_google_not_configured" = "Thêm GOOGLE_WEB_CLIENT_ID (OAuth Web client) vào env — và Android client + SHA-1 trên Google Cloud.";
-"login_google_play_services_error" = "Google Play Services không khả dụng trên thiết bị này. Cập nhật Play Services hoặc dùng image emulator có biểu tượng Play Store.";
-"login_google_play_services_error_detail" = "Google Play Services: %1$@";
 "login_google_success" = "Đăng nhập Google thành công.";
 "login_hero_cd" = "Minh họa thời trang";
 "login_hero_pager_cd" = "Minh họa thời trang, ảnh %1$d / %2$d";

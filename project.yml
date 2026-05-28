@@ -60,8 +60,10 @@ targets:
           # Localizable.strings / fonts only — not Assets.xcassets (must compile via actool).
           - "Resources/**"
     resources:
-      # Keep Resources/ tree (vi.lproj, en.lproj, Fonts) — L10n resolves both root and Resources/ paths.
-      - path: Fash/Resources
+      # Ship each .lproj at app-bundle root (XcodeGen folder copy). Blanket Fash/Resources/ nested paths and broke L10n.
+      - path: Fash/Resources/vi.lproj
+      - path: Fash/Resources/en.lproj
+      - path: Fash/Resources/Fonts
         excludes:
           - "**/*.md"
     dependencies:

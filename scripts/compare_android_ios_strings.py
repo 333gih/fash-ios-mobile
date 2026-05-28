@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare Android strings.xml vs iOS Localizable.strings key parity."""
+"""CI: vendor/android-res must match committed iOS Localizable.strings (vi + en)."""
 from __future__ import annotations
 
 import re
@@ -7,8 +7,11 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "scripts"))
-from fash_paths import android_strings_en, android_strings_vi  # noqa: E402
+
+VENDOR_VI = ROOT / "vendor/android-res/values/strings.xml"
+VENDOR_EN = ROOT / "vendor/android-res/values-en/strings.xml"
+IOS_VI = ROOT / "Fash/Resources/vi.lproj/Localizable.strings"
+IOS_EN = ROOT / "Fash/Resources/en.lproj/Localizable.strings"
 
 XML_KEY = re.compile(r'<string\s+name="([^"]+)"')
 STR_KEY = re.compile(r'"([^"]+)"\s*=')
@@ -23,33 +26,49 @@ def strings_keys(path: Path) -> set[str]:
 
 
 def main() -> int:
-    vi_xml = android_strings_vi()
-    en_xml = android_strings_en()
-    vi_ios = ROOT / "Fash/Resources/vi.lproj/Localizable.strings"
-    en_ios = ROOT / "Fash/Resources/en.lproj/Localizable.strings"
-
-    if not vi_xml or not vi_xml.is_file():
-        print("Missing Android vi strings source", file=sys.stderr)
+    missing = [p for p in (VENDOR_VI, VENDOR_EN, IOS_VI, IOS_EN) if not p.is_file()]
+    if missing:
+        for p in missing:
+            print(f"MISSING: {p.relative_to(ROOT)}", file=sys.stderr)
         return 1
 
-    vi_a = xml_keys(vi_xml)
-    en_a = xml_keys(en_xml) if en_xml and en_xml.is_file() else set()
-    vi_i = strings_keys(vi_ios) if vi_ios.is_file() else set()
-    en_i = strings_keys(en_ios) if en_ios.is_file() else set()
+    vendor_vi = xml_keys(VENDOR_VI)
+    vendor_en = xml_keys(VENDOR_EN)
+    ios_vi = strings_keys(IOS_VI)
+    ios_en = strings_keys(IOS_EN)
 
-    print(f"Android vi: {len(vi_a)} keys")
-    print(f"Android en: {len(en_a)} keys")
-    print(f"iOS vi:     {len(vi_i)} keys")
-    print(f"iOS en:     {len(en_i)} keys")
-    print(f"Android en missing vs vi: {len(vi_a - en_a)}")
-    print(f"iOS-only (not in Android vi): {len(vi_i - vi_a)}")
-    if vi_i - vi_a:
-        for k in sorted(vi_i - vi_a)[:20]:
-            print(f"  ios-only: {k}")
-    print(f"Android-only (not in iOS vi): {len(vi_a - vi_i)}")
-    if vi_a - vi_i:
-        for k in sorted(vi_a - vi_i)[:20]:
-            print(f"  android-only: {k}")
+    print(f"vendor vi: {len(vendor_vi)} keys")
+    print(f"vendor en: {len(vendor_en)} keys")
+    print(f"iOS vi:    {len(ios_vi)} keys")
+    print(f"iOS en:    {len(ios_en)} keys")
+
+    failed = False
+    if vendor_vi != vendor_en:
+        print(
+            f"ERROR: vendor vi/en key mismatch ({len(vendor_vi)} vs {len(vendor_en)})",
+            file=sys.stderr,
+        )
+        failed = True
+    if vendor_vi != ios_vi:
+        only_v = sorted(vendor_vi - ios_vi)[:8]
+        only_i = sorted(ios_vi - vendor_vi)[:8]
+        print(f"ERROR: vendor vi != iOS vi (vendor-only={only_v} ios-only={only_i})", file=sys.stderr)
+        failed = True
+    if vendor_en != ios_en:
+        only_v = sorted(vendor_en - ios_en)[:8]
+        only_i = sorted(ios_en - vendor_en)[:8]
+        print(f"ERROR: vendor en != iOS en (vendor-only={only_v} ios-only={only_i})", file=sys.stderr)
+        failed = True
+
+    if failed:
+        print(
+            "Fix locally: FASH_ANDROID_ROOT=../fash-android-mobile python3 scripts/sync_from_android.py",
+            file=sys.stderr,
+        )
+        print("Then commit vendor/ + Fash/Resources/ + Fash/Localization/L10n.swift", file=sys.stderr)
+        return 1
+
+    print("OK: committed vendor == iOS Localizable.strings (vi/en)")
     return 0
 
 

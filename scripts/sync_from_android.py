@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
 """
-Ensure fash-android-mobile has complete vi/en strings, then vendor + generate iOS L10n.
+LOCAL MAINTAINER ONLY — not used on GitHub Actions / TestFlight.
 
-Android is the single source of truth for labels. iOS never hand-edits Localizable.strings.
+Pulls strings + icon from fash-android-mobile, writes into THIS repo:
+  vendor/android-res/
+  Fash/Resources/*.lproj/Localizable.strings
+  Fash/Localization/L10n.swift
+  Fash/Assets.xcassets/AppIcon.appiconset/
 
-Usage (from fash-ios-mobile):
+Commit those files; CI only validates what is already committed.
+
+Usage:
   FASH_ANDROID_ROOT=../fash-android-mobile python3 scripts/sync_from_android.py
 """
 from __future__ import annotations
@@ -163,6 +169,24 @@ def run_py(script: str) -> None:
         raise SystemExit(rc)
 
 
+def sync_app_icon(android: Path) -> None:
+    sh = SCRIPTS / "sync_app_icon_from_android.sh"
+    ps1 = SCRIPTS / "sync_app_icon_from_android.ps1"
+    env = {**dict(**__import__("os").environ), "FASH_ANDROID_ROOT": str(android)}
+    if sys.platform == "win32" and ps1.is_file():
+        rc = subprocess.call(
+            ["powershell", "-NoProfile", "-File", str(ps1), "-AndroidRoot", str(android)],
+            cwd=ROOT,
+        )
+    elif sh.is_file():
+        rc = subprocess.call(["bash", str(sh)], cwd=ROOT, env=env)
+    else:
+        print("warning: no icon sync script found", file=sys.stderr)
+        return
+    if rc != 0:
+        raise SystemExit(rc)
+
+
 def main() -> int:
     android = android_root()
     if not android:
@@ -177,10 +201,12 @@ def main() -> int:
     run_py("android_strings_to_ios.py")
     run_py("validate_strings.py")
     run_py("validate_l10n_swift.py")
+    run_py("compare_android_ios_strings.py")
+    sync_app_icon(android)
 
     vi = xml_keys(ROOT / "vendor/android-res/values/strings.xml")
     en = xml_keys(ROOT / "vendor/android-res/values-en/strings.xml")
-    print(f"Done: Android vi={len(vi)} en={len(en)} -> iOS Localizable.strings + L10n.swift")
+    print(f"Done: vendor vi={len(vi)} en={len(en)} — commit vendor/, Resources/, L10n.swift, AppIcon PNGs")
     if vi - en:
         print(f"warning: {len(vi - en)} keys still missing in values-en", file=sys.stderr)
     return 0

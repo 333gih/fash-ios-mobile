@@ -112,11 +112,8 @@
     <string name="login_google_error">Đăng nhập Google không thành công.</string>
     <string name="login_google_error_code">Đăng nhập Google thất bại (mã %1$d — %2$s).</string>
     <string name="login_google_network_error">Không kết nối được máy chủ Google (mạng hoặc DNS). Kiểm tra Internet, tắt VPN hoặc DNS riêng (Private DNS), thử Wi‑Fi khác hoặc mạng dữ liệu.</string>
-    <string name="login_api_network_error">Không phân giải được tên miền API (DNS). Postman trên PC có thể vẫn chạy — emulator/thiết bị cần Internet ổn định. Tắt Private DNS, cold boot emulator, hoặc thử mạng khác.</string>
     <string name="login_google_developer_error">Cấu hình đăng nhập Google chưa đúng: kiểm tra GOOGLE_WEB_CLIENT_ID (OAuth Web), Android OAuth client (đúng package và SHA‑1 debug/release) trên Google Cloud Console.</string>
     <string name="login_google_not_configured">Thêm GOOGLE_WEB_CLIENT_ID (OAuth Web client) vào env — và Android client + SHA-1 trên Google Cloud.</string>
-    <string name="login_google_play_services_error">Google Play Services không khả dụng trên thiết bị này. Cập nhật Play Services hoặc dùng image emulator có biểu tượng Play Store.</string>
-    <string name="login_google_play_services_error_detail">Google Play Services: %1$s</string>
     <string name="login_social_signing_in">Đang đăng nhập…</string>
 
     <string name="login_legal_prefix">Bằng cách tiếp tục, bạn đồng ý với\u00A0</string>
