@@ -20,6 +20,19 @@ enum FashFirebaseMessagingService {
             AppDependencies.shared.requestInboxUnreadRefresh()
         }
 
+        if AppPromoPushParsing.isAppPromoPushData(data),
+           let campaign = AppPromoPushParsing.parseAppPromoFromPushData(
+               data: data,
+               fallbackTitle: data["title"],
+               fallbackBody: data["body"]
+           ) {
+            AppDependencies.shared.uiDialog.title = campaign.title
+            AppDependencies.shared.uiDialog.message = campaign.body
+            AppDependencies.shared.uiDialog.isPresented = true
+            AppDependencies.shared.requestInboxUnreadRefresh()
+            return
+        }
+
         let title = data["title"]?.trimmingCharacters(in: .whitespacesAndNewlines)
         let body = data["body"]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if let title, !title.isEmpty {
@@ -35,6 +48,18 @@ enum FashFirebaseMessagingService {
     private static func routeFromPushData(_ data: [String: String]) {
         Task { @MainActor in
             let deps = AppDependencies.shared
+            if AppPromoPushParsing.isAppPromoPushData(data),
+               let campaign = AppPromoPushParsing.parseAppPromoFromPushData(
+                   data: data,
+                   fallbackTitle: data["title"],
+                   fallbackBody: data["body"]
+               ) {
+                deps.uiDialog.title = campaign.title
+                deps.uiDialog.message = campaign.body
+                deps.uiDialog.isPresented = true
+                deps.requestInboxUnreadRefresh()
+                return
+            }
             if let deepLink = data["deep_link"]?.trimmingCharacters(in: .whitespacesAndNewlines), !deepLink.isEmpty,
                let url = URL(string: deepLink) {
                 if let router = deps.navigationRouter {

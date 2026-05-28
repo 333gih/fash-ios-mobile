@@ -17,6 +17,18 @@ enum RealtimeNotificationRouter {
         case .inboxRefresh:
             deps.requestInboxUnreadRefresh()
         case .notificationShow(let title, let body, let data, let userNotificationId):
+            if AppPromoPushParsing.isAppPromoPushData(data),
+               let campaign = AppPromoPushParsing.parseAppPromoFromPushData(
+                   data: data ?? [:],
+                   fallbackTitle: title,
+                   fallbackBody: body
+               ) {
+                deps.uiDialog.title = campaign.title
+                deps.uiDialog.message = campaign.body
+                deps.uiDialog.isPresented = true
+                deps.requestInboxUnreadRefresh()
+                return
+            }
             guard !title.trimmingCharacters(in: .whitespaces).isEmpty else { return }
             deps.showInAppNotification(FashInAppNotificationSession(
                 title: title,
@@ -27,6 +39,13 @@ enum RealtimeNotificationRouter {
             deps.requestInboxUnreadRefresh()
             if isChatPushData(data) {
                 Task { await chatVM.silentRefresh(deps: deps) }
+            }
+        case .appPromoShow(let campaignJson):
+            if let campaign = AppPromoPushParsing.parseRealtimeCampaignJson(campaignJson) {
+                deps.uiDialog.title = campaign.title
+                deps.uiDialog.message = campaign.body
+                deps.uiDialog.isPresented = true
+                deps.requestInboxUnreadRefresh()
             }
         case .feedRefresh:
             Task {

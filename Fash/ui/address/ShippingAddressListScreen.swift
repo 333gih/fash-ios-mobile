@@ -11,8 +11,19 @@ struct ShippingAddressListScreen: View {
     @State private var selectedId: String?
 
     var body: some View {
-        OverlayScreenHost(title: L10n.addressListTitle, onDismiss: onDismiss) {
+        OverlayScreenHost(title: orderId != nil ? L10n.addressListTitle : L10n.profileShippingAddresses, onDismiss: onDismiss) {
             VStack(spacing: 0) {
+                VStack(alignment: .leading, spacing: spacing.spacing2) {
+                    Text(L10n.addressListHeader)
+                        .font(FashTypography.headlineSmall)
+                        .foregroundStyle(FashColors.textPrimary)
+                    Text(orderId != nil ? L10n.addressListSubtitle : L10n.addressListSubtitleManage)
+                        .font(FashTypography.bodyMedium)
+                        .foregroundStyle(FashColors.textSecondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, spacing.spacing4)
+                .padding(.top, spacing.spacing4)
                 if addressVM.loading && addressVM.addresses.isEmpty {
                     ProgressView().padding()
                 } else if addressVM.addresses.isEmpty {
@@ -54,16 +65,23 @@ struct ShippingAddressListScreen: View {
         }
         .task {
             await addressVM.refresh(deps: deps)
-            if let oid = orderId {
-                selectedId = addressVM.initialSelectionIdForOrder(deps: deps, orderId: oid)
-            } else {
-                selectedId = addressVM.addresses.first(where: \.isDefault)?.id ?? addressVM.addresses.first?.id
-            }
+            selectInitialAddress()
+        }
+        .onChange(of: addressVM.addresses.map(\.id).joined(separator: ",")) { _, _ in
+            selectInitialAddress()
         }
     }
 
     private var confirmTitle: String {
         orderId != nil ? L10n.addressConfirm : L10n.addressDone
+    }
+
+    private func selectInitialAddress() {
+        if let oid = orderId {
+            selectedId = addressVM.initialSelectionIdForOrder(deps: deps, orderId: oid)
+        } else {
+            selectedId = addressVM.addresses.first(where: \.isDefault)?.id ?? addressVM.addresses.first?.id
+        }
     }
 
     private func confirmSelection() {

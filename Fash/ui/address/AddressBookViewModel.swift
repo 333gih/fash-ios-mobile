@@ -12,10 +12,14 @@ final class AddressBookViewModel {
     var wards: [CommonAddressDto] = []
     var eventMessage: String?
 
+    private func userId(from deps: AppDependencies) -> String? {
+        deps.authSessionStore.read()?.userId?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .nilIfEmpty
+    }
+
     func refresh(deps: AppDependencies) async {
-        guard let rawUserId = deps.authSessionStore.read()?.userId else { return }
-        let uid = rawUserId.trimmingCharacters(in: .whitespaces)
-        guard !uid.isEmpty else { return }
+        guard let uid = userId(from: deps) else { return }
         addresses = deps.addressLocalStore.listAddresses(uid)
         loading = true
         defer { loading = false }
@@ -87,7 +91,7 @@ final class AddressBookViewModel {
     }
 
     func setDefaultAddress(deps: AppDependencies, addressId: String) async {
-        guard let uid = deps.authSessionStore.read()?.userId else { return }
+        guard let uid = userId(from: deps) else { return }
         switch await deps.userShippingAddressRepository.setDefaultShippingAddress(addressId: addressId) {
         case .success:
             if case .success(let api) = await deps.userShippingAddressRepository.listShippingAddresses() {
@@ -120,7 +124,7 @@ final class AddressBookViewModel {
         wardName: String,
         isDefault: Bool
     ) async -> Result<String, Error> {
-        guard let uid = deps.authSessionStore.read()?.userId else {
+        guard let uid = userId(from: deps) else {
             return .failure(NSError(domain: "AddressBook", code: 0, userInfo: [NSLocalizedDescriptionKey: "not signed in"]))
         }
         let list = deps.addressLocalStore.listAddresses(uid)
@@ -162,7 +166,7 @@ final class AddressBookViewModel {
     }
 
     func initialSelectionIdForOrder(deps: AppDependencies, orderId: String) -> String? {
-        guard let uid = deps.authSessionStore.read()?.userId else { return nil }
+        guard let uid = userId(from: deps) else { return nil }
         let oid = orderId.trimmingCharacters(in: .whitespaces).lowercased()
         if let mapped = deps.addressLocalStore.getOrderAddressId(uid, orderId: oid) { return mapped }
         let list = deps.addressLocalStore.listAddresses(uid)
@@ -170,7 +174,7 @@ final class AddressBookViewModel {
     }
 
     func setOrderShipping(deps: AppDependencies, orderId: String, address: ShippingAddress) async {
-        guard let uid = deps.authSessionStore.read()?.userId else { return }
+        guard let uid = userId(from: deps) else { return }
         deps.addressLocalStore.setOrderAddressId(uid, orderId: orderId, addressId: address.id)
         await refresh(deps: deps)
     }

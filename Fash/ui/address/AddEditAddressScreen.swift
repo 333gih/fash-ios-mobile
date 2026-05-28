@@ -15,12 +15,9 @@ struct AddEditAddressScreen: View {
     @State private var line2 = ""
     @State private var postalCode = ""
     @State private var isDefault = false
-    @State private var provinceId: String?
-    @State private var provinceName = ""
-    @State private var districtId: String?
-    @State private var districtName = ""
-    @State private var wardId: String?
-    @State private var wardName = ""
+    @State private var selectedProvince: CommonAddressDto?
+    @State private var selectedDistrict: CommonAddressDto?
+    @State private var selectedWard: CommonAddressDto?
     @State private var isSaving = false
     @State private var errorMessage: String?
 
@@ -36,17 +33,24 @@ struct AddEditAddressScreen: View {
                     field(L10n.addressFieldLabelOptional, text: $label, hint: L10n.addressFieldLabelHint)
                     field(L10n.addressFieldFullName, text: $recipientName, hint: L10n.addressFieldFullNameHint)
                     field(L10n.addressFieldPhone, text: $phone, hint: L10n.addressFieldPhoneHint)
+                    field(L10n.addressCountryFixed, text: .constant(L10n.addressCountryVn), hint: "")
+                        .disabled(true)
+                        .opacity(0.75)
                     field(L10n.addressFieldLine1, text: $line1, hint: L10n.addressFieldLine1Hint)
                     field(L10n.addressFieldLine2Optional, text: $line2, hint: L10n.addressFieldLine2Hint)
-                    field(L10n.addressFieldPostalOptional, text: $postalCode, hint: L10n.addressFieldPostalHint)
+                    field(
+                        L10n.addressFieldPostalOptional,
+                        text: Binding(
+                            get: { postalCode },
+                            set: { postalCode = String($0.filter(\.isNumber).prefix(12)) }
+                        ),
+                        hint: L10n.addressFieldPostalHint
+                    )
                     VnAddressDropdowns(
                         addressVM: addressVM,
-                        provinceId: $provinceId,
-                        provinceName: $provinceName,
-                        districtId: $districtId,
-                        districtName: $districtName,
-                        wardId: $wardId,
-                        wardName: $wardName
+                        selectedProvince: $selectedProvince,
+                        selectedDistrict: $selectedDistrict,
+                        selectedWard: $selectedWard
                     )
                     Toggle(L10n.addressDefaultToggle, isOn: $isDefault)
                     if let errorMessage {
@@ -61,7 +65,10 @@ struct AddEditAddressScreen: View {
                 .padding(spacing.spacing4)
             }
         }
-        .task { await addressVM.loadProvincesIfNeeded(deps: deps) }
+        .task {
+            await addressVM.loadProvincesIfNeeded(deps: deps)
+            addressVM.resetAdministrativeDropdowns()
+        }
     }
 
     private func field(_ title: String, text: Binding<String>, hint: String) -> some View {
@@ -85,16 +92,16 @@ struct AddEditAddressScreen: View {
             phone: phone,
             line1: line1,
             line2: line2,
-            city: provinceName,
-            region: "",
+            city: selectedProvince?.name ?? "",
+            region: selectedDistrict?.name ?? "",
             postalCode: postalCode,
             countryCode: "VN",
-            provinceId: provinceId,
-            provinceName: provinceName,
-            districtId: districtId,
-            districtName: districtName,
-            wardId: wardId,
-            wardName: wardName,
+            provinceId: selectedProvince?.id,
+            provinceName: selectedProvince?.name ?? "",
+            districtId: selectedDistrict?.id,
+            districtName: selectedDistrict?.name ?? "",
+            wardId: selectedWard?.id,
+            wardName: selectedWard?.name ?? "",
             isDefault: isDefault
         )
         switch result {
@@ -110,9 +117,9 @@ struct AddEditAddressScreen: View {
         guard !recipientName.trimmingCharacters(in: .whitespaces).isEmpty,
               !phone.trimmingCharacters(in: .whitespaces).isEmpty,
               !line1.trimmingCharacters(in: .whitespaces).isEmpty,
-              provinceId != nil,
-              districtId != nil,
-              wardId != nil else {
+              selectedProvince != nil,
+              selectedDistrict != nil,
+              selectedWard != nil else {
             errorMessage = L10n.addressValidationRequired
             return false
         }
