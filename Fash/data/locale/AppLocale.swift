@@ -41,6 +41,7 @@ final class AppLocaleController {
         guard normalized != currentTag else { return }
         currentTag = normalized
         UserDefaults.standard.set(normalized, forKey: Self.prefsKey)
+        L10n.invalidateCache()
         revision += 1
         onLocaleChanged?(normalized)
     }
