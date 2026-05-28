@@ -18,6 +18,12 @@ fi
 echo "App bundle: ${APP_DIR}"
 find "${APP_DIR}" -name 'Localizable.strings' -print | sort
 
+lookup_plist_key() {
+  local file="$1"
+  local key="$2"
+  /usr/libexec/PlistBuddy -c "Print :${key}" "${file}" 2>/dev/null || true
+}
+
 missing=0
 for tag in vi en; do
   found="$(find "${APP_DIR}" -path "*/${tag}.lproj/Localizable.strings" -print -quit)"
@@ -26,15 +32,23 @@ for tag in vi en; do
     missing=1
     continue
   fi
-  echo "OK: ${found}"
-  if ! grep -q "\"${SAMPLE_KEY}\"" "${found}"; then
-    echo "::error::${found} does not contain key ${SAMPLE_KEY}"
+  size="$(wc -c < "${found}" | tr -d ' ')"
+  if [[ "${size}" -lt 100 ]]; then
+    echo "::error::${found} is too small (${size} bytes)"
     missing=1
     continue
   fi
-  value="$(grep "\"${SAMPLE_KEY}\"" "${found}" | head -1)"
-  echo "  sample ${SAMPLE_KEY}: ${value}"
-  if [[ "${value}" == *" = \"${SAMPLE_KEY}\";"* ]] || [[ "${value}" == *"= ${SAMPLE_KEY};"* ]]; then
+  echo "OK: ${found} (${size} bytes)"
+
+  # Xcode ships .strings as binary plist in Release — grep on source text fails; use PlistBuddy.
+  value="$(lookup_plist_key "${found}" "${SAMPLE_KEY}")"
+  if [[ -z "${value}" ]]; then
+    echo "::error::${found} has no PlistBuddy key '${SAMPLE_KEY}' (binary strings table empty or wrong)"
+    missing=1
+    continue
+  fi
+  echo "  sample ${SAMPLE_KEY} (${tag}): ${value}"
+  if [[ "${value}" == "${SAMPLE_KEY}" ]]; then
     echo "::error::${tag} ${SAMPLE_KEY} is untranslated (value equals key)"
     missing=1
   fi
@@ -45,4 +59,4 @@ if [[ "${missing}" -ne 0 ]]; then
   exit 1
 fi
 
-echo "OK: vi/en Localizable.strings are packaged in the IPA"
+echo "OK: vi/en Localizable.strings are packaged in the IPA with translated ${SAMPLE_KEY}"
