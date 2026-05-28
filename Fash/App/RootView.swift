@@ -81,6 +81,17 @@ struct RootView: View {
                 onVisitSellerShop: { username in
                     router.selectedListingId = nil
                     router.sellerShopUsername = username
+                },
+                onNavigateToExplore: { cat, brand, tag, query in
+                    router.selectedListingId = nil
+                    router.pendingExploreProfileFilter = ExploreProfileFilterRequest(
+                        categoryId: cat,
+                        brandId: brand,
+                        aestheticTagId: tag,
+                        searchQuery: query,
+                        countryId: nil,
+                        countryIso2: nil
+                    )
                 }
             )
         case .seller(let user):

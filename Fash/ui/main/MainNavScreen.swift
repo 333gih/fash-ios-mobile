@@ -33,6 +33,8 @@ struct MainNavScreen: View {
         .fullScreenCover(isPresented: $router.showNotificationScreen) {
             NotificationScreen(
                 userRepository: deps.userRepository,
+                promoSlides: homeVM.promoSlides.map(FashPromoSlideDef.fromAdvertising),
+                onPromoSlideClick: { slide, _ in router.handlePromoSlideClick(slide) },
                 detailId: router.notificationDetailId,
                 onDismiss: {
                     router.showNotificationScreen = false
@@ -412,6 +414,7 @@ struct MainNavScreen: View {
     }
 
     private func openExploreOverlay(expandSearch: Bool) {
+        deps.listingPreview.close(deps: deps)
         router.exploreSearchExpanded = expandSearch
         router.showExploreOverlay = true
     }
@@ -432,6 +435,7 @@ struct MainNavScreen: View {
             countryId: countryId,
             countryIso2: countryIso2
         )
+        Task { await applyPendingExploreProfileFilter() }
     }
 
     private func applyPendingExploreProfileFilter() async {

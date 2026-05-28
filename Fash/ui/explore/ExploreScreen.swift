@@ -7,6 +7,8 @@ struct ExploreScreen: View {
     @Bindable var router: AppRouter
     var isGuestMode: Bool
     var hideInlineSearch: Bool = false
+    /// When true (Explore overlay), open PDP directly instead of bottom preview sheet.
+    var openListingAsFullScreen: Bool = false
     var promoSlides: [FashPromoSlideDef] = []
     var onPromoSlideClick: (FashPromoSlideDef, Int) -> Void = { _, _ in }
     var onFeaturedSellerClick: (UserSearchResult) -> Void = { _ in }
@@ -20,6 +22,16 @@ struct ExploreScreen: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
+            if viewModel.isLoading && viewModel.items.isEmpty && viewModel.primarySection == .listings && !viewModel.isSearchModeActive {
+                FashColors.screen
+                    .overlay {
+                        ProgressView()
+                            .tint(FashColors.brandPrimary)
+                            .scaleEffect(1.1)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .zIndex(2)
+            }
             VStack(spacing: 0) {
                 if !hideInlineSearch {
                     searchRow
@@ -167,6 +179,7 @@ struct ExploreScreen: View {
                             item: item,
                             index: index,
                             isGuestMode: isGuestMode,
+                            openListingAsFullScreen: openListingAsFullScreen,
                             viewModel: viewModel,
                             router: router,
                             deps: deps,
@@ -268,6 +281,7 @@ private struct ExploreListingCell: View {
     let item: ListingFeedItem
     let index: Int
     let isGuestMode: Bool
+    var openListingAsFullScreen: Bool = false
     @Bindable var viewModel: ExploreViewModel
     @Bindable var router: AppRouter
     let deps: AppDependencies
@@ -280,13 +294,17 @@ private struct ExploreListingCell: View {
             item: item,
             onTap: {
                 viewModel.reportListingClick(item: item, position: index, deps: deps)
-                deps.presentListingPreview(
-                    item: item,
-                    router: router,
-                    publicBrowse: isGuestMode,
-                    surface: "explore",
-                    position: index
-                )
+                if openListingAsFullScreen {
+                    deps.presentListingDetail(listingId: item.id, router: router)
+                } else {
+                    deps.presentListingPreview(
+                        item: item,
+                        router: router,
+                        publicBrowse: isGuestMode,
+                        surface: "explore",
+                        position: index
+                    )
+                }
             },
             imageAspectRatio: ListingMasonryGrid.staggerAspectRatio(for: item.id),
             showQuickActions: true,

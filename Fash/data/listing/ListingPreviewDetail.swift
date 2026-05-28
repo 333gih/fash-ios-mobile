@@ -10,7 +10,9 @@ struct ListingPreviewDetail: Hashable {
     let condition: String?
     let size: String?
     let brand: String?
+    let brandId: String?
     let category: String?
+    let categoryId: String?
     let aestheticTag: String?
     let status: String?
     let likeCount: Int
@@ -47,8 +49,12 @@ struct ListingPreviewDetail: Hashable {
 
         let condition = obj["condition"] as? String
         let size = obj["size"] as? String
-        let brand = (obj["brand"] as? [String: Any])?["name"] as? String ?? obj["brand"] as? String
-        let category = (obj["category"] as? [String: Any])?["name"] as? String ?? obj["category"] as? String
+        let brandObj = obj["brand"] as? [String: Any]
+        let brand = brandObj?["name"] as? String ?? obj["brand"] as? String
+        let brandId = brandObj?["id"] as? String ?? obj["brand_id"] as? String
+        let categoryObj = obj["category"] as? [String: Any]
+        let category = categoryObj?["name"] as? String ?? obj["category"] as? String
+        let categoryId = categoryObj?["id"] as? String ?? obj["category_id"] as? String
 
         var aestheticTag: String?
         if let tags = obj["aesthetic_tags"] as? [[String: Any]], let first = tags.first {
@@ -91,7 +97,9 @@ struct ListingPreviewDetail: Hashable {
             condition: condition,
             size: size,
             brand: brand,
+            brandId: brandId,
             category: category,
+            categoryId: categoryId,
             aestheticTag: aestheticTag,
             status: status,
             likeCount: likeCount,

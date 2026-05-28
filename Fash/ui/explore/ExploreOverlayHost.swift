@@ -19,6 +19,7 @@ struct ExploreOverlayHost: View {
                 router: router,
                 isGuestMode: isGuestMode,
                 hideInlineSearch: true,
+                openListingAsFullScreen: true,
                 promoSlides: promoSlides,
                 onPromoSlideClick: { slide, index in router.handlePromoSlideClick(slide) },
                 onFeaturedSellerClick: { seller in
@@ -35,18 +36,8 @@ struct ExploreOverlayHost: View {
             )
         }
         .background(FashColors.screen)
-        .sheet(isPresented: Binding(
-            get: { deps.listingPreview.state != nil },
-            set: { presenting in
-                if !presenting { deps.listingPreview.close(deps: deps) }
-            }
-        )) {
-            ListingPreviewSheetHost(
-                listingPreview: deps.listingPreview,
-                router: router,
-                isGuestMode: isGuestMode,
-                onRequestLogin: { onRequestSignIn?(L10n.guestLoginReasonBuy) }
-            )
+        .onAppear {
+            deps.listingPreview.close(deps: deps)
         }
         .onChange(of: deps.listingPreview.state?.id) { _, _ in
             if let pending = router.pendingListingIdAfterPreview, deps.listingPreview.state == nil {

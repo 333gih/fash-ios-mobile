@@ -113,7 +113,8 @@ struct LoginLegalFooter: View {
 
     private var legalAttributedString: AttributedString {
         let tag = AppLocale.currentTag
-        var result = AttributedString(L10n.loginLegalPrefix)
+        let nbsp = "\u{00A0}"
+        var result = AttributedString(L10n.loginLegalPrefix.replacingOccurrences(of: "\\u00A0", with: nbsp))
         result.foregroundColor = UIColor(FashColors.textSecondary)
 
         var terms = AttributedString(L10n.loginTerms)
@@ -121,7 +122,7 @@ struct LoginLegalFooter: View {
         terms.foregroundColor = UIColor(FashColors.brandPrimary)
         terms.underlineStyle = .single
 
-        var mid = AttributedString(L10n.loginLegalAnd)
+        var mid = AttributedString(L10n.loginLegalAnd.replacingOccurrences(of: "\\u00A0", with: nbsp))
         mid.foregroundColor = UIColor(FashColors.textSecondary)
 
         var privacy = AttributedString(L10n.loginPrivacy)

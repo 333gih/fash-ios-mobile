@@ -37,6 +37,7 @@ final class AppDependencies {
     let dealRepository: DealRepository
     let userShippingAddressRepository: UserShippingAddressRepository
     let corePaymentRepository: CorePaymentRepository
+    let uxSurveyRepository: UxSurveyRepository
     let browseSessionStore: BrowseSessionStore
     let feedEventReporter: FeedEventReporter
     let uxTabTracker: UxTabTracker
@@ -101,6 +102,11 @@ final class AppDependencies {
         userShippingAddressRepository = UserShippingAddressRepository(client: securedClient)
         corePaymentRepository = CorePaymentRepository(client: securedClient)
         browseSessionStore = BrowseSessionStore()
+        uxSurveyRepository = UxSurveyRepository(
+            securedClient: securedClient,
+            guestBrowse: { [browseSessionStore] in browseSessionStore.isGuestBrowseActive },
+            guestKey: { [browseSessionStore] in browseSessionStore.guestSessionId() }
+        )
         feedEventReporter = FeedEventReporter(
             repository: recommendationRepository,
             sessionIdProvider: { [authSessionStore, browseSessionStore] in

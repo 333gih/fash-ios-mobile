@@ -12,7 +12,7 @@ enum NotificationGroups {
     static let displayOrder = [system, commerce, social, recommendation, ads, reengagement, realtime]
 
     /// Compact row height so all 7 groups fit on one screen.
-    static let rowHeight: CGFloat = 64
+    static let rowHeight: CGFloat = 56
 }
 
 func notificationGroupTitle(_ group: String) -> String {

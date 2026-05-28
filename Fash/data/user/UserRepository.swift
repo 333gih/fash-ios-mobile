@@ -57,6 +57,53 @@ final class UserRepository {
         return .failure(URLError(.cannotConnectToHost))
     }
 
+    func updateProfile(_ patch: ProfilePatch) async -> Result<Void, Error> {
+        var json: [String: Any] = [:]
+        if let v = patch.displayName { json["display_name"] = v }
+        if let v = patch.username { json["username"] = v }
+        if let v = patch.bio { json["bio"] = v }
+        if let v = patch.avatarUrl { json["avatar_url"] = v }
+        if let v = patch.coverImageUrl {
+            json["cover_image_url"] = v
+            json["cover_url"] = v
+        }
+        if let tags = patch.aestheticTags {
+            json["aesthetic_tags"] = tags.map { ["id": $0.id, "name": $0.name] }
+        }
+        if let v = patch.gender { json["gender"] = v }
+        if let v = patch.referenceSize { json["reference_size"] = v }
+        if let v = patch.referenceMeasurementUnit {
+            json["reference_measurement_unit"] = v.trimmingCharacters(in: .whitespaces).lowercased()
+        }
+        if let v = patch.referenceMeasurementChest { json["reference_measurement_chest"] = v }
+        if let v = patch.referenceMeasurementHem { json["reference_measurement_hem"] = v }
+        if let v = patch.referenceMeasurementLength { json["reference_measurement_length"] = v }
+        if let v = patch.referenceMeasurementShoulders { json["reference_measurement_shoulders"] = v }
+        if let v = patch.referenceMeasurementSleeveLength { json["reference_measurement_sleeve_length"] = v }
+        guard !json.isEmpty else { return .success(()) }
+        guard let body = try? JSONSerialization.data(withJSONObject: json) else {
+            return .failure(URLError(.cannotParseResponse))
+        }
+        let urlString = AppEnvironment.apiPath("api/v1/users/me")
+        guard let url = URL(string: urlString) else { return .failure(URLError(.badURL)) }
+        var req = URLRequest(url: url)
+        req.httpMethod = "PATCH"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = body
+        do {
+            let (data, http) = try await client.data(for: req)
+            guard (200..<300).contains(http.statusCode) else {
+                throw CoreServiceHttpException(
+                    statusCode: http.statusCode,
+                    message: CoreServiceErrors.parseMessage(data: data, statusCode: http.statusCode)
+                )
+            }
+            return .success(())
+        } catch {
+            return .failure(error)
+        }
+    }
+
     func getMeProfile() async -> Result<ProfileInfo, Error> {
         do {
             let data = try await RepositoryHttp.executeCoreGet(relativePath: "api/v1/users/me", client: client)

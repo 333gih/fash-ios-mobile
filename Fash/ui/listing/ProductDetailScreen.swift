@@ -8,8 +8,16 @@ struct ProductDetailScreen: View {
     var onBuyNow: (String) -> Void = { _ in }
     var onChat: (String) -> Void = { _ in }
     var onVisitSellerShop: (String) -> Void = { _ in }
+    var onNavigateToExplore: (
+        _ categoryId: String?,
+        _ brandId: String?,
+        _ aestheticTagId: String?,
+        _ searchQuery: String
+    ) -> Void = { _, _, _, _ in }
 
     @State private var viewModel = ProductDetailViewModel()
+
+    private var buyNowEnabled: Bool { BusinessFlowConfig.c2cBuyNowEnabled }
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -20,7 +28,7 @@ struct ProductDetailScreen: View {
                     } else if let item = viewModel.item {
                         imageGallery
                         titlePriceSection(item)
-                        metaChips(item)
+                        metaChips(item, preview: viewModel.preview)
                         if let description = viewModel.preview?.description ?? Optional(item.descriptionText),
                            !description.isEmpty {
                             VStack(alignment: .leading, spacing: 8) {
@@ -153,25 +161,59 @@ struct ProductDetailScreen: View {
         }
     }
 
-    private func metaChips(_ item: ListingFeedItem) -> some View {
-        let chips: [String] = [
-            ProductConditionFormat.label(for: viewModel.preview?.condition ?? item.condition),
-            viewModel.preview?.size ?? item.size,
-            viewModel.preview?.brand ?? item.brand,
-            viewModel.preview?.category ?? item.categoryName,
-        ].compactMap { $0?.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+    private struct MetaChip: Identifiable {
+        let id: String
+        let label: String
+        let categoryId: String?
+        let brandId: String?
+        let aestheticTagId: String?
+    }
+
+    private func metaChips(_ item: ListingFeedItem, preview: ListingPreviewDetail?) -> some View {
+        var chips: [MetaChip] = []
+        let condition = ProductConditionFormat.label(for: preview?.condition ?? item.condition)
+        if !condition.isEmpty {
+            chips.append(MetaChip(id: "cond", label: condition, categoryId: nil, brandId: nil, aestheticTagId: nil))
+        }
+        if let size = preview?.size ?? item.size, !size.isEmpty {
+            chips.append(MetaChip(id: "size", label: size, categoryId: nil, brandId: nil, aestheticTagId: nil))
+        }
+        if let brand = preview?.brand ?? item.brand, !brand.isEmpty {
+            chips.append(MetaChip(
+                id: "brand",
+                label: brand,
+                categoryId: nil,
+                brandId: preview?.brandId ?? item.brandId,
+                aestheticTagId: nil
+            ))
+        }
+        if let category = preview?.category ?? item.categoryName, !category.isEmpty {
+            chips.append(MetaChip(
+                id: "cat",
+                label: category,
+                categoryId: preview?.categoryId ?? item.categoryId,
+                brandId: nil,
+                aestheticTagId: nil
+            ))
+        }
         return Group {
             if !chips.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
-                        ForEach(chips, id: \.self) { chip in
-                            Text(chip)
-                                .font(FashTypography.labelMedium)
-                                .foregroundStyle(FashColors.textPrimary)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(FashColors.surfaceContainer)
-                                .clipShape(Capsule())
+                        ForEach(chips) { chip in
+                            Button {
+                                onNavigateToExplore(chip.categoryId, chip.brandId, chip.aestheticTagId, chip.label)
+                            } label: {
+                                Text(chip.label)
+                                    .font(FashTypography.labelMedium)
+                                    .foregroundStyle(FashColors.textPrimary)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(FashColors.surfaceContainer)
+                                    .clipShape(Capsule())
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(chip.categoryId == nil && chip.brandId == nil && chip.aestheticTagId == nil)
                         }
                     }
                 }
@@ -211,8 +253,8 @@ struct ProductDetailScreen: View {
 
     private var bottomBar: some View {
         VStack(spacing: 10) {
-            FashPrimaryButton(title: L10n.buyNow) {
-                if let id = viewModel.item?.id { onBuyNow(id) }
+            FashPrimaryButton(title: L10n.buyNow, enabled: buyNowEnabled) {
+                if buyNowEnabled, let id = viewModel.item?.id { onBuyNow(id) }
             }
             Button {
                 Task {

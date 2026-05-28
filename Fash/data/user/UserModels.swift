@@ -51,9 +51,19 @@ struct UserAccessStatus: Equatable {
 
 struct ProfilePatch: Equatable {
     var displayName: String?
+    var username: String?
     var bio: String?
     var avatarUrl: String?
     var coverImageUrl: String?
+    var aestheticTags: [AestheticTagPutItem]?
+    var gender: String?
+    var referenceSize: String?
+    var referenceMeasurementUnit: String?
+    var referenceMeasurementChest: Double?
+    var referenceMeasurementHem: Double?
+    var referenceMeasurementLength: Double?
+    var referenceMeasurementShoulders: Double?
+    var referenceMeasurementSleeveLength: Double?
 }
 
 struct SizingReferenceRequest: Equatable {

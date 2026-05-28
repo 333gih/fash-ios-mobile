@@ -92,6 +92,7 @@ struct FashPromoSliderView: View {
                 if let url = slide.bannerImageUrl, !url.isEmpty {
                     FashAsyncImage(url: FeedImageUrl.resolveListingImageUrl(url), contentMode: .fill)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .clipped()
                     LinearGradient(
                         colors: [
                             Color.black.opacity(0.55),
@@ -138,6 +139,7 @@ struct FashPromoSliderView: View {
         }
         .frame(height: cardHeight)
         .clipShape(shape)
+        .clipped()
         .contentShape(shape)
     }
 

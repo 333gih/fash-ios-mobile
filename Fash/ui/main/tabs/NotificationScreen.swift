@@ -1,7 +1,10 @@
 import SwiftUI
 
 struct NotificationScreen: View {
+    @Environment(\.fashSpacing) private var spacing
     @State private var viewModel: NotificationsViewModel
+    var promoSlides: [FashPromoSlideDef] = []
+    var onPromoSlideClick: (FashPromoSlideDef, Int) -> Void = { _, _ in }
     var detailId: String?
     var onDismiss: () -> Void
     var onOpenOrder: (String) -> Void = { _ in }
@@ -10,6 +13,8 @@ struct NotificationScreen: View {
 
     init(
         userRepository: UserRepository,
+        promoSlides: [FashPromoSlideDef] = [],
+        onPromoSlideClick: @escaping (FashPromoSlideDef, Int) -> Void = { _, _ in },
         detailId: String? = nil,
         onDismiss: @escaping () -> Void,
         onOpenOrder: @escaping (String) -> Void = { _ in },
@@ -17,6 +22,8 @@ struct NotificationScreen: View {
         onOpenChat: @escaping (String) -> Void = { _ in }
     ) {
         _viewModel = State(initialValue: NotificationsViewModel(userRepository: userRepository))
+        self.promoSlides = promoSlides
+        self.onPromoSlideClick = onPromoSlideClick
         self.detailId = detailId
         self.onDismiss = onDismiss
         self.onOpenOrder = onOpenOrder
@@ -24,75 +31,100 @@ struct NotificationScreen: View {
         self.onOpenChat = onOpenChat
     }
 
+    private var showPromoFooter: Bool {
+        !promoSlides.isEmpty && viewModel.selectedGroup == nil && viewModel.selectedDetailId == nil && detailId == nil
+    }
+
     var body: some View {
-        NavigationStack {
-            Group {
-                if let detailId = viewModel.selectedDetailId ?? detailId {
-                    if let item = viewModel.selectedDetailItem ?? viewModel.items.first(where: { $0.id == detailId }) {
-                        NotificationDetailScreen(
-                            item: item,
-                            onDismiss: {
-                                viewModel.closeDetail()
-                                if self.detailId != nil { onDismiss() }
-                            },
-                            onOpenOrder: onOpenOrder,
-                            onOpenListing: onOpenListing,
-                            onOpenChat: onOpenChat
-                        )
+        ZStack(alignment: .bottom) {
+            NavigationStack {
+                Group {
+                    if let detailId = viewModel.selectedDetailId ?? detailId {
+                        detailContent(detailId)
+                    } else if viewModel.selectedGroup == nil {
+                        groupList
                     } else {
-                        ProgressView()
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .task {
-                                await viewModel.refresh()
-                                if let item = viewModel.items.first(where: { $0.id == detailId }) {
-                                    viewModel.openDetail(item)
-                                }
+                        groupDetail
+                    }
+                }
+                .navigationTitle(viewModel.selectedGroup.map(notificationGroupTitle) ?? L10n.notifications)
+                .navigationBarTitleDisplayMode(.large)
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button {
+                            if viewModel.selectedGroup != nil {
+                                viewModel.closeGroup()
+                            } else {
+                                onDismiss()
                             }
-                    }
-                } else if viewModel.selectedGroup == nil {
-                    groupList
-                } else {
-                    groupDetail
-                }
-            }
-            .navigationTitle(viewModel.selectedGroup.map(notificationGroupTitle) ?? L10n.notifications)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        if viewModel.selectedGroup != nil {
-                            viewModel.closeGroup()
-                        } else {
-                            onDismiss()
+                        } label: {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundStyle(FashColors.brandPrimary)
                         }
-                    } label: {
-                        Image(systemName: "chevron.left")
                     }
-                }
-                if viewModel.selectedGroup != nil {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button(L10n.notificationMarkAllRead) {
-                            Task { await viewModel.markAllRead() }
+                    if viewModel.selectedGroup != nil {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button(L10n.notificationMarkAllRead) {
+                                Task { await viewModel.markAllRead() }
+                            }
+                            .disabled(
+                                viewModel.markAllReadBusy ||
+                                !viewModel.canMarkAllReadInSelectedGroup
+                            )
+                            .font(FashTypography.labelLarge.weight(.semibold))
+                            .foregroundStyle(FashColors.brandPrimary)
                         }
-                        .disabled(
-                            viewModel.markAllReadBusy ||
-                            !viewModel.canMarkAllReadInSelectedGroup
-                        )
+                    }
+                }
+                .task {
+                    await viewModel.refresh()
+                    if let detailId, !detailId.isEmpty {
+                        viewModel.openDetail(detailId)
                     }
                 }
             }
-            .task {
-                await viewModel.refresh()
-                if let detailId, !detailId.isEmpty {
-                    viewModel.openDetail(detailId)
+            if showPromoFooter {
+                StickyBottomPromoBar {
+                    FashPromoSliderView(slides: promoSlides, cardHeight: 100, onSlideClick: onPromoSlideClick)
                 }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
+        }
+        .background(FashColors.screen)
+    }
+
+    @ViewBuilder
+    private func detailContent(_ detailId: String) -> some View {
+        if let item = viewModel.selectedDetailItem ?? viewModel.items.first(where: { $0.id == detailId }) {
+            NotificationDetailScreen(
+                item: item,
+                onDismiss: {
+                    viewModel.closeDetail()
+                    if self.detailId != nil { onDismiss() }
+                },
+                onOpenOrder: onOpenOrder,
+                onOpenListing: onOpenListing,
+                onOpenChat: onOpenChat
+            )
+        } else {
+            ProgressView()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .task {
+                    await viewModel.refresh()
+                    if let item = viewModel.items.first(where: { $0.id == detailId }) {
+                        viewModel.openDetail(item)
+                    }
+                }
         }
     }
 
     private var groupList: some View {
-        List {
+        ScrollView {
             if viewModel.isLoading && viewModel.groups.isEmpty {
-                ProgressView().frame(maxWidth: .infinity)
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 48)
             } else if let error = viewModel.loadError, viewModel.groups.isEmpty {
                 FashEmptyStateView(
                     title: viewModel.inboxUnavailable ? L10n.notificationInboxUnavailableTitle : L10n.notificationLoadErrorTitle,
@@ -101,14 +133,21 @@ struct NotificationScreen: View {
                 ) {
                     Task { await viewModel.refresh() }
                 }
+                .padding(.top, 24)
             } else {
-                ForEach(viewModel.groups) { group in
-                    Button {
-                        viewModel.openGroup(group.group)
-                    } label: {
-                        groupRow(group)
+                LazyVStack(spacing: 6) {
+                    ForEach(viewModel.groups) { group in
+                        Button {
+                            viewModel.openGroup(group.group)
+                        } label: {
+                            groupRow(group)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
+                .padding(.horizontal, spacing.editorialStart)
+                .padding(.vertical, 8)
+                .padding(.bottom, showPromoFooter ? FashStickyPromoDockHeight : 16)
             }
         }
         .refreshable { await viewModel.refresh() }
@@ -141,43 +180,52 @@ struct NotificationScreen: View {
                 }
             }
         }
+        .listStyle(.plain)
         .refreshable { await viewModel.refresh() }
     }
 
     @ViewBuilder
     private func groupRow(_ group: NotificationGroupSummaryItem) -> some View {
+        let preview = group.latestBody?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+            ?? group.latestTitle?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+            ?? notificationGroupSubtitle(group.group)
         HStack(spacing: 10) {
             Image(systemName: notificationGroupSystemImage(group.group))
+                .font(.system(size: 20))
                 .foregroundStyle(FashColors.textSecondary)
                 .frame(width: 22)
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 8) {
                     Text(notificationGroupTitle(group.group))
-                        .font(FashTypography.labelLarge)
+                        .font(FashTypography.titleSmall.weight(.semibold))
                         .foregroundStyle(FashColors.textPrimary)
                         .lineLimit(1)
                     if group.unreadCount > 0 {
                         Text("\(min(group.unreadCount, 99))")
-                            .font(FashTypography.labelLarge)
+                            .font(FashTypography.labelSmall.weight(.bold))
+                            .foregroundStyle(FashColors.readableOnBrandPrimary)
                             .padding(.horizontal, 7)
                             .padding(.vertical, 1)
                             .background(FashColors.brandPrimary)
-                            .foregroundStyle(.white)
                             .clipShape(Capsule())
                     }
                     Spacer(minLength: 0)
                 }
-                Text(group.latestBody ?? group.latestTitle ?? notificationGroupSubtitle(group.group))
-                    .font(FashTypography.bodyMedium)
+                Text(preview)
+                    .font(FashTypography.labelSmall)
                     .foregroundStyle(FashColors.textSecondary)
                     .lineLimit(1)
             }
             Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
                 .foregroundStyle(FashColors.textSecondary)
-                .font(.caption)
         }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
         .frame(height: NotificationGroups.rowHeight)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .background(FashColors.surfaceContainerLow)
+        .clipShape(RoundedRectangle(cornerRadius: spacing.radiusCard, style: .continuous))
     }
 
     @ViewBuilder
@@ -204,7 +252,7 @@ struct NotificationScreen: View {
                 AsyncImage(url: url) { phase in
                     switch phase {
                     case .success(let image):
-                        image.resizable().scaledToFill()
+                        image.resizable().aspectRatio(contentMode: .fill)
                     default:
                         Color.gray.opacity(0.15)
                     }
@@ -214,5 +262,12 @@ struct NotificationScreen: View {
             }
         }
         .padding(.vertical, 4)
+    }
+}
+
+private extension String {
+    var nilIfEmpty: String? {
+        let t = trimmingCharacters(in: .whitespacesAndNewlines)
+        return t.isEmpty ? nil : t
     }
 }

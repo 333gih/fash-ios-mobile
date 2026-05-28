@@ -13,9 +13,10 @@ struct FashScreenScaffold<Content: View>: View {
                 if showBack {
                     Button(action: { onBack?() }) {
                         Image(systemName: "chevron.left")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(FashColors.textPrimary)
-                            .frame(width: 48, height: 48)
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(FashColors.brandPrimary)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
                     }
                 }
                 Text(title)

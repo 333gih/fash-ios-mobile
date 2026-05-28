@@ -3,6 +3,10 @@ import UIKit
 
 extension AppRouter {
     func handlePromoSlideClick(_ slide: FashPromoSlideDef) {
+        if showExploreOverlay {
+            showExploreOverlay = false
+            exploreSearchExpanded = false
+        }
         let navType = slide.navigationType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         let payload = slide.navigationPayload.trimmingCharacters(in: .whitespacesAndNewlines)
         switch navType {
