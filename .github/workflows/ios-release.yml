@@ -133,11 +133,22 @@ jobs:
       - name: Print xcodebuild errors
         if: failure()
         run: |
-          set +e
+          set +euo pipefail
           for log in xcodebuild-archive.log xcodebuild-export.log; do
             [[ -f "${log}" ]] || continue
             echo "::group::${log}"
-            grep -E 'Fash/.*\.swift:[0-9]+:[0-9]+: error:|fatal error:|Invalid redeclaration|ARCHIVE FAILED|BUILD FAILED|exportArchive FAILED|Code Sign error|Expected .+ after|Failed frontend command' "${log}" | tail -120 || echo "(no matching lines)"
+            mapfile -t swift_errors < <(grep -E '\.swift:[0-9]+:[0-9]+: error:' "${log}" || true)
+            if [[ ${#swift_errors[@]} -gt 0 ]]; then
+              echo "Swift compile errors (${#swift_errors[@]}):"
+              printf '%s\n' "${swift_errors[@]}" | head -50
+              printf '%s\n' "${swift_errors[@]}" | head -15 | while IFS= read -r line; do
+                echo "::error::${line}"
+              done
+            else
+              echo "(no .swift:*: error: lines — showing other failures)"
+              grep -iE 'fatal error:|Invalid redeclaration|ARCHIVE FAILED|BUILD FAILED|exportArchive FAILED|Code Sign error|error: ' "${log}" \
+                | grep -v ': warning:' | tail -80 || true
+            fi
             echo "::endgroup::"
           done
           exit 0

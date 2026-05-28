@@ -10,6 +10,8 @@ SCHEME="${1:?usage: ci_ios_prepare.sh <Fash-Dev|Fash-Prod>}"
 
 bash scripts/ci_validate_i18n.sh
 
+bash scripts/ci_swift_compile_preflight.sh
+
 echo "==> Validate Swift syntax"
 python3 scripts/validate_swift_syntax.py
 
