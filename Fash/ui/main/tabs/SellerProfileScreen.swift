@@ -88,7 +88,7 @@ struct SellerProfileScreen: View {
                 .foregroundStyle(FashColors.textPrimary)
                 .padding(.horizontal, spacing.editorialStart)
         }
-        if let bio = viewModel.profile?.bio.nilIfEmpty {
+        if let bio = trimmedNonEmpty(viewModel.profile?.bio) {
             Text(bio)
                 .font(FashTypography.bodySmall)
                 .foregroundStyle(FashColors.textSecondary)
