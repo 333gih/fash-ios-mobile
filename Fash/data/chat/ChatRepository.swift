@@ -290,12 +290,32 @@ final class ChatRepository {
             ?? o["product"] as? [String: Any]
         var lastMsgText = ""
         var lastMsgType = "text"
+        var lastOfferAmountVnd: Int64 = 0
+        var lastOfferFromBuyer = true
         if let lm = o["LastMessage"] as? [String: Any] ?? o["last_message"] as? [String: Any] {
             lastMsgText = RepositoryHttp.optString(lm, "Content", "content", "Text", "text")
             lastMsgType = RepositoryHttp.optString(lm, "MessageType", "message_type").isEmpty ? "text" : RepositoryHttp.optString(lm, "MessageType", "message_type")
+            lastOfferAmountVnd = RepositoryHttp.optLong(lm, "OfferAmountVND", "offer_amount_vnd")
+            let senderId = RepositoryHttp.optString(lm, "SenderID", "sender_id")
+            if !senderId.isEmpty, !buyerId.isEmpty {
+                lastOfferFromBuyer = senderId == buyerId
+            }
         } else {
             lastMsgText = RepositoryHttp.optString(o, "LastMessage", "last_message")
         }
+        let overrideType = RepositoryHttp.optString(o, "LastMessageType", "last_message_type")
+        if !overrideType.isEmpty { lastMsgType = overrideType }
+        if lastOfferAmountVnd == 0 {
+            lastOfferAmountVnd = RepositoryHttp.optLong(o, "LastOfferAmountVND", "last_offer_amount_vnd")
+        }
+        if lastOfferAmountVnd > 0 { lastMsgType = "offer" }
+        let pendingOfferObj = o["pending_offer"] as? [String: Any] ?? o["PendingOffer"] as? [String: Any]
+        let pendingOfferAmountVnd: Int64 = {
+            if let po = pendingOfferObj {
+                return RepositoryHttp.optLong(po, "AmountVND", "amount_vnd", "Amount")
+            }
+            return RepositoryHttp.optLong(o, "PendingOfferAmountVND", "pending_offer_amount_vnd")
+        }()
         let otherId = RepositoryHttp.optString(otherProfile ?? [:], "UserID", "user_id", "id", "ID")
         let username = RepositoryHttp.optString(otherProfile ?? [:], "Username", "username")
         let displayName = RepositoryHttp.optString(otherProfile ?? [:], "DisplayName", "display_name")
@@ -321,7 +341,12 @@ final class ChatRepository {
             productId: productId,
             productPrice: productPrice,
             hasUnread: hasUnread,
-            unreadCount: unreadCount
+            unreadCount: unreadCount,
+            buyerUserId: buyerId,
+            sellerUserId: sellerId,
+            lastOfferAmountVnd: lastOfferAmountVnd,
+            lastOfferFromBuyer: lastOfferFromBuyer,
+            pendingOfferAmountVnd: pendingOfferAmountVnd
         )
     }
 }

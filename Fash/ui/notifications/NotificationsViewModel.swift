@@ -97,12 +97,23 @@ final class NotificationsViewModel {
             groups = mergeGroupSummaries(page.groups)
             await refreshUnreadSummary()
         case .failure(let error):
-            loadError = FashErrorPresentation.userMessage(for: error)
-            if loadError?.contains("503") == true || loadError?.contains("404") == true {
+            if isInboxUnavailable(error) {
+                loadError = L10n.notificationInboxUnavailableSubtitle
                 inboxUnavailable = true
+            } else {
+                loadError = FashErrorPresentation.userMessage(for: error)
+                inboxUnavailable = false
             }
             groups = []
         }
+    }
+
+    private func isInboxUnavailable(_ error: Error) -> Bool {
+        if let http = error as? CoreServiceHttpException {
+            return http.statusCode == 503 || http.statusCode == 404
+        }
+        let message = FashErrorPresentation.userMessage(for: error)
+        return message.contains("503") || message.contains("404")
     }
 
     private func refreshGroupItems() async {

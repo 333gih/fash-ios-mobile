@@ -24,6 +24,11 @@ struct ConversationItem: Identifiable, Hashable {
     let productPrice: Int64
     let hasUnread: Bool
     let unreadCount: Int
+    let buyerUserId: String
+    let sellerUserId: String
+    let lastOfferAmountVnd: Int64
+    let lastOfferFromBuyer: Bool
+    let pendingOfferAmountVnd: Int64
 }
 
 struct ChatOtherUser: Equatable {

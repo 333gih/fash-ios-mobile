@@ -25,6 +25,11 @@ struct NotificationDetailScreen: View {
                         .font(FashTypography.labelSmall)
                         .foregroundStyle(FashColors.textSecondary)
                 }
+                if let readAt = item.readAtIso, !readAt.isEmpty {
+                    Text(L10n.notificationDetailReadAt(readAt))
+                        .font(FashTypography.labelSmall)
+                        .foregroundStyle(FashColors.textSecondary)
+                }
                 if let actions = parsedActions, !actions.isEmpty {
                     Text(L10n.notificationDetailActionsHeading)
                         .font(FashTypography.titleSmall)
@@ -39,10 +44,16 @@ struct NotificationDetailScreen: View {
                     }
                 }
                 if let payloadType = item.payloadType, !payloadType.isEmpty {
-                    detailRow(L10n.notificationDetailPayloadType, payloadType)
+                    detailRow(
+                        L10n.notificationDetailPayloadType,
+                        NotificationInboxLabels.payloadTypeLabel(payloadType) ?? payloadType
+                    )
                 }
                 if let source = item.source, !source.isEmpty {
-                    detailRow(L10n.notificationDetailSource, source)
+                    detailRow(
+                        L10n.notificationDetailSource,
+                        NotificationInboxLabels.sourceLabel(source) ?? source
+                    )
                 }
                 if item.dataMap != nil {
                     Button(showRawPayload ? L10n.notificationDetailMoreLabel : L10n.notificationDetailPayloadTitle) {
@@ -110,13 +121,13 @@ struct NotificationDetailScreen: View {
         guard let map = item.dataMap else { return nil }
         var actions: [NotificationAction] = []
         if let orderId = stringValue(map, "order_id", "orderId") {
-            actions.append(.init(title: L10n.settingsRowOrders, kind: "order", payload: orderId))
+            actions.append(.init(title: L10n.notificationActionOpenOrder, kind: "order", payload: orderId))
         }
         if let listingId = stringValue(map, "listing_id", "listingId") {
-            actions.append(.init(title: L10n.checkoutSectionProduct, kind: "listing", payload: listingId))
+            actions.append(.init(title: L10n.notificationActionOpenListing, kind: "listing", payload: listingId))
         }
         if let convId = stringValue(map, "conversation_id", "conversationId") {
-            actions.append(.init(title: L10n.productChat, kind: "chat", payload: convId))
+            actions.append(.init(title: L10n.notificationActionOpenChat, kind: "chat", payload: convId))
         }
         return actions.isEmpty ? nil : actions
     }

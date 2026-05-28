@@ -94,7 +94,13 @@ struct NotificationScreen: View {
             if viewModel.isLoading && viewModel.groups.isEmpty {
                 ProgressView().frame(maxWidth: .infinity)
             } else if let error = viewModel.loadError, viewModel.groups.isEmpty {
-                Text(error).foregroundStyle(FashColors.textSecondary)
+                FashEmptyStateView(
+                    title: viewModel.inboxUnavailable ? L10n.notificationInboxUnavailableTitle : L10n.notificationLoadErrorTitle,
+                    subtitle: viewModel.inboxUnavailable ? L10n.notificationInboxUnavailableSubtitle : (error.isEmpty ? L10n.notificationLoadErrorSubtitle : error),
+                    actionTitle: L10n.feedRetry
+                ) {
+                    Task { await viewModel.refresh() }
+                }
             } else {
                 ForEach(viewModel.groups) { group in
                     Button {
@@ -113,8 +119,10 @@ struct NotificationScreen: View {
             if viewModel.isLoading && viewModel.items.isEmpty {
                 ProgressView().frame(maxWidth: .infinity)
             } else if viewModel.items.isEmpty {
-                Text(L10n.notificationGroupEmptyTitle)
-                    .foregroundStyle(FashColors.textSecondary)
+                FashEmptyStateView(
+                    title: L10n.notificationGroupEmptyTitle,
+                    subtitle: L10n.notificationEmptySubtitle
+                )
             } else {
                 ForEach(viewModel.items) { item in
                     Button {

@@ -12,8 +12,8 @@ struct ChatScreen: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if viewModel.loadError && viewModel.conversations.isEmpty {
                 FashEmptyStateView(
-                    title: L10n.feedLoadError,
-                    actionTitle: L10n.feedRetry
+                    title: L10n.chatLoadError,
+                    actionTitle: L10n.chatRetry
                 ) {
                     Task { await viewModel.refresh(deps: deps) }
                 }
@@ -46,7 +46,12 @@ struct ChatScreen: View {
                                             .clipShape(Capsule())
                                     }
                                 }
-                                Text(conversation.lastMessageText.isEmpty ? conversation.productTitle : conversation.lastMessageText)
+                                Text(
+                                    ChatInboxPreview.conversationPreviewLine(
+                                        conversation,
+                                        myUserId: deps.chatRepository.currentUserId
+                                    )
+                                )
                                     .font(FashTypography.bodySmall)
                                     .foregroundStyle(FashColors.textSecondary)
                                     .lineLimit(1)
