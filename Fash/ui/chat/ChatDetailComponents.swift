@@ -293,7 +293,7 @@ struct ChatOfferPriceSheet: View {
             .padding(20)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(L10n.dialogCancel, action: onDismiss)
+                    Button(L10n.createListingCancel, action: onDismiss)
                 }
             }
         }
@@ -336,7 +336,7 @@ struct ChatCounterOfferSheet: View {
             .padding(20)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(L10n.dialogCancel, action: onDismiss)
+                    Button(L10n.createListingCancel, action: onDismiss)
                 }
             }
         }

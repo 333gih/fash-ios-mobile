@@ -555,7 +555,6 @@
 "create_listing_upload_error" = "Upload failed. Try again.";
 "deal_agreed_price_buy_now" = "Buy now at %1$@ — add address and pay.";
 "deal_agreed_price_negotiated" = "Price agreed at %1$@ — continue with shipping or payment.";
-"dialog_cancel" = "Cancel";
 "dialog_ok" = "OK";
 "dialog_title_error" = "Error";
 "dialog_title_info" = "Information";

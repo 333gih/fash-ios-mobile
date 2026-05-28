@@ -37,8 +37,8 @@ if grep -q 'AppDependencies.shared.isGuestBrowseActive' Fash/App/AppDependencies
   fail=1
 fi
 
-if ! grep -q 'dialogCancel' Fash/Localization/L10n.swift 2>/dev/null; then
-  echo "::error::L10n.dialogCancel missing (ChatDetailComponents)."
+if grep -q 'L10n\.dialogCancel' Fash/ui/chat/ChatDetailComponents.swift 2>/dev/null; then
+  echo "::error::Use L10n.createListingCancel — dialog_cancel is not in vendor/android-res."
   fail=1
 fi
 
