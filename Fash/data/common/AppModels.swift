@@ -42,4 +42,5 @@ struct ProfileInfo: Equatable {
     let followingCount: Int
     let productCount: Int
     let bio: String
+    var isFollowing: Bool = false
 }

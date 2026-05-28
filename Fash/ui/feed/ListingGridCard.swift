@@ -53,7 +53,7 @@ struct ListingGridCard: View {
                         .foregroundStyle(FashColors.textSecondary)
                 }
         } else {
-            FashAsyncImage(url: item.coverImageUrl)
+            FashAsyncImage(url: FeedImageUrl.resolveListingImageUrl(item.coverImageUrl))
         }
     }
 

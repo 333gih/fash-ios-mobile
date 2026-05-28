@@ -5,6 +5,7 @@ struct HomeFeedContent: View {
     @Environment(AppDependencies.self) private var deps
     @Bindable var viewModel: HomeViewModel
     @Bindable var listingPreview: ListingPreviewStore
+    @Bindable var router: AppRouter
     var isGuestMode: Bool
     var onOpenExplore: () -> Void = {}
     var onOpenPost: () -> Void = {}
@@ -26,49 +27,64 @@ struct HomeFeedContent: View {
         isGuestMode && viewModel.selectedFeedTab.requiresAuth
     }
 
+    private var promoSlides: [FashPromoSlideDef] {
+        viewModel.promoSlides.map(FashPromoSlideDef.fromAdvertising)
+    }
+
+    private var promoDockInset: CGFloat {
+        promoSlides.isEmpty ? 0 : FashStickyPromoDockHeight
+    }
+
     var body: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                HomeQuickActionsRow(
-                    onExplore: onOpenExplore,
-                    onSell: onOpenPost,
-                    onOrders: onOpenOrders,
-                    compact: true
-                )
-
-                if !viewModel.featuredSellers.isEmpty {
-                    HomeRecommendedSellersSection(
-                        sellers: viewModel.featuredSellers,
-                        onSellerClick: onFeaturedSellerClick,
-                        onSeeAllClick: onOpenFeaturedSellersAll
+        ZStack(alignment: .bottom) {
+            ScrollView {
+                VStack(spacing: 0) {
+                    HomeQuickActionsRow(
+                        onExplore: onOpenExplore,
+                        onSell: onOpenPost,
+                        onOrders: onOpenOrders,
+                        compact: true
                     )
-                }
 
-                HomeFeedTabSwitcher(
-                    tabs: tabs,
-                    selectedTab: viewModel.selectedFeedTab,
-                    isGuestBrowse: isGuestMode,
-                    onSelect: { tab in
-                        viewModel.selectFeedTab(tab)
-                        if isGuestMode && tab.requiresAuth {
-                            return
-                        }
-                        Task { await viewModel.refresh(deps: deps, isGuestMode: isGuestMode) }
+                    if !viewModel.featuredSellers.isEmpty {
+                        HomeRecommendedSellersSection(
+                            sellers: viewModel.featuredSellers,
+                            onSellerClick: onFeaturedSellerClick,
+                            onSeeAllClick: onOpenFeaturedSellersAll
+                        )
                     }
-                )
 
-                feedBody
+                    HomeFeedTabSwitcher(
+                        tabs: tabs,
+                        selectedTab: viewModel.selectedFeedTab,
+                        isGuestBrowse: isGuestMode,
+                        onSelect: { tab in
+                            viewModel.selectFeedTab(tab)
+                            if isGuestMode && tab.requiresAuth {
+                                return
+                            }
+                            Task { await viewModel.refresh(deps: deps, isGuestMode: isGuestMode) }
+                        }
+                    )
 
-                if !viewModel.promoSlides.isEmpty {
+                    feedBody
+
+                    HomeBrandFooterStrip()
+                }
+                .padding(.bottom, promoDockInset + spacing.spacing2)
+            }
+            .refreshable { await viewModel.pullToRefresh(deps: deps, isGuestMode: isGuestMode) }
+
+            if !promoSlides.isEmpty {
+                StickyBottomPromoBar {
                     FashPromoSliderView(
-                        slides: viewModel.promoSlides.map(FashPromoSlideDef.fromAdvertising)
+                        slides: promoSlides,
+                        cardHeight: 72,
+                        onSlideClick: { slide, _ in router.handlePromoSlideClick(slide) }
                     )
                 }
-
-                HomeBrandFooterStrip()
             }
         }
-        .refreshable { await viewModel.pullToRefresh(deps: deps, isGuestMode: isGuestMode) }
         .task {
             viewModel.normalizeSelectedFeedTab(isGuestMode: isGuestMode)
             await viewModel.refresh(deps: deps, isGuestMode: isGuestMode)
@@ -121,10 +137,10 @@ struct HomeFeedContent: View {
 
     private func guestLoginReason(for tab: HomeFeedTab) -> String {
         switch tab {
-        case .forYou: return L10n.guestLoginReasonTopbar
-        case .following: return L10n.guestLoginReasonTopbar
-        case .stylePicks: return L10n.guestLoginReasonTopbar
-        case .similarSaved: return L10n.guestLoginReasonTopbar
+        case .forYou: return L10n.guestLoginReasonHomeForYou
+        case .following: return L10n.guestLoginReasonHomeFollowing
+        case .stylePicks: return L10n.guestLoginReasonHomeStyle
+        case .similarSaved: return L10n.guestLoginReasonHomeSimilar
         default: return L10n.guestLoginSheetTitle
         }
     }

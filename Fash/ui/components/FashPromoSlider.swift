@@ -62,11 +62,11 @@ struct FashPromoSliderView: View {
     }
 
     private func promoCard(_ slide: FashPromoSlideDef) -> some View {
-        ZStack(alignment: .bottomLeading) {
-            if let url = slide.bannerImageUrl {
-                FashAsyncImage(url: url)
+        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
+        return ZStack(alignment: .bottomLeading) {
+            if let url = slide.bannerImageUrl, !url.isEmpty {
+                FashAsyncImage(url: FeedImageUrl.resolveListingImageUrl(url), contentMode: .fill)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .clipped()
             } else {
                 LinearGradient(colors: slide.gradientColors, startPoint: .topLeading, endPoint: .bottomTrailing)
             }
@@ -95,7 +95,8 @@ struct FashPromoSliderView: View {
             }
             .padding(14)
         }
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .clipShape(shape)
+        .contentShape(shape)
     }
 
     private func startAutoAdvance(count: Int) {

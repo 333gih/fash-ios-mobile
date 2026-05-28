@@ -11,6 +11,14 @@ final class ProductDetailViewModel {
     var isSaved = false
     var errorMessage: String?
     var galleryIndex = 0
+    var sellerAvatarUrl: String?
+
+    var resolvedImageUrls: [String] {
+        imageUrls.compactMap { raw in
+            let resolved = FeedImageUrl.resolveListingImageUrl(raw)
+            return resolved.isEmpty ? nil : resolved
+        }
+    }
 
     func load(listingId: String, deps: AppDependencies) async {
         isLoading = true
@@ -24,6 +32,13 @@ final class ProductDetailViewModel {
             isLiked = detail.isLiked
             isSaved = detail.isSaved
             galleryIndex = 0
+            sellerAvatarUrl = nil
+            if case .success(let preview) = await deps.listingRepository.getListingPreviewDetail(
+                listingId: listingId,
+                publicBrowse: publicBrowse
+            ), let preview {
+                sellerAvatarUrl = preview.sellerAvatarURL
+            }
         case .failure(let error):
             errorMessage = error.localizedDescription
         }

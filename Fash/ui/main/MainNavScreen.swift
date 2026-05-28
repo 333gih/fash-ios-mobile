@@ -28,14 +28,21 @@ struct MainNavScreen: View {
             }
         }
         .background(FashColors.screen)
-        .sheet(item: $listingPreview.state, onDismiss: { listingPreview.close() }) { preview in
+        .sheet(item: $listingPreview.state, onDismiss: {
+            if let pending = router.pendingListingIdAfterPreview {
+                router.pendingListingIdAfterPreview = nil
+                DispatchQueue.main.async {
+                    router.selectedListingId = pending
+                }
+            }
+        }) { preview in
             ExploreListingPreviewSheet(
                 feedItem: preview.feedItem,
                 detail: preview.detail,
                 isDetailLoading: preview.isDetailLoading,
                 isGuestMode: isGuestMode,
                 onViewDetail: {
-                    router.selectedListingId = preview.feedItem.id
+                    router.pendingListingIdAfterPreview = preview.feedItem.id
                     listingPreview.close()
                 },
                 onLike: {},
@@ -103,11 +110,14 @@ struct MainNavScreen: View {
             ExploreOverlayHost(
                 viewModel: exploreVM,
                 listingPreview: listingPreview,
+                router: router,
                 isGuestMode: isGuestMode,
                 expandSearchOnAppear: router.exploreSearchExpanded,
+                promoSlides: homeVM.promoSlides.map(FashPromoSlideDef.fromAdvertising),
                 onClose: {
                     router.showExploreOverlay = false
                     router.exploreSearchExpanded = false
+                    exploreVM.setSearchBarExpanded(false)
                 }
             )
             .environment(\.locale, AppLocale.locale)
@@ -205,6 +215,7 @@ struct MainNavScreen: View {
             HomeFeedContent(
                 viewModel: homeVM,
                 listingPreview: listingPreview,
+                router: router,
                 isGuestMode: isGuestMode,
                 onOpenExplore: { openExploreOverlay(expandSearch: false) },
                 onOpenPost: { selectTab(.post) },
@@ -351,31 +362,34 @@ private struct HomeTopBar: View {
     var body: some View {
         HStack(spacing: 10) {
             FashScreenTitle(suffix: L10n.brandHeaderSuffixHome)
-            GeometryReader { geo in
+            HStack(spacing: 0) {
                 TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
                     let progress = rememberHomeSearchExpandProgress(animate: animateSearch, date: timeline.date)
-                    HStack(spacing: 0) {
-                        Spacer(minLength: 0)
-                        if progress > 0 {
-                            let fieldWidth = 48 + max(geo.size.width - 48, 0) * progress
-                            FashHomeHeaderSearchField(
-                                onClick: onSearchClick,
-                                width: fieldWidth,
-                                animateHint: animateSearch && progress > 0.92,
-                                contentReveal: progress
-                            )
-                        } else if animateSearch {
-                            FashHomeCollapsedSearchIcon(onClick: onSearchClick, animateHint: true)
-                        } else {
-                            searchIconButton
-                        }
-                        if !showGuestSignIn {
-                            notificationButton
+                    GeometryReader { geo in
+                        let fieldWidth = 48 + max(geo.size.width - 48, 0) * progress
+                        HStack(spacing: 0) {
+                            Spacer(minLength: 0)
+                            if progress > 0 {
+                                FashHomeHeaderSearchField(
+                                    onClick: onSearchClick,
+                                    width: fieldWidth,
+                                    animateHint: animateSearch && progress > 0.92,
+                                    contentReveal: progress
+                                )
+                            } else if animateSearch {
+                                FashHomeCollapsedSearchIcon(onClick: onSearchClick, animateHint: true)
+                            } else {
+                                searchIconButton
+                            }
                         }
                     }
                 }
+                .frame(maxWidth: .infinity)
+                .frame(height: 48)
+                if !showGuestSignIn {
+                    notificationButton
+                }
             }
-            .frame(height: 48)
         }
         .padding(.leading, 16)
         .padding(.trailing, 4)

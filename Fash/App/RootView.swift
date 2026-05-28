@@ -74,7 +74,16 @@ struct RootView: View {
                 }
             )
         case .seller(let user):
-            SellerProfileScreen(username: user, onDismiss: { router.sellerShopUsername = nil })
+            SellerProfileScreen(
+                username: user,
+                isGuestMode: router.isGuestMode,
+                onDismiss: { router.sellerShopUsername = nil },
+                onListingClick: { id in
+                    router.sellerShopUsername = nil
+                    router.pendingListingIdAfterPreview = nil
+                    router.selectedListingId = id
+                }
+            )
         case .editListing(let id):
             EditListingScreen(listingId: id, onDismiss: { router.editListingId = nil })
         case .editProfile:

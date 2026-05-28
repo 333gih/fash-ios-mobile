@@ -100,6 +100,44 @@ final class ListingRepository {
         }
     }
 
+    func getListingsBySeller(
+        sellerId: String,
+        status: String? = nil,
+        limit: Int = 50,
+        offset: Int = 0,
+        publicBrowse: Bool = false
+    ) async -> Result<[ListingFeedItem], Error> {
+        let seg = sellerId.trimmingCharacters(in: .whitespaces)
+            .addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? sellerId
+        var query = ["limit=\(limit)", "offset=\(offset)"]
+        if let status, !status.isEmpty {
+            let enc = status.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? status
+            query.append("status=\(enc)")
+        }
+        let q = query.joined(separator: "&")
+        if publicBrowse {
+            do {
+                let data = try await RepositoryHttp.executeGet(
+                    urlString: PublicBrowseHttp.publicApiPath("users/\(seg)/listings") + "?\(q)",
+                    client: client,
+                    publicBrowse: true
+                )
+                return .success(try ListingFeedJsonParser.parseFeed(data))
+            } catch {
+                return .failure(error)
+            }
+        }
+        do {
+            let data = try await RepositoryHttp.executeCoreGet(
+                relativePath: "api/v1/users/\(seg)/listings?\(q)",
+                client: client
+            )
+            return .success(try ListingFeedJsonParser.parseFeed(data))
+        } catch {
+            return .failure(error)
+        }
+    }
+
     func getMyListings(limit: Int = 50, offset: Int = 0) async -> Result<[ListingFeedItem], Error> {
         do {
             let data = try await RepositoryHttp.executeCoreGet(

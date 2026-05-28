@@ -6,9 +6,15 @@ struct FashAsyncImage: View {
     let url: String?
     var contentMode: SwiftUI.ContentMode = .fill
 
+    private var resolvedURL: String? {
+        guard let url, !url.isEmpty else { return nil }
+        let resolved = FeedImageUrl.resolveListingImageUrl(url)
+        return resolved.isEmpty ? nil : resolved
+    }
+
     var body: some View {
         Group {
-            if let url, !url.isEmpty, let imageURL = URL(string: url) {
+            if let resolvedURL, let imageURL = URL(string: resolvedURL) {
                 KFImage(imageURL)
                     .fade(duration: 0.2)
                     .placeholder { FashAsyncImagePlaceholder() }
@@ -42,10 +48,20 @@ struct FashAvatarCircle: View {
     let url: String?
     var size: CGFloat = 48
 
+    private var resolvedURL: String? {
+        FeedImageUrl.resolveProfileImageUrlOrNil(url)
+    }
+
     var body: some View {
-        FashAsyncImage(url: url)
-            .frame(width: size, height: size)
-            .clipShape(Circle())
-            .background(FashColors.surfaceContainerHigh)
+        Group {
+            if let resolvedURL, !resolvedURL.isEmpty {
+                FashAsyncImage(url: resolvedURL)
+            } else {
+                FashDefaultProfileAvatar()
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(Circle())
+        .background(FashColors.surfaceContainerHigh)
     }
 }

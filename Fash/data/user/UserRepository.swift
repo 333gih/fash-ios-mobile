@@ -74,6 +74,9 @@ final class UserRepository {
     private func parseProfileInfo(_ data: Data) throws -> ProfileInfo {
         let root = try RepositoryHttp.jsonObject(data)
         let obj = (root["data"] as? [String: Any]) ?? root
+        let following = (obj["is_following"] as? Bool)
+            ?? (obj["isFollowing"] as? Bool)
+            ?? false
         return ProfileInfo(
             userId: RepositoryHttp.optString(obj, "user_id", "UserID", "id", "ID"),
             username: RepositoryHttp.optString(obj, "username", "Username"),
@@ -83,7 +86,70 @@ final class UserRepository {
             followerCount: RepositoryHttp.optInt(obj, "follower_count", "FollowerCount"),
             followingCount: RepositoryHttp.optInt(obj, "following_count", "FollowingCount"),
             productCount: RepositoryHttp.optInt(obj, "product_count", "ProductCount", "listing_count", "ListingCount"),
-            bio: RepositoryHttp.optString(obj, "bio", "Bio")
+            bio: RepositoryHttp.optString(obj, "bio", "Bio"),
+            isFollowing: following
         )
+    }
+
+    func getProfile(_ userIdOrUsername: String) async -> Result<ProfileInfo, Error> {
+        let raw = userIdOrUsername.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: "@", with: "")
+        guard !raw.isEmpty else { return .failure(URLError(.badURL)) }
+        let encoded = raw.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? raw
+        do {
+            let data = try await RepositoryHttp.executeCoreGet(relativePath: "api/v1/users/\(encoded)", client: client)
+            return .success(try parseProfileInfo(data))
+        } catch {
+            if PublicBrowseHttp.isConfigured {
+                return await getProfilePublic(raw)
+            }
+            return .failure(error)
+        }
+    }
+
+    func getProfilePublic(_ userIdOrUsername: String) async -> Result<ProfileInfo, Error> {
+        let raw = userIdOrUsername.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: "@", with: "")
+        guard !raw.isEmpty else { return .failure(URLError(.badURL)) }
+        let encoded = raw.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? raw
+        do {
+            let data = try await RepositoryHttp.executeGet(
+                urlString: PublicBrowseHttp.publicApiPath("users/\(encoded)"),
+                client: client,
+                publicBrowse: true
+            )
+            return .success(try parseProfileInfo(data))
+        } catch {
+            return .failure(error)
+        }
+    }
+
+    func follow(_ userIdOrUsername: String) async -> Result<Void, Error> {
+        await mutateFollow(userIdOrUsername, method: "POST")
+    }
+
+    func unfollow(_ userIdOrUsername: String) async -> Result<Void, Error> {
+        await mutateFollow(userIdOrUsername, method: "DELETE")
+    }
+
+    private func mutateFollow(_ userIdOrUsername: String, method: String) async -> Result<Void, Error> {
+        let raw = userIdOrUsername.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: "@", with: "")
+        guard !raw.isEmpty else { return .failure(URLError(.badURL)) }
+        let encoded = raw.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? raw
+        let path = "api/v1/users/\(encoded)/follow"
+        var lastError: Error = URLError(.cannotConnectToHost)
+        for urlString in AppEnvironment.coreApiCandidateURLs(path) {
+            guard let url = URL(string: urlString) else { continue }
+            var req = URLRequest(url: url)
+            req.httpMethod = method
+            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            if method == "POST" { req.httpBody = Data("{}".utf8) }
+            do {
+                let (_, http) = try await client.data(for: req)
+                guard (200..<300).contains(http.statusCode) else { continue }
+                return .success(())
+            } catch {
+                lastError = error
+            }
+        }
+        return .failure(lastError)
     }
 }

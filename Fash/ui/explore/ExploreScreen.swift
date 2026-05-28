@@ -7,22 +7,44 @@ struct ExploreScreen: View {
     @Bindable var listingPreview: ListingPreviewStore
     var isGuestMode: Bool
     var hideInlineSearch: Bool = false
+    var promoSlides: [FashPromoSlideDef] = []
+    var onPromoSlideClick: (FashPromoSlideDef, Int) -> Void = { _, _ in }
+    var onFeaturedSellerClick: (UserSearchResult) -> Void = { _ in }
 
     private let columns = [
         GridItem(.flexible(), spacing: 8),
         GridItem(.flexible(), spacing: 8),
     ]
 
+    private var promoDockInset: CGFloat {
+        promoSlides.isEmpty ? 0 : FashStickyPromoDockHeight
+    }
+
     var body: some View {
-        VStack(spacing: 0) {
-            if !hideInlineSearch {
-                searchRow
+        ZStack(alignment: .bottom) {
+            VStack(spacing: 0) {
+                if !hideInlineSearch {
+                    searchRow
+                }
+                if viewModel.searchBarExpanded && !viewModel.isSearchModeActive {
+                    ExploreSearchOverlay(viewModel: viewModel, isGuestMode: isGuestMode)
+                        .frame(maxHeight: .infinity)
+                } else {
+                    sectionToggle
+                    filterBar
+                    content
+                }
             }
-            sectionToggle
-            filterBar
-            content
+            if !promoSlides.isEmpty, !(viewModel.searchBarExpanded && !viewModel.isSearchModeActive) {
+                StickyBottomPromoBar {
+                    FashPromoSliderView(
+                        slides: promoSlides,
+                        cardHeight: 112,
+                        onSlideClick: onPromoSlideClick
+                    )
+                }
+            }
         }
-        .task { await viewModel.refresh(deps: deps, isGuestMode: isGuestMode) }
         .refreshable { await viewModel.pullToRefresh(deps: deps, isGuestMode: isGuestMode) }
         .sheet(isPresented: $viewModel.showFilterSheet) {
             ExploreFilterSheet(viewModel: viewModel, isGuestMode: isGuestMode) {
@@ -48,6 +70,13 @@ struct ExploreScreen: View {
             sectionButton(L10n.exploreSectionListings, .listings)
             sectionButton(L10n.exploreSectionSellers, .sellers)
             Spacer()
+            if viewModel.isSearchModeActive {
+                Button(L10n.exploreSearchClearActive) {
+                    Task { await viewModel.clearListingSearch(deps: deps, isGuestMode: isGuestMode) }
+                }
+                .font(FashTypography.labelMedium)
+                .foregroundStyle(FashColors.brandPrimary)
+            }
         }
         .padding(.horizontal, spacing.editorialStart)
         .padding(.top, spacing.spacing2)
@@ -75,7 +104,9 @@ struct ExploreScreen: View {
                 Text(L10n.exploreFiltersBarTitle)
                     .font(FashTypography.labelLarge)
                     .foregroundStyle(FashColors.textPrimary)
-                Text(viewModel.hasActiveFilters ? L10n.exploreFiltersBarSubtitleActive : L10n.exploreFiltersBarSubtitleIdle)
+                Text(viewModel.hasActiveFilters || viewModel.isSearchModeActive
+                     ? L10n.exploreFiltersBarSubtitleActive
+                     : L10n.exploreFiltersBarSubtitleIdle)
                     .font(FashTypography.bodySmall)
                     .foregroundStyle(FashColors.textSecondary)
             }
@@ -117,34 +148,50 @@ struct ExploreScreen: View {
 
     private var listingsGrid: some View {
         ScrollView {
-            if viewModel.isLoading && viewModel.items.isEmpty {
-                FashSkeleton.listingGrid()
-            } else if viewModel.loadError && viewModel.items.isEmpty {
-                FashEmptyStateView(title: L10n.feedLoadError, actionTitle: L10n.feedRetry) {
-                    Task { await viewModel.refresh(deps: deps, isGuestMode: isGuestMode) }
-                }
-            } else if viewModel.items.isEmpty {
-                FashEmptyStateView(
-                    title: viewModel.hasActiveFilters ? L10n.exploreEmptyFilteredTitle : L10n.feedEmptyTitle,
-                    subtitle: L10n.feedEmptySubtitle
-                )
-            } else {
-                LazyVGrid(columns: columns, spacing: 12) {
-                    ForEach(Array(viewModel.items.enumerated()), id: \.element.id) { index, item in
-                        ListingGridCard(item: item) {
-                            listingPreview.open(
-                                item: item,
-                                deps: deps,
-                                publicBrowse: isGuestMode,
-                                surface: "explore",
-                                position: index
-                            )
+            LazyVStack(spacing: 12) {
+                if viewModel.isLoading && viewModel.items.isEmpty {
+                    FashSkeleton.listingGrid()
+                } else if viewModel.loadError && viewModel.items.isEmpty {
+                    FashEmptyStateView(title: L10n.feedLoadError, actionTitle: L10n.feedRetry) {
+                        Task { await viewModel.refresh(deps: deps, isGuestMode: isGuestMode) }
+                    }
+                } else if viewModel.items.isEmpty {
+                    FashEmptyStateView(
+                        title: viewModel.hasActiveFilters || viewModel.isSearchModeActive
+                            ? L10n.exploreEmptyFilteredTitle
+                            : L10n.feedEmptyTitle,
+                        subtitle: L10n.feedEmptySubtitle
+                    )
+                } else {
+                    LazyVGrid(columns: columns, spacing: 12) {
+                        ForEach(Array(viewModel.items.enumerated()), id: \.element.id) { index, item in
+                            ListingGridCard(item: item) {
+                                listingPreview.open(
+                                    item: item,
+                                    deps: deps,
+                                    publicBrowse: isGuestMode,
+                                    surface: "explore",
+                                    position: index
+                                )
+                            }
+                            .onAppear {
+                                if index >= viewModel.items.count - 3 {
+                                    Task { await viewModel.loadMore(deps: deps, isGuestMode: isGuestMode) }
+                                }
+                            }
                         }
                     }
+                    .padding(.horizontal, spacing.editorialStart)
+                    if viewModel.isLoadingMore {
+                        ProgressView()
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                    }
+                    HomeBrandFooterStrip()
                 }
-                .padding(.horizontal, spacing.editorialStart)
-                .padding(.vertical, spacing.spacing4)
             }
+            .padding(.top, spacing.spacing2)
+            .padding(.bottom, promoDockInset + spacing.spacing4)
         }
     }
 
@@ -156,27 +203,49 @@ struct ExploreScreen: View {
             } else {
                 LazyVStack(spacing: spacing.spacing3) {
                     ForEach(viewModel.sellerResults) { seller in
-                        HStack(spacing: spacing.spacing3) {
-                            FashAsyncImage(url: seller.avatarUrl, contentMode: .fill)
-                                .frame(width: 44, height: 44)
-                                .clipShape(Circle())
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(seller.displayName.isEmpty ? seller.username : seller.displayName)
-                                    .font(FashTypography.labelLarge)
-                                    .foregroundStyle(FashColors.textPrimary)
-                                if !seller.username.isEmpty {
-                                    Text("@\(seller.username)")
-                                        .font(FashTypography.bodySmall)
-                                        .foregroundStyle(FashColors.textSecondary)
+                        Button {
+                            onFeaturedSellerClick(seller)
+                        } label: {
+                            HStack(spacing: spacing.spacing3) {
+                                FashAvatarCircle(url: seller.avatarUrl, size: 44)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(seller.displayName.isEmpty ? seller.username : seller.displayName)
+                                        .font(FashTypography.labelLarge)
+                                        .foregroundStyle(FashColors.textPrimary)
+                                    if !seller.username.isEmpty {
+                                        Text("@\(seller.username)")
+                                            .font(FashTypography.bodySmall)
+                                            .foregroundStyle(FashColors.textSecondary)
+                                    }
                                 }
+                                Spacer()
                             }
-                            Spacer()
+                            .padding(.horizontal, spacing.editorialStart)
                         }
-                        .padding(.horizontal, spacing.editorialStart)
+                        .buttonStyle(.plain)
                     }
+                    HomeBrandFooterStrip()
                 }
                 .padding(.vertical, spacing.spacing4)
+                .padding(.bottom, promoDockInset)
             }
         }
     }
 }
+
+/// Bottom-docked promo chrome — Android `StickyBottomPromoBar`.
+struct StickyBottomPromoBar<Content: View>: View {
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Divider().opacity(0.35)
+            content()
+        }
+        .frame(maxWidth: .infinity)
+        .background(FashColors.surfaceContainerLow)
+    }
+}
+
+/// Space reserved above bottom nav / tab bar for sticky promo slider.
+let FashStickyPromoDockHeight: CGFloat = 128

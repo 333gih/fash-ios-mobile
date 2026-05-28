@@ -193,15 +193,8 @@ struct ExploreListingPreviewSheet: View {
         }
     }
 
-    @ViewBuilder
     private var sellerAvatar: some View {
-        if let url = detail?.sellerAvatarURL, !url.isEmpty {
-            FashAsyncImage(url: url)
-                .clipShape(Circle())
-        } else {
-            Circle()
-                .fill(FashColors.surfaceContainer)
-        }
+        FashAvatarCircle(url: detail?.sellerAvatarURL, size: 40)
     }
 
     private var socialRow: some View {
@@ -395,8 +388,17 @@ struct ExploreListingPreviewSheet: View {
     }
 
     private var resolvedImageURLs: [String] {
-        if let urls = detail?.imageURLs.filter({ !$0.isEmpty }), !urls.isEmpty { return urls }
-        if let url = feedItem.imageURL, !url.isEmpty { return [url] }
+        if let urls = detail?.imageURLs.filter({ !$0.isEmpty }), !urls.isEmpty {
+            return urls.compactMap { FeedImageUrl.resolveListingImageUrlOrNil($0) }
+        }
+        if let url = feedItem.imageURL, !url.isEmpty,
+           let resolved = FeedImageUrl.resolveListingImageUrlOrNil(url) {
+            return [resolved]
+        }
+        if !feedItem.coverImageUrl.isEmpty,
+           let resolved = FeedImageUrl.resolveListingImageUrlOrNil(feedItem.coverImageUrl) {
+            return [resolved]
+        }
         return []
     }
 
