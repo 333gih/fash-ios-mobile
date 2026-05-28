@@ -10,6 +10,10 @@ final class ChatRepository {
         self.sessionStore = sessionStore
     }
 
+    var currentUserId: String {
+        sessionStore.read()?.userId ?? ""
+    }
+
     func getConversations(limit: Int = 50, offset: Int = 0) async -> Result<[ConversationItem], Error> {
         do {
             let data = try await RepositoryHttp.executeCoreGet(
@@ -111,7 +115,7 @@ final class ChatRepository {
         }
     }
 
-    private func postJSON(relativePath: String, body: [String: Any], method: String = "POST") async throws -> Data {
+    func postJSON(relativePath: String, body: [String: Any], method: String = "POST") async throws -> Data {
         let urls = AppEnvironment.coreApiCandidateURLs(relativePath)
         var lastError: Error = URLError(.cannotConnectToHost)
         let payload = body.isEmpty ? Data("{}".utf8) : try JSONSerialization.data(withJSONObject: body)
@@ -233,7 +237,7 @@ final class ChatRepository {
         return parseMessageObj(payload)
     }
 
-    private func parseMessageObj(_ m: [String: Any]) -> ChatMessage {
+    func parseMessageObj(_ m: [String: Any]) -> ChatMessage {
         let myId = sessionStore.read()?.userId ?? ""
         let senderId = RepositoryHttp.optString(m, "SenderID", "sender_id")
         let isFromMe: Bool = {

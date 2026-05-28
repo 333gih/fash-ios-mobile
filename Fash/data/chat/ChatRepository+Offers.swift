@@ -84,7 +84,7 @@ extension ChatRepository {
     }
 
     func parseOfferObj(_ o: [String: Any]) -> PriceOffer {
-        let myId = sessionStore.read()?.userId ?? ""
+        let myId = currentUserId
         let senderId = RepositoryHttp.optString(o, "SenderID", "sender_id")
         let proposedByMe: Bool = {
             if !senderId.isEmpty, !myId.isEmpty { return senderId == myId }
@@ -103,7 +103,7 @@ extension ChatRepository {
             ?? m["MeetingAppointment"] as? [String: Any] else { return nil }
         let id = RepositoryHttp.optString(o, "id", "ID")
         guard !id.isEmpty else { return nil }
-        let myId = sessionStore.read()?.userId ?? ""
+        let myId = currentUserId
         let proposerId = RepositoryHttp.optString(o, "proposer_id", "ProposerID")
         return MeetingAppointmentPayload(
             appointmentId: id,

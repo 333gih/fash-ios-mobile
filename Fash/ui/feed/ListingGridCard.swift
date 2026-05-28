@@ -259,7 +259,7 @@ struct ListingGridCard: View {
         let brand = p(item.brand)
         let size = p(item.size)
         let sellerStyle = p(item.sellerStyleTag)
-        let vibe = p(item.listingAestheticTag).flatMap { tag in
+        let vibe = p(item.listingAestheticTag).flatMap { (tag: String) -> String? in
             if let sellerStyle, tag.caseInsensitiveCompare(sellerStyle) == .orderedSame { return nil }
             return tag
         }
