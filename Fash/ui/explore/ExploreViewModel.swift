@@ -14,6 +14,11 @@ final class ExploreViewModel {
     var query = ""
     var items: [ListingFeedItem] = []
     var sellerResults: [UserSearchResult] = []
+    var featuredSellers: [FeaturedSellerItem] = []
+    var sellerPreviewPosts: [String: [ListingFeedItem]] = [:]
+    var sellersLoading = false
+    var sellersLoadError = false
+    var quickInterestChips: [String] = []
     var primarySection: ExplorePrimarySection = .listings
     var isLoading = false
     var isRefreshing = false
@@ -55,6 +60,7 @@ final class ExploreViewModel {
     var filterCatalogLoading = false
 
     private var listingsFetchGeneration = 0
+    private var sellersBrowseGeneration = 0
 
     private static func initialSizingModeFilter() -> String? {
         let mode = ExploreSizingPreference.read()
@@ -100,6 +106,35 @@ final class ExploreViewModel {
         isSearchMode && !committedListingSearchQuery.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
+    var selectedInterestChipNames: Set<String> {
+        Set(selectedAestheticTagIds.compactMap { id in
+            aestheticTags.first(where: { $0.id == id }).map { tag in
+                let label = tag.displayLabel().trimmingCharacters(in: .whitespacesAndNewlines)
+                return label.isEmpty ? tag.name : label
+            }
+        })
+    }
+
+    var isSizingFilterActive: Bool {
+        sizingModeFilter?.lowercased() == ExploreSizingPreference.modeMatchProfile
+    }
+
+    private static func conditionLabel(for apiValue: String) -> String {
+        switch apiValue.lowercased() {
+        case "new": return L10n.conditionNew
+        case "like_new": return L10n.conditionLikeNew
+        case "good": return L10n.conditionGood
+        case "fair": return L10n.conditionFair
+        default: return apiValue
+        }
+    }
+
+    private func effectiveListingSort(query: String) -> String {
+        let q = query.trimmingCharacters(in: .whitespaces)
+        if isSearchMode && !q.isEmpty { return sortMode }
+        return "popular"
+    }
+
     var filterSummaryParts: [String] {
         var parts: [String] = []
         if let name = selectedCategoryName?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty {
@@ -112,7 +147,13 @@ final class ExploreViewModel {
             parts.append(country)
         }
         if let condition = selectedConditionFilter?.trimmingCharacters(in: .whitespacesAndNewlines), !condition.isEmpty {
-            parts.append(condition)
+            parts.append(Self.conditionLabel(for: condition))
+        }
+        for tagId in selectedAestheticTagIds.sorted() {
+            if let label = aestheticTags.first(where: { $0.id == tagId })?.displayLabel().trimmingCharacters(in: .whitespacesAndNewlines),
+               !label.isEmpty {
+                parts.append(label)
+            }
         }
         let minP = minPriceText.trimmingCharacters(in: .whitespacesAndNewlines)
         let maxP = maxPriceText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -121,7 +162,7 @@ final class ExploreViewModel {
         }
         if let sizing = sizingModeFilter?.trimmingCharacters(in: .whitespacesAndNewlines),
            !sizing.isEmpty, sizing.lowercased() != "all" {
-            parts.append(sizing)
+            parts.append(L10n.exploreFilterSummarySizingMatch)
         }
         return parts
     }
@@ -228,14 +269,19 @@ final class ExploreViewModel {
     }
 
     func refresh(deps: AppDependencies, isGuestMode: Bool) async {
-        listingsFetchGeneration += 1
-        hasMore = true
-        isLoading = true
         loadError = false
-        defer { isLoading = false }
+        sellersLoadError = false
+        await loadFilterCatalogIfNeeded(deps: deps)
+        async let featured: Void = loadFeaturedSellers(deps: deps, isGuestMode: isGuestMode)
+        async let chips: Void = loadQuickInterestChips(deps: deps)
+        _ = await (featured, chips)
         if primarySection == .sellers {
-            await loadSellers(deps: deps, isGuestMode: isGuestMode, reset: true)
+            await refreshSellerBrowse(deps: deps, isGuestMode: isGuestMode)
         } else {
+            listingsFetchGeneration += 1
+            hasMore = true
+            isLoading = true
+            defer { isLoading = false }
             await loadListings(deps: deps, isGuestMode: isGuestMode, offset: 0, append: false)
         }
     }
@@ -269,9 +315,8 @@ final class ExploreViewModel {
             isLoading = false
             setSearchBarExpanded(false)
         case .sellers:
-            query = q
             committedSellerSearchQuery = q
-            await loadSellers(deps: deps, isGuestMode: isGuestMode, reset: true)
+            await searchSellers(deps: deps, isGuestMode: isGuestMode, query: q)
             setSearchBarExpanded(false)
         }
     }
@@ -281,6 +326,46 @@ final class ExploreViewModel {
         committedListingSearchQuery = ""
         query = ""
         await refresh(deps: deps, isGuestMode: isGuestMode)
+    }
+
+    func clearSellerSearch(deps: AppDependencies, isGuestMode: Bool) async {
+        committedSellerSearchQuery = ""
+        query = ""
+        await refreshSellerBrowse(deps: deps, isGuestMode: isGuestMode)
+    }
+
+    func retrySellerBrowse(deps: AppDependencies, isGuestMode: Bool) async {
+        if committedSellerSearchQuery.trimmingCharacters(in: .whitespaces).isEmpty {
+            await refreshSellerBrowse(deps: deps, isGuestMode: isGuestMode)
+        } else {
+            await searchSellers(deps: deps, isGuestMode: isGuestMode, query: committedSellerSearchQuery)
+        }
+    }
+
+    func toggleAestheticTagFilter(_ tagId: String, deps: AppDependencies, isGuestMode: Bool) async {
+        let id = tagId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !id.isEmpty else { return }
+        if selectedAestheticTagIds.contains(id) {
+            selectedAestheticTagIds.remove(id)
+        } else {
+            selectedAestheticTagIds.insert(id)
+        }
+        await refresh(deps: deps, isGuestMode: isGuestMode)
+    }
+
+    func toggleInterestChip(_ tagName: String, deps: AppDependencies, isGuestMode: Bool) async {
+        let cleaned = tagName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty else { return }
+        if let match = aestheticTags.first(where: {
+            $0.name.caseInsensitiveCompare(cleaned) == .orderedSame
+                || $0.displayName.caseInsensitiveCompare(cleaned) == .orderedSame
+                || $0.displayNameVi.caseInsensitiveCompare(cleaned) == .orderedSame
+        }) {
+            await toggleAestheticTagFilter(match.id, deps: deps, isGuestMode: isGuestMode)
+        } else {
+            query = cleaned
+            await submitSearch(deps: deps, isGuestMode: isGuestMode)
+        }
     }
 
     func clearAllFilters(deps: AppDependencies, isGuestMode: Bool) async {
@@ -299,8 +384,28 @@ final class ExploreViewModel {
     }
 
     func setPrimarySection(_ section: ExplorePrimarySection, deps: AppDependencies, isGuestMode: Bool) async {
+        guard primarySection != section else { return }
         primarySection = section
-        await refresh(deps: deps, isGuestMode: isGuestMode)
+        autocompleteTask?.cancel()
+        autocompleteSuggestions = []
+        if section == .sellers {
+            await refreshSellerBrowse(deps: deps, isGuestMode: isGuestMode)
+        }
+    }
+
+    func loadFeaturedSellers(deps: AppDependencies, isGuestMode: Bool) async {
+        switch await deps.searchRepository.getFeaturedSellers(limit: 10, publicBrowse: isGuestMode) {
+        case .success(let sellers):
+            featuredSellers = sellers
+        case .failure:
+            featuredSellers = []
+        }
+    }
+
+    func loadQuickInterestChips(deps: AppDependencies) async {
+        if case .success(let tags) = await deps.searchRepository.getTrendingTags() {
+            if !tags.isEmpty { quickInterestChips = tags }
+        }
     }
 
     func loadFilterCatalogIfNeeded(deps: AppDependencies) async {
@@ -340,6 +445,7 @@ final class ExploreViewModel {
         let maxPrice = Int64(maxPriceText.filter(\.isNumber))
         let tagIds = selectedAestheticTagIds.isEmpty ? nil : Array(selectedAestheticTagIds)
         let useSearch = isSearchMode && !q.isEmpty
+        let sort = effectiveListingSort(query: q)
         let result: Result<[ListingFeedItem], Error>
         if !useSearch && q.isEmpty {
             result = await deps.recommendationRepository.exploreListings(
@@ -366,7 +472,7 @@ final class ExploreViewModel {
                 minPrice: minPrice,
                 maxPrice: maxPrice,
                 condition: selectedConditionFilter,
-                sort: sortMode,
+                sort: sort,
                 limit: exploreFeedPageSize,
                 offset: offset
             )
@@ -381,7 +487,7 @@ final class ExploreViewModel {
                 minPrice: minPrice,
                 maxPrice: maxPrice,
                 condition: selectedConditionFilter,
-                sort: sortMode,
+                sort: sort,
                 limit: exploreFeedPageSize,
                 offset: offset
             )
@@ -407,22 +513,93 @@ final class ExploreViewModel {
         }
     }
 
-    private func loadSellers(deps: AppDependencies, isGuestMode: Bool, reset: Bool) async {
+    private func refreshSellerBrowse(deps: AppDependencies, isGuestMode: Bool) async {
+        sellersBrowseGeneration += 1
+        let gen = sellersBrowseGeneration
+        committedSellerSearchQuery = ""
+        sellersLoading = true
+        sellersLoadError = false
+        sellerPreviewPosts = [:]
+        defer { sellersLoading = false }
+        switch await deps.userRepository.searchUsers(query: "a", limit: 40, publicBrowse: isGuestMode) {
+        case .success(let users):
+            guard gen == sellersBrowseGeneration else { return }
+            sellerResults = users
+            sellersLoadError = false
+            if !users.isEmpty {
+                await loadSellerListingPreviews(deps: deps, isGuestMode: isGuestMode, expectedGen: gen)
+            }
+        case .failure:
+            guard gen == sellersBrowseGeneration else { return }
+            sellerResults = []
+            sellerPreviewPosts = [:]
+            sellersLoadError = true
+        }
+    }
+
+    private func searchSellers(deps: AppDependencies, isGuestMode: Bool, query: String) async {
         let q = query.trimmingCharacters(in: .whitespaces)
         guard !q.isEmpty else {
-            sellerResults = []
-            loadError = false
+            await refreshSellerBrowse(deps: deps, isGuestMode: isGuestMode)
             return
         }
-        if reset { isLoading = true }
-        defer { if reset { isLoading = false } }
-        switch await deps.userRepository.searchUsers(query: q, limit: 40, publicBrowse: isGuestMode) {
+        sellersBrowseGeneration += 1
+        let gen = sellersBrowseGeneration
+        sellersLoading = true
+        sellersLoadError = false
+        sellerPreviewPosts = [:]
+        defer { sellersLoading = false }
+        switch await deps.userRepository.searchUsers(query: q, limit: 50, publicBrowse: isGuestMode) {
         case .success(let users):
+            guard gen == sellersBrowseGeneration else { return }
             sellerResults = users
-            loadError = false
+            sellersLoadError = false
+            if !users.isEmpty {
+                await loadSellerListingPreviews(deps: deps, isGuestMode: isGuestMode, expectedGen: gen)
+            }
         case .failure:
+            guard gen == sellersBrowseGeneration else { return }
             sellerResults = []
-            loadError = true
+            sellerPreviewPosts = [:]
+            committedSellerSearchQuery = ""
+            sellersLoadError = true
+        }
+    }
+
+    private func loadSellerListingPreviews(
+        deps: AppDependencies,
+        isGuestMode: Bool,
+        expectedGen: Int
+    ) async {
+        sellerPreviewPosts = [:]
+        let sellers = sellerResults
+        await withTaskGroup(of: (String, [ListingFeedItem]).self) { group in
+            for seller in sellers {
+                let key = seller.userId.trimmingCharacters(in: .whitespaces).isEmpty
+                    ? seller.username.trimmingCharacters(in: .whitespaces)
+                    : seller.userId.trimmingCharacters(in: .whitespaces)
+                guard !key.isEmpty else { continue }
+                group.addTask {
+                    let listings: [ListingFeedItem]
+                    switch await deps.listingRepository.getListingsBySeller(
+                        sellerId: key,
+                        status: nil,
+                        limit: 3,
+                        offset: 0,
+                        publicBrowse: isGuestMode
+                    ) {
+                    case .success(let items):
+                        listings = Array(items.prefix(3))
+                    case .failure:
+                        listings = []
+                    }
+                    return (key, listings)
+                }
+            }
+            for await (key, listings) in group {
+                guard expectedGen == sellersBrowseGeneration else { return }
+                sellerPreviewPosts[key] = listings
+            }
         }
     }
 

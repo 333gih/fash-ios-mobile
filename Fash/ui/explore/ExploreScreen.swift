@@ -10,6 +10,7 @@ struct ExploreScreen: View {
     var promoSlides: [FashPromoSlideDef] = []
     var onPromoSlideClick: (FashPromoSlideDef, Int) -> Void = { _, _ in }
     var onFeaturedSellerClick: (UserSearchResult) -> Void = { _ in }
+    var onSeeAllFeaturedSellers: () -> Void = {}
 
     private let gridSpacing: CGFloat = 8
 
@@ -112,13 +113,39 @@ struct ExploreScreen: View {
             }
             listingsGrid
         } else {
-            sellersList
+            sellersDiscoveryColumn
+        }
+    }
+
+    private var listingsLeadingRows: some View {
+        VStack(spacing: spacing.spacing2) {
+            if viewModel.isSizingFilterActive {
+                ExploreActivePersonalFilterChips(
+                    sizingActive: true,
+                    onClearSizing: {
+                        viewModel.setSizingModeFilter(nil)
+                        Task { await viewModel.refresh(deps: deps, isGuestMode: isGuestMode) }
+                    },
+                    onOpenFilters: { viewModel.showFilterSheet = true }
+                )
+            }
+            if !viewModel.quickInterestChips.isEmpty
+                && !viewModel.hasActiveFilters
+                && !viewModel.isSearchModeActive {
+                ExploreInterestChipsRow(
+                    chips: viewModel.quickInterestChips,
+                    selectedChipNames: viewModel.selectedInterestChipNames
+                ) { chip in
+                    Task { await viewModel.toggleInterestChip(chip, deps: deps, isGuestMode: isGuestMode) }
+                }
+            }
         }
     }
 
     private var listingsGrid: some View {
         ScrollView {
             LazyVStack(spacing: gridSpacing) {
+                listingsLeadingRows
                 if viewModel.isLoading && viewModel.items.isEmpty {
                     FashSkeleton.listingGrid()
                 } else if viewModel.loadError && viewModel.items.isEmpty {
@@ -157,40 +184,76 @@ struct ExploreScreen: View {
         }
     }
 
-    private var sellersList: some View {
+    private var sellersDiscoveryColumn: some View {
         ScrollView {
-            if viewModel.sellerResults.isEmpty {
-                FashEmptyStateView(title: L10n.searchPlaceholder, subtitle: L10n.feedEmptySubtitle)
-                    .padding()
-            } else {
-                LazyVStack(spacing: spacing.spacing3) {
-                    ForEach(viewModel.sellerResults) { seller in
-                        Button {
-                            onFeaturedSellerClick(seller)
-                        } label: {
-                            HStack(spacing: spacing.spacing3) {
-                                FashAvatarCircle(url: seller.avatarUrl, size: 44)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(seller.displayName.isEmpty ? seller.username : seller.displayName)
-                                        .font(FashTypography.labelLarge)
-                                        .foregroundStyle(FashColors.textPrimary)
-                                    if !seller.username.isEmpty {
-                                        Text("@\(seller.username)")
-                                            .font(FashTypography.bodySmall)
-                                            .foregroundStyle(FashColors.textSecondary)
-                                    }
-                                }
-                                Spacer()
-                            }
-                            .padding(.horizontal, spacing.editorialStart)
+            LazyVStack(alignment: .leading, spacing: spacing.spacing3) {
+                if !viewModel.committedSellerSearchQuery.trimmingCharacters(in: .whitespaces).isEmpty {
+                    ExploreActiveSearchQueryBanner(
+                        query: viewModel.committedSellerSearchQuery,
+                        onClear: {
+                            Task { await viewModel.clearSellerSearch(deps: deps, isGuestMode: isGuestMode) }
                         }
-                        .buttonStyle(.plain)
+                    )
+                }
+
+                Text(L10n.exploreSellersSubtitle)
+                    .font(FashTypography.bodyMedium)
+                    .foregroundStyle(FashColors.textSecondary)
+                    .padding(.horizontal, spacing.editorialStart)
+
+                if !viewModel.featuredSellers.isEmpty {
+                    ExploreFeaturedSellersSection(
+                        sellers: viewModel.featuredSellers,
+                        onSellerClick: { seller in onFeaturedSellerClick(seller.toUserSearchResult()) },
+                        onSeeAllClick: onSeeAllFeaturedSellers
+                    )
+                    .padding(.horizontal, spacing.editorialStart)
+                }
+
+                if viewModel.sellersLoading && viewModel.sellerResults.isEmpty {
+                    FashSkeleton.box(height: 132, cornerRadius: spacing.radiusSoftMin)
+                        .padding(.horizontal, spacing.editorialStart)
+                    ForEach(0..<4, id: \.self) { _ in
+                        FashSkeleton.box(height: 220, cornerRadius: spacing.radiusSoftMin)
+                            .padding(.horizontal, spacing.editorialStart)
+                    }
+                } else if viewModel.sellersLoadError && viewModel.sellerResults.isEmpty {
+                    FashEmptyStateView(title: L10n.feedLoadError, actionTitle: L10n.feedRetry) {
+                        Task { await viewModel.retrySellerBrowse(deps: deps, isGuestMode: isGuestMode) }
+                    }
+                    .padding(.horizontal, spacing.editorialStart)
+                } else if !viewModel.sellersLoading && viewModel.sellerResults.isEmpty {
+                    FashEmptyStateView(
+                        title: L10n.exploreSellersEmpty,
+                        subtitle: L10n.exploreSellersSearchPlaceholder
+                    )
+                    .padding(.horizontal, spacing.editorialStart)
+                } else {
+                    ForEach(viewModel.sellerResults) { seller in
+                        let storeKey = seller.userId.trimmingCharacters(in: .whitespaces).isEmpty
+                            ? seller.username.trimmingCharacters(in: .whitespaces)
+                            : seller.userId.trimmingCharacters(in: .whitespaces)
+                        ExploreSellerTikTokCard(
+                            user: seller,
+                            previewPosts: viewModel.sellerPreviewPosts[storeKey],
+                            onSellerClick: { onFeaturedSellerClick(seller) },
+                            onListingClick: { item in
+                                deps.presentListingPreview(
+                                    item: item,
+                                    router: router,
+                                    publicBrowse: isGuestMode,
+                                    surface: "explore_seller_preview",
+                                    position: 0
+                                )
+                            }
+                        )
+                        .padding(.horizontal, spacing.editorialStart)
                     }
                     HomeBrandFooterStrip()
                 }
-                .padding(.vertical, spacing.spacing4)
-                .padding(.bottom, promoDockInset)
             }
+            .padding(.top, spacing.spacing2)
+            .padding(.bottom, promoDockInset + spacing.spacing4)
         }
     }
 }

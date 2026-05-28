@@ -19,6 +19,20 @@ struct FeaturedSellerItem: Equatable, Identifiable {
         if !uid.isEmpty { return uid }
         return username.trimmingCharacters(in: .whitespaces)
     }
+
+    /// Android `FeaturedSellerItem.toUserSearchResult()`.
+    func toUserSearchResult() -> UserSearchResult {
+        UserSearchResult(
+            userId: userId,
+            username: username,
+            displayName: displayName,
+            avatarUrl: avatarUrl,
+            followerCount: followerCount,
+            verified: verified,
+            followingCount: 0,
+            listingCount: listingCount
+        )
+    }
 }
 
 struct FeaturedSellersPage: Equatable {

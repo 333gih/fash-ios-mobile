@@ -26,6 +26,10 @@ struct ExploreOverlayHost: View {
                         onClose()
                         router.sellerShopUsername = username
                     }
+                },
+                onSeeAllFeaturedSellers: {
+                    onClose()
+                    router.showFeaturedSellersAll = true
                 }
             )
         }
