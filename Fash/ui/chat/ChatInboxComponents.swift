@@ -114,8 +114,7 @@ struct ChatListingGroupHeader: View {
         let url = FeedImageUrl.resolveListingImageUrlOrNil(group.coverImageUrl)
         Group {
             if let url {
-                FashAsyncImage(url: url)
-                    .scaledToFill()
+                FashAsyncImage(url: url, contentMode: .fill)
             } else {
                 Color.clear
             }
@@ -217,8 +216,7 @@ struct ChatConversationRow: View {
         let url = FeedImageUrl.resolveListingImageUrlOrNil(item.productThumbnailUrl)
         Group {
             if let url {
-                FashAsyncImage(url: url)
-                    .scaledToFill()
+                FashAsyncImage(url: url, contentMode: .fill)
             } else {
                 Color.clear
             }
