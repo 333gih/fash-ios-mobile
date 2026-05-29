@@ -14,7 +14,7 @@ struct ExploreOverlayHost: View {
     @State private var topBarCompact = false
     @State private var showPinnedMarketplaceChrome = false
     @State private var headerScrollMinY: CGFloat = 0
-    @State private var filterBarScrollMinY: CGFloat = .greatestFiniteMagnitude
+    @State private var marketplaceControlsMaxY: CGFloat = .infinity
 
     var body: some View {
         VStack(spacing: 0) {
@@ -57,13 +57,10 @@ struct ExploreOverlayHost: View {
         }
         .background(FashColors.screen)
         .animation(.easeInOut(duration: 0.22), value: showPinnedMarketplaceChrome)
-        .onPreferenceChange(ExploreHeaderScrollKey.self) { headerScrollMinY = $0; updateTopBarCompact() }
-        .onPreferenceChange(ExploreFilterBarScrollKey.self) { filterBarScrollMinY = $0; updateTopBarCompact() }
-        .onPreferenceChange(ExploreStickyChromeVisibleKey.self) { visible in
-            guard showPinnedMarketplaceChrome != visible else { return }
-            withAnimation(.easeInOut(duration: 0.22)) {
-                showPinnedMarketplaceChrome = visible
-            }
+        .onPreferenceChange(ExploreHeaderScrollKey.self) { headerScrollMinY = $0; syncScrollChrome() }
+        .onPreferenceChange(ExploreMarketplaceControlsScrollKey.self) {
+            marketplaceControlsMaxY = $0
+            syncScrollChrome()
         }
         .overlay(alignment: .bottom) {
             ListingPreviewOverlay(
@@ -77,7 +74,7 @@ struct ExploreOverlayHost: View {
             topBarCompact = false
             showPinnedMarketplaceChrome = false
             headerScrollMinY = 0
-            filterBarScrollMinY = .greatestFiniteMagnitude
+            marketplaceControlsMaxY = .infinity
             deps.listingPreview.close(deps: deps)
         }
         .task {
@@ -90,15 +87,25 @@ struct ExploreOverlayHost: View {
         }
     }
 
-    private func updateTopBarCompact() {
-        let next = ExploreStickyChromePolicy.shouldCompactTopBar(
+    private func syncScrollChrome() {
+        let hasSellerSearch = !viewModel.committedSellerSearchQuery
+            .trimmingCharacters(in: .whitespaces).isEmpty
+        let nextPinned = ExploreStickyChromePolicy.shouldPinMarketplaceChrome(
+            currentlyShown: showPinnedMarketplaceChrome,
+            headerMinY: headerScrollMinY,
+            controlsMaxY: marketplaceControlsMaxY,
+            primarySection: viewModel.primarySection,
+            hasSellerSearch: hasSellerSearch
+        )
+        let nextCompact = ExploreStickyChromePolicy.shouldCompactTopBar(
             currentlyShown: topBarCompact,
             headerMinY: headerScrollMinY,
-            filterBarMinY: filterBarScrollMinY
+            controlsMaxY: marketplaceControlsMaxY
         )
-        guard topBarCompact != next else { return }
+        guard showPinnedMarketplaceChrome != nextPinned || topBarCompact != nextCompact else { return }
         withAnimation(.easeInOut(duration: 0.22)) {
-            topBarCompact = next
+            showPinnedMarketplaceChrome = nextPinned
+            topBarCompact = nextCompact
         }
     }
 }

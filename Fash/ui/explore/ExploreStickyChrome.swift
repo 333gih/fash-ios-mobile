@@ -100,9 +100,10 @@ struct ExploreHeaderScrollKey: PreferenceKey {
     }
 }
 
-/// Filter row `minY` — sticky chrome when this scrolls above the visible top (~Android 88dp).
-struct ExploreFilterBarScrollKey: PreferenceKey {
-    static var defaultValue: CGFloat = .greatestFiniteMagnitude
+/// Bottom edge of the expanded filter + active-search block in feed scroll space.
+/// Sticky chrome appears when this scrolls above the visible top (`maxY` → 0).
+struct ExploreMarketplaceControlsScrollKey: PreferenceKey {
+    static var defaultValue: CGFloat = .infinity
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
         value = nextValue()
     }
@@ -113,6 +114,15 @@ struct ExploreStickyChromeVisibleKey: PreferenceKey {
     static var defaultValue: Bool = false
     static func reduce(value: inout Bool, nextValue: () -> Bool) {
         value = nextValue()
+    }
+}
+
+/// Always the first `LazyVStack` child so scroll offset keeps updating while scrolling.
+struct ExploreFeedScrollOffsetAnchor: View {
+    var body: some View {
+        Color.clear
+            .frame(height: 0)
+            .exploreExpandedHeaderScrollReporting()
     }
 }
 
@@ -129,12 +139,13 @@ extension View {
         )
     }
 
-    func exploreFilterBarScrollReporting(space: String = "exploreFeedScroll") -> some View {
+    /// Reports the bottom (`maxY`) of filter + active-search rows for sticky timing.
+    func exploreMarketplaceControlsScrollReporting(space: String = "exploreFeedScroll") -> some View {
         background(
             GeometryReader { geo in
                 Color.clear.preference(
-                    key: ExploreFilterBarScrollKey.self,
-                    value: geo.frame(in: .named(space)).minY
+                    key: ExploreMarketplaceControlsScrollKey.self,
+                    value: geo.frame(in: .named(space)).maxY
                 )
             }
             .allowsHitTesting(false)
@@ -157,31 +168,56 @@ enum ExploreTabsCollapse {
 enum ExploreStickyChromePolicy {
     static let showThreshold: CGFloat = 88
     static let hideThreshold: CGFloat = 72
-    /// Filter row is leaving the viewport (sticky replaces it).
-    static let filterOffscreenThreshold: CGFloat = 10
+    /// Controls block has scrolled past the top inset — show compact filter/search.
+    static let controlsPinnedThreshold: CGFloat = 8
+    /// Controls are back near the top — hide compact chrome.
+    static let controlsRestoredThreshold: CGFloat = 80
 
     static func shouldShowSticky(
         currentlyShown: Bool,
         headerMinY: CGFloat,
-        filterBarMinY: CGFloat
+        controlsMaxY: CGFloat
     ) -> Bool {
-        let headerScrolled = headerMinY < -showThreshold
-        let filterLeaving = filterBarMinY < filterOffscreenThreshold
-        if currentlyShown {
-            return headerMinY < -hideThreshold || filterBarMinY < hideThreshold
+        if controlsMaxY.isFinite, controlsMaxY < 10_000 {
+            if currentlyShown {
+                return controlsMaxY < controlsRestoredThreshold
+            }
+            return controlsMaxY < controlsPinnedThreshold
         }
-        return headerScrolled || filterLeaving
+        if currentlyShown {
+            return headerMinY < -hideThreshold
+        }
+        return headerMinY < -showThreshold
     }
 
     static func shouldCompactTopBar(
         currentlyShown: Bool,
         headerMinY: CGFloat,
-        filterBarMinY: CGFloat
+        controlsMaxY: CGFloat
     ) -> Bool {
         shouldShowSticky(
             currentlyShown: currentlyShown,
             headerMinY: headerMinY,
-            filterBarMinY: filterBarMinY
+            controlsMaxY: controlsMaxY
         )
+    }
+
+    static func shouldPinMarketplaceChrome(
+        currentlyShown: Bool,
+        headerMinY: CGFloat,
+        controlsMaxY: CGFloat,
+        primarySection: ExplorePrimarySection,
+        hasSellerSearch: Bool
+    ) -> Bool {
+        let scrolled = shouldShowSticky(
+            currentlyShown: currentlyShown,
+            headerMinY: headerMinY,
+            controlsMaxY: controlsMaxY
+        )
+        guard scrolled else { return false }
+        switch primarySection {
+        case .listings: return true
+        case .sellers: return hasSellerSearch
+        }
     }
 }

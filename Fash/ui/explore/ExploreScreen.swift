@@ -21,7 +21,7 @@ struct ExploreScreen: View {
 
     @State private var showStickyChrome = false
     @State private var headerScrollMinY: CGFloat = 0
-    @State private var filterBarScrollMinY: CGFloat = .greatestFiniteMagnitude
+    @State private var marketplaceControlsMaxY: CGFloat = .infinity
 
     private var tabsFadeOpacity: CGFloat {
         ExploreTabsCollapse.fadeOpacity(headerMinY: headerScrollMinY)
@@ -85,7 +85,10 @@ struct ExploreScreen: View {
             .presentationDragIndicator(.visible)
         }
         .onPreferenceChange(ExploreHeaderScrollKey.self) { headerScrollMinY = $0; updateStickyChromeState() }
-        .onPreferenceChange(ExploreFilterBarScrollKey.self) { filterBarScrollMinY = $0; updateStickyChromeState() }
+        .onPreferenceChange(ExploreMarketplaceControlsScrollKey.self) {
+            marketplaceControlsMaxY = $0
+            updateStickyChromeState()
+        }
         .background {
             Color.clear.preference(
                 key: ExploreStickyChromeVisibleKey.self,
@@ -95,15 +98,18 @@ struct ExploreScreen: View {
         .onChange(of: viewModel.primarySection) { _, _ in
             showStickyChrome = false
             headerScrollMinY = 0
-            filterBarScrollMinY = .greatestFiniteMagnitude
+            marketplaceControlsMaxY = .infinity
         }
     }
 
     private func updateStickyChromeState() {
-        let next = ExploreStickyChromePolicy.shouldShowSticky(
+        let next = ExploreStickyChromePolicy.shouldPinMarketplaceChrome(
             currentlyShown: showStickyChrome,
             headerMinY: headerScrollMinY,
-            filterBarMinY: filterBarScrollMinY
+            controlsMaxY: marketplaceControlsMaxY,
+            primarySection: viewModel.primarySection,
+            hasSellerSearch: !viewModel.committedSellerSearchQuery
+                .trimmingCharacters(in: .whitespaces).isEmpty
         )
         guard next != showStickyChrome else { return }
         withAnimation(.easeInOut(duration: 0.22)) {
@@ -131,7 +137,7 @@ struct ExploreScreen: View {
             sectionToggle
                 .opacity(tabsFadeOpacity)
                 .animation(.easeInOut(duration: 0.22), value: tabsFadeOpacity)
-            filterBar
+            marketplaceControlsColumn
             listingsLeadingRows
             ExploreCategoryStrip(
                 roots: viewModel.categoryTree,
@@ -151,16 +157,7 @@ struct ExploreScreen: View {
             sectionToggle
                 .opacity(tabsFadeOpacity)
                 .animation(.easeInOut(duration: 0.22), value: tabsFadeOpacity)
-            if !viewModel.committedSellerSearchQuery.trimmingCharacters(in: .whitespaces).isEmpty {
-                ExploreActiveSearchQueryBanner(
-                    query: viewModel.committedSellerSearchQuery,
-                    onClear: {
-                        Task { await viewModel.clearSellerSearch(deps: deps, isGuestMode: isGuestMode) }
-                    }
-                )
-                .padding(.horizontal, spacing.editorialStart)
-                .exploreFilterBarScrollReporting()
-            }
+            marketplaceControlsColumn
         }
         .padding(.top, spacing.spacing2)
     }
@@ -180,17 +177,39 @@ struct ExploreScreen: View {
             }
             .padding(.horizontal, spacing.editorialStart)
 
-            if viewModel.isSearchModeActive, viewModel.primarySection == .listings {
-                ExploreActiveSearchQueryBanner(
-                    query: viewModel.committedListingSearchQuery,
-                    onClear: {
-                        Task { await viewModel.clearListingSearch(deps: deps, isGuestMode: isGuestMode) }
-                    }
-                )
-                .padding(.horizontal, spacing.editorialStart)
-            }
         }
         .padding(.top, spacing.spacing2)
+    }
+
+    /// Filter + committed search (not tabs) — scroll position drives sticky chrome.
+    @ViewBuilder
+    private var marketplaceControlsColumn: some View {
+        VStack(spacing: spacing.spacing2) {
+            switch viewModel.primarySection {
+            case .listings:
+                if viewModel.isSearchModeActive {
+                    ExploreActiveSearchQueryBanner(
+                        query: viewModel.committedListingSearchQuery,
+                        onClear: {
+                            Task { await viewModel.clearListingSearch(deps: deps, isGuestMode: isGuestMode) }
+                        }
+                    )
+                    .padding(.horizontal, spacing.editorialStart)
+                }
+                filterBar
+            case .sellers:
+                if !viewModel.committedSellerSearchQuery.trimmingCharacters(in: .whitespaces).isEmpty {
+                    ExploreActiveSearchQueryBanner(
+                        query: viewModel.committedSellerSearchQuery,
+                        onClear: {
+                            Task { await viewModel.clearSellerSearch(deps: deps, isGuestMode: isGuestMode) }
+                        }
+                    )
+                    .padding(.horizontal, spacing.editorialStart)
+                }
+            }
+        }
+        .exploreMarketplaceControlsScrollReporting()
     }
 
     @ViewBuilder
@@ -204,7 +223,6 @@ struct ExploreScreen: View {
                     Task { await viewModel.clearAllFilters(deps: deps, isGuestMode: isGuestMode) }
                 } : nil
             )
-            .exploreFilterBarScrollReporting()
         }
     }
 
@@ -240,9 +258,7 @@ struct ExploreScreen: View {
     private var listingsGrid: some View {
         ScrollView {
             LazyVStack(spacing: gridSpacing) {
-                Color.clear
-                    .frame(height: 1)
-                    .exploreExpandedHeaderScrollReporting()
+                ExploreFeedScrollOffsetAnchor()
 
                 listingsExpandedHeader
                 listingsFeedBody
@@ -317,9 +333,7 @@ struct ExploreScreen: View {
     private var sellersDiscoveryColumn: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: spacing.spacing3) {
-                Color.clear
-                    .frame(height: 1)
-                    .exploreExpandedHeaderScrollReporting()
+                ExploreFeedScrollOffsetAnchor()
 
                 sellersExpandedHeader
 
