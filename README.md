@@ -91,7 +91,8 @@ No Mac required for **compile checks**: push to GitLab (mirrored to GitHub) trig
 git push origin develop  →  GitLab mirror  →  GitHub Actions  →  xcodebuild (simulator)
 ```
 
-Setup, mirror checklist, and troubleshooting: **[docs/CI.md](docs/CI.md)**.
+Setup, mirror checklist, and troubleshooting: **[docs/CI.md](docs/CI.md)**.  
+Cursor / no-Mac development: **[docs/CURSOR_DEVELOPMENT.md](docs/CURSOR_DEVELOPMENT.md)** · **[AGENTS.md](AGENTS.md)**.
 
 GitLab pipeline (`.gitlab-ci.yml`) only prints a reminder — the real iOS build runs on GitHub.
 
@@ -107,3 +108,9 @@ Chi tiết secrets & TestFlight: **[docs/CI.md](docs/CI.md)**.
 ## Windows
 
 Authoring on Windows is supported; **compile only on Mac or GitHub Actions**. `Fash.xcodeproj` is gitignored — created by `xcodegen generate` locally or in CI.
+
+**No Mac workflow:** see **[docs/CURSOR_DEVELOPMENT.md](docs/CURSOR_DEVELOPMENT.md)** and **[AGENTS.md](AGENTS.md)**. Pre-push gate:
+
+```powershell
+.\scripts\check_before_push.ps1
+```

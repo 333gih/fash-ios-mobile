@@ -1,0 +1,57 @@
+---
+description: Fash iOS — no-Mac Cursor development, CI gate, Swift conventions
+globs:
+  - "**/*.swift"
+  - "project.yml"
+  - "Fash/**"
+alwaysApply: true
+---
+
+# Fash iOS (Cursor)
+
+Read **AGENTS.md** at repo root before editing.
+
+## Environment
+
+- Developer has **no Mac / no Xcode**. Do not suggest "build in Xcode" as primary workflow.
+- Compile verification = **GitHub Actions** (`techheart-in-my-heart/fash-ios-mobile`).
+- **Minimize pushes to `releases/*`** — each push burns macOS CI minutes (~5–10 min).
+
+## Before every push (mandatory)
+
+Run from `fash-ios-mobile/`:
+
+```powershell
+.\scripts\check_before_push.ps1
+```
+
+Or: `python scripts/validate_swift_syntax.py` + bash scripts for i18n/preflight.
+
+## Code rules (high-signal)
+
+1. Match surrounding files — `@MainActor`, `RepositoryHttp`, SwiftUI patterns.
+2. **No duplicate** module types (`FlowLayout`, `displayLabel()` on `CommonAestheticTagDto`).
+3. **No markdown** backticks in `.swift` files.
+4. ViewBuilder helpers must return `some View` when used inside builders.
+5. UIKit dismiss completions: `let deliver: () -> Void = { Task { ... } }`.
+6. Recursive SwiftUI: prefer `AnyView` over `@ViewBuilder` self-recursion.
+7. `private` is file-scoped — no cross-file private helpers.
+8. New strings: vendor + vi/en Localizable + L10n.swift.
+9. TestFlight: increment `CURRENT_PROJECT_VERSION` in `project.yml`.
+10. Fix all compile errors in **one commit** before release push — avoid retry chains.
+
+## Branching
+
+- Daily work → `develop` (iOS Build simulator).
+- TestFlight → `releases/*` only after gate pass + user request.
+
+## Docs
+
+- `docs/CODE_CONVENTIONS.md` — full rules
+- `docs/CURSOR_DEVELOPMENT.md` — workflow
+- `docs/CI_BUDGET.md` — save CI minutes
+- `docs/BUILD_CHECKLIST.md` — release checklist
+
+## Android parity
+
+When porting features, read matching Kotlin in `fash-android-mobile` first.

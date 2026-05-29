@@ -1,0 +1,1 @@
+.\scripts\push_github_ios_secrets.ps1 -Repo phuckhoa33/fash-ios-mobile

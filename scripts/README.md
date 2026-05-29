@@ -6,6 +6,7 @@ CI **does not** checkout `fash-android-mobile` and **does not** run sync.
 
 | Script | Role |
 |--------|------|
+| `check_before_push.ps1` | **Windows gate** — chạy cả 3 validate dưới đây |
 | `ci_ios_prepare.sh` | Entry: validate i18n + icon → XcodeGen → SPM |
 | `ci_validate_i18n.sh` | `vendor/` + `Localizable.strings` + `L10n.swift` present & matching |
 | `validate_strings.py` | `.strings` file syntax |

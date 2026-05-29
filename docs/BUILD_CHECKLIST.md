@@ -2,6 +2,8 @@
 
 Dùng checklist này **trước mỗi push** lên `releases/*` (TestFlight) hoặc `develop` / `main` (build simulator).
 
+> **Entry point (Cursor / không Mac):** [CURSOR_DEVELOPMENT.md](./CURSOR_DEVELOPMENT.md) · [CODE_CONVENTIONS.md](./CODE_CONVENTIONS.md) · [CI_BUDGET.md](./CI_BUDGET.md) · [../AGENTS.md](../AGENTS.md)
+
 > **Lưu ý:** Script `validate_swift_syntax.py` bắt được một phần lỗi cú pháp, nhưng **không thay thế** `xcodebuild archive`. Release CI dùng Xcode 26 + Swift 6 strict hơn — luôn chạy đủ bước bên dưới.
 
 ---
@@ -30,7 +32,7 @@ python scripts/validate_swift_syntax.py
 - [ ] Cả 3 lệnh trên exit `0` (in `OK: ...`).
 - [ ] Nếu có Mac: chạy thêm `bash scripts/build_mac.sh Fash-Prod` hoặc archive local với scheme release.
 
-**Trên Windows (không có Xcode):** tối thiểu chạy 3 lệnh trên + review checklist mục 3–6 thủ công.
+**Trên Windows (không có Xcode):** chạy `.\scripts\check_before_push.ps1` (gộp 3 lệnh trên) + review checklist mục 3–6.
 
 ---
 
