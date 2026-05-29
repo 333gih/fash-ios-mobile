@@ -6,7 +6,7 @@ enum ListingFeedFormatters {
     static func sanitizeListingUiText(_ raw: String?) -> String {
         guard let raw, !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return "" }
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.hasPrefix("{"),
+        if trimmed.first == Character(UnicodeScalar(0x7B)),
            let data = trimmed.data(using: .utf8),
            let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
             let keys = ["display_name", "DisplayName", "name", "Name", "title", "Title"]
