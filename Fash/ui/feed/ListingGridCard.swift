@@ -310,9 +310,9 @@ struct ListingGridCard: View {
         let user = ListingFeedFormatters.sanitizeListingUiText(item.sellerUsername)
             .trimmingCharacters(in: .whitespaces)
         let resolved = user.isEmpty ? "user" : user
-        if let tag = ListingFeedFormatters.sanitizeListingUiText(item.sellerStyleTag)
-            .trimmingCharacters(in: .whitespacesAndNewlines),
-           !tag.isEmpty {
+        let tag = ListingFeedFormatters.sanitizeListingUiText(item.sellerStyleTag)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        if !tag.isEmpty {
             return "@\(resolved) · \(tag)"
         }
         return "@\(resolved)"
