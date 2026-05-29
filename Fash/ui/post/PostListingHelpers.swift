@@ -166,11 +166,3 @@ extension CreateListingDraft {
         return L10n.postNextBlockedGeneric
     }
 }
-
-private func parsePositiveLong(_ s: String) -> Int64? {
-    let digits = s.trimmingCharacters(in: .whitespaces)
-        .replacingOccurrences(of: ".", with: "")
-        .replacingOccurrences(of: ",", with: "")
-    guard let v = Int64(digits), v > 0 else { return nil }
-    return v
-}

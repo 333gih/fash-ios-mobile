@@ -43,7 +43,7 @@ enum FashActivityShare {
         completed: Bool,
         onCompleted: ((Bool) -> Void)?
     ) {
-        let deliver = {
+        let deliver: () -> Void = {
             Task { @MainActor in
                 try? await Task.sleep(nanoseconds: dismissSettleNanoseconds)
                 onCompleted?(completed)

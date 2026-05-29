@@ -75,16 +75,15 @@ struct FashWaitingScreen: View {
     // MARK: - Watermark
 
     private func watermark(geo: GeometryProxy, motion: WaitingScreenMotion) -> some View {
-        Text(L10n.splashWordmark)
-            .font(.custom("BeVietnamPro-Bold", size: min(geo.size.height * 0.16, 132)))
+        let fontSize = min(geo.size.height * 0.16, 132)
+        let driftY = geo.size.height * 0.08 + geo.size.height * 0.05 * motion.watermarkDrift
+        return Text(L10n.splashWordmark)
+            .font(.custom("BeVietnamPro-Bold", size: fontSize))
             .tracking(-2)
             .foregroundStyle(onSurface.opacity(0.08))
             .rotationEffect(.degrees(-90))
             .frame(height: geo.size.height * 0.72)
-            .offset(
-                x: geo.size.width * 0.12,
-                y: geo.size.height * 0.08 + geo.size.height * 0.05 * motion.watermarkDrift
-            )
+            .offset(x: geo.size.width * 0.12, y: driftY)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             .allowsHitTesting(false)
     }
