@@ -165,8 +165,13 @@ struct ProductDetailScreen: View {
                 Button {
                     guard let d = viewModel.detail else { return }
                     viewModel.reportShare(deps: deps)
-                    let url = AppEnvironment.listingShareURL(listingId: d.id)
-                    sharePayload = SharePayload(text: "\(d.title)\n\(url)")
+                    let web = AppEnvironment.listingShareURL(listingId: d.id)
+                    let fashUri = ListingDeepLinks.fashListingURL(listingId: d.id)?.absoluteString ?? ""
+                    let title = d.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        ? L10n.productDetailTitle
+                        : d.title
+                    let text = L10n.shareListingText(title, web, fashUri)
+                    sharePayload = SharePayload(items: [L10n.shareListingSubject, text])
                     onShare(d.id, d.title)
                 } label: {
                     Image(systemName: "square.and.arrow.up")
