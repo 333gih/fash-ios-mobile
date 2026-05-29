@@ -19,6 +19,45 @@ enum ListingMasonryGrid {
         return hash
     }
 
+    /// Tile height when the column width is known (image aspect ratio only).
+    static func estimatedTileHeight(columnWidth: CGFloat, listingId: String) -> CGFloat {
+        guard columnWidth > 0 else { return 0 }
+        return columnWidth / staggerAspectRatio(for: listingId)
+    }
+
+    static func columnWidth(
+        containerWidth: CGFloat,
+        leadingInset: CGFloat,
+        trailingInset: CGFloat,
+        columnGap: CGFloat
+    ) -> CGFloat {
+        let inner = max(0, containerWidth - leadingInset - trailingInset - columnGap)
+        return inner / 2
+    }
+
+    static func estimatedColumnHeight(
+        entries: [(index: Int, item: ListingFeedItem)],
+        columnWidth: CGFloat,
+        verticalGap: CGFloat
+    ) -> CGFloat {
+        guard !entries.isEmpty, columnWidth > 0 else { return 0 }
+        let tiles = entries.reduce(CGFloat(0)) { partial, entry in
+            partial + estimatedTileHeight(columnWidth: columnWidth, listingId: entry.item.id)
+        }
+        return tiles + verticalGap * CGFloat(max(0, entries.count - 1))
+    }
+
+    static func estimatedGridHeight(
+        layout: ListingMasonryColumnLayout,
+        columnWidth: CGFloat,
+        verticalGap: CGFloat
+    ) -> CGFloat {
+        max(
+            estimatedColumnHeight(entries: layout.left, columnWidth: columnWidth, verticalGap: verticalGap),
+            estimatedColumnHeight(entries: layout.right, columnWidth: columnWidth, verticalGap: verticalGap)
+        )
+    }
+
     /// One lazy row (up to two tiles) — Android `listingMasonryFeedRows` for long feeds.
     struct FeedRow: Identifiable {
         let id: String
@@ -188,6 +227,7 @@ extension ListingMasonryGrid {
             if let stored = assignedIsRightColumn[item.id] {
                 placeRight = stored
             } else {
+                // New tile (e.g. load-more batch) → shorter column first.
                 placeRight = leftHeight > rightHeight
                 assignedIsRightColumn[item.id] = placeRight
             }
@@ -203,6 +243,15 @@ extension ListingMasonryGrid {
     }
 }
 
+private struct ListingMasonryContainerWidthKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        let next = nextValue()
+        if next > 0 { value = next }
+    }
+}
+
 /// Two-column masonry layout — left/right item lists with global indices.
 struct ListingMasonryColumnLayout {
     var left: [(index: Int, item: ListingFeedItem)]
@@ -213,11 +262,11 @@ struct ListingMasonryColumnLayout {
     var isEmpty: Bool { left.isEmpty && right.isEmpty }
 }
 
-/// Virtualized **independent columns** inside `ScrollView` — Android `LazyVerticalStaggeredGrid` parity.
+/// Two-column masonry with **fixed equal tile widths** — Android `LazyVerticalStaggeredGrid` parity.
 ///
-/// Equal column width, fixed vertical gap, tile height from image aspect ratio only.
-/// Use [ListingMasonryGrid.makeStableColumnLayout] so load-more does not reshuffle existing tiles.
-struct ListingMasonryLazyColumns<Content: View>: View {
+/// Uses non-lazy `VStack` columns (nested `LazyVStack` in `ScrollView` overlaps tiles). Pair with
+/// [ListingMasonryGrid.makeStableColumnLayout] for stable load-more placement.
+struct ListingMasonryColumnFeed<Content: View>: View {
     @Environment(\.fashSpacing) private var spacing
 
     let layout: ListingMasonryColumnLayout
@@ -226,30 +275,68 @@ struct ListingMasonryLazyColumns<Content: View>: View {
     var trailingPadding: CGFloat?
     @ViewBuilder let content: (ListingFeedItem, Int) -> Content
 
+    @State private var containerWidth: CGFloat = 0
+
     private var gap: CGFloat { columnSpacing ?? spacing.spacing2 }
     private var edgeStart: CGFloat { leadingPadding ?? spacing.editorialStart }
     private var edgeEnd: CGFloat { trailingPadding ?? spacing.editorialEnd }
 
+    private var resolvedContainerWidth: CGFloat {
+        containerWidth > 1 ? containerWidth : UIScreen.main.bounds.width
+    }
+
+    private var columnWidth: CGFloat {
+        ListingMasonryGrid.columnWidth(
+            containerWidth: resolvedContainerWidth,
+            leadingInset: edgeStart,
+            trailingInset: edgeEnd,
+            columnGap: gap
+        )
+    }
+
+    private var gridHeight: CGFloat {
+        ListingMasonryGrid.estimatedGridHeight(
+            layout: layout,
+            columnWidth: columnWidth,
+            verticalGap: gap
+        )
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: gap) {
-            lazyColumn(layout.left)
-            lazyColumn(layout.right)
+            masonryColumn(layout.left)
+            masonryColumn(layout.right)
+        }
+        .frame(maxWidth: .infinity, minHeight: gridHeight, alignment: .topLeading)
+        .background(
+            GeometryReader { proxy in
+                Color.clear
+                    .preference(key: ListingMasonryContainerWidthKey.self, value: proxy.size.width)
+            }
+        )
+        .onPreferenceChange(ListingMasonryContainerWidthKey.self) { width in
+            guard width > 1, abs(width - containerWidth) > 0.5 else { return }
+            containerWidth = width
         }
         .padding(.leading, edgeStart)
         .padding(.trailing, edgeEnd)
     }
 
     @ViewBuilder
-    private func lazyColumn(_ column: [(index: Int, item: ListingFeedItem)]) -> some View {
-        LazyVStack(spacing: gap) {
+    private func masonryColumn(_ column: [(index: Int, item: ListingFeedItem)]) -> some View {
+        VStack(spacing: gap) {
             ForEach(column, id: \.item.id) { entry in
                 content(entry.item, entry.index)
-                    .frame(maxWidth: .infinity)
+                    .frame(width: columnWidth)
+                    .clipped()
             }
         }
-        .frame(maxWidth: .infinity, alignment: .top)
+        .frame(width: columnWidth, alignment: .top)
     }
 }
+
+/// Backward-compatible name — routes to [ListingMasonryColumnFeed].
+typealias ListingMasonryLazyColumns = ListingMasonryColumnFeed
 
 /// Virtualized **row pairs** for long feeds (`ScrollView` + `LazyVStack`) — Android `listingMasonryFeedRows`.
 ///

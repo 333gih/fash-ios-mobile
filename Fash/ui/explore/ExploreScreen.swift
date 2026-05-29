@@ -314,11 +314,10 @@ struct ExploreScreen: View {
                 subtitle: L10n.feedEmptySubtitle
             )
         } else {
-            ListingMasonryLazyColumns(layout: viewModel.listingsMasonryLayout) { item, index in
+            ListingMasonryColumnFeed(layout: viewModel.listingsMasonryLayout) { item, index in
                 ExploreListingCell(
                     item: item,
                     index: index,
-                    totalCount: viewModel.items.count,
                     isGuestMode: isGuestMode,
                     openListingAsFullScreen: openListingAsFullScreen,
                     viewModel: viewModel,
@@ -459,7 +458,6 @@ private struct ExploreListingsPaginationSentinel: View {
 private struct ExploreListingCell: View {
     let item: ListingFeedItem
     let index: Int
-    let totalCount: Int
     let isGuestMode: Bool
     var openListingAsFullScreen: Bool = false
     @Bindable var viewModel: ExploreViewModel
@@ -501,9 +499,6 @@ private struct ExploreListingCell: View {
         .onAppear {
             appearedAt = Date()
             viewModel.recordView(item: item, position: index, deps: deps)
-            if totalCount > 0, index >= totalCount - 4 {
-                viewModel.requestLoadMore(deps: deps, isGuestMode: isGuestMode)
-            }
         }
         .onDisappear {
             if let appearedAt {

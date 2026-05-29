@@ -57,7 +57,6 @@ struct HomeFeedContent: View {
                     }
                     Section {
                         feedBody
-                            .animation(.easeInOut(duration: 0.2), value: viewModel.selectedFeedTabKey)
 
                         HomeBrandFooterStrip()
                     } header: {
@@ -172,7 +171,7 @@ struct HomeFeedContent: View {
             }
         } else {
             VStack(spacing: 0) {
-                ListingMasonryLazyColumns(layout: viewModel.feedMasonryLayout) { item, index in
+                ListingMasonryColumnFeed(layout: viewModel.feedMasonryLayout) { item, index in
                     HomeFeedListingCell(
                         item: item,
                         index: index,
