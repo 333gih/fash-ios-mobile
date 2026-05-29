@@ -18,6 +18,7 @@ struct ProfileScreen: View {
     ) -> Void = { _, _, _, _, _, _ in }
 
     @State private var selectedTab = 0
+    @State private var scrollToGridToken = 0
 
     var body: some View {
         Group {
@@ -36,8 +37,10 @@ struct ProfileScreen: View {
                 ProfileCollapsingScrollLayout(
                     selectedTab: $selectedTab,
                     tabSet: .ownProfile,
+                    orderedTabIndices: viewModel.orderedProfileTabIndices,
                     items: currentItems,
                     showQuickActions: true,
+                    scrollToGridToken: scrollToGridToken,
                     onListingClick: { item in onListingClick(item.id, item.sellerId) },
                     onLike: { item in Task { await viewModel.toggleLike(item, deps: deps) } },
                     onSave: { item in Task { await viewModel.toggleSave(item, deps: deps) } },
@@ -50,12 +53,12 @@ struct ProfileScreen: View {
         .background(FashColors.screen)
         .task { await viewModel.refresh(deps: deps) }
         .onChange(of: viewModel.profileTabOpenGeneration) { _, _ in
-            applyProfileTabOpenRequestIfNeeded()
+            _ = applyProfileTabOpenRequestIfNeeded()
         }
         .onChange(of: viewModel.profile?.userId) { _, _ in
-            applyProfileTabOpenRequestIfNeeded()
-            if viewModel.profileTabOpenGeneration == 0,
-               let tab = viewModel.consumePendingDefaultProfileTab() {
+            guard viewModel.profile != nil else { return }
+            if applyProfileTabOpenRequestIfNeeded() { return }
+            if let tab = viewModel.consumePendingDefaultProfileTab() {
                 selectedTab = tab
                 viewModel.onProfileTabSelected(tab, deps: deps)
             }
@@ -69,11 +72,17 @@ struct ProfileScreen: View {
         viewModel.listings(for: ProfileListingTab(rawValue: selectedTab) ?? .active)
     }
 
-    private func applyProfileTabOpenRequestIfNeeded() {
-        guard viewModel.profileTabOpenGeneration != 0, viewModel.profile != nil else { return }
-        guard let req = viewModel.consumeProfileTabOpenRequest() else { return }
+    /// Applies Home journey → Profile tab navigation. Returns true when consumed (Android `LaunchedEffect(profileTabOpenGen)`).
+    @discardableResult
+    private func applyProfileTabOpenRequestIfNeeded() -> Bool {
+        guard viewModel.profileTabOpenGeneration != 0, viewModel.profile != nil else { return false }
+        guard let req = viewModel.consumeProfileTabOpenRequest() else { return false }
         selectedTab = req.tab.rawValue
         viewModel.onProfileTabSelected(req.tab.rawValue, deps: deps)
+        if req.scrollToGrid {
+            scrollToGridToken += 1
+        }
+        return true
     }
 
     @ViewBuilder

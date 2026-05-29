@@ -96,7 +96,10 @@ struct ListingMasonryGridView<Content: View>: View {
     }
 }
 
-/// Virtualized masonry rows for long feeds inside `ScrollView` + `LazyVStack` (Explore, etc.).
+/// Virtualized **row pairs** for long feeds (`ScrollView` + `LazyVStack`).
+///
+/// Prefer [ListingMasonryGridView] when visual parity with Home/Android staggered grid matters:
+/// row pairs use `max(leftHeight, rightHeight)` per row, which adds extra vertical gaps between tiles.
 struct ListingMasonryLazyRows<Content: View>: View {
     @Environment(\.fashSpacing) private var spacing
 

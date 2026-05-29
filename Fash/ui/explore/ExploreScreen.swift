@@ -14,8 +14,6 @@ struct ExploreScreen: View {
     var onFeaturedSellerClick: (UserSearchResult) -> Void = { _ in }
     var onSeeAllFeaturedSellers: () -> Void = {}
 
-    private let gridSpacing: CGFloat = 8
-
     /// Host renders pinned chrome below [ExploreTopBar]; feed does not overlay it on the grid.
     var hostManagesStickyChrome: Bool = false
 
@@ -257,7 +255,7 @@ struct ExploreScreen: View {
 
     private var listingsGrid: some View {
         ScrollView {
-            LazyVStack(spacing: gridSpacing) {
+            LazyVStack(spacing: 0) {
                 ExploreFeedScrollOffsetAnchor()
 
                 listingsExpandedHeader
@@ -304,27 +302,30 @@ struct ExploreScreen: View {
                 subtitle: L10n.feedEmptySubtitle
             )
         } else {
-            // Each masonry row is a direct LazyVStack child (stable heights, reliable pagination).
-            ListingMasonryLazyRows(items: viewModel.items, columnSpacing: gridSpacing) { item, index in
-                ExploreListingCell(
-                    item: item,
-                    index: index,
-                    isGuestMode: isGuestMode,
-                    openListingAsFullScreen: openListingAsFullScreen,
-                    viewModel: viewModel,
-                    router: router,
-                    deps: deps
-                )
-            }
+            // Column masonry like Home / Android StaggeredGrid — tighter vertical rhythm than row-pair lazy rows.
+            VStack(spacing: spacing.spacing4) {
+                ListingMasonryGridView(items: viewModel.items) { item, index in
+                    ExploreListingCell(
+                        item: item,
+                        index: index,
+                        isGuestMode: isGuestMode,
+                        openListingAsFullScreen: openListingAsFullScreen,
+                        viewModel: viewModel,
+                        router: router,
+                        deps: deps
+                    )
+                }
 
-            ExploreListingsPaginationSentinel(
-                hasMore: viewModel.hasMore,
-                isLoadingMore: viewModel.isLoadingMore
-            ) {
-                viewModel.requestLoadMore(deps: deps, isGuestMode: isGuestMode)
-            }
+                ExploreListingsPaginationSentinel(
+                    hasMore: viewModel.hasMore,
+                    isLoadingMore: viewModel.isLoadingMore
+                ) {
+                    viewModel.requestLoadMore(deps: deps, isGuestMode: isGuestMode)
+                }
 
-            HomeBrandFooterStrip()
+                HomeBrandFooterStrip()
+            }
+            .padding(.top, spacing.spacing2)
         }
     }
 

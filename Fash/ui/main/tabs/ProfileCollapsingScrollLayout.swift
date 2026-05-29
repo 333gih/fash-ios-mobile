@@ -75,10 +75,14 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     @Environment(\.fashSpacing) private var spacing
     @Binding var selectedTab: Int
     let tabSet: ProfileListingTabSet
+    /// Visual order of logical tab indices — Android `orderedTabIndices`.
+    var orderedTabIndices: [Int] = ProfileListingTab.allCases.map(\.rawValue)
     let items: [ListingFeedItem]
     var showQuickActions: Bool = false
     var showStatusOverlay: Bool = false
     var additionalBottomInset: CGFloat = 0
+    /// Increment to scroll the listing grid under pinned tabs (Home journey shortcuts).
+    var scrollToGridToken: Int = 0
     /// Hero scrolled off + tabs pinned — Android `rememberProfilePromoFooterVisible` (index > 0).
     var onTabsPinnedAtTopChange: ((Bool) -> Void)? = nil
     var onListingClick: (ListingFeedItem) -> Void
@@ -146,6 +150,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                                 .padding(.top, 4)
                             }
                         }
+                        .id(ProfileScrollIds.listingGrid)
                         .animation(.easeInOut(duration: 0.2), value: selectedTab)
 
                         Color.clear.frame(height: max(120, additionalBottomInset + 80))
@@ -177,7 +182,22 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                 emitTabsPinnedIfNeeded()
                 refreshBriefBarVisibility()
             }
+            .onChange(of: scrollToGridToken) { _, token in
+                guard token > 0 else { return }
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(80))
+                    withAnimation(.easeInOut(duration: 0.28)) {
+                        scrollProxy.scrollTo(ProfileScrollIds.listingGrid, anchor: .top)
+                    }
+                }
+            }
         }
+    }
+
+    private var resolvedTabIndices: [Int] {
+        let base = (0..<tabSet.tabCount).map { $0 }
+        let filtered = orderedTabIndices.filter { $0 >= 0 && $0 < tabSet.tabCount }
+        return filtered.isEmpty ? base : filtered
     }
 
     private func emitTabsPinnedIfNeeded() {
@@ -212,6 +232,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             }
             ProfileTabSwitcher(
                 tabSet: tabSet,
+                orderedTabIndices: resolvedTabIndices,
                 selectedTab: $selectedTab
             )
             if showSectionTitle {
@@ -257,25 +278,27 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
 
 private enum ProfileScrollIds {
     static let expandedHeader = "profile_expanded_header"
+    static let listingGrid = "profile_listing_grid"
 }
 
 /// Scrollable tab row with primary underline — Android [ProfileTabSwitcher].
 struct ProfileTabSwitcher: View {
     @Environment(\.fashSpacing) private var spacing
     let tabSet: ProfileListingTabSet
+    let orderedTabIndices: [Int]
     @Binding var selectedTab: Int
 
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 0) {
-                    ForEach(0..<tabSet.tabCount, id: \.self) { index in
-                        let selected = selectedTab == index
+                    ForEach(orderedTabIndices, id: \.self) { logicalIndex in
+                        let selected = selectedTab == logicalIndex
                         Button {
-                            selectedTab = index
+                            selectedTab = logicalIndex
                         } label: {
                             VStack(spacing: 6) {
-                                Text(tabSet.title(for: index))
+                                Text(tabSet.title(for: logicalIndex))
                                     .font(FashTypography.labelLarge.weight(selected ? .bold : .regular))
                                     .foregroundStyle(selected ? FashColors.textPrimary : FashColors.textSecondary.opacity(0.75))
                                     .lineLimit(1)
@@ -289,7 +312,7 @@ struct ProfileTabSwitcher: View {
                             .padding(.top, 10)
                         }
                         .buttonStyle(.plain)
-                        .id(index)
+                        .id(logicalIndex)
                     }
                 }
                 .padding(.horizontal, spacing.editorialStart)
@@ -303,13 +326,16 @@ struct ProfileTabSwitcher: View {
             .onAppear {
                 proxy.scrollTo(selectedTab, anchor: .center)
             }
+            .onChange(of: orderedTabIndices) { _, _ in
+                proxy.scrollTo(selectedTab, anchor: .center)
+            }
         }
     }
 
     private var tabMinWidth: CGFloat {
         let screen = UIScreen.main.bounds.width
         let edge = spacing.editorialStart * 2
-        let slots = min(3, CGFloat(tabSet.tabCount))
+        let slots = min(3, CGFloat(max(orderedTabIndices.count, 1)))
         return max((screen - edge) / slots, 96)
     }
 }
