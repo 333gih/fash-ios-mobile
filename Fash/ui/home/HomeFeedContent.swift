@@ -61,6 +61,11 @@ struct HomeFeedContent: View {
         return 300
     }
 
+    @State private var homeScrollPosition: String?
+    @State private var homeScrollResetToken = 0
+    @State private var homeHeaderHeight: CGFloat = 0
+    @State private var pendingPinnedFeedScroll = false
+
     var body: some View {
         ZStack(alignment: .bottom) {
             ScrollViewReader { scrollProxy in
@@ -68,6 +73,7 @@ struct HomeFeedContent: View {
                     LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
                         Section {
                             homeScrollAwayHeader
+                                .homeFeedHeaderHeightReporting()
                         }
                         Section {
                             feedBody
@@ -79,6 +85,7 @@ struct HomeFeedContent: View {
                                 .id(HomeScrollIds.pinnedTabs)
                         }
                     }
+                    .scrollTargetLayout()
                     .padding(.bottom, promoDockInset + spacing.spacing2)
                     .fashScrollViewTabSwipe(
                         currentIndex: selectedTabIndex,
@@ -87,16 +94,28 @@ struct HomeFeedContent: View {
                         viewModel.selectFeedTab(tabs[index], deps: deps, isGuestMode: isGuestMode)
                     }
                 }
+                .scrollPosition(id: $homeScrollPosition, anchor: .top)
+                .background {
+                    PinnedTabScrollOffsetFixer(
+                        resetToken: homeScrollResetToken,
+                        headerHeight: homeHeaderHeight
+                    )
+                }
+                .onPreferenceChange(HomeHeaderHeightKey.self) { height in
+                    guard height > 1, abs(height - homeHeaderHeight) > 0.5 else { return }
+                    homeHeaderHeight = height
+                }
                 .refreshable { await viewModel.pullToRefresh(deps: deps, isGuestMode: isGuestMode) }
                 .onChange(of: viewModel.selectedFeedTabKey) { oldKey, newKey in
                     guard oldKey != newKey else { return }
-                    FashPinnedTabScroll.scrollToPinnedContent(
-                        proxy: scrollProxy,
-                        id: HomeScrollIds.pinnedTabs,
-                        anchor: .bottom,
-                        animated: false,
-                        initialDelayMs: 100
-                    )
+                    applyPinnedFeedScroll(using: scrollProxy)
+                    pendingPinnedFeedScroll = viewModel.isTabLoading(viewModel.selectedFeedTab)
+                }
+                .onChange(of: viewModel.tabsLoading) { _, _ in
+                    guard pendingPinnedFeedScroll else { return }
+                    guard !viewModel.isTabLoading(viewModel.selectedFeedTab) else { return }
+                    pendingPinnedFeedScroll = false
+                    applyPinnedFeedScroll(using: scrollProxy)
                 }
             }
 
@@ -281,11 +300,14 @@ struct HomeFeedContent: View {
         default: return L10n.guestLoginSheetTitle
         }
     }
-}
 
-private enum HomeScrollIds {
-    static let pinnedTabs = "home_feed_pinned_tabs"
-    static let feedContent = "home_feed_content"
+    private func applyPinnedFeedScroll(using scrollProxy: ScrollViewProxy) {
+        HomeFeedScrollReset.scrollToPinnedFeed(
+            scrollPosition: $homeScrollPosition,
+            proxy: scrollProxy,
+            resetToken: $homeScrollResetToken
+        )
+    }
 }
 
 private struct HomeFeedListingCell: View {

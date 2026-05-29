@@ -114,6 +114,14 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     @State private var showBriefBar = false
     @State private var showSectionTitle = false
     @State private var lastScrollOffset: CGFloat = 0
+    @State private var profileScrollPosition: String?
+    @State private var profileScrollResetToken = 0
+    @State private var pendingPinnedGridScroll = false
+
+    /// Android `empty_$safeSelectedTab` / row keys — one scroll id per tab + empty/data branch.
+    private var listingGridScrollId: String {
+        ProfileScrollIds.listingGrid(tab: selectedTab, isEmpty: items.isEmpty)
+    }
 
     var body: some View {
         ScrollViewReader { scrollProxy in
@@ -133,28 +141,28 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                             )
                     }
                     Section {
-                        if items.isEmpty {
-                            emptyBlock
-                                .id(ProfileScrollIds.listingGrid)
-                        } else {
-                            Color.clear
-                                .frame(height: 0)
-                                .id(ProfileScrollIds.listingGrid)
-                            ListingMasonryLazyRows(items: items) { item, _ in
-                                ListingGridCard(
-                                    item: item,
-                                    onTap: { onListingClick(item) },
-                                    imageAspectRatio: ListingMasonryGrid.staggerAspectRatio(for: item.id),
-                                    showQuickActions: showQuickActions,
-                                    statusOverlayLabel: showStatusOverlay
-                                        ? ListingStatusUi.overlayLabel(for: item.listingStatus)
-                                        : nil,
-                                    onLike: onLike.map { h in { h(item) } },
-                                    onSave: onSave.map { h in { h(item) } }
-                                )
+                        Group {
+                            if items.isEmpty {
+                                emptyBlock
+                            } else {
+                                ListingMasonryLazyRows(items: items) { item, _ in
+                                    ListingGridCard(
+                                        item: item,
+                                        onTap: { onListingClick(item) },
+                                        imageAspectRatio: ListingMasonryGrid.staggerAspectRatio(for: item.id),
+                                        showQuickActions: showQuickActions,
+                                        statusOverlayLabel: showStatusOverlay
+                                            ? ListingStatusUi.overlayLabel(for: item.listingStatus)
+                                            : nil,
+                                        onLike: onLike.map { h in { h(item) } },
+                                        onSave: onSave.map { h in { h(item) } }
+                                    )
+                                }
+                                .padding(.top, 4)
                             }
-                            .padding(.top, 4)
                         }
+                        .id(listingGridScrollId)
+                        .animation(nil, value: listingGridScrollId)
 
                         Color.clear.frame(height: max(120, additionalBottomInset + 80))
                     } header: {
@@ -170,6 +178,14 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                     guard nextTab != selectedTab else { return }
                     selectedTab = nextTab
                 }
+                .scrollTargetLayout()
+            }
+            .scrollPosition(id: $profileScrollPosition, anchor: .top)
+            .background {
+                PinnedTabScrollOffsetFixer(
+                    resetToken: profileScrollResetToken,
+                    headerHeight: headerHeight
+                )
             }
             .coordinateSpace(name: "profileScroll")
             .onAppear {
@@ -195,21 +211,45 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             }
             .onChange(of: selectedTab) { oldTab, newTab in
                 guard oldTab != newTab else { return }
-                scrollToPinnedGridContent(using: scrollProxy, animated: false)
+                profileScrollPosition = nil
+                pendingPinnedGridScroll = true
+                applyPinnedGridScroll(using: scrollProxy)
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(320))
+                    guard pendingPinnedGridScroll else { return }
+                    pendingPinnedGridScroll = false
+                    applyPinnedGridScroll(using: scrollProxy)
+                }
+            }
+            .onChange(of: listingGridScrollId) { _, _ in
+                guard pendingPinnedGridScroll else { return }
+                applyPinnedGridScroll(using: scrollProxy)
+                pendingPinnedGridScroll = false
             }
             .onChange(of: scrollToGridToken) { _, token in
                 guard token > 0 else { return }
-                scrollToPinnedGridContent(using: scrollProxy, animated: false)
+                applyPinnedGridScroll(using: scrollProxy)
             }
         }
     }
 
-    private func scrollToPinnedGridContent(using scrollProxy: ScrollViewProxy, animated: Bool = true) {
-        FashPinnedTabScroll.scrollToPinnedContent(
+    private func applyPinnedGridScroll(using scrollProxy: ScrollViewProxy) {
+        synchronizePinnedChromeForTabSwitch()
+        PinnedTabScrollReset.scrollToPinnedContent(
+            scrollPosition: $profileScrollPosition,
             proxy: scrollProxy,
-            id: ProfileScrollIds.listingGrid,
-            animated: animated
+            resetToken: $profileScrollResetToken,
+            contentId: listingGridScrollId
         )
+    }
+
+    /// Keep compact chrome + section title visible while grid relayouts after tab swap.
+    private func synchronizePinnedChromeForTabSwitch() {
+        guard headerHeight > 24 else { return }
+        showBriefBar = true
+        showSectionTitle = true
+        lastScrollOffset = -(headerHeight - 12)
+        emitTabsPinnedIfNeeded(pinned: true)
     }
 
     /// Visual tab order — seller is always selling then sold (Android `tabIndices` for storefront).
@@ -325,7 +365,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                 subtitle: tabSet.emptySubtitle(for: selectedTab)
             )
             .frame(minHeight: 280)
-            if showSectionTitle, let footer = tabSet.pinnedFooter(for: selectedTab) {
+            if reportedTabsPinned, let footer = tabSet.pinnedFooter(for: selectedTab) {
                 Divider().padding(.horizontal, spacing.editorialStart).opacity(0.45)
                 Text(footer)
                     .font(FashTypography.bodySmall)
@@ -340,7 +380,10 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
 
 private enum ProfileScrollIds {
     static let expandedHeader = "profile_expanded_header"
-    static let listingGrid = "profile_listing_grid"
+
+    static func listingGrid(tab: Int, isEmpty: Bool) -> String {
+        "profile_listing_grid_\(tab)_\(isEmpty ? "empty" : "rows")"
+    }
 }
 
 /// Scrollable tab row with primary underline — Android [ProfileTabSwitcher].
