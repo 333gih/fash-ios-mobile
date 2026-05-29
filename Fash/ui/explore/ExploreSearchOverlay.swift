@@ -27,6 +27,9 @@ struct ExploreSearchOverlay: View {
             .padding(.bottom, 12)
         }
         .background(FashColors.screen)
+        .task {
+            await viewModel.loadSearchOverlayData(deps: deps)
+        }
     }
 
     @ViewBuilder

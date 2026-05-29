@@ -20,14 +20,10 @@ struct OtpVerifyScreen: View {
         VStack(spacing: 0) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    Button(action: onBack) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundStyle(FashColors.textPrimary)
-                            .frame(width: 44, height: 44)
-                    }
-                    .padding(.leading, -8)
+                    FashBackButton(style: .navigation, action: onBack)
+                        .padding(.leading, FashBackButton.leadingScreenInset)
 
+                    VStack(alignment: .leading, spacing: 0) {
                     FashBrandMarkText(
                         style: FashBrandTypography.markBoldItalic,
                         textAlign: .leading
@@ -93,8 +89,9 @@ struct OtpVerifyScreen: View {
                         Spacer()
                     }
                     .padding(.top, 24)
+                    }
+                    .padding(.horizontal, spacing.editorialStart)
                 }
-                .padding(.horizontal, spacing.editorialStart)
                 .padding(.top, 8)
                 .padding(.bottom, 24)
             }

@@ -10,19 +10,18 @@ struct FollowConnectionsScreen: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Button(action: onDismiss) {
-                    Image(systemName: "chevron.left")
-                        .foregroundStyle(FashColors.brandPrimary)
-                        .frame(width: 44, height: 44)
-                }
+            HStack(spacing: 8) {
+                FashBackButton(action: onDismiss)
                 Text(L10n.followConnectionsTitle)
                     .font(FashTypography.titleLarge)
                     .fontWeight(.bold)
-                Spacer()
+                    .foregroundStyle(FashColors.textPrimary)
+                Spacer(minLength: 0)
             }
-            .padding(.horizontal, 8)
-            .background(FashColors.surfaceContainerHighest)
+            .padding(.leading, FashBackButton.leadingScreenInset)
+            .padding(.trailing, 8)
+            .padding(.vertical, 4)
+            .background(FashColors.surface)
 
             Picker("", selection: Binding(
                 get: { viewModel.selectedTab },

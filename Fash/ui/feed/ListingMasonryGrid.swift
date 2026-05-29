@@ -122,9 +122,6 @@ struct ListingMasonryLazyRows<Content: View>: View {
                 if let right = row.right {
                     content(right.item, right.index)
                         .frame(maxWidth: .infinity)
-                } else {
-                    Color.clear
-                        .frame(maxWidth: .infinity)
                 }
             }
             .padding(.leading, edgeStart)

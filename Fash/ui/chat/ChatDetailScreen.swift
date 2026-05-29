@@ -238,28 +238,11 @@ private struct ChatDetailScreenBody: View {
         let _ = deps.chatUnreadSnapshotGeneration
         let otherInboxUnreadCount = deps.chatUnreadExcludingConversation(conversationId)
         return HStack(spacing: 12) {
-            Button(action: onDismiss) {
-                ZStack(alignment: .topTrailing) {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(FashColors.textPrimary)
-                        .frame(width: 44, height: 44)
-                    if otherInboxUnreadCount > 0 {
-                        Text(otherInboxUnreadCount > 99 ? "99+" : "\(otherInboxUnreadCount)")
-                            .font(FashTypography.labelSmall.weight(.bold))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 2)
-                            .background(FashColors.brandPrimary)
-                            .clipShape(Capsule())
-                            .offset(x: 6, y: -2)
-                    }
-                }
-            }
-            .accessibilityLabel(
-                otherInboxUnreadCount > 0
-                    ? L10n.chatDetailBackInboxUnreadCd(otherInboxUnreadCount)
-                    : L10n.chatDetailBackCd
+            FashBackButton(
+                style: .navigation,
+                badgeCount: otherInboxUnreadCount,
+                useChatBackLabel: true,
+                action: onDismiss
             )
             if let other = viewModel.detail?.otherUser {
                 FashAvatarCircle(url: other.avatarUrl, size: 40)
@@ -287,7 +270,8 @@ private struct ChatDetailScreenBody: View {
             }
             Spacer()
         }
-        .padding(.horizontal, 8)
+        .padding(.leading, FashBackButton.leadingScreenInset)
+        .padding(.trailing, 8)
         .padding(.vertical, 4)
         .background(FashColors.surfaceContainerHighest)
     }

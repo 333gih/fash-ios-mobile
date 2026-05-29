@@ -117,12 +117,16 @@ struct MainNavScreen: View {
                 onClose: {
                     router.showExploreOverlay = false
                     router.exploreSearchExpanded = false
-                    exploreVM.setSearchBarExpanded(false)
                 },
                 onRequestSignIn: { reason in onRequestSignIn?(reason) }
             )
             .environment(\.locale, AppLocale.locale)
             .fashInAppNotificationOverlay()
+        }
+        .onChange(of: router.showExploreOverlay) { wasShowing, isShowing in
+            guard wasShowing, !isShowing else { return }
+            exploreVM.resetSessionOnOverlayClose()
+            router.exploreSearchExpanded = false
         }
         .overlay(alignment: .bottom) {
             if let message = deps.snackbarMessage {

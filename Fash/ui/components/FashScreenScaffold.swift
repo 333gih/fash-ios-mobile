@@ -9,23 +9,17 @@ struct FashScreenScaffold<Content: View>: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: spacing.spacing3) {
+            HStack(spacing: spacing.spacing2) {
                 if showBack {
-                    Button(action: { onBack?() }) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(FashColors.brandPrimary)
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
-                    }
+                    FashBackButton(action: { onBack?() })
                 }
                 Text(title)
                     .font(FashTypography.titleLarge)
                     .fontWeight(.bold)
                     .foregroundStyle(FashColors.textPrimary)
-                Spacer()
+                Spacer(minLength: 0)
             }
-            .padding(.leading, spacing.editorialStart)
+            .padding(.leading, showBack ? FashBackButton.leadingScreenInset : spacing.editorialStart)
             .padding(.trailing, spacing.editorialEnd)
             .padding(.vertical, spacing.spacing3)
             .background(FashColors.surface)

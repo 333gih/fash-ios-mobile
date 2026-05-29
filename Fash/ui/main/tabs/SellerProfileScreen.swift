@@ -92,11 +92,7 @@ struct SellerProfileScreen: View {
 
     private var sellerTopBar: some View {
         HStack(spacing: 8) {
-            Button(action: onDismiss) {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(FashColors.brandPrimary)
-            }
+            FashBackButton(action: onDismiss)
             Text(titleHandle)
                 .font(FashTypography.titleMedium.weight(.semibold))
                 .lineLimit(1)
@@ -121,7 +117,8 @@ struct SellerProfileScreen: View {
                 }
             }
         }
-        .padding(.horizontal, 12)
+        .padding(.leading, FashBackButton.leadingScreenInset)
+        .padding(.trailing, 12)
         .padding(.vertical, 8)
         .background(FashColors.screen)
     }

@@ -58,10 +58,9 @@ struct NotificationScreen: View {
                                 onDismiss()
                             }
                         } label: {
-                            Image(systemName: "chevron.left")
-                                .font(.system(size: 17, weight: .semibold))
-                                .foregroundStyle(FashColors.brandPrimary)
+                            FashBackButton.toolbarLabel()
                         }
+                        .accessibilityLabel(L10n.cdBack)
                     }
                     if viewModel.selectedGroup != nil {
                         ToolbarItem(placement: .topBarTrailing) {

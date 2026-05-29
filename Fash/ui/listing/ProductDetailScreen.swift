@@ -154,12 +154,7 @@ struct ProductDetailScreen: View {
 
     private var topBar: some View {
         HStack {
-            Button(action: onDismiss) {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(FashColors.brandPrimary)
-                    .frame(width: 44, height: 44)
-            }
+            FashBackButton(action: onDismiss)
             Spacer()
             Text(L10n.productDetailTitle)
                 .font(FashTypography.titleSmall.weight(.semibold))
@@ -187,7 +182,8 @@ struct ProductDetailScreen: View {
                 Color.clear.frame(width: 44, height: 44)
             }
         }
-        .padding(.horizontal, 8)
+        .padding(.leading, FashBackButton.leadingScreenInset)
+        .padding(.trailing, 8)
         .background(FashColors.screen.opacity(0.92))
     }
 

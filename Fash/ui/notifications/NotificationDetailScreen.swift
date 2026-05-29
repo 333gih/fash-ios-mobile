@@ -79,8 +79,9 @@ struct NotificationDetailScreen: View {
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button(action: onDismiss) {
-                    Image(systemName: "chevron.left")
+                    FashBackButton.toolbarLabel()
                 }
+                .accessibilityLabel(L10n.cdBack)
             }
         }
     }

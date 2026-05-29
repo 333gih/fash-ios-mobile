@@ -22,10 +22,9 @@ struct ExploreStickyChrome: View {
                 if viewModel.primarySection == .listings {
                     Divider()
                         .overlay(FashColors.outlineMuted.opacity(0.45))
-                    ExploreFiltersBar(
+                    ExploreStickyFilterRow(
                         hasActiveFilters: viewModel.hasActiveFilters,
                         filterSummaryParts: viewModel.filterSummaryParts,
-                        compact: true,
                         onOpenFilters: { viewModel.showFilterSheet = true },
                         onClearFilters: viewModel.hasActiveFilters ? {
                             Task { await viewModel.clearAllFilters(deps: deps, isGuestMode: isGuestMode) }
@@ -102,38 +101,41 @@ private struct ExploreStickyActiveSearchRow: View {
     }
 }
 
-/// Reports vertical scroll offset (positive = scrolled down) for Explore sticky chrome.
-struct ExploreScrollOffsetKey: PreferenceKey {
+/// Expanded header `minY` in the feed scroll space (negative when scrolled down).
+struct ExploreHeaderScrollKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
+        value = min(value, nextValue())
     }
 }
 
 extension View {
-    func exploreScrollOffsetTracking(
-        space: String = "exploreScroll",
-        onChange: @escaping (CGFloat) -> Void
-    ) -> some View {
+    func exploreExpandedHeaderScrollReporting(space: String = "exploreFeedScroll") -> some View {
         background(
             GeometryReader { geo in
-                let minY = geo.frame(in: .named(space)).minY
-                Color.clear.preference(key: ExploreScrollOffsetKey.self, value: max(0, -minY))
+                Color.clear.preference(
+                    key: ExploreHeaderScrollKey.self,
+                    value: geo.frame(in: .named(space)).minY
+                )
             }
+            .allowsHitTesting(false)
         )
-        .onPreferenceChange(ExploreScrollOffsetKey.self, perform: onChange)
     }
 }
 
-/// Android `showStickyExploreChrome`: show/hide compact header overlay without reflowing feed content.
+/// Scroll thresholds aligned with Android `showStickyExploreChrome` (~88dp).
 enum ExploreStickyChromePolicy {
     static let showThreshold: CGFloat = 88
     static let hideThreshold: CGFloat = 72
 
-    static func shouldShowSticky(currentlyShown: Bool, scrollOffset: CGFloat) -> Bool {
+    static func shouldShowSticky(currentlyShown: Bool, headerMinY: CGFloat) -> Bool {
         if currentlyShown {
-            return scrollOffset > hideThreshold
+            return headerMinY < -hideThreshold
         }
-        return scrollOffset > showThreshold
+        return headerMinY < -showThreshold
+    }
+
+    static func shouldCompactTopBar(currentlyCompact: Bool, headerMinY: CGFloat) -> Bool {
+        shouldShowSticky(currentlyShown: currentlyCompact, headerMinY: headerMinY)
     }
 }

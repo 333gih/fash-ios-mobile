@@ -11,12 +11,15 @@ struct ExploreOverlayHost: View {
     var onClose: () -> Void
     var onRequestSignIn: ((String) -> Void)? = nil
 
+    @State private var topBarCompact = false
+
     var body: some View {
         VStack(spacing: 0) {
             ExploreTopBar(
                 viewModel: viewModel,
                 isGuestMode: isGuestMode,
                 animateSearchIcon: true,
+                compact: topBarCompact,
                 onCloseOverlay: onClose
             )
             ExploreScreen(
@@ -41,6 +44,16 @@ struct ExploreOverlayHost: View {
             )
         }
         .background(FashColors.screen)
+        .onPreferenceChange(ExploreHeaderScrollKey.self) { headerMinY in
+            let next = ExploreStickyChromePolicy.shouldCompactTopBar(
+                currentlyCompact: topBarCompact,
+                headerMinY: headerMinY
+            )
+            guard topBarCompact != next else { return }
+            withAnimation(.easeInOut(duration: 0.22)) {
+                topBarCompact = next
+            }
+        }
         .overlay(alignment: .bottom) {
             ListingPreviewOverlay(
                 listingPreview: deps.listingPreview,

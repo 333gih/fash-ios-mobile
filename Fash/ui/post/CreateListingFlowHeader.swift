@@ -20,12 +20,7 @@ struct CreateListingFlowHeader: View {
             HStack(alignment: .center, spacing: 0) {
                 HStack(spacing: 0) {
                     if showBack {
-                        Button(action: onBack) {
-                            Image(systemName: "chevron.left")
-                                .font(.system(size: 18, weight: .semibold))
-                                .foregroundStyle(FashColors.brandPrimary)
-                                .frame(width: 44, height: 44)
-                        }
+                        FashBackButton(action: onBack)
                     }
                     Button(action: onClose) {
                         Image(systemName: "xmark")

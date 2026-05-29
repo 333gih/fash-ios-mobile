@@ -71,7 +71,10 @@ struct SettingsScreen: View {
             .navigationTitle(L10n.settingsTitle)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button(action: onBack) { Image(systemName: "chevron.left") }
+                    Button(action: onBack) {
+                        FashBackButton.toolbarLabel()
+                    }
+                    .accessibilityLabel(L10n.cdBack)
                 }
             }
         }
