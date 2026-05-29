@@ -67,9 +67,9 @@ struct ListingPreviewOverlay: View {
     }
 
     private func previewSellerUsername(_ preview: ExploreListingPreviewState) -> String {
-        let fromDetail = preview.detail?.sellerUsername.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let fromDetail = preview.detail?.sellerUsername?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if !fromDetail.isEmpty { return fromDetail }
-        return preview.feedItem.sellerUsername.trimmingCharacters(in: .whitespacesAndNewlines)
+        return preview.feedItem.sellerUsername?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     }
 
     private func toggleLike(_ preview: ExploreListingPreviewState) async {

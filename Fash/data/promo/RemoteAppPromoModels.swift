@@ -93,7 +93,7 @@ enum RemoteAppPromoModels {
         )
     }
 
-    private static func optString(_ obj: [String: Any], _ keys: String...) -> String {
+    private static func firstNonEmptyString(_ obj: [String: Any], keys: [String]) -> String {
         for key in keys {
             if let raw = obj[key] {
                 if raw is NSNull { continue }
@@ -104,8 +104,12 @@ enum RemoteAppPromoModels {
         return ""
     }
 
+    private static func optString(_ obj: [String: Any], _ keys: String...) -> String {
+        firstNonEmptyString(obj, keys: keys)
+    }
+
     private static func optStringOrNull(_ obj: [String: Any], _ keys: String...) -> String? {
-        let s = optString(obj, keys)
+        let s = firstNonEmptyString(obj, keys: keys)
         return s.isEmpty ? nil : s
     }
 

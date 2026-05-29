@@ -208,8 +208,8 @@ struct ProductDetailScreen: View {
                         }
                     }
                 case .normal:
-                    if buyNowEnabled {
-                        FashPrimaryButton(title: L10n.buyNow) { onBuyNow(detail.id) }
+                    if buyNowEnabled, let listingId = viewModel.detail?.id {
+                        FashPrimaryButton(title: L10n.buyNow) { onBuyNow(listingId) }
                     }
                     messageButton(outlined: buyNowEnabled)
                 }

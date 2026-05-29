@@ -2,6 +2,7 @@ import Foundation
 import UIKit
 
 /// Applies admin-configured button actions — Android `AppPromoNavigation`.
+@MainActor
 enum AppPromoNavigation {
     static func applyPrimary(campaign: AppPromoCampaign, router: AppRouter) {
         guard let action = campaign.primaryAction else { return }

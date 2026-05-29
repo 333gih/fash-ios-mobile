@@ -34,7 +34,7 @@ struct OrderCancelledChatPayload: Equatable {
     }
 
     private static func parseLegacy(_ fullText: String) -> OrderCancelledChatPayload? {
-        let firstLine = fullText.lineSequence().first.map(String.init) ?? ""
+        let firstLine = fullText.split(separator: "\n", omittingEmptySubsequences: false).first.map(String.init) ?? ""
         guard firstLine.hasPrefix(orderIdPrefix) else { return nil }
         var orderId = String(firstLine.dropFirst(orderIdPrefix.count))
             .trimmingCharacters(in: .whitespacesAndNewlines)

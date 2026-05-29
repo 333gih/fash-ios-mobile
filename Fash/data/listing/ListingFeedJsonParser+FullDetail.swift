@@ -12,7 +12,8 @@ extension ListingFeedJsonParser {
         } else {
             return nil
         }
-        guard let id = RepositoryHttp.optString(o, "id", "ID"), !id.isEmpty else { return nil }
+        let id = RepositoryHttp.optString(o, "id", "ID")
+        guard !id.isEmpty else { return nil }
 
         let seller = (o["seller"] as? [String: Any]) ?? (o["Seller"] as? [String: Any])
         let categoryObj = (o["category"] as? [String: Any]) ?? (o["Category"] as? [String: Any])
@@ -92,11 +93,11 @@ extension ListingFeedJsonParser {
             priceVnd: RepositoryHttp.optLong(o, "price", "Price"),
             listPriceVnd: listPriceVnd,
             condition: RepositoryHttp.optString(o, "condition", "Condition"),
-            category: categoryObj.flatMap { RepositoryHttp.optString($0, "name", "Name") }.nilIfEmpty
+            category: categoryObj.flatMap { RepositoryHttp.optString($0, "name", "Name").nilIfEmpty }
                 ?? RepositoryHttp.optString(o, "category", "Category").nilIfEmpty,
-            categoryId: categoryObj.flatMap { RepositoryHttp.optString($0, "id", "ID") }.nilIfEmpty,
-            parentCategoryName: parentObj.flatMap { RepositoryHttp.optString($0, "name", "Name") }.nilIfEmpty,
-            parentCategoryId: parentObj.flatMap { RepositoryHttp.optString($0, "id", "ID") }.nilIfEmpty,
+            categoryId: categoryObj.flatMap { RepositoryHttp.optString($0, "id", "ID").nilIfEmpty },
+            parentCategoryName: parentObj.flatMap { RepositoryHttp.optString($0, "name", "Name").nilIfEmpty },
+            parentCategoryId: parentObj.flatMap { RepositoryHttp.optString($0, "id", "ID").nilIfEmpty },
             size: RepositoryHttp.optString(o, "size", "Size").nilIfEmpty,
             brand: brandName,
             brandId: brandId,
@@ -118,20 +119,20 @@ extension ListingFeedJsonParser {
             floorPriceVnd: o["floor_price"] != nil ? RepositoryHttp.optLong(o, "floor_price", "FloorPrice") : nil,
             priceDropPercent: o["price_drop_percent"] != nil ? RepositoryHttp.optInt(o, "price_drop_percent", "PriceDropPercent") : nil,
             nextPriceDropAtIso: RepositoryHttp.optString(o, "next_price_drop_at", "NextPriceDropAt").nilIfEmpty,
-            countryName: countryObj.flatMap { RepositoryHttp.optString($0, "name", "Name") }.nilIfEmpty,
-            countryId: countryObj.flatMap { RepositoryHttp.optString($0, "id", "ID") }.nilIfEmpty
+            countryName: countryObj.flatMap { RepositoryHttp.optString($0, "name", "Name").nilIfEmpty },
+            countryId: countryObj.flatMap { RepositoryHttp.optString($0, "id", "ID").nilIfEmpty }
                 ?? RepositoryHttp.optString(o, "country_id", "CountryID").nilIfEmpty,
-            countryIso2: countryObj.flatMap { RepositoryHttp.optString($0, "iso2", "ISO2") }.nilIfEmpty,
+            countryIso2: countryObj.flatMap { RepositoryHttp.optString($0, "iso2", "ISO2").nilIfEmpty },
             shippingAddress: shippingAddress,
             estimatedShippingVnd: estimatedShippingVnd,
-            sellerId: seller.flatMap { RepositoryHttp.optString($0, "user_id", "UserID", "id", "ID") }.nilIfEmpty
+            sellerId: seller.flatMap { RepositoryHttp.optString($0, "user_id", "UserID", "id", "ID").nilIfEmpty }
                 ?? RepositoryHttp.optString(o, "seller_id", "SellerID").nilIfEmpty,
-            sellerUsername: seller.flatMap { RepositoryHttp.optString($0, "username", "Username") }.nilIfEmpty
+            sellerUsername: seller.flatMap { RepositoryHttp.optString($0, "username", "Username").nilIfEmpty }
                 ?? RepositoryHttp.optString(o, "seller_username", "SellerUsername").nilIfEmpty,
             sellerAvatarUrl: seller.flatMap {
-                RepositoryHttp.optString($0, "avatar_url", "AvatarURL", "profile_image_url", "ProfileImageURL")
-            }.nilIfEmpty,
-            sellerDisplayName: seller.flatMap { RepositoryHttp.optString($0, "display_name", "DisplayName") }.nilIfEmpty,
+                RepositoryHttp.optString($0, "avatar_url", "AvatarURL", "profile_image_url", "ProfileImageURL").nilIfEmpty
+            },
+            sellerDisplayName: seller.flatMap { RepositoryHttp.optString($0, "display_name", "DisplayName").nilIfEmpty },
             sellerVerified: seller.map {
                 RepositoryHttp.optBool($0, "verified", "Verified", default: false)
             } ?? false,

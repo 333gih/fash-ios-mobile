@@ -38,7 +38,7 @@ final class CommonServiceRepository {
 
     // MARK: - Addresses
 
-    func getAddressTree() async -> Result<[AddressTreeNodeInternal], Error> {
+    private func getAddressTree() async -> Result<[AddressTreeNodeInternal], Error> {
         do {
             let data = try await executeGet(apiV1("addresses/tree"))
             let obj = try RepositoryHttp.jsonObject(data)

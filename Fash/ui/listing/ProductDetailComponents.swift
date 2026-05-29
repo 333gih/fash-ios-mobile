@@ -100,9 +100,9 @@ enum ProductDetailComponents {
         detail: ListingDetail,
         profile: ProfileInfo?,
         isFollowing: Bool,
-        onVisitShop: () -> Void,
-        onFollow: () -> Void,
-        onUnfollow: () -> Void
+        onVisitShop: @escaping () -> Void,
+        onFollow: @escaping () -> Void,
+        onUnfollow: @escaping () -> Void
     ) -> some View {
         sectionCard {
             sectionTitle(L10n.productSectionSeller, icon: "storefront")
@@ -185,7 +185,7 @@ enum ProductDetailComponents {
                 .font(FashTypography.titleLarge.weight(.bold))
                 .foregroundStyle(FashColors.textPrimary)
             if let created = detail.createdAtIso?.nilIfEmpty {
-                Text(L10n.productListedOn(created.prefix(16)))
+                Text(L10n.productListedOn(String(created.prefix(16))))
                     .font(FashTypography.bodySmall)
                     .foregroundStyle(FashColors.textSecondary)
             }
@@ -206,8 +206,8 @@ enum ProductDetailComponents {
 
     static func atGlanceCard(
         detail: ListingDetail,
-        onBrandTap: () -> Void,
-        onOriginTap: () -> Void
+        onBrandTap: @escaping () -> Void,
+        onOriginTap: @escaping () -> Void
     ) -> some View {
         sectionCard {
             sectionTitle(L10n.productSectionAtAGlance, icon: "square.grid.2x2")
@@ -259,7 +259,7 @@ enum ProductDetailComponents {
         return FashColors.textPrimary
     }
 
-    private static func glanceCell(title: String, value: String, valueColor: Color, action: (() -> Void)?) -> some View {
+    private static func glanceCell(title: String, value: String, valueColor: Color, action: (@escaping () -> Void)?) -> some View {
         let content = VStack(alignment: .leading, spacing: 6) {
             Text(title)
                 .font(FashTypography.labelSmall)
@@ -361,7 +361,7 @@ enum ProductDetailComponents {
                     .font(FashTypography.labelMedium.weight(.semibold))
                     .foregroundStyle(FashColors.textSecondary)
                     .padding(.top, 4)
-                FlowLayout(spacing: 8) {
+                ProductDetailTagFlowLayout(spacing: 8) {
                     ForEach(detail.aestheticTagRefs, id: \.label) { tag in
                         Button {
                             onTagTap(tag)
@@ -428,7 +428,7 @@ enum ProductDetailComponents {
 }
 
 /// Simple horizontal flow for tags.
-private struct FlowLayout: Layout {
+private struct ProductDetailTagFlowLayout: Layout {
     var spacing: CGFloat = 8
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let result = arrange(proposal: proposal, subviews: subviews)

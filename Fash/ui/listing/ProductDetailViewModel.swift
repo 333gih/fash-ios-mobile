@@ -50,7 +50,7 @@ final class ProductDetailViewModel {
             deps.realtimeManager.removeEventListener(realtimeListenerId)
             self.realtimeListenerId = nil
         }
-        if !activeListingId.isEmpty, !activeListingId.caseInsensitiveCompare(id).orderedSame {
+        if !activeListingId.isEmpty, activeListingId.caseInsensitiveCompare(id) != .orderedSame {
             deps.realtimeManager.unsubscribeFromListing(activeListingId)
         }
         activeListingId = id
@@ -307,7 +307,7 @@ final class ProductDetailViewModel {
             publicBrowse: publicBrowse
         )
         if case .success(let list) = moreResult {
-            moreFromSeller = list.filter { !$0.id.caseInsensitiveCompare(excludeListingId).orderedSame }.prefix(5).map { $0 }
+            moreFromSeller = list.filter { $0.id.caseInsensitiveCompare(excludeListingId) != .orderedSame }.prefix(5).map { $0 }
         } else {
             moreFromSeller = []
         }
