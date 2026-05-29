@@ -58,22 +58,11 @@ struct ExploreFilterTeaserRotatingLine: View {
     private var lines: [String] { ExploreFilterTeaserContent.rotatingLines }
 
     var body: some View {
-        Group {
-            if #available(iOS 17.0, *) {
-                AnimatedContent(targetState: lineIndex) { index in
-                    lineText(lines[index % max(lines.count, 1)])
-                } transition: { _ in
-                    .asymmetric(
-                        insertion: .move(edge: .bottom).combined(with: .opacity),
-                        removal: .move(edge: .top).combined(with: .opacity)
-                    )
-                }
-            } else {
-                lineText(lines.isEmpty ? "" : lines[lineIndex % lines.count])
-            }
-        }
-        .frame(maxWidth: .infinity, minHeight: compact ? 20 : 24, alignment: .leading)
-        .task(id: lines.count) {
+        lineText(lines.isEmpty ? "" : lines[lineIndex % lines.count])
+            .id(lineIndex)
+            .animation(.easeInOut(duration: 0.28), value: lineIndex)
+            .frame(maxWidth: .infinity, minHeight: compact ? 20 : 24, alignment: .leading)
+            .task(id: lines.count) {
             guard lines.count > 1 else { return }
             let delayNs: UInt64 = compact ? 2_800_000_000 : 3_200_000_000
             while !Task.isCancelled {

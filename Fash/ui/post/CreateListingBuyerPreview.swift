@@ -153,7 +153,7 @@ struct CreateListingBuyerPreview: View {
         PreviewEditRow(label: label, value: value, highlightMissing: missing, onEdit: { onEditStep(step) })
     }
 
-    private func editLink(step: Int) {
+    private func editLink(step: Int) -> some View {
         Button(L10n.postReviewEditSection) { onEditStep(step) }
             .font(FashTypography.labelLarge.weight(.semibold))
             .foregroundStyle(FashColors.brandPrimary)
