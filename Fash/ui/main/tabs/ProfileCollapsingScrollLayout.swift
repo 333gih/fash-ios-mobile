@@ -1,6 +1,12 @@
 import SwiftUI
 import UIKit
 
+/// Seller storefront tab slots — not [ProfileListingTab] raw values (sold = 3 would collide).
+enum SellerProfileTab: Int {
+    case selling = 0
+    case sold = 1
+}
+
 enum ProfileListingTabSet {
     case ownProfile
     case sellerStorefront
@@ -8,7 +14,7 @@ enum ProfileListingTabSet {
     var tabCount: Int {
         switch self {
         case .ownProfile: return ProfileListingTab.allCases.count
-        case .sellerStorefront: return 2
+        case .sellerStorefront: return SellerProfileTab.sold.rawValue + 1
         }
     }
 
@@ -17,7 +23,10 @@ enum ProfileListingTabSet {
         case .ownProfile:
             return ProfileListingTab(rawValue: index)?.title ?? ""
         case .sellerStorefront:
-            return index == 0 ? L10n.profileTabSelling : L10n.profileTabSold
+            switch SellerProfileTab(rawValue: index) {
+            case .sold: return L10n.profileTabSold
+            default: return L10n.profileTabSelling
+            }
         }
     }
 
@@ -26,7 +35,10 @@ enum ProfileListingTabSet {
         case .ownProfile:
             return ProfileListingTab(rawValue: index)?.emptyTitle ?? L10n.feedEmptyTitle
         case .sellerStorefront:
-            return index == 0 ? L10n.profileEmptySellingTitle : L10n.profileEmptySoldTitle
+            switch SellerProfileTab(rawValue: index) {
+            case .sold: return L10n.profileEmptySoldTitle
+            default: return L10n.profileEmptySellingTitle
+            }
         }
     }
 
@@ -35,7 +47,10 @@ enum ProfileListingTabSet {
         case .ownProfile:
             return ProfileListingTab(rawValue: index)?.emptySubtitle ?? L10n.feedEmptySubtitle
         case .sellerStorefront:
-            return index == 0 ? L10n.profileEmptySellingSubtitle : L10n.profileEmptySoldSubtitle
+            switch SellerProfileTab(rawValue: index) {
+            case .sold: return L10n.profileEmptySoldSubtitle
+            default: return L10n.profileEmptySellingSubtitle
+            }
         }
     }
 
@@ -51,7 +66,10 @@ enum ProfileListingTabSet {
             default: return nil
             }
         case .sellerStorefront:
-            return index == 0 ? L10n.profileEmptyPinnedFooterSelling : L10n.profileEmptyPinnedFooterSold
+            switch SellerProfileTab(rawValue: index) {
+            case .sold: return L10n.profileEmptyPinnedFooterSold
+            default: return L10n.profileEmptyPinnedFooterSelling
+            }
         }
     }
 }
@@ -144,10 +162,13 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                     }
                 }
                 .fashScrollViewTabSwipe(
-                    currentIndex: selectedTab,
-                    tabCount: tabSet.tabCount
-                ) { index in
-                    selectedTab = index
+                    currentIndex: visualTabIndex,
+                    tabCount: resolvedTabIndices.count
+                ) { visualIndex in
+                    guard visualIndex >= 0, visualIndex < resolvedTabIndices.count else { return }
+                    let nextTab = resolvedTabIndices[visualIndex]
+                    guard nextTab != selectedTab else { return }
+                    selectedTab = nextTab
                 }
             }
             .coordinateSpace(name: "profileScroll")
@@ -168,9 +189,13 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                 headerHeight = nextHeight
                 applyScrollOffset(frame.minY)
             }
+            .onChange(of: resolvedTabIndices) { _, indices in
+                guard !indices.contains(selectedTab) else { return }
+                selectedTab = indices.first ?? 0
+            }
             .onChange(of: selectedTab) { oldTab, newTab in
                 guard oldTab != newTab else { return }
-                scrollToPinnedGridContent(using: scrollProxy)
+                scrollToPinnedGridContent(using: scrollProxy, animated: false)
             }
             .onChange(of: scrollToGridToken) { _, token in
                 guard token > 0 else { return }
@@ -187,10 +212,20 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         )
     }
 
+    /// Visual tab order — seller is always selling then sold (Android `tabIndices` for storefront).
     private var resolvedTabIndices: [Int] {
-        let base = (0..<tabSet.tabCount).map { $0 }
-        let filtered = orderedTabIndices.filter { $0 >= 0 && $0 < tabSet.tabCount }
-        return filtered.isEmpty ? base : filtered
+        switch tabSet {
+        case .sellerStorefront:
+            return [SellerProfileTab.selling.rawValue, SellerProfileTab.sold.rawValue]
+        case .ownProfile:
+            let base = ProfileListingTab.allCases.map(\.rawValue)
+            let filtered = orderedTabIndices.filter { base.contains($0) }
+            return filtered.isEmpty ? base : filtered
+        }
+    }
+
+    private var visualTabIndex: Int {
+        resolvedTabIndices.firstIndex(of: selectedTab) ?? 0
     }
 
     private func applyScrollOffset(_ offset: CGFloat) {

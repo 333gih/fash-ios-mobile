@@ -5,6 +5,7 @@ enum FashPinnedTabScroll {
     static func scrollToPinnedContent<ID: Hashable>(
         proxy: ScrollViewProxy,
         id: ID,
+        anchor: UnitPoint = .top,
         animated: Bool = true,
         initialDelayMs: Int = 80
     ) {
@@ -14,10 +15,10 @@ enum FashPinnedTabScroll {
             }
             if animated {
                 withAnimation(.easeInOut(duration: 0.28)) {
-                    proxy.scrollTo(id, anchor: .top)
+                    proxy.scrollTo(id, anchor: anchor)
                 }
             } else {
-                proxy.scrollTo(id, anchor: .top)
+                proxy.scrollTo(id, anchor: anchor)
             }
         }
     }

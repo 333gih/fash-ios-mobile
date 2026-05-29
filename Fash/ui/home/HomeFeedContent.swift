@@ -52,6 +52,15 @@ struct HomeFeedContent: View {
         viewModel.selectedFeedTab == .following && viewModel.followingHasMore
     }
 
+    /// Avoid collapsed empty gap while tab content swaps during horizontal swipe.
+    private var homeFeedMinHeight: CGFloat {
+        if !viewModel.items.isEmpty { return 0 }
+        if viewModel.isShellLoading || viewModel.isTabLoading(viewModel.selectedFeedTab) {
+            return 520
+        }
+        return 300
+    }
+
     var body: some View {
         ZStack(alignment: .bottom) {
             ScrollViewReader { scrollProxy in
@@ -63,9 +72,11 @@ struct HomeFeedContent: View {
                         Section {
                             feedBody
                                 .id(HomeScrollIds.feedContent)
+                                .frame(minHeight: homeFeedMinHeight, alignment: .top)
                             HomeBrandFooterStrip()
                         } header: {
                             homeFeedTabsBar
+                                .id(HomeScrollIds.pinnedTabs)
                         }
                     }
                     .padding(.bottom, promoDockInset + spacing.spacing2)
@@ -81,7 +92,10 @@ struct HomeFeedContent: View {
                     guard oldKey != newKey else { return }
                     FashPinnedTabScroll.scrollToPinnedContent(
                         proxy: scrollProxy,
-                        id: HomeScrollIds.feedContent
+                        id: HomeScrollIds.pinnedTabs,
+                        anchor: .bottom,
+                        animated: false,
+                        initialDelayMs: 100
                     )
                 }
             }
@@ -270,6 +284,7 @@ struct HomeFeedContent: View {
 }
 
 private enum HomeScrollIds {
+    static let pinnedTabs = "home_feed_pinned_tabs"
     static let feedContent = "home_feed_content"
 }
 

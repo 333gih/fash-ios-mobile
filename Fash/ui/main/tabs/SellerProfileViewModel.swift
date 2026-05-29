@@ -15,7 +15,7 @@ final class SellerProfileViewModel {
     var loadError = false
     var isFollowing = false
     var followInFlight = false
-    var selectedTab = 0
+    var selectedTab = SellerProfileTab.selling.rawValue
 
     private var activeKey: String?
 
@@ -31,6 +31,7 @@ final class SellerProfileViewModel {
             soldListings = []
             sellerFocus = nil
             isFollowing = false
+            selectedTab = SellerProfileTab.selling.rawValue
         }
         let showBlocking = profile == nil
         if showBlocking { isLoading = true }
@@ -142,7 +143,10 @@ final class SellerProfileViewModel {
     }
 
     var listingsForSelectedTab: [ListingFeedItem] {
-        selectedTab == 0 ? sellingListings : soldListings
+        switch SellerProfileTab(rawValue: selectedTab) ?? .selling {
+        case .sold: return soldListings
+        case .selling: return sellingListings
+        }
     }
 
     private func loadListings(sellerId: String, username: String, deps: AppDependencies, isGuestMode: Bool) async {

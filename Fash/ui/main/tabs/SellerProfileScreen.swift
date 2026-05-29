@@ -81,6 +81,7 @@ struct SellerProfileScreen: View {
         .background(FashColors.screen)
         .onChange(of: username) { _, _ in
             showPromoFooter = false
+            viewModel.selectedTab = SellerProfileTab.selling.rawValue
         }
         .task(id: username) {
             await viewModel.loadForSeller(username, deps: deps, isGuestMode: isGuestMode)
