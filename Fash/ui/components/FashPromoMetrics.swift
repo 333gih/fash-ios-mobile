@@ -22,4 +22,3 @@ enum FashPromoMetrics {
 
 /// Default dock for standard promo footer — Android `FashStickyPromoDockHeight`.
 let FashStickyPromoDockHeight: CGFloat = FashPromoMetrics.dockHeight(compact: false)
-``
