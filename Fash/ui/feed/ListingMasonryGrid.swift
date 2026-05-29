@@ -47,7 +47,7 @@ enum ListingMasonryGrid {
     }
 }
 
-/// Splits a long feed into page-sized chunks so each chunk is one `LazyVStack` child (Explore pagination).
+/// Page-sized chunks for optional batching. Explore uses [ListingMasonryLazyRows] over the full list instead.
 enum ListingMasonryFeedPages {
     /// Matches Explore/Home listing page size (`exploreFeedPageSize`).
     static let defaultChunkSize = 20
@@ -119,18 +119,18 @@ struct ListingMasonryGridView<Content: View>: View {
     private var edgeStart: CGFloat { leadingPadding ?? spacing.editorialStart }
     private var edgeEnd: CGFloat { trailingPadding ?? spacing.editorialEnd }
 
-    private var leftColumn: [(index: Int, item: ListingFeedItem)] {
-        entries.filter { $0.index.isMultiple(of: 2) }
-    }
-
-    private var rightColumn: [(index: Int, item: ListingFeedItem)] {
-        entries.filter { !$0.index.isMultiple(of: 2) }
+    /// Shortest-column masonry — balances column heights using stagger aspect ratios (Android StaggeredGrid).
+    private var distributedColumns: (
+        left: [(index: Int, item: ListingFeedItem)],
+        right: [(index: Int, item: ListingFeedItem)]
+    ) {
+        ListingMasonryGrid.distributeShortestColumn(entries: entries)
     }
 
     var body: some View {
         HStack(alignment: .top, spacing: gap) {
-            masonryColumn(leftColumn)
-            masonryColumn(rightColumn)
+            masonryColumn(distributedColumns.left)
+            masonryColumn(distributedColumns.right)
         }
         .padding(.leading, edgeStart)
         .padding(.trailing, edgeEnd)
@@ -141,16 +141,46 @@ struct ListingMasonryGridView<Content: View>: View {
         VStack(spacing: gap) {
             ForEach(column, id: \.item.id) { entry in
                 content(entry.item, entry.index)
+                    .frame(maxWidth: .infinity)
             }
         }
         .frame(maxWidth: .infinity, alignment: .top)
     }
 }
 
-/// Virtualized **row pairs** for long feeds (`ScrollView` + `LazyVStack`).
+extension ListingMasonryGrid {
+    /// Assigns each tile to the shorter column using estimated height from [staggerAspectRatio].
+    static func distributeShortestColumn(
+        entries: [(index: Int, item: ListingFeedItem)]
+    ) -> (
+        left: [(index: Int, item: ListingFeedItem)],
+        right: [(index: Int, item: ListingFeedItem)]
+    ) {
+        let sorted = entries.sorted { $0.index < $1.index }
+        guard !sorted.isEmpty else { return ([], []) }
+        var left: [(index: Int, item: ListingFeedItem)] = []
+        var right: [(index: Int, item: ListingFeedItem)] = []
+        var leftHeight: CGFloat = 0
+        var rightHeight: CGFloat = 0
+        left.reserveCapacity(sorted.count / 2 + 1)
+        right.reserveCapacity(sorted.count / 2 + 1)
+        for entry in sorted {
+            let unitHeight = 1 / staggerAspectRatio(for: entry.item.id)
+            if leftHeight <= rightHeight {
+                left.append(entry)
+                leftHeight += unitHeight
+            } else {
+                right.append(entry)
+                rightHeight += unitHeight
+            }
+        }
+        return (left, right)
+    }
+}
+
+/// Virtualized **row pairs** for long feeds (`ScrollView` + `LazyVStack`) — Android `listingMasonryFeedRows`.
 ///
-/// Prefer [ListingMasonryGridView] when visual parity with Home/Android staggered grid matters:
-/// row pairs use `max(leftHeight, rightHeight)` per row, which adds extra vertical gaps between tiles.
+/// Each row is one lazy child: equal-width columns, fixed horizontal gap, tile height from image aspect ratio.
 struct ListingMasonryLazyRows<Content: View>: View {
     @Environment(\.fashSpacing) private var spacing
 
@@ -177,7 +207,6 @@ struct ListingMasonryLazyRows<Content: View>: View {
                     content(right.item, right.index)
                         .frame(maxWidth: .infinity)
                 } else {
-                    // Keeps two-column row width stable when the last row has a single tile.
                     Color.clear
                         .frame(maxWidth: .infinity)
                         .accessibilityHidden(true)

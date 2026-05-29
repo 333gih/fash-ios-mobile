@@ -151,69 +151,48 @@ struct ListingGridCard: View {
     @ViewBuilder
     private var titleRow: some View {
         if !displayTitle.isEmpty {
-            FashMarqueeText(
-                text: displayTitle,
-                font: FashTypography.bodySmall,
-                fontWeight: .semibold,
-                color: .white,
-                lineHeight: FooterMetrics.titleLineHeight
-            )
+            Text(displayTitle)
+                .font(FashTypography.bodySmall.weight(.semibold))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(minHeight: FooterMetrics.titleLineHeight, alignment: .leading)
         }
     }
 
-    /// Condition pill + secondary meta on one row when both exist — Android [ListingCardMetaRow].
+    /// Condition + category/brand — infinite horizontal marquee (Android meta row).
     @ViewBuilder
     private var metaRow: some View {
-        if meta.conditionLabel.isEmpty && meta.secondary.isEmpty {
-            EmptyView()
-        } else if !meta.conditionLabel.isEmpty && !meta.secondary.isEmpty {
-            HStack(alignment: .center, spacing: 6) {
-                conditionPill(meta.conditionLabel)
-                FashMarqueeText(
-                    text: meta.secondary,
-                    font: FashTypography.labelSmall,
-                    color: .white.opacity(0.92),
-                    lineHeight: FooterMetrics.metaLineHeight
-                )
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .frame(minHeight: FooterMetrics.metaLineHeight)
-        } else if !meta.conditionLabel.isEmpty {
-            conditionPill(meta.conditionLabel)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        } else {
+        let marqueeText = metaMarqueeText
+        if !marqueeText.isEmpty {
             FashMarqueeText(
-                text: meta.secondary,
+                text: marqueeText,
                 font: FashTypography.labelSmall,
                 color: .white.opacity(0.92),
-                lineHeight: FooterMetrics.metaLineHeight
+                lineHeight: FooterMetrics.metaLineHeight,
+                continuousLoop: true
             )
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(minHeight: FooterMetrics.metaLineHeight, alignment: .leading)
         }
+    }
+
+    private var metaMarqueeText: String {
+        [meta.conditionLabel, meta.secondary]
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " · ")
     }
 
     private var sellerRow: some View {
-        FashMarqueeText(
-            text: sellerLine,
-            font: FashTypography.labelSmall,
-            color: .white.opacity(0.88),
-            lineHeight: FooterMetrics.sellerLineHeight
-        )
-        .frame(minHeight: FooterMetrics.sellerLineHeight, alignment: .leading)
-        .layoutPriority(1)
-    }
-
-    private func conditionPill(_ label: String) -> some View {
-        Text(label)
-            .font(FashTypography.labelSmall.weight(.semibold))
-            .foregroundStyle(.white)
+        Text(sellerLine)
+            .font(FashTypography.labelSmall)
+            .foregroundStyle(.white.opacity(0.88))
             .lineLimit(1)
             .truncationMode(.tail)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 3)
-            .background(Color.white.opacity(0.24))
-            .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
-            .frame(maxWidth: 112, alignment: .leading)
-            .fixedSize(horizontal: true, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(minHeight: FooterMetrics.sellerLineHeight, alignment: .leading)
     }
 
     @ViewBuilder

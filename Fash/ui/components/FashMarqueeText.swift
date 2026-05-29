@@ -10,6 +10,9 @@ struct FashMarqueeText: View {
     var initialDelayMs: UInt64 = 900
     var repeatDelayMs: UInt64 = 1_200
     var velocity: CGFloat = 35
+    /// When true, loops continuously with duplicated segments (ad-style ticker).
+    var continuousLoop: Bool = false
+    var segmentGap: CGFloat = 28
 
     @State private var textWidth: CGFloat = 0
     @State private var containerWidth: CGFloat = 0
@@ -18,30 +21,18 @@ struct FashMarqueeText: View {
 
     private var overflow: CGFloat { max(0, textWidth - containerWidth) }
     private var shouldScroll: Bool { overflow > 1 && !text.isEmpty && containerWidth > 1 }
+    private var loopTravel: CGFloat {
+        continuousLoop ? textWidth + segmentGap : overflow
+    }
 
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
-                Text(text)
-                    .font(font.weight(fontWeight))
-                    .foregroundStyle(color)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                staticLabel
                     .opacity(shouldScroll ? 0 : 1)
 
                 if shouldScroll {
-                    Text(text)
-                        .font(font.weight(fontWeight))
-                        .foregroundStyle(color)
-                        .lineLimit(1)
-                        .fixedSize(horizontal: true, vertical: false)
-                        .background {
-                            GeometryReader { textGeo in
-                                Color.clear
-                                    .preference(key: FashMarqueeTextWidthKey.self, value: textGeo.size.width)
-                            }
-                        }
+                    scrollingLabel
                         .offset(x: offset)
                 }
             }
@@ -71,6 +62,42 @@ struct FashMarqueeText: View {
         .clipped()
     }
 
+    private var staticLabel: some View {
+        Text(text)
+            .font(font.weight(fontWeight))
+            .foregroundStyle(color)
+            .lineLimit(1)
+            .truncationMode(.tail)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private var scrollingLabel: some View {
+        if continuousLoop {
+            HStack(spacing: segmentGap) {
+                marqueeSegment
+                marqueeSegment
+            }
+            .fixedSize(horizontal: true, vertical: false)
+        } else {
+            marqueeSegment
+                .fixedSize(horizontal: true, vertical: false)
+        }
+    }
+
+    private var marqueeSegment: some View {
+        Text(text)
+            .font(font.weight(fontWeight))
+            .foregroundStyle(color)
+            .lineLimit(1)
+            .background {
+                GeometryReader { textGeo in
+                    Color.clear
+                        .preference(key: FashMarqueeTextWidthKey.self, value: textGeo.size.width)
+                }
+            }
+    }
+
     private func restartMarquee() {
         marqueeTask?.cancel()
         offset = 0
@@ -79,15 +106,19 @@ struct FashMarqueeText: View {
         marqueeTask = Task { @MainActor in
             while !Task.isCancelled {
                 offset = 0
-                try? await Task.sleep(nanoseconds: initialDelayMs * 1_000_000)
-                guard !Task.isCancelled, shouldScroll else { continue }
+                if !continuousLoop {
+                    try? await Task.sleep(nanoseconds: initialDelayMs * 1_000_000)
+                    guard !Task.isCancelled, shouldScroll else { continue }
+                }
 
-                let duration = Double(overflow / velocity)
+                let travel = loopTravel
+                let duration = max(0.35, Double(travel / velocity))
                 withAnimation(.linear(duration: duration)) {
-                    offset = -overflow
+                    offset = -travel
                 }
                 let scrollNs = UInt64(duration * 1_000_000_000)
-                try? await Task.sleep(nanoseconds: scrollNs + repeatDelayMs * 1_000_000)
+                try? await Task.sleep(nanoseconds: scrollNs + (continuousLoop ? 0 : repeatDelayMs) * 1_000_000)
+                guard !Task.isCancelled else { return }
             }
         }
     }

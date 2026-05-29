@@ -277,21 +277,19 @@ struct ExploreScreen: View {
                             subtitle: L10n.feedEmptySubtitle
                         )
                     } else {
-                        ForEach(ListingMasonryFeedPages.chunks(from: viewModel.items)) { chunk in
-                            ListingMasonryGridView(entries: chunk.entries) { item, index in
-                                ExploreListingCell(
-                                    item: item,
-                                    index: index,
-                                    totalCount: viewModel.items.count,
-                                    isGuestMode: isGuestMode,
-                                    openListingAsFullScreen: openListingAsFullScreen,
-                                    viewModel: viewModel,
-                                    router: router,
-                                    deps: deps
-                                )
-                            }
-                            .padding(.top, chunk.id == 0 ? spacing.spacing2 : 0)
+                        ListingMasonryLazyRows(items: viewModel.items) { item, index in
+                            ExploreListingCell(
+                                item: item,
+                                index: index,
+                                totalCount: viewModel.items.count,
+                                isGuestMode: isGuestMode,
+                                openListingAsFullScreen: openListingAsFullScreen,
+                                viewModel: viewModel,
+                                router: router,
+                                deps: deps
+                            )
                         }
+                        .padding(.top, spacing.spacing2)
                         ExploreListingsPaginationSentinel(
                             hasMore: viewModel.hasMore,
                             isLoadingMore: viewModel.isLoadingMore

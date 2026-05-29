@@ -171,8 +171,8 @@ struct HomeFeedContent: View {
                 HomeFeedTabGenericEmpty(tab: viewModel.selectedFeedTab)
             }
         } else {
-            VStack(spacing: spacing.spacing4) {
-                ListingMasonryGridView(items: viewModel.items) { item, index in
+            VStack(spacing: 0) {
+                ListingMasonryLazyRows(items: viewModel.items) { item, index in
                     HomeFeedListingCell(
                         item: item,
                         index: index,
@@ -235,7 +235,8 @@ struct HomeFeedContent: View {
                         .padding(.bottom, spacing.spacing2)
                 }
             }
-            .padding(.vertical, spacing.spacing4)
+            .padding(.top, spacing.spacing2)
+            .padding(.bottom, spacing.spacing4)
         }
     }
 
