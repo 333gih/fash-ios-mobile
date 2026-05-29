@@ -1,7 +1,15 @@
 import SwiftUI
 import UIKit
 
-private let homeSearchExpandCycleMs = 11_000.0
+let homeSearchExpandCycleMs = 11_000.0
+
+/// Short pulse on the collapsed search icon before the header expand / title flip.
+func homeSearchIconAttention(at ms: Double) -> CGFloat {
+    let phase = ms.truncatingRemainder(dividingBy: homeSearchExpandCycleMs)
+    if phase < 3200 || phase > 3950 { return 0 }
+    if phase < 3550 { return CGFloat((phase - 3200) / 350) }
+    return CGFloat(1 - (phase - 3550) / 400)
+}
 
 /// Home header faux search field — width controlled by parent (expand/collapse). Tap opens Explore.
 struct FashHomeHeaderSearchField: View {
@@ -118,12 +126,5 @@ struct FashHomeCollapsedSearchIcon: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(L10n.searchLabel)
-    }
-
-    private func homeSearchIconAttention(at ms: Double) -> CGFloat {
-        let phase = ms.truncatingRemainder(dividingBy: homeSearchExpandCycleMs)
-        if phase < 3200 || phase > 3950 { return 0 }
-        if phase < 3550 { return CGFloat((phase - 3200) / 350) }
-        return CGFloat(1 - (phase - 3550) / 400)
     }
 }

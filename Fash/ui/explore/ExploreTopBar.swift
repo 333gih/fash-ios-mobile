@@ -19,10 +19,7 @@ struct ExploreTopBar: View {
                     .frame(width: 48, height: 48)
             }
             titleOrSearch
-            Spacer(minLength: 0)
-            if !viewModel.searchBarExpanded {
-                animatedSearchTrigger
-            }
+            trailingSearchSlot
         }
         .padding(.leading, spacing.editorialStart)
         .padding(.trailing, spacing.editorialEnd)
@@ -37,76 +34,76 @@ struct ExploreTopBar: View {
     }
 
     @ViewBuilder
-    private var animatedSearchTrigger: some View {
-        if animateSearchIcon {
-            TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
-                let progress = rememberHomeSearchExpandProgress(animate: true, date: timeline.date)
-                if progress > 0.08 {
-                    Button {
-                        viewModel.requestSearchBarExpanded()
-                        Task { await viewModel.loadSearchOverlayData(deps: deps) }
-                    } label: {
-                        exploreSearchHintField(progress: progress)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(L10n.searchLabel)
-                } else {
-                    FashHomeCollapsedSearchIcon(
-                        onClick: {
-                            viewModel.requestSearchBarExpanded()
-                            Task { await viewModel.loadSearchOverlayData(deps: deps) }
-                        },
-                        animateHint: true
-                    )
-                }
-            }
-        } else {
-            Button {
-                viewModel.requestSearchBarExpanded()
-                Task { await viewModel.loadSearchOverlayData(deps: deps) }
-            } label: {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 20))
-                    .foregroundStyle(FashColors.brandPrimary)
-                    .frame(width: 48, height: 48)
-            }
-        }
-    }
-
-    private func exploreSearchHintField(progress: CGFloat) -> some View {
-        let reveal = min(max(progress, 0), 1)
-        return HStack(spacing: 6) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 18))
-                .foregroundStyle(FashColors.brandPrimary)
-            if reveal > 0.35 {
-                Text(searchPlaceholder)
-                    .font(FashTypography.labelMedium)
-                    .foregroundStyle(FashColors.textSecondary.opacity(0.82))
-                    .lineLimit(1)
-                    .opacity(Double((reveal - 0.35) / 0.65))
-            }
-        }
-        .padding(.horizontal, 10)
-        .frame(width: 44 + 120 * reveal, height: 40)
-        .background(FashColors.surfaceVariant.opacity(0.35 + 0.1 * reveal))
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .strokeBorder(FashColors.brandPrimary.opacity(0.22 + 0.2 * reveal), lineWidth: 1)
-        )
-    }
-
-    @ViewBuilder
     private var titleOrSearch: some View {
         Group {
             if viewModel.searchBarExpanded {
                 searchField
+            } else if animateSearchIcon {
+                TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+                    let flipProgress = rememberExploreTitleFlipProgress(
+                        animate: true,
+                        date: timeline.date
+                    )
+                    Button {
+                        openSearch()
+                    } label: {
+                        ExploreTopBarFlipTitle(
+                            progress: flipProgress,
+                            placeholder: searchPlaceholder
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(L10n.searchLabel)
+                }
             } else {
                 FashScreenTitle(suffix: L10n.brandHeaderSuffixExplore)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(height: 48, alignment: .leading)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: 48)
         .animation(.easeInOut(duration: 0.22), value: viewModel.searchBarExpanded)
+    }
+
+    /// Fixed 48×48 slot — icon fades out while title flips to search (no bar reflow).
+    @ViewBuilder
+    private var trailingSearchSlot: some View {
+        ZStack {
+            if !viewModel.searchBarExpanded {
+                if animateSearchIcon {
+                    TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+                        let flipProgress = rememberExploreTitleFlipProgress(
+                            animate: true,
+                            date: timeline.date
+                        )
+                        let iconOpacity = exploreTrailingSearchIconOpacity(flipProgress: flipProgress)
+                        let attention = homeSearchIconAttention(at: timeline.date.timeIntervalSinceReferenceDate * 1000)
+                        Button(action: openSearch) {
+                            Image(systemName: "magnifyingglass")
+                                .font(.system(size: 22))
+                                .foregroundStyle(attention > 0.5 ? FashColors.brandPrimary : FashColors.textPrimary)
+                                .scaleEffect(1 + attention * 0.14)
+                                .frame(width: 48, height: 48)
+                        }
+                        .buttonStyle(.plain)
+                        .opacity(iconOpacity)
+                        .allowsHitTesting(iconOpacity > 0.12)
+                        .accessibilityHidden(iconOpacity < 0.12)
+                        .accessibilityLabel(L10n.searchLabel)
+                    }
+                } else {
+                    Button(action: openSearch) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 20))
+                            .foregroundStyle(FashColors.brandPrimary)
+                            .frame(width: 48, height: 48)
+                    }
+                    .accessibilityLabel(L10n.searchLabel)
+                }
+            }
+        }
+        .frame(width: 48, height: 48)
     }
 
     private var searchField: some View {
@@ -148,6 +145,11 @@ struct ExploreTopBar: View {
         viewModel.primarySection == .sellers
             ? L10n.exploreSearchPlaceholderSellers
             : L10n.searchPlaceholder
+    }
+
+    private func openSearch() {
+        viewModel.requestSearchBarExpanded()
+        Task { await viewModel.loadSearchOverlayData(deps: deps) }
     }
 
     private func handleBack() {
