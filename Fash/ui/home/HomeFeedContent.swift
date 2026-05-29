@@ -16,8 +16,6 @@ struct HomeFeedContent: View {
     var onInReviewJourneyClick: () -> Void = {}
     var onExploreShortcutClick: (HomeExploreShortcut) -> Void = { _ in }
 
-    @State private var showStickyHomeTabs = false
-
     private var tabs: [HomeFeedTab] {
         viewModel.orderedTabs(isGuestMode: isGuestMode)
     }
@@ -56,29 +54,36 @@ struct HomeFeedContent: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            ScrollView {
-                LazyVStack(spacing: 0) {
-                    homeScrollAwayHeader
-                    homeFeedTabsInScroll
-                    feedBody
-                    HomeBrandFooterStrip()
+            ScrollViewReader { scrollProxy in
+                ScrollView {
+                    LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+                        Section {
+                            homeScrollAwayHeader
+                        }
+                        Section {
+                            feedBody
+                                .id(HomeScrollIds.feedContent)
+                            HomeBrandFooterStrip()
+                        } header: {
+                            homeFeedTabsBar
+                        }
+                    }
+                    .padding(.bottom, promoDockInset + spacing.spacing2)
+                    .fashScrollViewTabSwipe(
+                        currentIndex: selectedTabIndex,
+                        tabCount: tabs.count
+                    ) { index in
+                        viewModel.selectFeedTab(tabs[index], deps: deps, isGuestMode: isGuestMode)
+                    }
                 }
-                .padding(.bottom, promoDockInset + spacing.spacing2)
-                .fashScrollViewTabSwipe(
-                    currentIndex: selectedTabIndex,
-                    tabCount: tabs.count
-                ) { index in
-                    viewModel.selectFeedTab(tabs[index], deps: deps, isGuestMode: isGuestMode)
+                .refreshable { await viewModel.pullToRefresh(deps: deps, isGuestMode: isGuestMode) }
+                .onChange(of: viewModel.selectedFeedTabKey) { oldKey, newKey in
+                    guard oldKey != newKey else { return }
+                    FashPinnedTabScroll.scrollToPinnedContent(
+                        proxy: scrollProxy,
+                        id: HomeScrollIds.feedContent
+                    )
                 }
-            }
-            .coordinateSpace(name: "homeFeedScroll")
-            .background { HomeFeedTabsScrollObserver(showStickyTabs: $showStickyHomeTabs) }
-            .refreshable { await viewModel.pullToRefresh(deps: deps, isGuestMode: isGuestMode) }
-
-            if showStickyHomeTabs {
-                homeFeedTabsStickyOverlay
-                    .transition(.opacity.combined(with: .move(edge: .top)))
-                    .zIndex(2)
             }
 
             if !promoSlides.isEmpty {
@@ -87,7 +92,6 @@ struct HomeFeedContent: View {
                 }
             }
         }
-        .animation(.easeInOut(duration: 0.22), value: showStickyHomeTabs)
         .task {
             viewModel.normalizeSelectedFeedTab(isGuestMode: isGuestMode, deps: deps)
             await viewModel.loadShell(deps: deps, isGuestMode: isGuestMode, skipIfFresh: true)
@@ -133,17 +137,7 @@ struct HomeFeedContent: View {
         }
     }
 
-    /// Tab row inside scroll — Android `home_feed_tabs` full-span item (not pinned).
-    private var homeFeedTabsInScroll: some View {
-        homeFeedTabsBar
-            .homeFeedTabsScrollReporting()
-    }
-
-    private var homeFeedTabsStickyOverlay: some View {
-        homeFeedTabsBar
-            .shadow(color: .black.opacity(0.06), radius: 2, y: 1)
-    }
-
+    /// Tab row — pinned at top once header scrolls away (Android `showStickyTabs` overlay).
     private var homeFeedTabsBar: some View {
         VStack(spacing: 0) {
             HomeFeedTabSwitcher(
@@ -158,6 +152,7 @@ struct HomeFeedContent: View {
                 .overlay(FashColors.outlineMuted.opacity(0.35))
         }
         .background(FashColors.screen)
+        .shadow(color: .black.opacity(0.06), radius: 2, y: 1)
     }
 
     @ViewBuilder
@@ -272,6 +267,10 @@ struct HomeFeedContent: View {
         default: return L10n.guestLoginSheetTitle
         }
     }
+}
+
+private enum HomeScrollIds {
+    static let feedContent = "home_feed_content"
 }
 
 private struct HomeFeedListingCell: View {

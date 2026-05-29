@@ -91,26 +91,11 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     @ViewBuilder var expandedHeader: () -> ExpandedHeader
     @ViewBuilder var compactHeader: () -> CompactHeader
 
-    @State private var headerMinY: CGFloat = 0
     @State private var headerHeight: CGFloat = 0
     @State private var reportedTabsPinned = false
     @State private var showBriefBar = false
-
-    private var collapseProgress: CGFloat {
-        min(max(-headerMinY / ProfileCollapseMetrics.scrollDistance, 0), 1)
-    }
-
-    /// Sticky tab row pinned — Android `rememberProfilePromoFooterVisible` (`firstVisibleItemIndex > 0`).
-    private var tabsPinnedAtTop: Bool {
-        if headerHeight > 24 {
-            return headerMinY <= -(headerHeight - 12)
-        }
-        return headerMinY <= -ProfileCollapseMetrics.scrollDistance * 0.92
-    }
-
-    private var showSectionTitle: Bool {
-        tabsPinnedAtTop || collapseProgress > 0.55
-    }
+    @State private var showSectionTitle = false
+    @State private var lastScrollOffset: CGFloat = 0
 
     var body: some View {
         ScrollViewReader { scrollProxy in
@@ -130,28 +115,28 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                             )
                     }
                     Section {
-                        Group {
-                            if items.isEmpty {
-                                emptyBlock
-                            } else {
-                                ListingMasonryGridView(items: items) { item, _ in
-                                    ListingGridCard(
-                                        item: item,
-                                        onTap: { onListingClick(item) },
-                                        imageAspectRatio: ListingMasonryGrid.staggerAspectRatio(for: item.id),
-                                        showQuickActions: showQuickActions,
-                                        statusOverlayLabel: showStatusOverlay
-                                            ? ListingStatusUi.overlayLabel(for: item.listingStatus)
-                                            : nil,
-                                        onLike: onLike.map { h in { h(item) } },
-                                        onSave: onSave.map { h in { h(item) } }
-                                    )
-                                }
-                                .padding(.top, 4)
+                        if items.isEmpty {
+                            emptyBlock
+                                .id(ProfileScrollIds.listingGrid)
+                        } else {
+                            Color.clear
+                                .frame(height: 0)
+                                .id(ProfileScrollIds.listingGrid)
+                            ListingMasonryLazyRows(items: items) { item, _ in
+                                ListingGridCard(
+                                    item: item,
+                                    onTap: { onListingClick(item) },
+                                    imageAspectRatio: ListingMasonryGrid.staggerAspectRatio(for: item.id),
+                                    showQuickActions: showQuickActions,
+                                    statusOverlayLabel: showStatusOverlay
+                                        ? ListingStatusUi.overlayLabel(for: item.listingStatus)
+                                        : nil,
+                                    onLike: onLike.map { h in { h(item) } },
+                                    onSave: onSave.map { h in { h(item) } }
+                                )
                             }
+                            .padding(.top, 4)
                         }
-                        .id(ProfileScrollIds.listingGrid)
-                        .animation(.easeInOut(duration: 0.2), value: selectedTab)
 
                         Color.clear.frame(height: max(120, additionalBottomInset + 80))
                     } header: {
@@ -168,30 +153,38 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             .coordinateSpace(name: "profileScroll")
             .onAppear {
                 reportedTabsPinned = false
-                headerMinY = 0
                 headerHeight = 0
+                showBriefBar = false
+                showSectionTitle = false
+                lastScrollOffset = 0
             }
             .onPreferenceChange(ProfileScrollOffsetKey.self) { offset in
-                headerMinY = offset
-                emitTabsPinnedIfNeeded()
-                refreshBriefBarVisibility()
+                applyScrollOffset(offset)
             }
             .onPreferenceChange(ProfileHeaderBoundsKey.self) { frame in
                 guard frame.height > 10 else { return }
-                headerHeight = frame.height
-                emitTabsPinnedIfNeeded()
-                refreshBriefBarVisibility()
+                let nextHeight = frame.height
+                guard abs(nextHeight - headerHeight) > 0.5 else { return }
+                headerHeight = nextHeight
+                applyScrollOffset(frame.minY)
+            }
+            .onChange(of: selectedTab) { oldTab, newTab in
+                guard oldTab != newTab else { return }
+                scrollToPinnedGridContent(using: scrollProxy)
             }
             .onChange(of: scrollToGridToken) { _, token in
                 guard token > 0 else { return }
-                Task { @MainActor in
-                    try? await Task.sleep(for: .milliseconds(80))
-                    withAnimation(.easeInOut(duration: 0.28)) {
-                        scrollProxy.scrollTo(ProfileScrollIds.listingGrid, anchor: .top)
-                    }
-                }
+                scrollToPinnedGridContent(using: scrollProxy, animated: false)
             }
         }
+    }
+
+    private func scrollToPinnedGridContent(using scrollProxy: ScrollViewProxy, animated: Bool = true) {
+        FashPinnedTabScroll.scrollToPinnedContent(
+            proxy: scrollProxy,
+            id: ProfileScrollIds.listingGrid,
+            animated: animated
+        )
     }
 
     private var resolvedTabIndices: [Int] {
@@ -200,18 +193,52 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         return filtered.isEmpty ? base : filtered
     }
 
-    private func emitTabsPinnedIfNeeded() {
-        let pinned = tabsPinnedAtTop
+    private func applyScrollOffset(_ offset: CGFloat) {
+        let pinned = tabsPinnedAtTop(for: offset)
+        let collapseProgress = min(max(-offset / ProfileCollapseMetrics.scrollDistance, 0), 1)
+        let wantsSectionTitle = pinned || collapseProgress > 0.55
+        let wantsBriefBar: Bool
+        if showBriefBar {
+            wantsBriefBar = !(collapseProgress < 0.36 && !pinned)
+        } else {
+            wantsBriefBar = pinned || collapseProgress > 0.52
+        }
+
+        if pinned == reportedTabsPinned,
+           wantsSectionTitle == showSectionTitle,
+           wantsBriefBar == showBriefBar,
+           abs(offset - lastScrollOffset) < 2 {
+            return
+        }
+        lastScrollOffset = offset
+
+        emitTabsPinnedIfNeeded(pinned: pinned)
+        refreshBriefBarVisibility(collapseProgress: collapseProgress, tabsPinned: pinned)
+
+        if wantsSectionTitle != showSectionTitle {
+            showSectionTitle = wantsSectionTitle
+        }
+    }
+
+    /// Sticky tab row pinned — Android `rememberProfilePromoFooterVisible` (`firstVisibleItemIndex > 0`).
+    private func tabsPinnedAtTop(for offset: CGFloat) -> Bool {
+        if headerHeight > 24 {
+            return offset <= -(headerHeight - 12)
+        }
+        return offset <= -ProfileCollapseMetrics.scrollDistance * 0.92
+    }
+
+    private func emitTabsPinnedIfNeeded(pinned: Bool) {
         guard pinned != reportedTabsPinned else { return }
         reportedTabsPinned = pinned
         onTabsPinnedAtTopChange?(pinned)
     }
 
-    private func refreshBriefBarVisibility() {
+    private func refreshBriefBarVisibility(collapseProgress: CGFloat, tabsPinned: Bool) {
         // Android ProfileStickyProfileChrome hysteresis — avoid elastic-scroll flicker.
-        if tabsPinnedAtTop || collapseProgress > 0.52 {
+        if tabsPinned || collapseProgress > 0.52 {
             if !showBriefBar { showBriefBar = true }
-        } else if collapseProgress < 0.36, !tabsPinnedAtTop {
+        } else if collapseProgress < 0.36, !tabsPinned {
             if showBriefBar { showBriefBar = false }
         }
     }
@@ -248,7 +275,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         }
         .background(FashColors.screen)
         .shadow(
-            color: .black.opacity(showBriefBar || tabsPinnedAtTop ? 0.08 : 0.04),
+            color: .black.opacity(showBriefBar || reportedTabsPinned ? 0.08 : 0.04),
             radius: 3,
             y: 1
         )
