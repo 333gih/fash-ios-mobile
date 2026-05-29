@@ -48,6 +48,8 @@ struct HomeFeedContent: View {
         isGuestMode ? nil : viewModel.homeUxPersonalization.exploreShortcut
     }
 
+    @State private var feedMasonryHeight: CGFloat = 0
+
     var body: some View {
         ZStack(alignment: .bottom) {
             ScrollView {
@@ -171,7 +173,13 @@ struct HomeFeedContent: View {
             }
         } else {
             VStack(spacing: 0) {
-                ListingMasonryColumnFeed(layout: viewModel.feedMasonryLayout) { item, index in
+                ListingStaggeredMasonryView(
+                    items: viewModel.items,
+                    onLoadMore: viewModel.selectedFeedTab == .following && viewModel.followingHasMore
+                        ? { viewModel.loadMoreFollowing(deps: deps, isGuestMode: isGuestMode) }
+                        : nil,
+                    contentHeight: $feedMasonryHeight
+                ) { item, index in
                     HomeFeedListingCell(
                         item: item,
                         index: index,
@@ -220,18 +228,17 @@ struct HomeFeedContent: View {
                                 dwellMs: dwellMs,
                                 deps: deps
                             )
-                        },
-                        onNearEnd: {
-                            if viewModel.selectedFeedTab == .following {
-                                viewModel.loadMoreFollowing(deps: deps, isGuestMode: isGuestMode)
-                            }
-                        },
-                        nearEndThreshold: viewModel.items.count - 3
+                        }
                     )
                 }
+                .frame(height: feedMasonryHeight)
+
                 if viewModel.selectedFeedTab == .following, viewModel.isLoadingMoreFollowing {
                     ProgressView()
-                        .padding(.bottom, spacing.spacing2)
+                        .tint(FashColors.brandPrimary)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 56)
+                        .padding(.vertical, 8)
                 }
             }
             .padding(.top, spacing.spacing2)
@@ -260,8 +267,6 @@ private struct HomeFeedListingCell: View {
     let onSave: () -> Void
     let onRecordView: () -> Void
     let onDwell: (Int) -> Void
-    let onNearEnd: () -> Void
-    let nearEndThreshold: Int
 
     @State private var appearedAt: Date?
 
@@ -277,9 +282,6 @@ private struct HomeFeedListingCell: View {
         .onAppear {
             appearedAt = Date()
             onRecordView()
-            if index >= nearEndThreshold {
-                onNearEnd()
-            }
         }
         .onDisappear {
             if let appearedAt {

@@ -20,6 +20,7 @@ struct ExploreScreen: View {
     @State private var showStickyChrome = false
     @State private var headerScrollMinY: CGFloat = 0
     @State private var marketplaceControlsMaxY: CGFloat = .infinity
+    @State private var listingsMasonryHeight: CGFloat = 0
 
     private var tabsFadeOpacity: CGFloat {
         ExploreTabsCollapse.fadeOpacity(headerMinY: headerScrollMinY)
@@ -251,12 +252,6 @@ struct ExploreScreen: View {
         }
     }
 
-    private func isExploreBottomColumnTile(itemId: String) -> Bool {
-        let layout = viewModel.listingsMasonryLayout
-        let tailIds = [layout.left.last?.item.id, layout.right.last?.item.id].compactMap { $0 }
-        return tailIds.contains(itemId)
-    }
-
     // MARK: - Listings feed
 
     private var listingsGrid: some View {
@@ -320,27 +315,38 @@ struct ExploreScreen: View {
                 subtitle: L10n.feedEmptySubtitle
             )
         } else {
-            ListingMasonryColumnFeed(layout: viewModel.listingsMasonryLayout) { item, index in
+            ListingStaggeredMasonryView(
+                items: viewModel.items,
+                onLoadMore: {
+                    viewModel.requestLoadMore(deps: deps, isGuestMode: isGuestMode)
+                },
+                contentHeight: $listingsMasonryHeight
+            ) { item, index in
                 ExploreListingCell(
                     item: item,
                     index: index,
                     isGuestMode: isGuestMode,
                     openListingAsFullScreen: openListingAsFullScreen,
-                    isBottomColumnTile: isExploreBottomColumnTile(itemId: item.id),
                     viewModel: viewModel,
                     router: router,
                     deps: deps
                 )
             }
+            .frame(height: listingsMasonryHeight)
             .padding(.top, spacing.spacing2)
-            ExploreListingsPaginationSentinel(
-                hasMore: viewModel.hasMore,
-                isLoadingMore: viewModel.isLoadingMore
-            ) {
-                viewModel.requestLoadMore(deps: deps, isGuestMode: isGuestMode)
+
+            if viewModel.isLoadingMore {
+                ProgressView()
+                    .tint(FashColors.brandPrimary)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 56)
+                    .padding(.vertical, 8)
             }
-            HomeBrandFooterStrip()
-                .padding(.top, spacing.spacing4)
+
+            if !viewModel.hasMore {
+                HomeBrandFooterStrip()
+                    .padding(.top, spacing.spacing4)
+            }
         }
     }
 
@@ -428,46 +434,11 @@ private enum ExploreFeedScrollIds {
     static let top = "explore_feed_scroll_top"
 }
 
-/// Prefetch trigger at the feed bottom — must be its own `LazyVStack` child (not inside the grid `VStack`).
-private struct ExploreListingsPaginationSentinel: View {
-    let hasMore: Bool
-    let isLoadingMore: Bool
-    let onPrefetch: () -> Void
-
-    private let triggerHeight: CGFloat = 120
-
-    var body: some View {
-        ZStack {
-            Color.clear
-                .frame(height: triggerHeight)
-                .onAppear(perform: prefetchIfNeeded)
-            if isLoadingMore {
-                ProgressView()
-                    .tint(FashColors.brandPrimary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-            }
-        }
-        .onChange(of: isLoadingMore) { wasLoading, loading in
-            if wasLoading, !loading { prefetchIfNeeded() }
-        }
-        .onChange(of: hasMore) { _, more in
-            if more { prefetchIfNeeded() }
-        }
-    }
-
-    private func prefetchIfNeeded() {
-        guard hasMore, !isLoadingMore else { return }
-        onPrefetch()
-    }
-}
-
 private struct ExploreListingCell: View {
     let item: ListingFeedItem
     let index: Int
     let isGuestMode: Bool
     var openListingAsFullScreen: Bool = false
-    var isBottomColumnTile: Bool = false
     @Bindable var viewModel: ExploreViewModel
     @Bindable var router: AppRouter
     let deps: AppDependencies
@@ -507,9 +478,6 @@ private struct ExploreListingCell: View {
         .onAppear {
             appearedAt = Date()
             viewModel.recordView(item: item, position: index, deps: deps)
-            if isBottomColumnTile {
-                viewModel.requestLoadMore(deps: deps, isGuestMode: isGuestMode)
-            }
         }
         .onDisappear {
             if let appearedAt {

@@ -130,7 +130,7 @@ struct ListingGridCard: View {
                 .fontWeight(.bold)
                 .foregroundStyle(.white)
                 .lineLimit(1)
-                .truncationMode(.tail)
+                .minimumScaleFactor(0.85)
             Spacer(minLength: 0)
             if item.likeCount > 0 {
                 HStack(spacing: 3) {
@@ -151,46 +151,35 @@ struct ListingGridCard: View {
     @ViewBuilder
     private var titleRow: some View {
         if !displayTitle.isEmpty {
-            Text(displayTitle)
-                .font(FashTypography.bodySmall.weight(.semibold))
-                .foregroundStyle(.white)
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .frame(minHeight: FooterMetrics.titleLineHeight, alignment: .leading)
+            FashMarqueeText(
+                text: displayTitle,
+                font: FashTypography.bodySmall,
+                fontWeight: .semibold,
+                lineHeight: FooterMetrics.titleLineHeight,
+                initialDelayMs: 900,
+                repeatDelayMs: 1_200,
+                velocity: 35
+            )
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
-    /// Condition + category/brand — single line, truncate with … when long.
     @ViewBuilder
     private var metaRow: some View {
-        let line = metaLineText
-        if !line.isEmpty {
-            Text(line)
-                .font(FashTypography.labelSmall)
-                .foregroundStyle(.white.opacity(0.92))
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .frame(minHeight: FooterMetrics.metaLineHeight, alignment: .leading)
-        }
-    }
-
-    private var metaLineText: String {
-        [meta.conditionLabel, meta.secondary]
-            .map { $0.trimmingCharacters(in: .whitespaces) }
-            .filter { !$0.isEmpty }
-            .joined(separator: " · ")
+        ListingCardMetaRow(parts: meta, lineHeight: FooterMetrics.metaLineHeight)
     }
 
     private var sellerRow: some View {
-        Text(sellerLine)
-            .font(FashTypography.labelSmall)
-            .foregroundStyle(.white.opacity(0.88))
-            .lineLimit(1)
-            .truncationMode(.tail)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(minHeight: FooterMetrics.sellerLineHeight, alignment: .leading)
+        FashMarqueeText(
+            text: sellerLine,
+            font: FashTypography.labelSmall,
+            color: .white.opacity(0.88),
+            lineHeight: FooterMetrics.sellerLineHeight,
+            initialDelayMs: 900,
+            repeatDelayMs: 1_200,
+            velocity: 35
+        )
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder
@@ -262,9 +251,9 @@ struct ListingGridCard: View {
     private func quickActionButton(systemName: String, active: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: systemName)
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(size: 20, weight: .semibold))
                 .foregroundStyle(active ? FashColors.brandPrimary : .white)
-                .frame(width: 28, height: 28)
+                .frame(width: 36, height: 36)
                 .background(Color.black.opacity(0.38))
                 .clipShape(Circle())
         }
@@ -355,4 +344,65 @@ struct ListingGridCard: View {
 private struct ListingMetaUi {
     let conditionLabel: String
     let secondary: String
+}
+
+/// Android `ListingCardMetaRow` — condition pill + secondary marquee.
+private struct ListingCardMetaRow: View {
+    let parts: ListingMetaUi
+    let lineHeight: CGFloat
+
+    private var condition: String { parts.conditionLabel.trimmingCharacters(in: .whitespaces) }
+    private var secondary: String { parts.secondary.trimmingCharacters(in: .whitespaces) }
+
+    var body: some View {
+        Group {
+            if !condition.isEmpty, !secondary.isEmpty {
+                HStack(alignment: .center, spacing: 6) {
+                    conditionPill(maxWidth: 112)
+                    FashMarqueeText(
+                        text: secondary,
+                        font: FashTypography.labelSmall,
+                        color: .white.opacity(0.92),
+                        lineHeight: lineHeight,
+                        initialDelayMs: 900,
+                        repeatDelayMs: 1_200,
+                        velocity: 35
+                    )
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            } else if !condition.isEmpty {
+                conditionPill(maxWidth: 160)
+            } else if !secondary.isEmpty {
+                FashMarqueeText(
+                    text: secondary,
+                    font: FashTypography.labelSmall,
+                    color: .white.opacity(0.92),
+                    lineHeight: lineHeight,
+                    initialDelayMs: 900,
+                    repeatDelayMs: 1_200,
+                    velocity: 35
+                )
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(minHeight: lineHeight, alignment: .leading)
+    }
+
+    private func conditionPill(maxWidth: CGFloat) -> some View {
+        FashMarqueeText(
+            text: condition,
+            font: FashTypography.labelSmall,
+            fontWeight: .semibold,
+            lineHeight: lineHeight,
+            initialDelayMs: 900,
+            repeatDelayMs: 1_200,
+            velocity: 35
+        )
+        .padding(.horizontal, 6)
+        .padding(.vertical, 3)
+        .frame(maxWidth: maxWidth, alignment: .leading)
+        .background(Color.white.opacity(0.24))
+        .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+    }
 }
