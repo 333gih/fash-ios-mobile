@@ -16,6 +16,8 @@ struct HomeFeedContent: View {
     var onInReviewJourneyClick: () -> Void = {}
     var onExploreShortcutClick: (HomeExploreShortcut) -> Void = { _ in }
 
+    @State private var showStickyHomeTabs = false
+
     private var tabs: [HomeFeedTab] {
         viewModel.orderedTabs(isGuestMode: isGuestMode)
     }
@@ -48,20 +50,18 @@ struct HomeFeedContent: View {
         isGuestMode ? nil : viewModel.homeUxPersonalization.exploreShortcut
     }
 
+    private var followingPaginationEnabled: Bool {
+        viewModel.selectedFeedTab == .following && viewModel.followingHasMore
+    }
+
     var body: some View {
         ZStack(alignment: .bottom) {
             ScrollView {
-                LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
-                    Section {
-                        homeScrollAwayHeader
-                    }
-                    Section {
-                        feedBody
-
-                        HomeBrandFooterStrip()
-                    } header: {
-                        homeFeedTabsStickyHeader
-                    }
+                LazyVStack(spacing: 0) {
+                    homeScrollAwayHeader
+                    homeFeedTabsInScroll
+                    feedBody
+                    HomeBrandFooterStrip()
                 }
                 .padding(.bottom, promoDockInset + spacing.spacing2)
                 .fashScrollViewTabSwipe(
@@ -71,7 +71,15 @@ struct HomeFeedContent: View {
                     viewModel.selectFeedTab(tabs[index], deps: deps, isGuestMode: isGuestMode)
                 }
             }
+            .coordinateSpace(name: "homeFeedScroll")
+            .background { HomeFeedTabsScrollObserver(showStickyTabs: $showStickyHomeTabs) }
             .refreshable { await viewModel.pullToRefresh(deps: deps, isGuestMode: isGuestMode) }
+
+            if showStickyHomeTabs {
+                homeFeedTabsStickyOverlay
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                    .zIndex(2)
+            }
 
             if !promoSlides.isEmpty {
                 FashPromoSliderAdFooterView(slides: promoSlides) { slide, _ in
@@ -79,6 +87,7 @@ struct HomeFeedContent: View {
                 }
             }
         }
+        .animation(.easeInOut(duration: 0.22), value: showStickyHomeTabs)
         .task {
             viewModel.normalizeSelectedFeedTab(isGuestMode: isGuestMode, deps: deps)
             await viewModel.loadShell(deps: deps, isGuestMode: isGuestMode, skipIfFresh: true)
@@ -124,7 +133,18 @@ struct HomeFeedContent: View {
         }
     }
 
-    private var homeFeedTabsStickyHeader: some View {
+    /// Tab row inside scroll — Android `home_feed_tabs` full-span item (not pinned).
+    private var homeFeedTabsInScroll: some View {
+        homeFeedTabsBar
+            .homeFeedTabsScrollReporting()
+    }
+
+    private var homeFeedTabsStickyOverlay: some View {
+        homeFeedTabsBar
+            .shadow(color: .black.opacity(0.06), radius: 2, y: 1)
+    }
+
+    private var homeFeedTabsBar: some View {
         VStack(spacing: 0) {
             HomeFeedTabSwitcher(
                 tabs: tabs,
@@ -138,7 +158,6 @@ struct HomeFeedContent: View {
                 .overlay(FashColors.outlineMuted.opacity(0.35))
         }
         .background(FashColors.screen)
-        .shadow(color: .black.opacity(0.06), radius: 2, y: 1)
     }
 
     @ViewBuilder
@@ -147,6 +166,7 @@ struct HomeFeedContent: View {
             HomeFeedTabGuestGate(tab: viewModel.selectedFeedTab) {
                 onRequestSignIn(guestLoginReason(for: viewModel.selectedFeedTab))
             }
+            .padding(.vertical, spacing.spacing4)
         } else if viewModel.isTabLoadError(viewModel.selectedFeedTab), viewModel.items.isEmpty {
             FashEmptyStateView(
                 title: L10n.feedLoadError,
@@ -158,8 +178,7 @@ struct HomeFeedContent: View {
             .padding(.vertical, spacing.spacing4)
         } else if (viewModel.isShellLoading || viewModel.isTabLoading(viewModel.selectedFeedTab)) && viewModel.items.isEmpty {
             FashSkeleton.listingGrid()
-                .padding(.horizontal, spacing.editorialStart)
-                .padding(.vertical, spacing.spacing4)
+                .padding(.top, spacing.spacing2)
         } else if viewModel.items.isEmpty {
             if viewModel.selectedFeedTab == .following {
                 HomePersonalizedFeedEmptyCard(
@@ -171,12 +190,7 @@ struct HomeFeedContent: View {
             }
         } else {
             VStack(spacing: 0) {
-                ListingStaggeredMasonryView(
-                    items: viewModel.items,
-                    onLoadMore: viewModel.selectedFeedTab == .following && viewModel.followingHasMore
-                        ? { viewModel.loadMoreFollowing(deps: deps, isGuestMode: isGuestMode) }
-                        : nil
-                ) { item, index in
+                ListingStaggeredMasonryView(items: viewModel.items) { item, index in
                     HomeFeedListingCell(
                         item: item,
                         index: index,
@@ -227,6 +241,13 @@ struct HomeFeedContent: View {
                             )
                         }
                     )
+                }
+
+                FeedPaginationSentinel(
+                    enabled: followingPaginationEnabled,
+                    isLoadingMore: viewModel.isLoadingMoreFollowing
+                ) {
+                    viewModel.loadMoreFollowing(deps: deps, isGuestMode: isGuestMode)
                 }
 
                 if viewModel.selectedFeedTab == .following, viewModel.isLoadingMoreFollowing {
@@ -288,4 +309,3 @@ private struct HomeFeedListingCell: View {
         }
     }
 }
-

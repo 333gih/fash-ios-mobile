@@ -129,13 +129,15 @@ struct ExploreScreen: View {
 
     // MARK: - Expanded header (scrolls away; sticky compact chrome replaces it)
 
-    /// Expanded chrome inside scroll — fades while scrolling; compact filters overlay via [ExploreStickyChrome].
+    /// Expanded chrome inside scroll — inline tabs/filters hide when sticky chrome is shown (Android `!showStickyExploreChrome`).
     private var listingsExpandedHeader: some View {
         VStack(spacing: spacing.spacing2) {
-            sectionToggle
-                .opacity(tabsFadeOpacity)
-                .animation(.easeInOut(duration: 0.22), value: tabsFadeOpacity)
-            marketplaceControlsColumn
+            if !showsStickyChromeOverlay {
+                sectionToggle
+                    .opacity(tabsFadeOpacity)
+                    .animation(.easeInOut(duration: 0.22), value: tabsFadeOpacity)
+                marketplaceControlsColumn
+            }
             listingsLeadingRows
             ExploreCategoryStrip(
                 roots: viewModel.categoryTree,
@@ -314,12 +316,7 @@ struct ExploreScreen: View {
                 subtitle: L10n.feedEmptySubtitle
             )
         } else {
-            ListingStaggeredMasonryView(
-                items: viewModel.items,
-                onLoadMore: {
-                    viewModel.requestLoadMore(deps: deps, isGuestMode: isGuestMode)
-                }
-            ) { item, index in
+            ListingStaggeredMasonryView(items: viewModel.items) { item, index in
                 ExploreListingCell(
                     item: item,
                     index: index,
@@ -331,6 +328,13 @@ struct ExploreScreen: View {
                 )
             }
             .padding(.top, spacing.spacing2)
+
+            FeedPaginationSentinel(
+                enabled: viewModel.hasMore,
+                isLoadingMore: viewModel.isLoadingMore
+            ) {
+                viewModel.requestLoadMore(deps: deps, isGuestMode: isGuestMode)
+            }
 
             if viewModel.isLoadingMore {
                 ProgressView()

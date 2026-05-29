@@ -20,8 +20,6 @@ struct ListingGridCard: View {
         static let titleLineHeight: CGFloat = 16
         static let metaLineHeight: CGFloat = 14
         static let sellerLineHeight: CGFloat = 14
-        /// Max share of tile height for footer — keeps @user + condition visible on short masonry cells.
-        static let maxFooterHeightFraction: CGFloat = 0.58
         static let gradientBleedAboveContent: CGFloat = 20
     }
 
@@ -29,27 +27,46 @@ struct ListingGridCard: View {
         RoundedRectangle(cornerRadius: spacing.radiusSoftMin, style: .continuous)
     }
 
-    private var meta: ListingMetaUi {
-        ListingMetaUi(
-            conditionLabel: conditionLabel(item.condition),
-            secondary: secondaryMeta
-        )
+    private var metaUi: ListingMetaUi {
+        guard !compactFooter else {
+            return ListingMetaUi(conditionLabel: "", secondary: "", combinedA11y: "")
+        }
+        let cond = conditionLabel(item.condition)
+        let secondary = secondaryMeta
+        let combined = [cond, secondary]
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " · ")
+        return ListingMetaUi(conditionLabel: cond, secondary: secondary, combinedA11y: combined)
     }
 
     private var displayTitle: String {
-        item.title.trimmingCharacters(in: .whitespaces)
+        ListingFeedFormatters.sanitizeListingUiText(item.title).trimmingCharacters(in: .whitespaces)
+    }
+
+    private var accessibilityLabel: String {
+        let title = displayTitle
+        let price = FeedPriceFormat.format(item.priceVnd)
+        let user = ListingFeedFormatters.sanitizeListingUiText(item.sellerUsername)
+            .trimmingCharacters(in: .whitespaces)
+        let userLine = user.isEmpty ? "user" : user
+        let status = statusOverlayLabel?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        var parts: [String] = []
+        if !title.isEmpty { parts.append(title) }
+        parts.append(price)
+        if !metaUi.combinedA11y.isEmpty { parts.append(metaUi.combinedA11y) }
+        if !status.isEmpty { parts.append(status) }
+        parts.append(L10n.listingCardA11ySellerRole)
+        parts.append(userLine)
+        return parts.joined(separator: ". ")
     }
 
     var body: some View {
-        // `aspectRatio` drives tile height; avoid an outer `GeometryReader` (inflates `ScrollView` content size).
         ZStack(alignment: .bottomLeading) {
             Button(action: onTap) {
                 ZStack(alignment: .bottomLeading) {
                     imageLayer
-                    GeometryReader { geo in
-                        footerOverlay(cardHeight: geo.size.height)
-                            .frame(width: geo.size.width, height: geo.size.height, alignment: .bottomLeading)
-                    }
+                    footerColumn
                 }
             }
             .buttonStyle(.plain)
@@ -64,12 +81,15 @@ struct ListingGridCard: View {
 
             if showQuickActions {
                 quickActions
+                    .zIndex(2)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
             }
         }
         .aspectRatio(imageAspectRatio, contentMode: .fit)
         .clipShape(shape)
         .contentShape(shape)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityLabel)
     }
 
     private var displayImageUrl: String {
@@ -90,38 +110,34 @@ struct ListingGridCard: View {
                             .foregroundStyle(FashColors.textSecondary)
                     }
             } else {
-                FashAsyncImage(url: displayImageUrl)
+                FashAsyncImage(url: displayImageUrl, contentMode: .fill)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private func footerOverlay(cardHeight: CGFloat) -> some View {
-        let maxFooterH = cardHeight * FooterMetrics.maxFooterHeightFraction
-        return footerContent
-            .frame(maxWidth: .infinity, maxHeight: maxFooterH, alignment: .bottom)
-            .background(alignment: .bottom) {
-                LinearGradient(
-                    colors: [.clear, Color.black.opacity(0.82)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .padding(.top, -FooterMetrics.gradientBleedAboveContent)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var footerContent: some View {
+    /// Bottom gradient footer — Android `Column` + `Brush.verticalGradient`.
+    private var footerColumn: some View {
         VStack(alignment: .leading, spacing: FooterMetrics.rowSpacing) {
             priceRow
             titleRow
-            if !compactFooter {
-                metaRow
+            if !compactFooter, metaUi.hasAny {
+                ListingCardMetaRow(parts: metaUi, lineHeight: FooterMetrics.metaLineHeight)
             }
             sellerRow
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, FooterMetrics.paddingH)
         .padding(.vertical, FooterMetrics.paddingV)
+        .background {
+            LinearGradient(
+                colors: [.clear, Color.black.opacity(0.82)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .padding(.top, -FooterMetrics.gradientBleedAboveContent)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var priceRow: some View {
@@ -131,19 +147,21 @@ struct ListingGridCard: View {
                 .fontWeight(.bold)
                 .foregroundStyle(.white)
                 .lineLimit(1)
-                .minimumScaleFactor(0.85)
-            Spacer(minLength: 0)
-            if item.likeCount > 0 {
+                .truncationMode(.tail)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            let likes = ListingFeedFormatters.formatEngagementShort(item.likeCount)
+            if !likes.isEmpty {
                 HStack(spacing: 3) {
                     Image(systemName: "heart.fill")
                         .font(.system(size: 13))
                         .foregroundStyle(.white.opacity(0.95))
-                    Text(formatEngagement(item.likeCount))
+                    Text(likes)
                         .font(FashTypography.labelSmall)
+                        .fontWeight(.medium)
                         .foregroundStyle(.white.opacity(0.95))
                         .lineLimit(1)
                 }
-                .layoutPriority(1)
             }
         }
         .frame(minHeight: FooterMetrics.priceMinHeight)
@@ -152,66 +170,57 @@ struct ListingGridCard: View {
     @ViewBuilder
     private var titleRow: some View {
         if !displayTitle.isEmpty {
-            FashMarqueeText(
+            ListingCardMarqueeText(
                 text: displayTitle,
                 font: FashTypography.bodySmall,
                 fontWeight: .semibold,
-                lineHeight: FooterMetrics.titleLineHeight,
-                initialDelayMs: 900,
-                repeatDelayMs: 1_200,
-                velocity: 35
+                lineHeight: FooterMetrics.titleLineHeight
             )
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
-    @ViewBuilder
-    private var metaRow: some View {
-        ListingCardMetaRow(parts: meta, lineHeight: FooterMetrics.metaLineHeight)
-    }
-
     private var sellerRow: some View {
-        FashMarqueeText(
+        ListingCardMarqueeText(
             text: sellerLine,
             font: FashTypography.labelSmall,
             color: .white.opacity(0.88),
-            lineHeight: FooterMetrics.sellerLineHeight,
-            initialDelayMs: 900,
-            repeatDelayMs: 1_200,
-            velocity: 35
+            lineHeight: FooterMetrics.sellerLineHeight
         )
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder
     private var topLeadingOverlay: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            if item.imageUrls.count > 1 {
-                HStack(spacing: 4) {
-                    Image(systemName: "photo.on.rectangle")
-                        .font(.system(size: 14))
-                    Text("\(item.imageUrls.count)")
-                        .font(FashTypography.labelSmall)
-                }
-                .foregroundStyle(.white)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 4)
-                .background(Color.black.opacity(0.45))
-                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-            }
-            if let status = statusOverlayLabel?.trimmingCharacters(in: .whitespacesAndNewlines), !status.isEmpty {
-                Text(status)
-                    .font(FashTypography.labelSmall.weight(.semibold))
+        let status = statusOverlayLabel?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if item.imageUrls.count > 1 || !status.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                if item.imageUrls.count > 1 {
+                    HStack(spacing: 4) {
+                        Image(systemName: "photo.on.rectangle")
+                            .font(.system(size: 14))
+                        Text("\(item.imageUrls.count)")
+                            .font(FashTypography.labelSmall)
+                    }
                     .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 4)
                     .background(Color.black.opacity(0.45))
                     .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    .accessibilityLabel(L10n.listingCardPhotoStackA11y(item.imageUrls.count))
+                }
+                if !status.isEmpty {
+                    Text(status)
+                        .font(FashTypography.labelSmall.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 4)
+                        .background(Color.black.opacity(0.45))
+                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                }
             }
+            .padding(6)
         }
-        .padding(6)
     }
 
     @ViewBuilder
@@ -229,10 +238,11 @@ struct ListingGridCard: View {
 
     @ViewBuilder
     private var quickActions: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 0) {
             if let onLike {
                 quickActionButton(
                     systemName: item.isLiked ? "heart.fill" : "heart",
+                    label: L10n.like,
                     active: item.isLiked,
                     action: onLike
                 )
@@ -240,25 +250,31 @@ struct ListingGridCard: View {
             if let onSave {
                 quickActionButton(
                     systemName: item.isSaved ? "bookmark.fill" : "bookmark",
+                    label: L10n.save,
                     active: item.isSaved,
                     action: onSave
                 )
             }
         }
-        .padding(.horizontal, 4)
-        .padding(.vertical, 4)
+        .padding(4)
     }
 
-    private func quickActionButton(systemName: String, active: Bool, action: @escaping () -> Void) -> some View {
+    private func quickActionButton(
+        systemName: String,
+        label: String,
+        active: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
         Button(action: action) {
             Image(systemName: systemName)
                 .font(.system(size: 20, weight: .semibold))
                 .foregroundStyle(active ? FashColors.brandPrimary : .white)
                 .frame(width: 36, height: 36)
-                .background(Color.black.opacity(0.38))
+                .background(Color.black.opacity(0.35))
                 .clipShape(Circle())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(label)
     }
 
     private func badgePill(_ text: String, color: Color) -> some View {
@@ -276,14 +292,14 @@ struct ListingGridCard: View {
 
     private var secondaryMeta: String {
         func p(_ raw: String?) -> String? {
-            guard let trimmed = raw?.trimmingCharacters(in: .whitespaces), !trimmed.isEmpty else { return nil }
-            return trimmed
+            let cleaned = ListingFeedFormatters.sanitizeListingUiText(raw)
+            return cleaned.isEmpty ? nil : cleaned
         }
         let cat = p(item.categoryName)
         let brand = p(item.brand)
         let size = p(item.size)
         let sellerStyle = p(item.sellerStyleTag)
-        let vibe = p(item.listingAestheticTag).flatMap { (tag: String) -> String? in
+        let vibe = p(item.listingAestheticTag).flatMap { tag -> String? in
             if let sellerStyle, tag.caseInsensitiveCompare(sellerStyle) == .orderedSame { return nil }
             return tag
         }
@@ -291,11 +307,15 @@ struct ListingGridCard: View {
     }
 
     private var sellerLine: String {
-        let user = (item.sellerUsername ?? "user").trimmingCharacters(in: .whitespaces)
-        if let tag = item.sellerStyleTag?.trimmingCharacters(in: .whitespaces), !tag.isEmpty {
-            return "@\(user) · \(tag)"
+        let user = ListingFeedFormatters.sanitizeListingUiText(item.sellerUsername)
+            .trimmingCharacters(in: .whitespaces)
+        let resolved = user.isEmpty ? "user" : user
+        if let tag = ListingFeedFormatters.sanitizeListingUiText(item.sellerStyleTag)
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+           !tag.isEmpty {
+            return "@\(resolved) · \(tag)"
         }
-        return "@\(user)"
+        return "@\(resolved)"
     }
 
     private var scarcityBadge: String? {
@@ -322,29 +342,28 @@ struct ListingGridCard: View {
     }
 
     private func conditionLabel(_ raw: String) -> String {
-        let v = raw.lowercased().trimmingCharacters(in: .whitespaces).replacingOccurrences(of: " ", with: "_")
+        let cleaned = ListingFeedFormatters.sanitizeListingUiText(raw)
+        guard !cleaned.isEmpty else { return "" }
+        let v = cleaned.lowercased().trimmingCharacters(in: .whitespaces).replacingOccurrences(of: " ", with: "_")
         switch v {
         case "new": return L10n.conditionNew
         case "like_new", "like-new": return L10n.conditionLikeNew
         case "good": return L10n.conditionGood
         case "fair": return L10n.conditionFair
-        case "new_with_tags", "new-with-tags": return L10n.conditionNew
-        default:
-            let cleaned = raw.trimmingCharacters(in: .whitespaces)
-            return cleaned.contains("_") ? cleaned.replacingOccurrences(of: "_", with: " ").capitalized : cleaned
+        default: return cleaned
         }
-    }
-
-    private func formatEngagement(_ count: Int) -> String {
-        if count >= 1_000_000 { return String(format: "%.1fM", Double(count) / 1_000_000) }
-        if count >= 1_000 { return String(format: "%.1fK", Double(count) / 1_000) }
-        return "\(count)"
     }
 }
 
 private struct ListingMetaUi {
     let conditionLabel: String
     let secondary: String
+    let combinedA11y: String
+
+    var hasAny: Bool {
+        !conditionLabel.trimmingCharacters(in: .whitespaces).isEmpty
+            || !secondary.trimmingCharacters(in: .whitespaces).isEmpty
+    }
 }
 
 /// Android `ListingCardMetaRow` — condition pill + secondary marquee.
@@ -360,30 +379,23 @@ private struct ListingCardMetaRow: View {
             if !condition.isEmpty, !secondary.isEmpty {
                 HStack(alignment: .center, spacing: 6) {
                     conditionPill(maxWidth: 112)
-                    FashMarqueeText(
+                    ListingCardMarqueeText(
                         text: secondary,
                         font: FashTypography.labelSmall,
                         color: .white.opacity(0.92),
-                        lineHeight: lineHeight,
-                        initialDelayMs: 900,
-                        repeatDelayMs: 1_200,
-                        velocity: 35
+                        lineHeight: lineHeight
                     )
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .layoutPriority(1)
                 }
             } else if !condition.isEmpty {
                 conditionPill(maxWidth: 160)
             } else if !secondary.isEmpty {
-                FashMarqueeText(
+                ListingCardMarqueeText(
                     text: secondary,
                     font: FashTypography.labelSmall,
                     color: .white.opacity(0.92),
-                    lineHeight: lineHeight,
-                    initialDelayMs: 900,
-                    repeatDelayMs: 1_200,
-                    velocity: 35
+                    lineHeight: lineHeight
                 )
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -391,14 +403,11 @@ private struct ListingCardMetaRow: View {
     }
 
     private func conditionPill(maxWidth: CGFloat) -> some View {
-        FashMarqueeText(
+        ListingCardMarqueeText(
             text: condition,
             font: FashTypography.labelSmall,
             fontWeight: .semibold,
-            lineHeight: lineHeight,
-            initialDelayMs: 900,
-            repeatDelayMs: 1_200,
-            velocity: 35
+            lineHeight: lineHeight
         )
         .padding(.horizontal, 6)
         .padding(.vertical, 3)

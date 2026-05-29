@@ -180,7 +180,7 @@ final class HomeViewModel {
         guard !isGuestMode else { return }
         guard selectedFeedTab == .following else { return }
         guard !isLoadingMoreFollowing, followingHasMore else { return }
-        guard !isShellLoading, !isRefreshing else { return }
+        guard !isShellLoading, !isRefreshing, !isTabLoading(.following) else { return }
         let offset = followingItems.count
         guard offset > 0 else { return }
         if let last = lastFollowFeedLoadMoreAt, Date().timeIntervalSince(last) < 0.9 { return }

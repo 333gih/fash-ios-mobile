@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Horizontal marquee when label overflows — Android `basicMarquee` on listing cards.
+/// Horizontal marquee when label overflows — Android `basicMarquee`.
 struct FashMarqueeText: View {
     let text: String
     var font: Font = FashTypography.bodySmall
@@ -26,40 +26,39 @@ struct FashMarqueeText: View {
     }
 
     var body: some View {
-        GeometryReader { geo in
-            ZStack(alignment: .leading) {
-                staticLabel
-                    .opacity(shouldScroll ? 0 : 1)
+        ZStack(alignment: .leading) {
+            staticLabel
+                .opacity(shouldScroll ? 0 : 1)
 
-                if shouldScroll {
-                    scrollingLabel
-                        .offset(x: offset)
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-            .onPreferenceChange(FashMarqueeTextWidthKey.self) { width in
-                textWidth = width
-                restartMarquee()
-            }
-            .onAppear {
-                containerWidth = geo.size.width
-                restartMarquee()
-            }
-            .onChange(of: geo.size.width) { _, width in
-                containerWidth = width
-                restartMarquee()
-            }
-            .onChange(of: text) { _, _ in
-                restartMarquee()
-            }
-            .onDisappear {
-                marqueeTask?.cancel()
-                marqueeTask = nil
-                offset = 0
+            if shouldScroll {
+                scrollingLabel
+                    .offset(x: offset)
             }
         }
-        .frame(height: lineHeight)
+        .frame(maxWidth: .infinity, minHeight: lineHeight, maxHeight: lineHeight, alignment: .leading)
+        .background {
+            GeometryReader { geo in
+                Color.clear
+                    .onAppear { containerWidth = geo.size.width }
+                    .onChange(of: geo.size.width) { _, width in
+                        containerWidth = width
+                        restartMarquee()
+                    }
+            }
+        }
         .clipped()
+        .onPreferenceChange(FashMarqueeTextWidthKey.self) { width in
+            textWidth = width
+            restartMarquee()
+        }
+        .onChange(of: text) { _, _ in
+            restartMarquee()
+        }
+        .onDisappear {
+            marqueeTask?.cancel()
+            marqueeTask = nil
+            offset = 0
+        }
     }
 
     private var staticLabel: some View {
@@ -117,8 +116,13 @@ struct FashMarqueeText: View {
                     offset = -travel
                 }
                 let scrollNs = UInt64(duration * 1_000_000_000)
-                try? await Task.sleep(nanoseconds: scrollNs + (continuousLoop ? 0 : repeatDelayMs) * 1_000_000)
+                try? await Task.sleep(nanoseconds: scrollNs)
                 guard !Task.isCancelled else { return }
+
+                if !continuousLoop {
+                    withAnimation(.none) { offset = 0 }
+                    try? await Task.sleep(nanoseconds: repeatDelayMs * 1_000_000)
+                }
             }
         }
     }
@@ -128,6 +132,6 @@ private struct FashMarqueeTextWidthKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
 
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
+        value = max(value, nextValue())
     }
 }

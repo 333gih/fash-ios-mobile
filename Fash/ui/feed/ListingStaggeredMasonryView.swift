@@ -4,8 +4,6 @@ import SwiftUI
 struct ListingStaggeredMasonryView<Cell: View>: View {
     @Environment(\.fashSpacing) private var spacing
     let items: [ListingFeedItem]
-    var onLoadMore: (() -> Void)?
-    var loadMoreTriggerDistance: Int = 3
     @ViewBuilder let cellContent: (ListingFeedItem, Int) -> Cell
 
     var body: some View {
@@ -20,16 +18,7 @@ struct ListingStaggeredMasonryView<Cell: View>: View {
                 cellContent(item, index)
                     .frame(maxWidth: .infinity)
                     .clipped()
-                    .onAppear { prefetchIfNeeded(at: index) }
             }
-        }
-    }
-
-    private func prefetchIfNeeded(at index: Int) {
-        guard items.count > 0, let onLoadMore else { return }
-        let trigger = max(0, items.count - loadMoreTriggerDistance)
-        if index >= trigger {
-            onLoadMore()
         }
     }
 }

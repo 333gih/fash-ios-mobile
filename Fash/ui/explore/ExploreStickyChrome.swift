@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Compact overlay chrome when Explore feed is scrolled — filters/search only (tabs stay in expanded header).
+/// Pinned chrome when Explore feed is scrolled — Android `ExploreStickyExploreChrome`.
 struct ExploreStickyChrome: View {
     @Environment(\.fashSpacing) private var spacing
     @Bindable var viewModel: ExploreViewModel
@@ -12,7 +12,16 @@ struct ExploreStickyChrome: View {
             Divider()
                 .overlay(FashColors.outlineMuted.opacity(0.38))
             VStack(spacing: 0) {
+                ExplorePrimarySectionSwitcher(selected: viewModel.primarySection) { section in
+                    Task { await viewModel.setPrimarySection(section, deps: deps, isGuestMode: isGuestMode) }
+                }
+                .padding(.horizontal, spacing.editorialStart)
+                .padding(.top, spacing.spacing2)
+                .padding(.bottom, viewModel.primarySection == .listings ? spacing.spacing1 : spacing.spacing2)
+
                 if viewModel.primarySection == .listings {
+                    Divider()
+                        .overlay(FashColors.outlineMuted.opacity(0.45))
                     ExploreStickyFilterRow(
                         hasActiveFilters: viewModel.hasActiveFilters,
                         filterSummaryParts: viewModel.filterSummaryParts,
