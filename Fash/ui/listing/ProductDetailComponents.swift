@@ -259,7 +259,7 @@ enum ProductDetailComponents {
         return FashColors.textPrimary
     }
 
-    private static func glanceCell(title: String, value: String, valueColor: Color, action: (@escaping () -> Void)?) -> some View {
+    private static func glanceCell(title: String, value: String, valueColor: Color, action: (() -> Void)?) -> some View {
         let content = VStack(alignment: .leading, spacing: 6) {
             Text(title)
                 .font(FashTypography.labelSmall)
