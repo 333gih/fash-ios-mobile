@@ -41,36 +41,34 @@ struct ListingGridCard: View {
     }
 
     var body: some View {
-        GeometryReader { geo in
-            let cardW = geo.size.width
-            let cardH = cardW / imageAspectRatio
-            ZStack(alignment: .bottomLeading) {
-                Button(action: onTap) {
-                    ZStack(alignment: .bottomLeading) {
-                        imageLayer
-                        footerOverlay(cardHeight: cardH)
+        // `aspectRatio` drives tile height; avoid an outer `GeometryReader` (inflates `ScrollView` content size).
+        ZStack(alignment: .bottomLeading) {
+            Button(action: onTap) {
+                ZStack(alignment: .bottomLeading) {
+                    imageLayer
+                    GeometryReader { geo in
+                        footerOverlay(cardHeight: geo.size.height)
+                            .frame(width: geo.size.width, height: geo.size.height, alignment: .bottomLeading)
                     }
-                    .frame(width: cardW, height: cardH)
-                    .clipShape(shape)
-                }
-                .buttonStyle(.plain)
-
-                topLeadingOverlay
-                    .frame(width: cardW, height: cardH, alignment: .topLeading)
-                    .allowsHitTesting(false)
-
-                topTrailingBadges
-                    .frame(width: cardW, height: cardH, alignment: .topTrailing)
-                    .allowsHitTesting(false)
-
-                if showQuickActions {
-                    quickActions
-                        .frame(width: cardW, height: cardH, alignment: .topTrailing)
                 }
             }
-            .frame(width: cardW, height: cardH)
+            .buttonStyle(.plain)
+
+            topLeadingOverlay
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .allowsHitTesting(false)
+
+            topTrailingBadges
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                .allowsHitTesting(false)
+
+            if showQuickActions {
+                quickActions
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+            }
         }
         .aspectRatio(imageAspectRatio, contentMode: .fit)
+        .clipShape(shape)
     }
 
     private var displayImageUrl: String {

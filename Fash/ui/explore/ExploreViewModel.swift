@@ -28,6 +28,8 @@ final class ExploreViewModel {
     var isRefreshing = false
     var isLoadingMore = false
     var hasMore = true
+    /// Bumped to scroll the listings feed back to the top (`ScrollViewReader`).
+    private(set) var listingsScrollToTopToken = 0
     var loadError = false
     var showFilterSheet = false
     var searchBarExpanded = false
@@ -349,6 +351,10 @@ final class ExploreViewModel {
         await refresh(deps: deps, isGuestMode: isGuestMode)
     }
 
+    func requestListingsScrollToTop() {
+        listingsScrollToTopToken &+= 1
+    }
+
     /// Coalesced entry point from the pagination sentinel — avoids duplicate loads from multiple `onAppear` calls.
     func requestLoadMore(deps: AppDependencies, isGuestMode: Bool) {
         guard canLoadMoreListings else { return }
@@ -393,6 +399,7 @@ final class ExploreViewModel {
             loadError = false
             committedListingSearchQuery = q
             isSearchMode = true
+            requestListingsScrollToTop()
             await fetchListingsFirstPage(deps: deps, isGuestMode: isGuestMode)
             setSearchBarExpanded(false)
         case .sellers:
@@ -564,6 +571,7 @@ final class ExploreViewModel {
 
     /// Android `reloadAfterFilterChange` — keep visible tiles, swap in the new first page.
     func reloadListingsAfterFilterChange(deps: AppDependencies, isGuestMode: Bool) async {
+        requestListingsScrollToTop()
         listingsReloadTask?.cancel()
         let task = Task {
             await fetchListingsFirstPage(deps: deps, isGuestMode: isGuestMode)

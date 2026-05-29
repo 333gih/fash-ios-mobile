@@ -47,6 +47,33 @@ enum ListingMasonryGrid {
     }
 }
 
+/// Splits a long feed into page-sized chunks so each chunk is one `LazyVStack` child (Explore pagination).
+enum ListingMasonryFeedPages {
+    /// Matches Explore/Home listing page size (`exploreFeedPageSize`).
+    static let defaultChunkSize = 20
+
+    struct Chunk: Identifiable {
+        let id: Int
+        let entries: [(index: Int, item: ListingFeedItem)]
+    }
+
+    static func chunks(from items: [ListingFeedItem], pageSize: Int = defaultChunkSize) -> [Chunk] {
+        guard !items.isEmpty, pageSize > 0 else { return [] }
+        var result: [Chunk] = []
+        result.reserveCapacity((items.count + pageSize - 1) / pageSize)
+        var pageIndex = 0
+        var start = 0
+        while start < items.count {
+            let end = min(start + pageSize, items.count)
+            let entries = (start..<end).map { ($0, items[$0]) }
+            result.append(Chunk(id: pageIndex, entries: entries))
+            pageIndex += 1
+            start = end
+        }
+        return result
+    }
+}
+
 /// Two-column masonry listing grid — Android `ListingMasonryGrid` (non-lazy columns).
 ///
 /// Uses `VStack` per column instead of nested `LazyVStack` inside `ScrollView`, which causes
@@ -54,26 +81,50 @@ enum ListingMasonryGrid {
 struct ListingMasonryGridView<Content: View>: View {
     @Environment(\.fashSpacing) private var spacing
 
-    let items: [ListingFeedItem]
+    let entries: [(index: Int, item: ListingFeedItem)]
     var columnSpacing: CGFloat?
     var leadingPadding: CGFloat?
     var trailingPadding: CGFloat?
     @ViewBuilder let content: (ListingFeedItem, Int) -> Content
+
+    init(
+        items: [ListingFeedItem],
+        columnSpacing: CGFloat? = nil,
+        leadingPadding: CGFloat? = nil,
+        trailingPadding: CGFloat? = nil,
+        @ViewBuilder content: @escaping (ListingFeedItem, Int) -> Content
+    ) {
+        self.entries = items.enumerated().map { ($0.offset, $0.element) }
+        self.columnSpacing = columnSpacing
+        self.leadingPadding = leadingPadding
+        self.trailingPadding = trailingPadding
+        self.content = content
+    }
+
+    init(
+        entries: [(index: Int, item: ListingFeedItem)],
+        columnSpacing: CGFloat? = nil,
+        leadingPadding: CGFloat? = nil,
+        trailingPadding: CGFloat? = nil,
+        @ViewBuilder content: @escaping (ListingFeedItem, Int) -> Content
+    ) {
+        self.entries = entries
+        self.columnSpacing = columnSpacing
+        self.leadingPadding = leadingPadding
+        self.trailingPadding = trailingPadding
+        self.content = content
+    }
 
     private var gap: CGFloat { columnSpacing ?? spacing.spacing2 }
     private var edgeStart: CGFloat { leadingPadding ?? spacing.editorialStart }
     private var edgeEnd: CGFloat { trailingPadding ?? spacing.editorialEnd }
 
     private var leftColumn: [(index: Int, item: ListingFeedItem)] {
-        items.enumerated().compactMap { index, item in
-            index.isMultiple(of: 2) ? (index, item) : nil
-        }
+        entries.filter { $0.index.isMultiple(of: 2) }
     }
 
     private var rightColumn: [(index: Int, item: ListingFeedItem)] {
-        items.enumerated().compactMap { index, item in
-            index.isMultiple(of: 2) ? nil : (index, item)
-        }
+        entries.filter { !$0.index.isMultiple(of: 2) }
     }
 
     var body: some View {

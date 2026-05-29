@@ -254,14 +254,61 @@ struct ExploreScreen: View {
     // MARK: - Listings feed
 
     private var listingsGrid: some View {
-        ScrollView {
-            LazyVStack(spacing: 0) {
-                ExploreFeedScrollOffsetAnchor()
+        ScrollViewReader { scrollProxy in
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    ExploreFeedScrollOffsetAnchor()
+                        .id(ExploreFeedScrollIds.top)
 
-                listingsExpandedHeader
-                listingsFeedBody
+                    listingsExpandedHeader
+
+                    if viewModel.isLoading, viewModel.items.isEmpty {
+                        FashSkeleton.listingGrid()
+                            .padding(.top, spacing.spacing2)
+                    } else if viewModel.loadError && viewModel.items.isEmpty {
+                        FashEmptyStateView(title: L10n.feedLoadError, actionTitle: L10n.feedRetry) {
+                            Task { await viewModel.refresh(deps: deps, isGuestMode: isGuestMode) }
+                        }
+                    } else if viewModel.items.isEmpty {
+                        FashEmptyStateView(
+                            title: viewModel.hasActiveFilters || viewModel.isSearchModeActive
+                                ? L10n.exploreEmptyFilteredTitle
+                                : L10n.feedEmptyTitle,
+                            subtitle: L10n.feedEmptySubtitle
+                        )
+                    } else {
+                        ForEach(ListingMasonryFeedPages.chunks(from: viewModel.items)) { chunk in
+                            ListingMasonryGridView(entries: chunk.entries) { item, index in
+                                ExploreListingCell(
+                                    item: item,
+                                    index: index,
+                                    totalCount: viewModel.items.count,
+                                    isGuestMode: isGuestMode,
+                                    openListingAsFullScreen: openListingAsFullScreen,
+                                    viewModel: viewModel,
+                                    router: router,
+                                    deps: deps
+                                )
+                            }
+                            .padding(.top, chunk.id == 0 ? spacing.spacing2 : 0)
+                        }
+                        ExploreListingsPaginationSentinel(
+                            hasMore: viewModel.hasMore,
+                            isLoadingMore: viewModel.isLoadingMore
+                        ) {
+                            viewModel.requestLoadMore(deps: deps, isGuestMode: isGuestMode)
+                        }
+                        HomeBrandFooterStrip()
+                            .padding(.top, spacing.spacing4)
+                    }
+                }
+                .padding(.bottom, promoDockInset + spacing.spacing4)
             }
-            .padding(.bottom, promoDockInset + spacing.spacing4)
+            .onChange(of: viewModel.listingsScrollToTopToken) { _, _ in
+                withAnimation(.easeOut(duration: 0.22)) {
+                    scrollProxy.scrollTo(ExploreFeedScrollIds.top, anchor: .top)
+                }
+            }
         }
         .background(FashColors.screen)
         .coordinateSpace(name: "exploreFeedScroll")
@@ -283,50 +330,6 @@ struct ExploreScreen: View {
         }
         .animation(.easeInOut(duration: 0.22), value: showsStickyChromeOverlay)
         .refreshable { await viewModel.pullToRefresh(deps: deps, isGuestMode: isGuestMode) }
-    }
-
-    @ViewBuilder
-    private var listingsFeedBody: some View {
-        if viewModel.isLoading, viewModel.items.isEmpty {
-            FashSkeleton.listingGrid()
-                .padding(.top, spacing.spacing2)
-        } else if viewModel.loadError && viewModel.items.isEmpty {
-            FashEmptyStateView(title: L10n.feedLoadError, actionTitle: L10n.feedRetry) {
-                Task { await viewModel.refresh(deps: deps, isGuestMode: isGuestMode) }
-            }
-        } else if viewModel.items.isEmpty {
-            FashEmptyStateView(
-                title: viewModel.hasActiveFilters || viewModel.isSearchModeActive
-                    ? L10n.exploreEmptyFilteredTitle
-                    : L10n.feedEmptyTitle,
-                subtitle: L10n.feedEmptySubtitle
-            )
-        } else {
-            // Column masonry like Home / Android StaggeredGrid — tighter vertical rhythm than row-pair lazy rows.
-            VStack(spacing: spacing.spacing4) {
-                ListingMasonryGridView(items: viewModel.items) { item, index in
-                    ExploreListingCell(
-                        item: item,
-                        index: index,
-                        isGuestMode: isGuestMode,
-                        openListingAsFullScreen: openListingAsFullScreen,
-                        viewModel: viewModel,
-                        router: router,
-                        deps: deps
-                    )
-                }
-
-                ExploreListingsPaginationSentinel(
-                    hasMore: viewModel.hasMore,
-                    isLoadingMore: viewModel.isLoadingMore
-                ) {
-                    viewModel.requestLoadMore(deps: deps, isGuestMode: isGuestMode)
-                }
-
-                HomeBrandFooterStrip()
-            }
-            .padding(.top, spacing.spacing2)
-        }
     }
 
     // MARK: - Sellers feed
@@ -409,7 +412,11 @@ struct ExploreScreen: View {
     }
 }
 
-/// Single prefetch trigger at the feed bottom — avoids duplicate `loadMore` from per-cell `onAppear`.
+private enum ExploreFeedScrollIds {
+    static let top = "explore_feed_scroll_top"
+}
+
+/// Prefetch trigger at the feed bottom — must be its own `LazyVStack` child (not inside the grid `VStack`).
 private struct ExploreListingsPaginationSentinel: View {
     let hasMore: Bool
     let isLoadingMore: Bool
@@ -421,10 +428,7 @@ private struct ExploreListingsPaginationSentinel: View {
         ZStack {
             Color.clear
                 .frame(height: triggerHeight)
-                .onAppear {
-                    guard hasMore, !isLoadingMore else { return }
-                    onPrefetch()
-                }
+                .onAppear(perform: prefetchIfNeeded)
             if isLoadingMore {
                 ProgressView()
                     .tint(FashColors.brandPrimary)
@@ -432,12 +436,24 @@ private struct ExploreListingsPaginationSentinel: View {
                     .padding(.vertical, 12)
             }
         }
+        .onChange(of: isLoadingMore) { wasLoading, loading in
+            if wasLoading, !loading { prefetchIfNeeded() }
+        }
+        .onChange(of: hasMore) { _, more in
+            if more { prefetchIfNeeded() }
+        }
+    }
+
+    private func prefetchIfNeeded() {
+        guard hasMore, !isLoadingMore else { return }
+        onPrefetch()
     }
 }
 
 private struct ExploreListingCell: View {
     let item: ListingFeedItem
     let index: Int
+    let totalCount: Int
     let isGuestMode: Bool
     var openListingAsFullScreen: Bool = false
     @Bindable var viewModel: ExploreViewModel
@@ -479,6 +495,9 @@ private struct ExploreListingCell: View {
         .onAppear {
             appearedAt = Date()
             viewModel.recordView(item: item, position: index, deps: deps)
+            if totalCount > 0, index >= totalCount - 4 {
+                viewModel.requestLoadMore(deps: deps, isGuestMode: isGuestMode)
+            }
         }
         .onDisappear {
             if let appearedAt {
