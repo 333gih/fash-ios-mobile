@@ -136,7 +136,7 @@ struct ExploreScreen: View {
                 Task { await viewModel.refresh(deps: deps, isGuestMode: isGuestMode) }
             }
         }
-        .animation(nil, value: showStickyChrome)
+        .animation(.none, value: showStickyChrome)
     }
 
     private var sellersExpandedHeader: some View {
@@ -155,7 +155,7 @@ struct ExploreScreen: View {
             }
         }
         .padding(.top, spacing.spacing2)
-        .animation(nil, value: showStickyChrome)
+        .animation(.none, value: showStickyChrome)
     }
 
     private var sectionToggle: some View {
@@ -272,7 +272,6 @@ struct ExploreScreen: View {
                 }
             }
             .padding(.bottom, promoDockInset + spacing.spacing4)
-            .animation(.easeInOut(duration: 0.22), value: showCompactChrome)
         }
         .coordinateSpace(name: "exploreScroll")
     }
