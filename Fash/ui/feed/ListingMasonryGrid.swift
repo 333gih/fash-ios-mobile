@@ -157,10 +157,12 @@ extension ListingMasonryGrid {
         left: [(index: Int, item: ListingFeedItem)],
         right: [(index: Int, item: ListingFeedItem)]
     ) {
-        makeStableColumnLayout(
+        var freshAssignments: [String: Bool] = [:]
+        let layout = makeStableColumnLayout(
             items: entries.sorted { $0.index < $1.index }.map(\.item),
-            assignedIsRightColumn: &([String: Bool]())
+            assignedIsRightColumn: &freshAssignments
         )
+        return (layout.left, layout.right)
     }
 
     /// Masonry split with **stable** column per listing id — existing tiles do not move when appending pages.
@@ -202,7 +204,7 @@ extension ListingMasonryGrid {
 }
 
 /// Two-column masonry layout — left/right item lists with global indices.
-struct ListingMasonryColumnLayout: Equatable {
+struct ListingMasonryColumnLayout {
     var left: [(index: Int, item: ListingFeedItem)]
     var right: [(index: Int, item: ListingFeedItem)]
 
