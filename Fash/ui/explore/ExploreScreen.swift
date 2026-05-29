@@ -20,7 +20,6 @@ struct ExploreScreen: View {
     @State private var showStickyChrome = false
     @State private var headerScrollMinY: CGFloat = 0
     @State private var marketplaceControlsMaxY: CGFloat = .infinity
-    @State private var listingsMasonryHeight: CGFloat = 0
 
     private var tabsFadeOpacity: CGFloat {
         ExploreTabsCollapse.fadeOpacity(headerMinY: headerScrollMinY)
@@ -319,8 +318,7 @@ struct ExploreScreen: View {
                 items: viewModel.items,
                 onLoadMore: {
                     viewModel.requestLoadMore(deps: deps, isGuestMode: isGuestMode)
-                },
-                contentHeight: $listingsMasonryHeight
+                }
             ) { item, index in
                 ExploreListingCell(
                     item: item,
@@ -332,7 +330,6 @@ struct ExploreScreen: View {
                     deps: deps
                 )
             }
-            .frame(height: listingsMasonryHeight)
             .padding(.top, spacing.spacing2)
 
             if viewModel.isLoadingMore {

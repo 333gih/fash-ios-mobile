@@ -69,6 +69,7 @@ struct ListingGridCard: View {
         }
         .aspectRatio(imageAspectRatio, contentMode: .fit)
         .clipShape(shape)
+        .contentShape(shape)
     }
 
     private var displayImageUrl: String {

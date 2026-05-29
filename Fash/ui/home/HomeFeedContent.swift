@@ -48,8 +48,6 @@ struct HomeFeedContent: View {
         isGuestMode ? nil : viewModel.homeUxPersonalization.exploreShortcut
     }
 
-    @State private var feedMasonryHeight: CGFloat = 0
-
     var body: some View {
         ZStack(alignment: .bottom) {
             ScrollView {
@@ -177,8 +175,7 @@ struct HomeFeedContent: View {
                     items: viewModel.items,
                     onLoadMore: viewModel.selectedFeedTab == .following && viewModel.followingHasMore
                         ? { viewModel.loadMoreFollowing(deps: deps, isGuestMode: isGuestMode) }
-                        : nil,
-                    contentHeight: $feedMasonryHeight
+                        : nil
                 ) { item, index in
                     HomeFeedListingCell(
                         item: item,
@@ -231,7 +228,6 @@ struct HomeFeedContent: View {
                         }
                     )
                 }
-                .frame(height: feedMasonryHeight)
 
                 if viewModel.selectedFeedTab == .following, viewModel.isLoadingMoreFollowing {
                     ProgressView()
