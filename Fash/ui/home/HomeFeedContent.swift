@@ -101,10 +101,7 @@ struct HomeFeedContent: View {
                         headerHeight: homeHeaderHeight
                     )
                 }
-                .onPreferenceChange(HomeHeaderHeightKey.self) { height in
-                    guard height > 1, abs(height - homeHeaderHeight) > 0.5 else { return }
-                    homeHeaderHeight = height
-                }
+                .onHomeHeaderHeightChange($homeHeaderHeight)
                 .refreshable { await viewModel.pullToRefresh(deps: deps, isGuestMode: isGuestMode) }
                 .onChange(of: viewModel.selectedFeedTabKey) { oldKey, newKey in
                     guard oldKey != newKey else { return }

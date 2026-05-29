@@ -6,7 +6,7 @@ enum HomeScrollIds {
     static let feedContent = "home_feed_content"
 }
 
-private struct HomeHeaderHeightKey: PreferenceKey {
+struct HomeHeaderHeightKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
 
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
@@ -21,6 +21,13 @@ extension View {
             GeometryReader { geo in
                 Color.clear.preference(key: HomeHeaderHeightKey.self, value: geo.size.height)
             }
+        }
+    }
+
+    func onHomeHeaderHeightChange(_ height: Binding<CGFloat>) -> some View {
+        onPreferenceChange(HomeHeaderHeightKey.self) { newHeight in
+            guard newHeight > 1, abs(newHeight - height.wrappedValue) > 0.5 else { return }
+            height.wrappedValue = newHeight
         }
     }
 }
