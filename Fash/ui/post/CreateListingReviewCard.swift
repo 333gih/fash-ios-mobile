@@ -125,7 +125,7 @@ struct CreateListingReviewCard: View {
             Circle()
                 .fill(FashColors.brandPrimary.opacity(0.2))
                 .frame(width: 40, height: 40)
-            if let url = meProfile?.avatarUrl?.trimmingCharacters(in: .whitespaces),
+            if let url = meProfile?.avatarUrl.trimmingCharacters(in: .whitespaces),
                !url.isEmpty,
                let resolved = FeedImageUrl.resolveListingImageUrlOrNil(url) {
                 FashAsyncImage(url: resolved, contentMode: .fill)
@@ -165,13 +165,6 @@ struct CreateListingReviewCard: View {
                 .font(FashTypography.bodyMedium)
                 .foregroundStyle(FashColors.textSecondary)
         }
-    }
-}
-
-private extension CommonAestheticTagDto {
-    func displayLabel() -> String {
-        let d = displayName.trimmingCharacters(in: .whitespaces)
-        return d.isEmpty ? name : d
     }
 }
 

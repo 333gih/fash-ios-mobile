@@ -149,7 +149,7 @@ struct CreateListingBuyerPreview: View {
         .clipShape(RoundedRectangle(cornerRadius: spacing.radiusCard, style: .continuous))
     }
 
-    private func previewRow(_ label: String, _ value: String, step: Int, missing: Bool = false) {
+    private func previewRow(_ label: String, _ value: String, step: Int, missing: Bool = false) -> some View {
         PreviewEditRow(label: label, value: value, highlightMissing: missing, onEdit: { onEditStep(step) })
     }
 
@@ -198,45 +198,4 @@ private func measurementPreviewLines(_ draft: CreateListingDraft) -> [(String, S
     if !draft.measurementShoulders.isEmpty { lines.append((L10n.profileSetupMeasurementShoulders, "\(draft.measurementShoulders) \(unit)")) }
     if !draft.measurementSleeveLength.isEmpty { lines.append((L10n.profileSetupMeasurementSleeve, "\(draft.measurementSleeveLength) \(unit)")) }
     return lines
-}
-
-/// Simple flow layout for tag chips.
-private struct FlowLayout: Layout {
-    var spacing: CGFloat = 8
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let result = arrange(proposal: proposal, subviews: subviews)
-        return result.size
-    }
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        let result = arrange(proposal: proposal, subviews: subviews)
-        for (index, origin) in result.origins.enumerated() {
-            subviews[index].place(at: CGPoint(x: bounds.minX + origin.x, y: bounds.minY + origin.y), proposal: .unspecified)
-        }
-    }
-    private func arrange(proposal: ProposedViewSize, subviews: Subviews) -> (size: CGSize, origins: [CGPoint]) {
-        let maxWidth = proposal.width ?? .infinity
-        var x: CGFloat = 0
-        var y: CGFloat = 0
-        var rowHeight: CGFloat = 0
-        var origins: [CGPoint] = []
-        for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
-            if x + size.width > maxWidth, x > 0 {
-                x = 0
-                y += rowHeight + spacing
-                rowHeight = 0
-            }
-            origins.append(CGPoint(x: x, y: y))
-            rowHeight = max(rowHeight, size.height)
-            x += size.width + spacing
-        }
-        return (CGSize(width: maxWidth, height: y + rowHeight), origins)
-    }
-}
-
-private extension CommonAestheticTagDto {
-    func displayLabel() -> String {
-        let d = displayName.trimmingCharacters(in: .whitespaces)
-        return d.isEmpty ? name : d
-    }
 }

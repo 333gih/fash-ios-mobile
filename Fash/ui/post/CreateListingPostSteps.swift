@@ -53,7 +53,7 @@ struct CreateListingPostSteps: View {
     }
 
     private var categoryStep: some View {
-        Group {
+        VStack(alignment: .leading, spacing: spacing.spacing3) {
             PostListingOutlinedField(
                 label: L10n.createListingSelectCategory,
                 text: $categoryQuery
@@ -82,22 +82,26 @@ struct CreateListingPostSteps: View {
         .task { await postVM.loadCatalogIfNeeded(deps: deps) }
     }
 
-    @ViewBuilder
-    private func categoryTreeSection(root: CategoryTreeNode, depth: Int) -> some View {
+    private func categoryTreeSection(root: CategoryTreeNode, depth: Int) -> AnyView {
         if root.children.isEmpty {
-            PostSelectableListRow(
-                text: root.name,
-                selected: postVM.draft.categoryId == root.id
-            ) { selectCategory(root) }
-        } else {
-            Text(root.name)
-                .font(FashTypography.labelLarge.weight(.semibold))
-                .foregroundStyle(FashColors.textSecondary)
-                .padding(.top, depth == 0 ? 0 : 8)
-            ForEach(root.children, id: \.id) { child in
-                categoryTreeSection(root: child, depth: depth + 1)
-            }
+            return AnyView(
+                PostSelectableListRow(
+                    text: root.name,
+                    selected: postVM.draft.categoryId == root.id
+                ) { selectCategory(root) }
+            )
         }
+        return AnyView(
+            VStack(alignment: .leading, spacing: 0) {
+                Text(root.name)
+                    .font(FashTypography.labelLarge.weight(.semibold))
+                    .foregroundStyle(FashColors.textSecondary)
+                    .padding(.top, depth == 0 ? 0 : 8)
+                ForEach(root.children, id: \.id) { child in
+                    categoryTreeSection(root: child, depth: depth + 1)
+                }
+            }
+        )
     }
 
     private func selectCategory(_ leaf: CategoryTreeNode) {
@@ -199,7 +203,11 @@ struct CreateListingPostSteps: View {
             Slider(
                 value: Binding(
                     get: { Double(postVM.draft.conditionScore) },
-                    set: { postVM.updateDraft { $0.conditionScore = min(99, max(80, Int($0.rounded()))) } }
+                    set: { newValue in
+                        postVM.updateDraft {
+                            $0.conditionScore = min(99, max(80, Int(newValue.rounded())))
+                        }
+                    }
                 ),
                 in: 80...99,
                 step: 1
