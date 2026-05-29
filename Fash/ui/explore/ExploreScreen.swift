@@ -251,6 +251,12 @@ struct ExploreScreen: View {
         }
     }
 
+    private func isExploreBottomColumnTile(itemId: String) -> Bool {
+        let layout = viewModel.listingsMasonryLayout
+        let tailIds = [layout.left.last?.item.id, layout.right.last?.item.id].compactMap { $0 }
+        return tailIds.contains(itemId)
+    }
+
     // MARK: - Listings feed
 
     private var listingsGrid: some View {
@@ -320,6 +326,7 @@ struct ExploreScreen: View {
                     index: index,
                     isGuestMode: isGuestMode,
                     openListingAsFullScreen: openListingAsFullScreen,
+                    isBottomColumnTile: isExploreBottomColumnTile(itemId: item.id),
                     viewModel: viewModel,
                     router: router,
                     deps: deps
@@ -427,7 +434,7 @@ private struct ExploreListingsPaginationSentinel: View {
     let isLoadingMore: Bool
     let onPrefetch: () -> Void
 
-    private let triggerHeight: CGFloat = 96
+    private let triggerHeight: CGFloat = 120
 
     var body: some View {
         ZStack {
@@ -460,6 +467,7 @@ private struct ExploreListingCell: View {
     let index: Int
     let isGuestMode: Bool
     var openListingAsFullScreen: Bool = false
+    var isBottomColumnTile: Bool = false
     @Bindable var viewModel: ExploreViewModel
     @Bindable var router: AppRouter
     let deps: AppDependencies
@@ -499,6 +507,9 @@ private struct ExploreListingCell: View {
         .onAppear {
             appearedAt = Date()
             viewModel.recordView(item: item, position: index, deps: deps)
+            if isBottomColumnTile {
+                viewModel.requestLoadMore(deps: deps, isGuestMode: isGuestMode)
+            }
         }
         .onDisappear {
             if let appearedAt {

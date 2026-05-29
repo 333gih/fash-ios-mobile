@@ -280,46 +280,53 @@ struct ListingMasonryColumnFeed<Content: View>: View {
     private var gap: CGFloat { columnSpacing ?? spacing.spacing2 }
     private var edgeStart: CGFloat { leadingPadding ?? spacing.editorialStart }
     private var edgeEnd: CGFloat { trailingPadding ?? spacing.editorialEnd }
+    /// Equal left/right inset — avoids lopsided grid (editorialEnd is smaller than editorialStart).
+    private var symmetricInset: CGFloat { max(edgeStart, edgeEnd) }
 
-    private var resolvedContainerWidth: CGFloat {
+    private var resolvedViewportWidth: CGFloat {
         containerWidth > 1 ? containerWidth : UIScreen.main.bounds.width
     }
 
     private var columnWidth: CGFloat {
         ListingMasonryGrid.columnWidth(
-            containerWidth: resolvedContainerWidth,
-            leadingInset: edgeStart,
-            trailingInset: edgeEnd,
+            containerWidth: resolvedViewportWidth,
+            leadingInset: symmetricInset,
+            trailingInset: symmetricInset,
             columnGap: gap
         )
     }
 
-    private var gridHeight: CGFloat {
-        ListingMasonryGrid.estimatedGridHeight(
-            layout: layout,
-            columnWidth: columnWidth,
-            verticalGap: gap
-        )
+    private var gridBlockWidth: CGFloat {
+        max(0, columnWidth * 2 + gap)
     }
 
     var body: some View {
-        HStack(alignment: .top, spacing: gap) {
-            masonryColumn(layout.left)
-            masonryColumn(layout.right)
-        }
-        .frame(maxWidth: .infinity, minHeight: gridHeight, alignment: .topLeading)
-        .background(
-            GeometryReader { proxy in
-                Color.clear
-                    .preference(key: ListingMasonryContainerWidthKey.self, value: proxy.size.width)
+        ZStack(alignment: .top) {
+            Color.clear
+                .frame(maxWidth: .infinity, maxHeight: 0)
+                .background(
+                    GeometryReader { proxy in
+                        Color.clear
+                            .preference(
+                                key: ListingMasonryContainerWidthKey.self,
+                                value: proxy.size.width
+                            )
+                    }
+                )
+
+            HStack(alignment: .top, spacing: gap) {
+                masonryColumn(layout.left)
+                masonryColumn(layout.right)
             }
-        )
+            .frame(width: gridBlockWidth, alignment: .center)
+            .frame(maxWidth: .infinity, alignment: .center)
+            .padding(.horizontal, symmetricInset)
+        }
+        .frame(maxWidth: .infinity, alignment: .top)
         .onPreferenceChange(ListingMasonryContainerWidthKey.self) { width in
             guard width > 1, abs(width - containerWidth) > 0.5 else { return }
             containerWidth = width
         }
-        .padding(.leading, edgeStart)
-        .padding(.trailing, edgeEnd)
     }
 
     @ViewBuilder
@@ -327,8 +334,7 @@ struct ListingMasonryColumnFeed<Content: View>: View {
         VStack(spacing: gap) {
             ForEach(column, id: \.item.id) { entry in
                 content(entry.item, entry.index)
-                    .frame(width: columnWidth)
-                    .clipped()
+                    .frame(width: columnWidth, alignment: .top)
             }
         }
         .frame(width: columnWidth, alignment: .top)

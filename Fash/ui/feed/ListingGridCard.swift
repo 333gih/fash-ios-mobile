@@ -130,7 +130,7 @@ struct ListingGridCard: View {
                 .fontWeight(.bold)
                 .foregroundStyle(.white)
                 .lineLimit(1)
-                .minimumScaleFactor(0.85)
+                .truncationMode(.tail)
             Spacer(minLength: 0)
             if item.likeCount > 0 {
                 HStack(spacing: 3) {
@@ -161,24 +161,22 @@ struct ListingGridCard: View {
         }
     }
 
-    /// Condition + category/brand — infinite horizontal marquee (Android meta row).
+    /// Condition + category/brand — single line, truncate with … when long.
     @ViewBuilder
     private var metaRow: some View {
-        let marqueeText = metaMarqueeText
-        if !marqueeText.isEmpty {
-            FashMarqueeText(
-                text: marqueeText,
-                font: FashTypography.labelSmall,
-                color: .white.opacity(0.92),
-                lineHeight: FooterMetrics.metaLineHeight,
-                continuousLoop: true
-            )
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(minHeight: FooterMetrics.metaLineHeight, alignment: .leading)
+        let line = metaLineText
+        if !line.isEmpty {
+            Text(line)
+                .font(FashTypography.labelSmall)
+                .foregroundStyle(.white.opacity(0.92))
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(minHeight: FooterMetrics.metaLineHeight, alignment: .leading)
         }
     }
 
-    private var metaMarqueeText: String {
+    private var metaLineText: String {
         [meta.conditionLabel, meta.secondary]
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
@@ -257,15 +255,16 @@ struct ListingGridCard: View {
                 )
             }
         }
-        .padding(6)
+        .padding(.horizontal, 4)
+        .padding(.vertical, 4)
     }
 
     private func quickActionButton(systemName: String, active: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: systemName)
-                .font(.system(size: 18, weight: .semibold))
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(active ? FashColors.brandPrimary : .white)
-                .frame(width: 34, height: 34)
+                .frame(width: 28, height: 28)
                 .background(Color.black.opacity(0.38))
                 .clipShape(Circle())
         }
