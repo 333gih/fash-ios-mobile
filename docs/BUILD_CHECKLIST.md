@@ -139,7 +139,7 @@ Trước push lên `releases/*`:
 ```yaml
 # project.yml
 MARKETING_VERSION: "1.0.13"
-CURRENT_PROJECT_VERSION: "46"   # tăng mỗi lần upload TestFlight
+CURRENT_PROJECT_VERSION: "47"   # tăng mỗi lần upload TestFlight
 ```
 
 - [ ] Push `origin` (GitLab) → đợi mirror → GitHub Actions **iOS Release** chạy.
