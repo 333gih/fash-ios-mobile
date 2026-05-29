@@ -2,10 +2,6 @@ import Foundation
 
 /// Android `FeedFormatters.kt` — wire-safe listing labels for grid cards.
 enum ListingFeedFormatters {
-    private static let uuidPattern = try! NSRegularExpression(
-        pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
-    )
-
     /// Strips JSON blobs and bare UUIDs from API strings.
     static func sanitizeListingUiText(_ raw: String?) -> String {
         guard let raw, !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return "" }
@@ -22,8 +18,7 @@ enum ListingFeedFormatters {
             }
             return ""
         }
-        let range = NSRange(trimmed.startIndex..., in: trimmed)
-        if uuidPattern.firstMatch(in: trimmed, range: range) != nil { return "" }
+        if isBareUuid(trimmed) { return "" }
         return trimmed
     }
 
@@ -33,5 +28,17 @@ enum ListingFeedFormatters {
         if count >= 1_000_000 { return String(format: "%.1fM", Double(count) / 1_000_000) }
         if count >= 1_000 { return String(format: "%.1fk", Double(count) / 1_000) }
         return "\(count)"
+    }
+
+    private static func isBareUuid(_ text: String) -> Bool {
+        let parts = text.split(separator: "-", omittingEmptySubsequences: false)
+        guard parts.count == 5 else { return false }
+        let lengths = [8, 4, 4, 4, 12]
+        let hex = CharacterSet(charactersIn: "0123456789abcdefABCDEF")
+        for (index, part) in parts.enumerated() {
+            guard part.count == lengths[index] else { return false }
+            guard part.unicodeScalars.allSatisfy({ hex.contains($0) }) else { return false }
+        }
+        return true
     }
 }
