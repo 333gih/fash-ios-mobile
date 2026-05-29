@@ -96,7 +96,23 @@ private struct ExploreStickyActiveSearchRow: View {
 struct ExploreHeaderScrollKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = min(value, nextValue())
+        value = nextValue()
+    }
+}
+
+/// Filter row `minY` — sticky chrome when this scrolls above the visible top (~Android 88dp).
+struct ExploreFilterBarScrollKey: PreferenceKey {
+    static var defaultValue: CGFloat = .greatestFiniteMagnitude
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
+/// Host (overlay) should pin [ExploreStickyChrome] below the app bar — not tabs, filters/search only.
+struct ExploreStickyChromeVisibleKey: PreferenceKey {
+    static var defaultValue: Bool = false
+    static func reduce(value: inout Bool, nextValue: () -> Bool) {
+        value = nextValue()
     }
 }
 
@@ -112,10 +128,22 @@ extension View {
             .allowsHitTesting(false)
         )
     }
+
+    func exploreFilterBarScrollReporting(space: String = "exploreFeedScroll") -> some View {
+        background(
+            GeometryReader { geo in
+                Color.clear.preference(
+                    key: ExploreFilterBarScrollKey.self,
+                    value: geo.frame(in: .named(space)).minY
+                )
+            }
+            .allowsHitTesting(false)
+        )
+    }
 }
 
-/// Fade expanded header chrome (tabs, filters, categories) as the user scrolls — full opacity at top only.
-enum ExploreHeaderCollapse {
+/// Fade **tabs only** while scrolling — tabs are not pinned (unlike Android sticky chrome).
+enum ExploreTabsCollapse {
     static let fadeDistance: CGFloat = ExploreStickyChromePolicy.showThreshold
 
     static func fadeOpacity(headerMinY: CGFloat) -> CGFloat {
@@ -129,15 +157,31 @@ enum ExploreHeaderCollapse {
 enum ExploreStickyChromePolicy {
     static let showThreshold: CGFloat = 88
     static let hideThreshold: CGFloat = 72
+    /// Filter row is leaving the viewport (sticky replaces it).
+    static let filterOffscreenThreshold: CGFloat = 10
 
-    static func shouldShowSticky(currentlyShown: Bool, headerMinY: CGFloat) -> Bool {
+    static func shouldShowSticky(
+        currentlyShown: Bool,
+        headerMinY: CGFloat,
+        filterBarMinY: CGFloat
+    ) -> Bool {
+        let headerScrolled = headerMinY < -showThreshold
+        let filterLeaving = filterBarMinY < filterOffscreenThreshold
         if currentlyShown {
-            return headerMinY < -hideThreshold
+            return headerMinY < -hideThreshold || filterBarMinY < hideThreshold
         }
-        return headerMinY < -showThreshold
+        return headerScrolled || filterLeaving
     }
 
-    static func shouldCompactTopBar(currentlyCompact: Bool, headerMinY: CGFloat) -> Bool {
-        shouldShowSticky(currentlyShown: currentlyCompact, headerMinY: headerMinY)
+    static func shouldCompactTopBar(
+        currentlyShown: Bool,
+        headerMinY: CGFloat,
+        filterBarMinY: CGFloat
+    ) -> Bool {
+        shouldShowSticky(
+            currentlyShown: currentlyShown,
+            headerMinY: headerMinY,
+            filterBarMinY: filterBarMinY
+        )
     }
 }

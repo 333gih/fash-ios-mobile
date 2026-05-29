@@ -16,11 +16,15 @@ struct ExploreScreen: View {
 
     private let gridSpacing: CGFloat = 8
 
+    /// Host renders pinned chrome below [ExploreTopBar]; feed does not overlay it on the grid.
+    var hostManagesStickyChrome: Bool = false
+
     @State private var showStickyChrome = false
     @State private var headerScrollMinY: CGFloat = 0
+    @State private var filterBarScrollMinY: CGFloat = .greatestFiniteMagnitude
 
-    private var expandedHeaderFadeOpacity: CGFloat {
-        ExploreHeaderCollapse.fadeOpacity(headerMinY: headerScrollMinY)
+    private var tabsFadeOpacity: CGFloat {
+        ExploreTabsCollapse.fadeOpacity(headerMinY: headerScrollMinY)
     }
 
     /// Listings always show the filter row; sellers only when a search query is committed.
@@ -80,18 +84,26 @@ struct ExploreScreen: View {
             .presentationDetents([.fraction(0.7)])
             .presentationDragIndicator(.visible)
         }
-        .onPreferenceChange(ExploreHeaderScrollKey.self, perform: updateHeaderScrollState)
+        .onPreferenceChange(ExploreHeaderScrollKey.self) { headerScrollMinY = $0; updateStickyChromeState() }
+        .onPreferenceChange(ExploreFilterBarScrollKey.self) { filterBarScrollMinY = $0; updateStickyChromeState() }
+        .background {
+            Color.clear.preference(
+                key: ExploreStickyChromeVisibleKey.self,
+                value: showsStickyChromeOverlay
+            )
+        }
         .onChange(of: viewModel.primarySection) { _, _ in
             showStickyChrome = false
             headerScrollMinY = 0
+            filterBarScrollMinY = .greatestFiniteMagnitude
         }
     }
 
-    private func updateHeaderScrollState(_ headerMinY: CGFloat) {
-        headerScrollMinY = headerMinY
+    private func updateStickyChromeState() {
         let next = ExploreStickyChromePolicy.shouldShowSticky(
             currentlyShown: showStickyChrome,
-            headerMinY: headerMinY
+            headerMinY: headerScrollMinY,
+            filterBarMinY: filterBarScrollMinY
         )
         guard next != showStickyChrome else { return }
         withAnimation(.easeInOut(duration: 0.22)) {
@@ -117,6 +129,8 @@ struct ExploreScreen: View {
     private var listingsExpandedHeader: some View {
         VStack(spacing: spacing.spacing2) {
             sectionToggle
+                .opacity(tabsFadeOpacity)
+                .animation(.easeInOut(duration: 0.22), value: tabsFadeOpacity)
             filterBar
             listingsLeadingRows
             ExploreCategoryStrip(
@@ -130,13 +144,13 @@ struct ExploreScreen: View {
                 }
             }
         }
-        .opacity(expandedHeaderFadeOpacity)
-        .animation(.easeInOut(duration: 0.22), value: expandedHeaderFadeOpacity)
     }
 
     private var sellersExpandedHeader: some View {
         VStack(spacing: spacing.spacing2) {
             sectionToggle
+                .opacity(tabsFadeOpacity)
+                .animation(.easeInOut(duration: 0.22), value: tabsFadeOpacity)
             if !viewModel.committedSellerSearchQuery.trimmingCharacters(in: .whitespaces).isEmpty {
                 ExploreActiveSearchQueryBanner(
                     query: viewModel.committedSellerSearchQuery,
@@ -145,11 +159,10 @@ struct ExploreScreen: View {
                     }
                 )
                 .padding(.horizontal, spacing.editorialStart)
+                .exploreFilterBarScrollReporting()
             }
         }
         .padding(.top, spacing.spacing2)
-        .opacity(expandedHeaderFadeOpacity)
-        .animation(.easeInOut(duration: 0.22), value: expandedHeaderFadeOpacity)
     }
 
     private var exploreStickyChromeHeader: some View {
@@ -191,6 +204,7 @@ struct ExploreScreen: View {
                     Task { await viewModel.clearAllFilters(deps: deps, isGuestMode: isGuestMode) }
                 } : nil
             )
+            .exploreFilterBarScrollReporting()
         }
     }
 
@@ -238,7 +252,7 @@ struct ExploreScreen: View {
         .background(FashColors.screen)
         .coordinateSpace(name: "exploreFeedScroll")
         .overlay(alignment: .top) {
-            if showsStickyChromeOverlay {
+            if !hostManagesStickyChrome, showsStickyChromeOverlay {
                 exploreStickyChromeHeader
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
@@ -374,7 +388,7 @@ struct ExploreScreen: View {
         .background(FashColors.screen)
         .coordinateSpace(name: "exploreFeedScroll")
         .overlay(alignment: .top) {
-            if showsStickyChromeOverlay {
+            if !hostManagesStickyChrome, showsStickyChromeOverlay {
                 exploreStickyChromeHeader
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }

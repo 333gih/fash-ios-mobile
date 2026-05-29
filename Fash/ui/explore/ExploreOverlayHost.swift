@@ -12,6 +12,9 @@ struct ExploreOverlayHost: View {
     var onRequestSignIn: ((String) -> Void)? = nil
 
     @State private var topBarCompact = false
+    @State private var showPinnedMarketplaceChrome = false
+    @State private var headerScrollMinY: CGFloat = 0
+    @State private var filterBarScrollMinY: CGFloat = .greatestFiniteMagnitude
 
     var body: some View {
         VStack(spacing: 0) {
@@ -22,6 +25,14 @@ struct ExploreOverlayHost: View {
                 compact: topBarCompact,
                 onCloseOverlay: onClose
             )
+            if showPinnedMarketplaceChrome {
+                ExploreStickyChrome(
+                    viewModel: viewModel,
+                    isGuestMode: isGuestMode,
+                    deps: deps
+                )
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
             ExploreScreen(
                 viewModel: viewModel,
                 router: router,
@@ -40,18 +51,18 @@ struct ExploreOverlayHost: View {
                 onSeeAllFeaturedSellers: {
                     onClose()
                     router.showFeaturedSellersAll = true
-                }
+                },
+                hostManagesStickyChrome: true
             )
         }
         .background(FashColors.screen)
-        .onPreferenceChange(ExploreHeaderScrollKey.self) { headerMinY in
-            let next = ExploreStickyChromePolicy.shouldCompactTopBar(
-                currentlyCompact: topBarCompact,
-                headerMinY: headerMinY
-            )
-            guard topBarCompact != next else { return }
+        .animation(.easeInOut(duration: 0.22), value: showPinnedMarketplaceChrome)
+        .onPreferenceChange(ExploreHeaderScrollKey.self) { headerScrollMinY = $0; updateTopBarCompact() }
+        .onPreferenceChange(ExploreFilterBarScrollKey.self) { filterBarScrollMinY = $0; updateTopBarCompact() }
+        .onPreferenceChange(ExploreStickyChromeVisibleKey.self) { visible in
+            guard showPinnedMarketplaceChrome != visible else { return }
             withAnimation(.easeInOut(duration: 0.22)) {
-                topBarCompact = next
+                showPinnedMarketplaceChrome = visible
             }
         }
         .overlay(alignment: .bottom) {
@@ -64,6 +75,9 @@ struct ExploreOverlayHost: View {
         }
         .onAppear {
             topBarCompact = false
+            showPinnedMarketplaceChrome = false
+            headerScrollMinY = 0
+            filterBarScrollMinY = .greatestFiniteMagnitude
             deps.listingPreview.close(deps: deps)
         }
         .task {
@@ -73,6 +87,18 @@ struct ExploreOverlayHost: View {
             }
             await viewModel.loadFilterCatalogIfNeeded(deps: deps)
             await viewModel.onExploreOpened(deps: deps, isGuestMode: isGuestMode)
+        }
+    }
+
+    private func updateTopBarCompact() {
+        let next = ExploreStickyChromePolicy.shouldCompactTopBar(
+            currentlyShown: topBarCompact,
+            headerMinY: headerScrollMinY,
+            filterBarMinY: filterBarScrollMinY
+        )
+        guard topBarCompact != next else { return }
+        withAnimation(.easeInOut(duration: 0.22)) {
+            topBarCompact = next
         }
     }
 }
