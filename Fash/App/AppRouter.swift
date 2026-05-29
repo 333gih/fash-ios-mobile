@@ -45,6 +45,8 @@ enum OnboardingStep: String, CaseIterable {
 @MainActor
 final class AppRouter {
     var showSplash = true
+    /// True while Home / Explore prefetch runs after auth (login, onboarding complete).
+    var isLaunchWarmupInProgress = false
     var isLoggingOut = false
     var isGuestMode = false
     var loginStep: LoginStep?

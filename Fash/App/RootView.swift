@@ -1,10 +1,10 @@
 import SwiftUI
 
-private let splashDisplaySeconds: TimeInterval = 2.5
-
 struct RootView: View {
     @Environment(AppDependencies.self) private var deps
     @State private var router = AppRouter()
+    @State private var homeVM = HomeViewModel()
+    @State private var exploreVM = ExploreViewModel()
     @State private var loginVM = LoginViewModel()
     @State private var addressBookVM = AddressBookViewModel()
     @State private var changePasswordVM = ChangePasswordViewModel()
@@ -42,10 +42,13 @@ struct RootView: View {
         .task {
             deps.prefetchSessionValidation()
             async let sessionValidated = deps.awaitSessionValidation()
-            try? await Task.sleep(for: .seconds(splashDisplaySeconds))
+            async let minimumBranding = Task {
+                try? await Task.sleep(for: .seconds(AppLaunchWarmup.minimumDisplaySeconds))
+            }
             _ = await sessionValidated
-            router.showSplash = false
             await bootstrapSession()
+            _ = await minimumBranding.value
+            router.showSplash = false
         }
         .onAppear {
             deps.navigationRouter = router
@@ -60,10 +63,10 @@ struct RootView: View {
 
     @ViewBuilder
     private var rootContent: some View {
-        if router.showSplash || router.isLoggingOut {
+        if router.showSplash || router.isLoggingOut || router.isLaunchWarmupInProgress {
             FashWaitingScreen()
         } else if router.isGuestMode {
-            GuestMainShell(router: router)
+            GuestMainShell(router: router, homeVM: homeVM, exploreVM: exploreVM)
         } else if let step = router.loginStep {
             loginFlow(step: step)
         } else if router.setupGateFetchFailed {
@@ -74,7 +77,7 @@ struct RootView: View {
         } else if let onboard = router.onboardingStep {
             onboardingFlow(step: onboard)
         } else {
-            MainNavScreen(router: router)
+            MainNavScreen(router: router, homeVM: homeVM, exploreVM: exploreVM)
         }
     }
 
@@ -317,7 +320,7 @@ struct RootView: View {
             SetupPasswordOnboardScreen(onContinue: { router.onboardingStep = .completed })
         case .completed:
             FashWaitingScreen()
-                .task { router.onboardingStep = nil }
+                .task { await prepareMainShellEntry() }
         }
     }
 
@@ -334,6 +337,7 @@ struct RootView: View {
             if PublicBrowseHttp.isConfigured {
                 router.isGuestMode = true
                 deps.isGuestBrowseActive = true
+                await prepareMainShellEntry()
             } else {
                 router.loginStep = .email
             }
@@ -350,14 +354,27 @@ struct RootView: View {
             await PushNotificationCoordinator.shared.requestAuthorizationAndRegisterForRemoteNotifications()
             await PushNotificationCoordinator.shared.registerCurrentTokenIfSession()
             if gate.canAccessHome {
-                router.onboardingStep = nil
-                router.loginStep = nil
+                await prepareMainShellEntry()
             } else {
                 router.onboardingStep = mapNextStep(gate.nextStep)
             }
         case .failure:
             router.setupGateFetchFailed = true
         }
+    }
+
+    /// Prefetch Home feed + promo slider + Explore suggestions before revealing the main shell.
+    private func prepareMainShellEntry() async {
+        router.isLaunchWarmupInProgress = true
+        defer { router.isLaunchWarmupInProgress = false }
+        await AppLaunchWarmup.run(
+            deps: deps,
+            homeVM: homeVM,
+            exploreVM: exploreVM,
+            isGuestMode: router.isGuestMode
+        )
+        router.loginStep = nil
+        router.onboardingStep = nil
     }
 
     private func mapNextStep(_ raw: String?) -> OnboardingStep {

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Compact pinned chrome when Explore feed is scrolled — Android `ExploreStickyExploreChrome`.
+/// Compact overlay chrome when Explore feed is scrolled — filters/search only (tabs stay in expanded header).
 struct ExploreStickyChrome: View {
     @Environment(\.fashSpacing) private var spacing
     @Bindable var viewModel: ExploreViewModel
@@ -12,16 +12,7 @@ struct ExploreStickyChrome: View {
             Divider()
                 .overlay(FashColors.outlineMuted.opacity(0.38))
             VStack(spacing: 0) {
-                ExplorePrimarySectionSwitcher(selected: viewModel.primarySection) { section in
-                    Task { await viewModel.setPrimarySection(section, deps: deps, isGuestMode: isGuestMode) }
-                }
-                .padding(.horizontal, spacing.editorialStart)
-                .padding(.top, 8)
-                .padding(.bottom, viewModel.primarySection == .listings ? 4 : 8)
-
                 if viewModel.primarySection == .listings {
-                    Divider()
-                        .overlay(FashColors.outlineMuted.opacity(0.45))
                     ExploreStickyFilterRow(
                         hasActiveFilters: viewModel.hasActiveFilters,
                         filterSummaryParts: viewModel.filterSummaryParts,
@@ -120,6 +111,17 @@ extension View {
             }
             .allowsHitTesting(false)
         )
+    }
+}
+
+/// Fade expanded header chrome (tabs, filters, categories) as the user scrolls — full opacity at top only.
+enum ExploreHeaderCollapse {
+    static let fadeDistance: CGFloat = ExploreStickyChromePolicy.showThreshold
+
+    static func fadeOpacity(headerMinY: CGFloat) -> CGFloat {
+        guard headerMinY < 0 else { return 1 }
+        let progress = min(1, -headerMinY / fadeDistance)
+        return 1 - progress
     }
 }
 

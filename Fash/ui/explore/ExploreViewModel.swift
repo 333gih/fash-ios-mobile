@@ -7,6 +7,8 @@ enum ExplorePrimarySection: String, CaseIterable {
 }
 
 private let exploreFeedPageSize = 20
+/// Matches Android `ExploreStaleThresholdMs` — skip redundant reload when reopening Explore.
+private let exploreStaleThreshold: TimeInterval = 60
 
 @Observable
 @MainActor
@@ -21,6 +23,8 @@ final class ExploreViewModel {
     var quickInterestChips: [String] = []
     var primarySection: ExplorePrimarySection = .listings
     var isLoading = false
+    /// True while replacing the first page but keeping the current grid visible (filter/search changes).
+    var isReloadingListings = false
     var isRefreshing = false
     var isLoadingMore = false
     var hasMore = true
@@ -61,10 +65,10 @@ final class ExploreViewModel {
     var filterCatalogLoading = false
 
     private var listingsFetchGeneration = 0
-    /// Bumps when the listings feed is cleared for filter/search reload — forces a clean masonry layout.
-    private(set) var listingsContentToken = 0
     private var sellersBrowseGeneration = 0
     private var loadMoreCooldownUntil: Date?
+    private var lastSuccessfulExploreRefreshAt: Date?
+    private var listingsReloadTask: Task<Void, Never>?
 
     private static func initialSizingModeFilter() -> String? {
         let mode = ExploreSizingPreference.read()
@@ -257,6 +261,20 @@ final class ExploreViewModel {
         if case .success(let g) = await tags { searchOverlayTrendingTags = g }
     }
 
+    /// Launch waiting-screen prefetch — suggestions, catalog, and first listings page when empty.
+    func warmLaunchCaches(deps: AppDependencies, isGuestMode: Bool) async {
+        async let overlay: Void = loadSearchOverlayData(deps: deps)
+        async let catalog: Void = loadFilterCatalogIfNeeded(deps: deps)
+        async let chips: Void = loadQuickInterestChips(deps: deps)
+        async let sellers: Void = loadFeaturedSellers(deps: deps, isGuestMode: isGuestMode)
+        async let feed: Void = {
+            if items.isEmpty {
+                await fetchListingsFirstPage(deps: deps, isGuestMode: isGuestMode)
+            }
+        }()
+        _ = await (overlay, catalog, chips, sellers, feed)
+    }
+
     func selectSearchSuggestionAndSubmit(_ text: String, deps: AppDependencies, isGuestMode: Bool) async {
         let t = text.trimmingCharacters(in: .whitespaces)
         guard !t.isEmpty else { return }
@@ -282,13 +300,13 @@ final class ExploreViewModel {
             isSearchMode = false
             committedListingSearchQuery = ""
             setSearchBarExpanded(false)
-            await refresh(deps: deps, isGuestMode: isGuestMode)
+            await reloadListingsAfterFilterChange(deps: deps, isGuestMode: isGuestMode)
         } else {
             await selectSearchSuggestionAndSubmit(cleaned, deps: deps, isGuestMode: isGuestMode)
         }
     }
 
-    func refresh(deps: AppDependencies, isGuestMode: Bool, resetListingsFeed: Bool = false) async {
+    func refresh(deps: AppDependencies, isGuestMode: Bool) async {
         loadError = false
         sellersLoadError = false
         await loadFilterCatalogIfNeeded(deps: deps)
@@ -298,28 +316,32 @@ final class ExploreViewModel {
         if primarySection == .sellers {
             await refreshSellerBrowse(deps: deps, isGuestMode: isGuestMode)
         } else {
-            listingsFetchGeneration += 1
-            hasMore = true
-            if resetListingsFeed {
-                beginListingsFeedReload()
-                defer { isLoading = false }
-                await loadListings(deps: deps, isGuestMode: isGuestMode, offset: 0, append: false)
-            } else {
-                let showBlockingLoad = items.isEmpty
-                if showBlockingLoad { isLoading = true }
-                defer { if showBlockingLoad { isLoading = false } }
-                await loadListings(deps: deps, isGuestMode: isGuestMode, offset: 0, append: false)
-            }
+            await fetchListingsFirstPage(deps: deps, isGuestMode: isGuestMode)
         }
     }
 
-    /// Clears grid + shows skeleton — avoids stale masonry gaps after search/filter changes.
-    private func beginListingsFeedReload() {
-        items = []
-        loadError = false
-        hasMore = true
-        isLoading = true
-        listingsContentToken += 1
+    /// Android `onExploreOpened` — reload only when feed data is stale.
+    func onExploreOpened(deps: AppDependencies, isGuestMode: Bool) async {
+        await refreshIfStale(deps: deps, isGuestMode: isGuestMode)
+    }
+
+    func refreshIfStale(deps: AppDependencies, isGuestMode: Bool) async {
+        if let last = lastSuccessfulExploreRefreshAt,
+           Date().timeIntervalSince(last) < exploreStaleThreshold {
+            if items.isEmpty, !isLoading, !isReloadingListings {
+                await refresh(deps: deps, isGuestMode: isGuestMode)
+            }
+            return
+        }
+        await reloadExploreContent(deps: deps, isGuestMode: isGuestMode)
+    }
+
+    private func reloadExploreContent(deps: AppDependencies, isGuestMode: Bool) async {
+        if primarySection == .sellers {
+            await refreshSellerBrowse(deps: deps, isGuestMode: isGuestMode)
+        } else {
+            await fetchListingsFirstPage(deps: deps, isGuestMode: isGuestMode)
+        }
     }
 
     func pullToRefresh(deps: AppDependencies, isGuestMode: Bool) async {
@@ -329,7 +351,7 @@ final class ExploreViewModel {
     }
 
     func loadMore(deps: AppDependencies, isGuestMode: Bool) async {
-        guard primarySection == .listings, hasMore, !isLoadingMore, !isLoading, !isRefreshing else { return }
+        guard primarySection == .listings, hasMore, !isLoadingMore, !isLoading, !isReloadingListings, !isRefreshing else { return }
         guard !(loadError && items.isEmpty) else { return }
         let now = Date()
         if let until = loadMoreCooldownUntil, now < until { return }
@@ -347,10 +369,7 @@ final class ExploreViewModel {
             loadError = false
             committedListingSearchQuery = q
             isSearchMode = true
-            listingsFetchGeneration += 1
-            beginListingsFeedReload()
-            defer { isLoading = false }
-            await loadListings(deps: deps, isGuestMode: isGuestMode, offset: 0, append: false)
+            await fetchListingsFirstPage(deps: deps, isGuestMode: isGuestMode)
             setSearchBarExpanded(false)
         case .sellers:
             committedSellerSearchQuery = q
@@ -363,7 +382,7 @@ final class ExploreViewModel {
         isSearchMode = false
         committedListingSearchQuery = ""
         query = ""
-        await refresh(deps: deps, isGuestMode: isGuestMode, resetListingsFeed: true)
+        await clearExploreConstraints(deps: deps, isGuestMode: isGuestMode)
     }
 
     func clearSellerSearch(deps: AppDependencies, isGuestMode: Bool) async {
@@ -388,7 +407,7 @@ final class ExploreViewModel {
         } else {
             selectedAestheticTagIds.insert(id)
         }
-        await refresh(deps: deps, isGuestMode: isGuestMode, resetListingsFeed: true)
+        await reloadListingsAfterFilterChange(deps: deps, isGuestMode: isGuestMode)
     }
 
     func toggleInterestChip(_ tagName: String, deps: AppDependencies, isGuestMode: Bool) async {
@@ -437,15 +456,18 @@ final class ExploreViewModel {
         clearMarketplaceFilterFields()
         sortMode = "recent"
         primarySection = .listings
+        listingsReloadTask?.cancel()
+        listingsReloadTask = nil
         listingsFetchGeneration += 1
         sellersBrowseGeneration += 1
         items = []
         sellerResults = []
         sellerPreviewPosts = [:]
-        listingsContentToken += 1
         isLoading = false
+        isReloadingListings = false
         isRefreshing = false
         isLoadingMore = false
+        lastSuccessfulExploreRefreshAt = nil
         hasMore = true
         loadError = false
         sellersLoading = false
@@ -455,7 +477,7 @@ final class ExploreViewModel {
 
     func clearAllFilters(deps: AppDependencies, isGuestMode: Bool) async {
         clearMarketplaceFilterFields()
-        await refresh(deps: deps, isGuestMode: isGuestMode, resetListingsFeed: true)
+        await clearExploreConstraints(deps: deps, isGuestMode: isGuestMode)
     }
 
     func setPrimarySection(_ section: ExplorePrimarySection, deps: AppDependencies, isGuestMode: Bool) async {
@@ -513,16 +535,89 @@ final class ExploreViewModel {
 
     func applyFiltersAndReload(deps: AppDependencies, isGuestMode: Bool) async {
         showFilterSheet = false
-        await refresh(deps: deps, isGuestMode: isGuestMode, resetListingsFeed: true)
+        await reloadListingsAfterFilterChange(deps: deps, isGuestMode: isGuestMode)
     }
 
-    private func loadListings(
+    /// Android `reloadAfterFilterChange` — keep visible tiles, swap in the new first page.
+    func reloadListingsAfterFilterChange(deps: AppDependencies, isGuestMode: Bool) async {
+        listingsReloadTask?.cancel()
+        let task = Task {
+            await fetchListingsFirstPage(deps: deps, isGuestMode: isGuestMode)
+        }
+        listingsReloadTask = task
+        await task.value
+        if listingsReloadTask == task {
+            listingsReloadTask = nil
+        }
+    }
+
+    /// Full reset when clearing search/filters from empty state — Android `clearExploreConstraints`.
+    private func clearExploreConstraints(deps: AppDependencies, isGuestMode: Bool) async {
+        listingsReloadTask?.cancel()
+        listingsReloadTask = nil
+        listingsFetchGeneration += 1
+        items = []
+        hasMore = true
+        loadError = false
+        isLoading = true
+        defer { isLoading = false }
+        await loadListings(deps: deps, isGuestMode: isGuestMode, offset: 0, append: false)
+    }
+
+    /// Replaces the first page in place — does not clear [items] first (smooth filter/search UX).
+    private func fetchListingsFirstPage(deps: AppDependencies, isGuestMode: Bool) async {
+        listingsFetchGeneration += 1
+        let generation = listingsFetchGeneration
+        let hadItems = !items.isEmpty
+        loadError = false
+        if hadItems {
+            isReloadingListings = true
+        } else {
+            isLoading = true
+        }
+        defer {
+            isLoading = false
+            isReloadingListings = false
+        }
+        let result = await searchListingsWithRetry(
+            deps: deps,
+            isGuestMode: isGuestMode,
+            offset: 0
+        )
+        guard generation == listingsFetchGeneration else { return }
+        switch result {
+        case .success(let feed):
+            items = feed
+            hasMore = feed.count >= exploreFeedPageSize
+            loadError = false
+            lastSuccessfulExploreRefreshAt = Date()
+        case .failure:
+            if !hadItems {
+                items = []
+                loadError = true
+            }
+            hasMore = false
+        }
+    }
+
+    private func searchListingsWithRetry(
         deps: AppDependencies,
         isGuestMode: Bool,
-        offset: Int,
-        append: Bool
-    ) async {
-        let gen = listingsFetchGeneration
+        offset: Int
+    ) async -> Result<[ListingFeedItem], Error> {
+        var result = await requestListingsPage(deps: deps, isGuestMode: isGuestMode, offset: offset)
+        if case .failure = result {
+            try? await Task.sleep(for: .milliseconds(400))
+            result = await requestListingsPage(deps: deps, isGuestMode: isGuestMode, offset: offset)
+        }
+        return result
+    }
+
+    private func requestListingsPage(
+        deps: AppDependencies,
+        isGuestMode: Bool,
+        offset: Int
+    ) async -> Result<[ListingFeedItem], Error> {
         let q = committedListingSearchQuery.isEmpty
             ? query.trimmingCharacters(in: .whitespaces)
             : committedListingSearchQuery
@@ -531,9 +626,8 @@ final class ExploreViewModel {
         let tagIds = selectedAestheticTagIds.isEmpty ? nil : Array(selectedAestheticTagIds)
         let useSearch = isSearchMode && !q.isEmpty
         let sort = effectiveListingSort(query: q)
-        let result: Result<[ListingFeedItem], Error>
         if !useSearch && q.isEmpty {
-            result = await deps.recommendationRepository.exploreListings(
+            return await deps.recommendationRepository.exploreListings(
                 publicBrowse: isGuestMode,
                 categoryId: selectedCategoryId,
                 aestheticTagIds: tagIds,
@@ -547,26 +641,12 @@ final class ExploreViewModel {
                 sizingMode: sizingModeFilter,
                 surface: "explore"
             )
-        } else if isGuestMode {
-            result = await deps.searchRepository.browseListings(
+        }
+        if isGuestMode {
+            return await deps.searchRepository.browseListings(
                 q: q,
                 categoryId: selectedCategoryId,
                 aestheticTagIds: tagIds,
-                brandId: selectedBrandId,
-                countryIso2: countryIso2ForApi(),
-                minPrice: minPrice,
-                maxPrice: maxPrice,
-                condition: selectedConditionFilter,
-                sort: sort,
-                limit: exploreFeedPageSize,
-                offset: offset
-            )
-        } else {
-            result = await deps.searchRepository.searchListings(
-                q: q,
-                categoryId: selectedCategoryId,
-                aestheticTagIds: tagIds,
-                sizingMode: sizingModeFilter,
                 brandId: selectedBrandId,
                 countryIso2: countryIso2ForApi(),
                 minPrice: minPrice,
@@ -577,6 +657,30 @@ final class ExploreViewModel {
                 offset: offset
             )
         }
+        return await deps.searchRepository.searchListings(
+            q: q,
+            categoryId: selectedCategoryId,
+            aestheticTagIds: tagIds,
+            sizingMode: sizingModeFilter,
+            brandId: selectedBrandId,
+            countryIso2: countryIso2ForApi(),
+            minPrice: minPrice,
+            maxPrice: maxPrice,
+            condition: selectedConditionFilter,
+            sort: sort,
+            limit: exploreFeedPageSize,
+            offset: offset
+        )
+    }
+
+    private func loadListings(
+        deps: AppDependencies,
+        isGuestMode: Bool,
+        offset: Int,
+        append: Bool
+    ) async {
+        let gen = listingsFetchGeneration
+        let result = await requestListingsPage(deps: deps, isGuestMode: isGuestMode, offset: offset)
         guard gen == listingsFetchGeneration else { return }
         switch result {
         case .success(let feed):
@@ -589,6 +693,9 @@ final class ExploreViewModel {
             }
             hasMore = feed.count >= exploreFeedPageSize
             loadError = false
+            if !append {
+                lastSuccessfulExploreRefreshAt = Date()
+            }
         case .failure:
             if !append {
                 items = []
@@ -755,10 +862,7 @@ final class ExploreViewModel {
     ) async {
         primarySection = .listings
         searchBarExpanded = false
-        isLoading = true
         loadError = false
-        items = []
-        hasMore = true
         await ensureFilterCatalogLoaded(deps: deps)
 
         let q = searchQuery.trimmingCharacters(in: .whitespaces)
@@ -809,19 +913,18 @@ final class ExploreViewModel {
             committedListingSearchQuery = ""
             isSearchMode = false
             query = ""
-            await refresh(deps: deps, isGuestMode: false)
+            await fetchListingsFirstPage(deps: deps, isGuestMode: false)
         } else if !q.isEmpty {
             committedListingSearchQuery = q
             isSearchMode = true
             query = ""
-            await refresh(deps: deps, isGuestMode: false)
+            await fetchListingsFirstPage(deps: deps, isGuestMode: false)
         } else {
             committedListingSearchQuery = ""
             isSearchMode = false
             query = ""
-            await refresh(deps: deps, isGuestMode: false)
+            await fetchListingsFirstPage(deps: deps, isGuestMode: false)
         }
-        isLoading = false
     }
 
     func countryIso2ForApi() -> String? {
@@ -858,7 +961,7 @@ final class ExploreViewModel {
     /// Realtime `feed.refresh` — Android ExploreViewModel first-page reload.
     func handleFeedRefresh(deps: AppDependencies, isGuestMode: Bool) async {
         guard primarySection == .listings, !isSearchModeActive else { return }
-        await refresh(deps: deps, isGuestMode: isGuestMode)
+        await fetchListingsFirstPage(deps: deps, isGuestMode: isGuestMode)
     }
 }
 

@@ -63,6 +63,7 @@ struct ExploreOverlayHost: View {
             )
         }
         .onAppear {
+            topBarCompact = false
             deps.listingPreview.close(deps: deps)
         }
         .task {
@@ -71,9 +72,7 @@ struct ExploreOverlayHost: View {
                 await viewModel.loadSearchOverlayData(deps: deps)
             }
             await viewModel.loadFilterCatalogIfNeeded(deps: deps)
-            if viewModel.items.isEmpty, !viewModel.isLoading {
-                await viewModel.refresh(deps: deps, isGuestMode: isGuestMode)
-            }
+            await viewModel.onExploreOpened(deps: deps, isGuestMode: isGuestMode)
         }
     }
 }

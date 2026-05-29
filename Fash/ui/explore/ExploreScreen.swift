@@ -17,6 +17,18 @@ struct ExploreScreen: View {
     private let gridSpacing: CGFloat = 8
 
     @State private var showStickyChrome = false
+    @State private var headerScrollMinY: CGFloat = 0
+
+    private var expandedHeaderFadeOpacity: CGFloat {
+        ExploreHeaderCollapse.fadeOpacity(headerMinY: headerScrollMinY)
+    }
+
+    /// Listings always show the filter row; sellers only when a search query is committed.
+    private var showsStickyChromeOverlay: Bool {
+        guard showStickyChrome else { return false }
+        if viewModel.primarySection == .listings { return true }
+        return !viewModel.committedSellerSearchQuery.trimmingCharacters(in: .whitespaces).isEmpty
+    }
 
     private var promoDockInset: CGFloat {
         promoSlides.isEmpty ? 0 : FashStickyPromoDockHeight
@@ -68,13 +80,15 @@ struct ExploreScreen: View {
             .presentationDetents([.fraction(0.7)])
             .presentationDragIndicator(.visible)
         }
-        .onPreferenceChange(ExploreHeaderScrollKey.self, perform: updateStickyChromeFromScroll)
+        .onPreferenceChange(ExploreHeaderScrollKey.self, perform: updateHeaderScrollState)
         .onChange(of: viewModel.primarySection) { _, _ in
             showStickyChrome = false
+            headerScrollMinY = 0
         }
     }
 
-    private func updateStickyChromeFromScroll(_ headerMinY: CGFloat) {
+    private func updateHeaderScrollState(_ headerMinY: CGFloat) {
+        headerScrollMinY = headerMinY
         let next = ExploreStickyChromePolicy.shouldShowSticky(
             currentlyShown: showStickyChrome,
             headerMinY: headerMinY
@@ -99,7 +113,7 @@ struct ExploreScreen: View {
 
     // MARK: - Expanded header (scrolls away; sticky compact chrome replaces it)
 
-    /// Expanded chrome inside scroll — scrolls away; compact tabs/filters pin via [ExploreStickyChrome].
+    /// Expanded chrome inside scroll — fades while scrolling; compact filters overlay via [ExploreStickyChrome].
     private var listingsExpandedHeader: some View {
         VStack(spacing: spacing.spacing2) {
             sectionToggle
@@ -112,11 +126,12 @@ struct ExploreScreen: View {
                 viewModel.selectedCategoryId = node?.id
                 viewModel.selectedCategoryName = node?.name
                 Task {
-                    await viewModel.refresh(deps: deps, isGuestMode: isGuestMode, resetListingsFeed: true)
+                    await viewModel.reloadListingsAfterFilterChange(deps: deps, isGuestMode: isGuestMode)
                 }
             }
         }
-        .exploreExpandedHeaderScrollReporting()
+        .opacity(expandedHeaderFadeOpacity)
+        .animation(.easeInOut(duration: 0.22), value: expandedHeaderFadeOpacity)
     }
 
     private var sellersExpandedHeader: some View {
@@ -133,7 +148,8 @@ struct ExploreScreen: View {
             }
         }
         .padding(.top, spacing.spacing2)
-        .exploreExpandedHeaderScrollReporting()
+        .opacity(expandedHeaderFadeOpacity)
+        .animation(.easeInOut(duration: 0.22), value: expandedHeaderFadeOpacity)
     }
 
     private var exploreStickyChromeHeader: some View {
@@ -186,7 +202,7 @@ struct ExploreScreen: View {
                     onClearSizing: {
                         viewModel.setSizingModeFilter(nil)
                         Task {
-                            await viewModel.refresh(deps: deps, isGuestMode: isGuestMode, resetListingsFeed: true)
+                            await viewModel.reloadListingsAfterFilterChange(deps: deps, isGuestMode: isGuestMode)
                         }
                     },
                     onOpenFilters: { viewModel.showFilterSheet = true }
@@ -209,21 +225,25 @@ struct ExploreScreen: View {
 
     private var listingsGrid: some View {
         ScrollView {
-            LazyVStack(spacing: gridSpacing, pinnedViews: [.sectionHeaders]) {
-                Section {
-                    listingsExpandedHeader
-                    listingsFeedBody
-                        .id(viewModel.listingsContentToken)
-                } header: {
-                    if showStickyChrome {
-                        exploreStickyChromeHeader
-                    }
-                }
+            LazyVStack(spacing: 0) {
+                Color.clear
+                    .frame(height: 1)
+                    .exploreExpandedHeaderScrollReporting()
+
+                listingsExpandedHeader
+                listingsFeedBody
             }
             .padding(.bottom, promoDockInset + spacing.spacing4)
         }
         .background(FashColors.screen)
         .coordinateSpace(name: "exploreFeedScroll")
+        .overlay(alignment: .top) {
+            if showsStickyChromeOverlay {
+                exploreStickyChromeHeader
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .animation(.easeInOut(duration: 0.22), value: showsStickyChromeOverlay)
         .refreshable { await viewModel.pullToRefresh(deps: deps, isGuestMode: isGuestMode) }
     }
 
@@ -244,16 +264,31 @@ struct ExploreScreen: View {
                 subtitle: L10n.feedEmptySubtitle
             )
         } else {
-            ListingMasonryLazyRows(items: viewModel.items, columnSpacing: gridSpacing) { item, index in
-                ExploreListingCell(
-                    item: item,
-                    index: index,
-                    isGuestMode: isGuestMode,
-                    openListingAsFullScreen: openListingAsFullScreen,
-                    viewModel: viewModel,
-                    router: router,
-                    deps: deps
-                )
+            ZStack(alignment: .top) {
+                VStack(spacing: spacing.spacing4) {
+                    ListingMasonryGridView(items: viewModel.items, columnSpacing: gridSpacing) { item, index in
+                        ExploreListingCell(
+                            item: item,
+                            index: index,
+                            isGuestMode: isGuestMode,
+                            openListingAsFullScreen: openListingAsFullScreen,
+                            viewModel: viewModel,
+                            router: router,
+                            deps: deps
+                        )
+                    }
+                }
+                .padding(.top, spacing.spacing2)
+                .opacity(viewModel.isReloadingListings ? 0.72 : 1)
+                .animation(.easeInOut(duration: 0.2), value: viewModel.isReloadingListings)
+                .allowsHitTesting(!viewModel.isReloadingListings)
+
+                if viewModel.isReloadingListings {
+                    ProgressView()
+                        .tint(FashColors.brandPrimary)
+                        .scaleEffect(1.05)
+                        .padding(.top, spacing.spacing6)
+                }
             }
 
             if viewModel.isLoadingMore {
@@ -271,43 +306,47 @@ struct ExploreScreen: View {
 
     private var sellersDiscoveryColumn: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: spacing.spacing3, pinnedViews: [.sectionHeaders]) {
-                Section {
-                    sellersExpandedHeader
-                    Text(L10n.exploreSellersSubtitle)
-                        .font(FashTypography.bodyMedium)
-                        .foregroundStyle(FashColors.textSecondary)
-                        .padding(.horizontal, spacing.editorialStart)
+            LazyVStack(alignment: .leading, spacing: spacing.spacing3) {
+                Color.clear
+                    .frame(height: 1)
+                    .exploreExpandedHeaderScrollReporting()
 
-                    if !viewModel.featuredSellers.isEmpty {
+                sellersExpandedHeader
+
+                Text(L10n.exploreSellersSubtitle)
+                    .font(FashTypography.bodyMedium)
+                    .foregroundStyle(FashColors.textSecondary)
+                    .padding(.horizontal, spacing.editorialStart)
+
+                if !viewModel.featuredSellers.isEmpty {
                         ExploreFeaturedSellersSection(
                             sellers: viewModel.featuredSellers,
                             onSellerClick: { seller in onFeaturedSellerClick(seller.toUserSearchResult()) },
                             onSeeAllClick: onSeeAllFeaturedSellers
                         )
                         .padding(.horizontal, spacing.editorialStart)
-                    }
+                }
 
-                    if viewModel.sellersLoading && viewModel.sellerResults.isEmpty {
+                if viewModel.sellersLoading && viewModel.sellerResults.isEmpty {
                         FashSkeleton.box(height: 132, cornerRadius: spacing.radiusSoftMin)
                             .padding(.horizontal, spacing.editorialStart)
                         ForEach(0..<4, id: \.self) { _ in
                             FashSkeleton.box(height: 220, cornerRadius: spacing.radiusSoftMin)
                                 .padding(.horizontal, spacing.editorialStart)
                         }
-                    } else if viewModel.sellersLoadError && viewModel.sellerResults.isEmpty {
+                } else if viewModel.sellersLoadError && viewModel.sellerResults.isEmpty {
                         FashEmptyStateView(title: L10n.feedLoadError, actionTitle: L10n.feedRetry) {
                             Task { await viewModel.retrySellerBrowse(deps: deps, isGuestMode: isGuestMode) }
                         }
                         .padding(.horizontal, spacing.editorialStart)
-                    } else if !viewModel.sellersLoading && viewModel.sellerResults.isEmpty {
+                } else if !viewModel.sellersLoading && viewModel.sellerResults.isEmpty {
                         FashEmptyStateView(
                             title: L10n.exploreSellersEmpty,
                             subtitle: L10n.exploreSellersSearchPlaceholder
                         )
                         .padding(.horizontal, spacing.editorialStart)
-                    } else {
-                        ForEach(viewModel.sellerResults) { seller in
+                } else {
+                    ForEach(viewModel.sellerResults) { seller in
                             let storeKey = seller.userId.trimmingCharacters(in: .whitespaces).isEmpty
                                 ? seller.username.trimmingCharacters(in: .whitespaces)
                                 : seller.userId.trimmingCharacters(in: .whitespaces)
@@ -326,19 +365,21 @@ struct ExploreScreen: View {
                                 }
                             )
                             .padding(.horizontal, spacing.editorialStart)
-                        }
-                        HomeBrandFooterStrip()
                     }
-                } header: {
-                    if showStickyChrome {
-                        exploreStickyChromeHeader
-                    }
+                    HomeBrandFooterStrip()
                 }
             }
             .padding(.bottom, promoDockInset + spacing.spacing4)
         }
         .background(FashColors.screen)
         .coordinateSpace(name: "exploreFeedScroll")
+        .overlay(alignment: .top) {
+            if showsStickyChromeOverlay {
+                exploreStickyChromeHeader
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .animation(.easeInOut(duration: 0.22), value: showsStickyChromeOverlay)
         .refreshable { await viewModel.pullToRefresh(deps: deps, isGuestMode: isGuestMode) }
     }
 }

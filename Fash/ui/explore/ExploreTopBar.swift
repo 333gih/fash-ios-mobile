@@ -46,19 +46,17 @@ struct ExploreTopBar: View {
 
     @ViewBuilder
     private var titleOrSearch: some View {
-        ZStack(alignment: .leading) {
+        Group {
             switch titleSlot {
             case .idle:
                 idleTitle
-                    .transition(exploreTopBarContentTransition)
             case .compact:
                 compactSearchChip
-                    .transition(exploreTopBarContentTransition)
             case .expanded:
                 searchField
-                    .transition(exploreTopBarContentTransition)
             }
         }
+        .id(titleSlot)
         .frame(maxWidth: .infinity, alignment: .leading)
         .frame(height: 48)
         .animation(exploreTopBarContentAnimation, value: titleSlot)

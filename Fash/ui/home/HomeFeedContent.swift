@@ -82,7 +82,7 @@ struct HomeFeedContent: View {
         }
         .task {
             viewModel.normalizeSelectedFeedTab(isGuestMode: isGuestMode, deps: deps)
-            await viewModel.loadShell(deps: deps, isGuestMode: isGuestMode)
+            await viewModel.loadShell(deps: deps, isGuestMode: isGuestMode, skipIfFresh: true)
         }
         .onChange(of: isGuestMode) { _, guest in
             viewModel.normalizeSelectedFeedTab(isGuestMode: guest, deps: deps)

@@ -107,7 +107,12 @@ final class HomeViewModel {
         }
     }
 
-    func loadShell(deps: AppDependencies, isGuestMode: Bool) async {
+    func loadShell(deps: AppDependencies, isGuestMode: Bool, skipIfFresh: Bool = false) async {
+        if skipIfFresh, isLaunchShellFresh {
+            normalizeSelectedFeedTab(isGuestMode: isGuestMode, deps: deps)
+            ensureTabLoaded(selectedFeedTab, deps: deps, isGuestMode: isGuestMode)
+            return
+        }
         isShellLoading = true
         errorMessage = nil
         defer { isShellLoading = false }
@@ -273,6 +278,13 @@ final class HomeViewModel {
     }
 
     // MARK: - Private
+
+    /// Shell was prefetched on the launch waiting screen — skip duplicate network on first Home appear.
+    private var isLaunchShellFresh: Bool {
+        guard let lastSuccessfulRefreshAt else { return false }
+        guard Date().timeIntervalSince(lastSuccessfulRefreshAt) < 120 else { return false }
+        return !items.isEmpty && (!promoSlides.isEmpty || !featuredSellers.isEmpty)
+    }
 
     private func invalidateAllTabFeeds() {
         tabLoadTasks.values.forEach { $0.cancel() }

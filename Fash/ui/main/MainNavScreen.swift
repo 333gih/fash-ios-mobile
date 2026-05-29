@@ -3,11 +3,10 @@ import SwiftUI
 struct MainNavScreen: View {
     @Environment(AppDependencies.self) private var deps
     @Bindable var router: AppRouter
+    @Bindable var homeVM: HomeViewModel
+    @Bindable var exploreVM: ExploreViewModel
     var isGuestMode = false
     var onRequestSignIn: ((String) -> Void)? = nil
-
-    @State private var homeVM = HomeViewModel()
-    @State private var exploreVM = ExploreViewModel()
     @State private var profileVM = ProfileViewModel()
     @State private var chatVM = ChatViewModel()
     @State private var ordersVM = OrdersViewModel()
