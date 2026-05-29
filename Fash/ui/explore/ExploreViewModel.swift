@@ -267,12 +267,10 @@ final class ExploreViewModel {
         async let catalog: Void = loadFilterCatalogIfNeeded(deps: deps)
         async let chips: Void = loadQuickInterestChips(deps: deps)
         async let sellers: Void = loadFeaturedSellers(deps: deps, isGuestMode: isGuestMode)
-        async let feed: Void = {
-            if items.isEmpty {
-                await fetchListingsFirstPage(deps: deps, isGuestMode: isGuestMode)
-            }
-        }()
-        _ = await (overlay, catalog, chips, sellers, feed)
+        _ = await (overlay, catalog, chips, sellers)
+        if items.isEmpty {
+            await fetchListingsFirstPage(deps: deps, isGuestMode: isGuestMode)
+        }
     }
 
     func selectSearchSuggestionAndSubmit(_ text: String, deps: AppDependencies, isGuestMode: Bool) async {
