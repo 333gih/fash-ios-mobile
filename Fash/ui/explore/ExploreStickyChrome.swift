@@ -102,16 +102,19 @@ private struct ExploreStickyActiveSearchRow: View {
     }
 }
 
-/// Reports vertical scroll offset (positive = scrolled down) for Explore collapse chrome.
+/// Reports vertical scroll offset (positive = scrolled down) for Explore sticky chrome.
 struct ExploreScrollOffsetKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = max(value, nextValue())
+        value = nextValue()
     }
 }
 
 extension View {
-    func exploreScrollOffsetTracking(space: String = "exploreScroll", onChange: @escaping (CGFloat) -> Void) -> some View {
+    func exploreScrollOffsetTracking(
+        space: String = "exploreScroll",
+        onChange: @escaping (CGFloat) -> Void
+    ) -> some View {
         background(
             GeometryReader { geo in
                 let minY = geo.frame(in: .named(space)).minY
@@ -119,5 +122,18 @@ extension View {
             }
         )
         .onPreferenceChange(ExploreScrollOffsetKey.self, perform: onChange)
+    }
+}
+
+/// Android `showStickyExploreChrome`: show/hide compact header overlay without reflowing feed content.
+enum ExploreStickyChromePolicy {
+    static let showThreshold: CGFloat = 88
+    static let hideThreshold: CGFloat = 72
+
+    static func shouldShowSticky(currentlyShown: Bool, scrollOffset: CGFloat) -> Bool {
+        if currentlyShown {
+            return scrollOffset > hideThreshold
+        }
+        return scrollOffset > showThreshold
     }
 }
