@@ -23,9 +23,7 @@ struct HomeRecommendedSellersSection: View {
                             .foregroundStyle(FashColors.textSecondary)
                     }
                     Spacer(minLength: 8)
-                    Button(L10n.exploreSeeAll, action: onSeeAllClick)
-                        .font(FashTypography.labelMedium)
-                        .foregroundStyle(FashColors.brandPrimary)
+                    FashSeeAllButton(action: onSeeAllClick)
                 }
                 .padding(.leading, edgeStart)
                 .padding(.trailing, edgeEnd)

@@ -9,6 +9,7 @@ struct CreateListingFlowHeader: View {
     var showStepCaptionUnderTitle: Bool = false
     var showPrimaryAction: Bool = true
     let canProceed: Bool
+    var nextBlockedReason: String? = nil
     let isSubmitting: Bool
     let onBack: () -> Void
     let onClose: () -> Void
@@ -49,6 +50,14 @@ struct CreateListingFlowHeader: View {
             }
 
             OnboardingProgressBar(step: step, total: totalPostSteps)
+            if let nextBlockedReason, !canProceed, !nextBlockedReason.isEmpty {
+                Text(nextBlockedReason)
+                    .font(FashTypography.bodySmall)
+                    .foregroundStyle(FashColors.error)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, spacing.spacing3)
+            }
         }
         .padding(.horizontal, spacing.spacing1)
         .padding(.bottom, spacing.spacing2)

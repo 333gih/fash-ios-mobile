@@ -16,23 +16,13 @@ struct ListingGridCard: View {
         static let rowSpacing: CGFloat = 2
         static let paddingH: CGFloat = 8
         static let paddingV: CGFloat = 6
-        static let priceRow: CGFloat = 20
-        static let titleRow: CGFloat = 16
-        static let conditionRow: CGFloat = 20
-        static let secondaryRow: CGFloat = 14
-        static let sellerRow: CGFloat = 14
-
-        static func fullContentHeight() -> CGFloat {
-            let rows = priceRow + titleRow + conditionRow + secondaryRow + sellerRow
-            return rows + rowSpacing * 4 + paddingV * 2
-        }
-
-        static func compactContentHeight(hasTitle: Bool) -> CGFloat {
-            var rows = priceRow + sellerRow
-            if hasTitle { rows += titleRow }
-            let gaps: CGFloat = hasTitle ? rowSpacing * 2 : rowSpacing
-            return rows + gaps + paddingV * 2
-        }
+        static let priceMinHeight: CGFloat = 20
+        static let titleLineHeight: CGFloat = 16
+        static let metaLineHeight: CGFloat = 14
+        static let sellerLineHeight: CGFloat = 14
+        /// Max share of tile height for footer — keeps @user + condition visible on short masonry cells.
+        static let maxFooterHeightFraction: CGFloat = 0.58
+        static let gradientBleedAboveContent: CGFloat = 20
     }
 
     private var shape: RoundedRectangle {
@@ -50,13 +40,6 @@ struct ListingGridCard: View {
         item.title.trimmingCharacters(in: .whitespaces)
     }
 
-    private var footerHeight: CGFloat {
-        if compactFooter {
-            return FooterMetrics.compactContentHeight(hasTitle: !displayTitle.isEmpty)
-        }
-        return FooterMetrics.fullContentHeight()
-    }
-
     var body: some View {
         GeometryReader { geo in
             let cardW = geo.size.width
@@ -65,8 +48,7 @@ struct ListingGridCard: View {
                 Button(action: onTap) {
                     ZStack(alignment: .bottomLeading) {
                         imageLayer
-                        footerGradient(height: max(footerHeight + 12, 108))
-                        footerContent
+                        footerOverlay(cardHeight: cardH)
                     }
                     .frame(width: cardW, height: cardH)
                     .clipShape(shape)
@@ -79,7 +61,6 @@ struct ListingGridCard: View {
 
                 topTrailingBadges
                     .frame(width: cardW, height: cardH, alignment: .topTrailing)
-                    .padding(.top, showQuickActions ? 44 : 0)
                     .allowsHitTesting(false)
 
                 if showQuickActions {
@@ -116,15 +97,19 @@ struct ListingGridCard: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private func footerGradient(height: CGFloat) -> some View {
-        LinearGradient(
-            colors: [.clear, Color.black.opacity(0.82)],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-        .frame(maxWidth: .infinity)
-        .frame(height: height)
-        .frame(maxHeight: .infinity, alignment: .bottom)
+    private func footerOverlay(cardHeight: CGFloat) -> some View {
+        let maxFooterH = cardHeight * FooterMetrics.maxFooterHeightFraction
+        return footerContent
+            .frame(maxWidth: .infinity, maxHeight: maxFooterH, alignment: .bottom)
+            .background(alignment: .bottom) {
+                LinearGradient(
+                    colors: [.clear, Color.black.opacity(0.82)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .padding(.top, -FooterMetrics.gradientBleedAboveContent)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var footerContent: some View {
@@ -132,14 +117,12 @@ struct ListingGridCard: View {
             priceRow
             titleRow
             if !compactFooter {
-                conditionRow
-                secondaryMetaRow
+                metaRow
             }
             sellerRow
         }
         .padding(.horizontal, FooterMetrics.paddingH)
         .padding(.vertical, FooterMetrics.paddingV)
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var priceRow: some View {
@@ -164,57 +147,50 @@ struct ListingGridCard: View {
                 .layoutPriority(1)
             }
         }
-        .frame(height: FooterMetrics.priceRow, alignment: .center)
+        .frame(minHeight: FooterMetrics.priceMinHeight)
     }
 
     @ViewBuilder
     private var titleRow: some View {
-        Group {
-            if !displayTitle.isEmpty {
-                FashMarqueeText(
-                    text: displayTitle,
-                    font: FashTypography.bodySmall,
-                    fontWeight: .semibold,
-                    color: .white,
-                    lineHeight: FooterMetrics.titleRow
-                )
-            } else {
-                Color.clear
-            }
+        if !displayTitle.isEmpty {
+            FashMarqueeText(
+                text: displayTitle,
+                font: FashTypography.bodySmall,
+                fontWeight: .semibold,
+                color: .white,
+                lineHeight: FooterMetrics.titleLineHeight
+            )
         }
-        .frame(
-            height: compactFooter ? (displayTitle.isEmpty ? 0 : FooterMetrics.titleRow) : FooterMetrics.titleRow,
-            alignment: .leading
-        )
     }
 
+    /// Condition pill + secondary meta on one row when both exist — Android [ListingCardMetaRow].
     @ViewBuilder
-    private var conditionRow: some View {
-        Group {
-            if !meta.conditionLabel.isEmpty {
+    private var metaRow: some View {
+        if meta.conditionLabel.isEmpty && meta.secondary.isEmpty {
+            EmptyView()
+        } else if !meta.conditionLabel.isEmpty && !meta.secondary.isEmpty {
+            HStack(alignment: .center, spacing: 6) {
                 conditionPill(meta.conditionLabel)
-            } else {
-                Color.clear
-            }
-        }
-        .frame(height: FooterMetrics.conditionRow, alignment: .leading)
-    }
-
-    @ViewBuilder
-    private var secondaryMetaRow: some View {
-        Group {
-            if !meta.secondary.isEmpty {
                 FashMarqueeText(
                     text: meta.secondary,
                     font: FashTypography.labelSmall,
                     color: .white.opacity(0.92),
-                    lineHeight: FooterMetrics.secondaryRow
+                    lineHeight: FooterMetrics.metaLineHeight
                 )
-            } else {
-                Color.clear
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .frame(minHeight: FooterMetrics.metaLineHeight)
+        } else if !meta.conditionLabel.isEmpty {
+            conditionPill(meta.conditionLabel)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+            FashMarqueeText(
+                text: meta.secondary,
+                font: FashTypography.labelSmall,
+                color: .white.opacity(0.92),
+                lineHeight: FooterMetrics.metaLineHeight
+            )
         }
-        .frame(height: FooterMetrics.secondaryRow, alignment: .leading)
     }
 
     private var sellerRow: some View {
@@ -222,9 +198,10 @@ struct ListingGridCard: View {
             text: sellerLine,
             font: FashTypography.labelSmall,
             color: .white.opacity(0.88),
-            lineHeight: FooterMetrics.sellerRow
+            lineHeight: FooterMetrics.sellerLineHeight
         )
-        .frame(height: FooterMetrics.sellerRow, alignment: .leading)
+        .frame(minHeight: FooterMetrics.sellerLineHeight, alignment: .leading)
+        .layoutPriority(1)
     }
 
     private func conditionPill(_ label: String) -> some View {
@@ -237,8 +214,8 @@ struct ListingGridCard: View {
             .padding(.vertical, 3)
             .background(Color.white.opacity(0.24))
             .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
-            .frame(maxWidth: 160, alignment: .leading)
-            .fixedSize(horizontal: true, vertical: false)
+            .frame(maxWidth: 112, alignment: .leading)
+            .fixedSize(horizontal: true, vertical: true)
     }
 
     @ViewBuilder

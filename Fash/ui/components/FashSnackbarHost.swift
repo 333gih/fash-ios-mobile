@@ -92,3 +92,28 @@ struct FashSnackbarHost: View {
         }
     }
 }
+
+/// Shows [AppDependencies.snackbarMessage] above the current screen (incl. fullScreenCover).
+struct FashSnackbarOverlayModifier: ViewModifier {
+    @Environment(AppDependencies.self) private var deps
+
+    func body(content: Content) -> some View {
+        content
+            .overlay(alignment: .bottom) {
+                if let message = deps.snackbarMessage {
+                    FashSnackbarHost(message: message) {
+                        deps.dismissSnackbar()
+                    }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .zIndex(1)
+                }
+            }
+            .animation(.easeInOut(duration: 0.22), value: deps.snackbarMessage)
+    }
+}
+
+extension View {
+    func fashSnackbarOverlay() -> some View {
+        modifier(FashSnackbarOverlayModifier())
+    }
+}

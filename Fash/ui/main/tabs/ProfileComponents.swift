@@ -672,7 +672,11 @@ struct ProfileQuickActionsCard: View {
                 if !username.isEmpty {
                     quickRow(icon: "square.and.arrow.up", title: L10n.profileShareShopTitle, subtitle: L10n.profileShareShopSubtitle) {
                         ProfileShare.launch(username: username, displayName: displayName) { completed in
-                            if completed { deps.showSnackbar(L10n.shareProfileSuccess) }
+                            FashActivityShare.showSuccessIfNeeded(
+                                completed,
+                                message: L10n.shareProfileSuccess,
+                                deps: deps
+                            )
                         }
                     }
                     Divider().padding(.horizontal, 14).opacity(0.35)

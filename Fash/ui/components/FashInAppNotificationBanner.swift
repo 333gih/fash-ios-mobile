@@ -40,3 +40,43 @@ struct FashInAppNotificationBanner: View {
         }
     }
 }
+
+/// Top transient notification — visible on the active screen (incl. fullScreenCover).
+struct FashInAppNotificationOverlayModifier: ViewModifier {
+    @Environment(AppDependencies.self) private var deps
+
+    func body(content: Content) -> some View {
+        content
+            .overlay(alignment: .top) {
+                if let session = deps.inAppNotification,
+                   !session.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    || !session.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    FashInAppNotificationBanner(
+                        session: session,
+                        onTap: {
+                            guard let router = deps.navigationRouter else {
+                                deps.dismissInAppNotification()
+                                return
+                            }
+                            RealtimeNotificationRouter.handleInAppBannerTap(
+                                session: session,
+                                deps: deps,
+                                router: router
+                            )
+                        },
+                        onDismiss: { deps.dismissInAppNotification() }
+                    )
+                    .safeAreaPadding(.top, 0)
+                    .zIndex(1)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
+            }
+            .animation(.easeInOut(duration: 0.22), value: deps.inAppNotification)
+    }
+}
+
+extension View {
+    func fashInAppNotificationOverlay() -> some View {
+        modifier(FashInAppNotificationOverlayModifier())
+    }
+}

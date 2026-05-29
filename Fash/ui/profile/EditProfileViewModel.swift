@@ -11,6 +11,7 @@ final class EditProfileViewModel {
     var selectedTagIds: Set<String> = []
     var tags: [CommonAestheticTagDto] = []
     var referenceSize = ""
+    var genderPreference = "women"
     var isLoading = true
     var isSubmitting = false
     var errorMessage: String?
@@ -67,7 +68,10 @@ final class EditProfileViewModel {
             username: username.trimmingCharacters(in: .whitespaces).nilIfEmpty,
             bio: bio.trimmingCharacters(in: .whitespaces),
             aestheticTags: tagItems,
-            referenceSize: referenceSize.trimmingCharacters(in: .whitespaces).nilIfEmpty
+            referenceSize: SizingReferenceGuide.normalizedReferenceSizeForStorage(
+                referenceSize,
+                genderPreference: genderPreference
+            )
         )
         switch await deps.userRepository.updateProfile(patch) {
         case .success:

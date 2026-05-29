@@ -20,33 +20,51 @@ struct EditProfileScreen: View {
                             field(L10n.editProfileDisplayNameLabel, text: $viewModel.displayName)
                             field(L10n.editProfileUsernameLabel, text: $viewModel.username)
                             field(L10n.editProfileBioLabel, text: $viewModel.bio, axis: true)
-                            field(L10n.profileSizingRefTitle, text: $viewModel.referenceSize)
+                            ReferenceSizePickerSection(
+                                referenceSize: $viewModel.referenceSize,
+                                genderPreference: viewModel.genderPreference,
+                                label: L10n.profileSetupReferenceSizeLabel
+                            )
                             aestheticSection
                             if let err = viewModel.errorMessage {
                                 Text(err)
                                     .font(FashTypography.bodySmall)
                                     .foregroundStyle(FashColors.error)
                             }
-                            FashPrimaryButton(
-                                title: L10n.editProfileSaveChanges,
-                                isLoading: viewModel.isSubmitting,
-                                enabled: viewModel.canSave
-                            ) {
-                                Task {
-                                    if await viewModel.save(deps: deps) {
-                                        onDismiss()
-                                    }
-                                }
-                            }
                         }
                         .padding(spacing.editorialStart)
-                        .padding(.bottom, spacing.spacing6)
+                        .padding(.bottom, spacing.spacing3)
                     }
                 }
             }
             .background(FashColors.screen)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if !viewModel.isLoading {
+                    saveBar
+                }
+            }
         }
         .task { await viewModel.load(deps: deps) }
+    }
+
+    private var saveBar: some View {
+        VStack(spacing: 0) {
+            Divider().overlay(FashColors.outlineMuted.opacity(0.72))
+            FashPrimaryButton(
+                title: L10n.editProfileSaveChanges,
+                isLoading: viewModel.isSubmitting,
+                enabled: viewModel.canSave
+            ) {
+                Task {
+                    if await viewModel.save(deps: deps) {
+                        onDismiss()
+                    }
+                }
+            }
+            .padding(.horizontal, spacing.editorialStart)
+            .padding(.vertical, 12)
+        }
+        .background(FashColors.surface)
     }
 
     private func field(_ title: String, text: Binding<String>, axis: Bool = false) -> some View {

@@ -63,24 +63,25 @@ struct SellerProfileScreen: View {
                     }
                 }
 
-                if showPromoFooter, !promoSlides.isEmpty {
+                if !promoSlides.isEmpty {
                     StickyBottomPromoBar {
                         FashPromoSliderView(slides: promoSlides) { slide, _ in
                             onDismiss()
                             deps.navigationRouter?.handlePromoSlideClick(slide)
                         }
                     }
-                    .transition(
-                        .asymmetric(
-                            insertion: .opacity.combined(with: .move(edge: .bottom)),
-                            removal: .opacity.combined(with: .move(edge: .bottom))
-                        )
-                    )
+                    .opacity(showPromoFooter ? 1 : 0)
+                    .offset(y: showPromoFooter ? 0 : 48)
+                    .allowsHitTesting(showPromoFooter)
+                    .accessibilityHidden(!showPromoFooter)
                 }
             }
             .animation(.easeInOut(duration: 0.24), value: showPromoFooter)
         }
         .background(FashColors.screen)
+        .onChange(of: username) { _, _ in
+            showPromoFooter = false
+        }
         .task(id: username) {
             await viewModel.loadForSeller(username, deps: deps, isGuestMode: isGuestMode)
             if case .success(let response) = await deps.advertisingRepository.getSlides(publicBrowse: isGuestMode) {
@@ -107,7 +108,11 @@ struct SellerProfileScreen: View {
                         username: handle,
                         displayName: viewModel.profile?.displayName
                     ) { completed in
-                        if completed { deps.showSnackbar(L10n.shareProfileSuccess) }
+                        FashActivityShare.showSuccessIfNeeded(
+                            completed,
+                            message: L10n.shareProfileSuccess,
+                            deps: deps
+                        )
                     }
                 } label: {
                     Image(systemName: "square.and.arrow.up")

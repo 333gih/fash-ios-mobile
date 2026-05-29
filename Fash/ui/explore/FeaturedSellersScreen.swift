@@ -12,7 +12,7 @@ struct FeaturedSellersScreen: View {
     var body: some View {
         OverlayScreenHost(title: L10n.featuredSellersAllTitle, onDismiss: onDismiss) {
             ScrollView {
-                if viewModel.isLoading && viewModel.items.isEmpty {
+                if (viewModel.isLoading || viewModel.isRefreshing) && viewModel.items.isEmpty {
                     loadingSkeleton
                 } else if viewModel.loadError && viewModel.items.isEmpty {
                     FashEmptyStateView(
@@ -62,7 +62,7 @@ struct FeaturedSellersScreen: View {
             }
         }
         .task {
-            await viewModel.ensureLoaded(deps: deps, isGuestMode: isGuestMode)
+            await viewModel.reloadOnPresent(deps: deps, isGuestMode: isGuestMode)
         }
     }
 

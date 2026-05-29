@@ -18,9 +18,39 @@ enum ListingMasonryGrid {
         }
         return hash
     }
+
+    /// One lazy row (up to two tiles) — Android `listingMasonryFeedRows` for long feeds.
+    struct FeedRow: Identifiable {
+        let id: String
+        let left: (index: Int, item: ListingFeedItem)
+        let right: (index: Int, item: ListingFeedItem)?
+
+        static func build(from items: [ListingFeedItem]) -> [FeedRow] {
+            guard !items.isEmpty else { return [] }
+            var rows: [FeedRow] = []
+            rows.reserveCapacity((items.count + 1) / 2)
+            var index = 0
+            while index < items.count {
+                let leftItem = items[index]
+                let left = (index, leftItem)
+                let right: (Int, ListingFeedItem)?
+                if index + 1 < items.count {
+                    right = (index + 1, items[index + 1])
+                } else {
+                    right = nil
+                }
+                rows.append(FeedRow(id: leftItem.id, left: left, right: right))
+                index += 2
+            }
+            return rows
+        }
+    }
 }
 
-/// Two-column masonry listing grid — Android `LazyVerticalStaggeredGrid` + `ListingMasonryGrid`.
+/// Two-column masonry listing grid — Android `ListingMasonryGrid` (non-lazy columns).
+///
+/// Uses `VStack` per column instead of nested `LazyVStack` inside `ScrollView`, which causes
+/// phantom gaps while loading or fast-scrolling (SwiftUI nested-lazy height miscalculation).
 struct ListingMasonryGridView<Content: View>: View {
     @Environment(\.fashSpacing) private var spacing
 
@@ -57,11 +87,48 @@ struct ListingMasonryGridView<Content: View>: View {
 
     @ViewBuilder
     private func masonryColumn(_ column: [(index: Int, item: ListingFeedItem)]) -> some View {
-        LazyVStack(spacing: gap) {
+        VStack(spacing: gap) {
             ForEach(column, id: \.item.id) { entry in
                 content(entry.item, entry.index)
             }
         }
         .frame(maxWidth: .infinity, alignment: .top)
+    }
+}
+
+/// Virtualized masonry rows for long feeds inside `ScrollView` + `LazyVStack` (Explore, etc.).
+struct ListingMasonryLazyRows<Content: View>: View {
+    @Environment(\.fashSpacing) private var spacing
+
+    let items: [ListingFeedItem]
+    var columnSpacing: CGFloat?
+    var leadingPadding: CGFloat?
+    var trailingPadding: CGFloat?
+    @ViewBuilder let content: (ListingFeedItem, Int) -> Content
+
+    private var gap: CGFloat { columnSpacing ?? spacing.spacing2 }
+    private var edgeStart: CGFloat { leadingPadding ?? spacing.editorialStart }
+    private var edgeEnd: CGFloat { trailingPadding ?? spacing.editorialEnd }
+
+    private var rows: [ListingMasonryGrid.FeedRow] {
+        ListingMasonryGrid.FeedRow.build(from: items)
+    }
+
+    var body: some View {
+        ForEach(rows) { row in
+            HStack(alignment: .top, spacing: gap) {
+                content(row.left.item, row.left.index)
+                    .frame(maxWidth: .infinity)
+                if let right = row.right {
+                    content(right.item, right.index)
+                        .frame(maxWidth: .infinity)
+                } else {
+                    Color.clear
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            .padding(.leading, edgeStart)
+            .padding(.trailing, edgeEnd)
+        }
     }
 }

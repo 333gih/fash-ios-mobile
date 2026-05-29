@@ -17,43 +17,55 @@ struct FashMarqueeText: View {
     @State private var marqueeTask: Task<Void, Never>?
 
     private var overflow: CGFloat { max(0, textWidth - containerWidth) }
-    private var shouldScroll: Bool { overflow > 1 && !text.isEmpty }
+    private var shouldScroll: Bool { overflow > 1 && !text.isEmpty && containerWidth > 1 }
 
     var body: some View {
         GeometryReader { geo in
-            Text(text)
-                .font(font.weight(fontWeight))
-                .foregroundStyle(color)
-                .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
-                .background {
-                    GeometryReader { textGeo in
-                        Color.clear
-                            .preference(key: FashMarqueeTextWidthKey.self, value: textGeo.size.width)
-                    }
+            ZStack(alignment: .leading) {
+                Text(text)
+                    .font(font.weight(fontWeight))
+                    .foregroundStyle(color)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .opacity(shouldScroll ? 0 : 1)
+
+                if shouldScroll {
+                    Text(text)
+                        .font(font.weight(fontWeight))
+                        .foregroundStyle(color)
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                        .background {
+                            GeometryReader { textGeo in
+                                Color.clear
+                                    .preference(key: FashMarqueeTextWidthKey.self, value: textGeo.size.width)
+                            }
+                        }
+                        .offset(x: offset)
                 }
-                .offset(x: offset)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-                .onPreferenceChange(FashMarqueeTextWidthKey.self) { width in
-                    textWidth = width
-                    restartMarquee()
-                }
-                .onAppear {
-                    containerWidth = geo.size.width
-                    restartMarquee()
-                }
-                .onChange(of: geo.size.width) { _, width in
-                    containerWidth = width
-                    restartMarquee()
-                }
-                .onChange(of: text) { _, _ in
-                    restartMarquee()
-                }
-                .onDisappear {
-                    marqueeTask?.cancel()
-                    marqueeTask = nil
-                    offset = 0
-                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            .onPreferenceChange(FashMarqueeTextWidthKey.self) { width in
+                textWidth = width
+                restartMarquee()
+            }
+            .onAppear {
+                containerWidth = geo.size.width
+                restartMarquee()
+            }
+            .onChange(of: geo.size.width) { _, width in
+                containerWidth = width
+                restartMarquee()
+            }
+            .onChange(of: text) { _, _ in
+                restartMarquee()
+            }
+            .onDisappear {
+                marqueeTask?.cancel()
+                marqueeTask = nil
+                offset = 0
+            }
         }
         .frame(height: lineHeight)
         .clipped()

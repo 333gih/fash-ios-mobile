@@ -149,7 +149,7 @@ struct InviteFriendsScreen: View {
 
     private func shareInvite() {
         FashActivityShare.present(activityItems: [L10n.inviteShareSubject, shareBody]) { completed in
-            if completed { deps.showSnackbar(L10n.shareInviteSuccess) }
+            FashActivityShare.showSuccessIfNeeded(completed, message: L10n.shareInviteSuccess, deps: deps)
         }
     }
 

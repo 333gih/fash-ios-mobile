@@ -155,11 +155,13 @@ struct ExploreFilterSheet: View {
     private var countryPicker: some View {
         Menu {
             Button(L10n.exploreFilterCountryAny) {
+                viewModel.selectedCountryId = nil
                 viewModel.selectedCountryIso2 = nil
                 viewModel.selectedCountryName = nil
             }
             ForEach(viewModel.countries, id: \.id) { country in
                 Button(country.name) {
+                    viewModel.selectedCountryId = country.id
                     viewModel.selectedCountryIso2 = country.iso2
                     viewModel.selectedCountryName = country.name
                 }

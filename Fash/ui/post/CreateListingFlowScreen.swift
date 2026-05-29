@@ -32,6 +32,11 @@ struct CreateListingFlowScreen: View {
         } message: {
             Text(L10n.createListingDiscardMessage)
         }
+        .onChange(of: postVM.eventMessage) { _, message in
+            guard let message, !message.isEmpty else { return }
+            deps.showSnackbar(message)
+            postVM.eventMessage = nil
+        }
         .sheet(isPresented: $showAddAddress) {
             AddEditAddressScreen(
                 addressVM: addressVM,
@@ -54,6 +59,7 @@ struct CreateListingFlowScreen: View {
                 step: postVM.step,
                 showBack: postVM.step > 1,
                 canProceed: postVM.draft.canProceedFromStep(postVM.step),
+                nextBlockedReason: postVM.draft.nextStepBlockedReason(step: postVM.step),
                 isSubmitting: postVM.isSubmitting || postVM.isUploading,
                 onBack: { postVM.prevStep() },
                 onClose: handleCloseAttempt,

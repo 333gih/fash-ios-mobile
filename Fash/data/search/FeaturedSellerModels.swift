@@ -86,9 +86,12 @@ enum FeaturedSellerParser {
         for key in itemArrayKeys {
             if let rows = obj[key] as? [[String: Any]] { return rows }
         }
-        if let envelope = obj["data"] as? [String: Any] {
-            for key in itemArrayKeys where key != "data" {
-                if let rows = envelope[key] as? [[String: Any]] { return rows }
+        if let data = obj["data"] {
+            if let rows = data as? [[String: Any]] { return rows }
+            if let envelope = data as? [String: Any] {
+                for key in itemArrayKeys where key != "data" {
+                    if let rows = envelope[key] as? [[String: Any]] { return rows }
+                }
             }
         }
         return []
@@ -115,10 +118,7 @@ enum FeaturedSellerParser {
         }
         previewIds = Array(previewIds.prefix(3))
 
-        let userId = ["user_id", "UserID", "userId", "userID"]
-            .compactMap { o[$0] as? String }
-            .first(where: { !$0.trimmingCharacters(in: .whitespaces).isEmpty })?
-            .trimmingCharacters(in: .whitespaces) ?? ""
+        let userId = optString(o, "user_id", "UserID", "userId", "userID")
 
         let item = FeaturedSellerItem(
             userId: userId,
@@ -138,7 +138,11 @@ enum FeaturedSellerParser {
     private static func optString(_ o: [String: Any], _ keys: String...) -> String {
         for key in keys {
             if let s = o[key] as? String {
-                let t = s.trimmingCharacters(in: .whitespaces)
+                let t = s.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !t.isEmpty { return t }
+            }
+            if let n = o[key] as? NSNumber {
+                let t = n.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
                 if !t.isEmpty { return t }
             }
         }

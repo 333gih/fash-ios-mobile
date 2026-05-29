@@ -13,9 +13,15 @@ final class FeaturedSellersViewModel {
     var totalCount = 0
     var previewCoverUrlsBySellerKey: [String: [String?]] = [:]
 
+    /// Android `ReloadWhenVisible` + `refresh()` when the see-all overlay opens.
+    func reloadOnPresent(deps: AppDependencies, isGuestMode: Bool) async {
+        guard !isLoading, !isRefreshing else { return }
+        await refresh(deps: deps, isGuestMode: isGuestMode)
+    }
+
     func ensureLoaded(deps: AppDependencies, isGuestMode: Bool) async {
         guard items.isEmpty else { return }
-        guard !isRefreshing else { return }
+        guard !isLoading, !isRefreshing else { return }
         await load(deps: deps, isGuestMode: isGuestMode)
     }
 
@@ -109,14 +115,11 @@ final class FeaturedSellersViewModel {
                 return .failure(error)
             case .success(let page):
                 total = page.total
-                if page.items.isEmpty { break }
-                let before = accumulated.count
                 for seller in page.items {
                     let key = seller.sellerKey
                     guard !key.isEmpty, seen.insert(key).inserted else { continue }
                     accumulated.append(seller)
                 }
-                if accumulated.count == before { break }
                 if page.items.count < pageSize { break }
                 if total > 0, accumulated.count >= total { break }
                 offset += page.items.count

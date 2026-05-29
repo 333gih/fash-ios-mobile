@@ -4,7 +4,7 @@ import CoreGraphics
 enum FashPromoMetrics {
     /// Standard card on Orders, Chat, Explore, Notifications, Profile seller.
     static let carouselHeight: CGFloat = 112
-    /// Home feed footer only — Android `FashPromoCompactCarouselCardHeight`.
+    /// Optional compact variant (legacy); Home/Orders use [carouselHeight] — Android `FashStickyPromoDockHeight`.
     static let compactCarouselHeight: CGFloat = 72
     /// Right strip width as fraction of card width when a banner image is shown.
     static let imageStripWidthFraction: CGFloat = 0.38
@@ -22,3 +22,4 @@ enum FashPromoMetrics {
 
 /// Default dock for standard promo footer — Android `FashStickyPromoDockHeight`.
 let FashStickyPromoDockHeight: CGFloat = FashPromoMetrics.dockHeight(compact: false)
+``

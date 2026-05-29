@@ -1,5 +1,4 @@
 import SwiftUI
-import PhotosUI
 
 struct CreateListingPostSteps: View {
     @Environment(\.fashSpacing) private var spacing
@@ -7,78 +6,104 @@ struct CreateListingPostSteps: View {
     @Bindable var postVM: PostViewModel
     let step: Int
 
+    @State private var categoryQuery = ""
+    @State private var countryQuery = ""
+
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: spacing.spacing4) {
-                stepTitle
-                switch step {
-                case 1: categoryStep
-                case 2: aestheticStep
-                case 3: brandStep
-                case 4: countryStep
-                case 5: detailsStep
-                default: EmptyView()
-                }
+        PostStepScrollContent(bottomNotice: bottomNotice) {
+            stepTitle
+            switch step {
+            case 1: categoryStep
+            case 2: aestheticStep
+            case 3: brandStep
+            case 4: countryStep
+            case 5: detailsStep
+            default: EmptyView()
             }
-            .padding(.horizontal, spacing.editorialStart)
-            .padding(.bottom, spacing.spacing6)
         }
         .background(PostListingColors.stepCanvas)
     }
 
+    private var bottomNotice: String? {
+        switch step {
+        case 1: return L10n.postHintCategoryStep
+        case 2: return L10n.postHintStyleTagsStep
+        case 3: return L10n.postHintBrand
+        case 4: return L10n.postHintCountry
+        case 5: return L10n.postHintListingDetailsStep
+        default: return nil
+        }
+    }
+
     @ViewBuilder
     private var stepTitle: some View {
-        switch step {
-        case 1:
-            Text(L10n.postStepCategory)
+        let title: String = switch step {
+        case 1: L10n.postStepCategory
+        case 2: L10n.postStepStyleOnly
+        case 3: L10n.postStepBrand
+        case 4: L10n.postStepCountry
+        case 5: L10n.postStepCondition
+        default: ""
+        }
+        if !title.isEmpty {
+            Text(title)
                 .font(FashTypography.titleLarge.weight(.semibold))
                 .foregroundStyle(FashColors.textPrimary)
-        case 2:
-            Text(L10n.postStepStyleOnly)
-                .font(FashTypography.titleLarge.weight(.semibold))
-                .foregroundStyle(FashColors.textPrimary)
-        case 3:
-            Text(L10n.postStepBrand)
-                .font(FashTypography.titleLarge.weight(.semibold))
-                .foregroundStyle(FashColors.textPrimary)
-        case 4:
-            Text(L10n.postStepCountry)
-                .font(FashTypography.titleLarge.weight(.semibold))
-                .foregroundStyle(FashColors.textPrimary)
-        case 5:
-            Text(L10n.postStepCondition)
-                .font(FashTypography.titleLarge.weight(.semibold))
-                .foregroundStyle(FashColors.textPrimary)
-        default:
-            EmptyView()
         }
     }
 
     private var categoryStep: some View {
-        PostStepSectionCard {
-            if postVM.catalogLoading && postVM.categoryTree.isEmpty {
-                ProgressView().tint(FashColors.brandPrimary)
-            }
-            TextField(L10n.createListingSelectCategory, text: Binding(
-                get: { postVM.draft.categoryName },
-                set: { _ in }
-            ))
-            .disabled(true)
-            .padding(spacing.spacing3)
-            .background(FashColors.surfaceContainerLow)
-            .clipShape(RoundedRectangle(cornerRadius: spacing.radiusSoftMin, style: .continuous))
-            ForEach(postVM.categoryTree.allLeaves().prefix(40), id: \.id) { leaf in
-                let selected = postVM.draft.categoryId == leaf.id
-                Button(leaf.name) {
-                    postVM.updateDraft { $0 = $0.withLeafCategory(treeRoots: postVM.categoryTree, leaf: leaf) }
-                    Task { await postVM.ensureListingPhotoSlotsLoaded(deps: deps) }
+        Group {
+            PostListingOutlinedField(
+                label: L10n.createListingSelectCategory,
+                text: $categoryQuery
+            )
+            .onChange(of: categoryQuery) { _, _ in }
+
+            let matches = buildCategorySearchMatches(roots: postVM.categoryTree, query: categoryQuery)
+            if !categoryQuery.trimmingCharacters(in: .whitespaces).isEmpty {
+                ForEach(matches) { match in
+                    PostSelectableListRow(
+                        text: match.pathLabel,
+                        subtitle: match.leaf.name,
+                        selected: postVM.draft.categoryId == match.leaf.id
+                    ) {
+                        selectCategory(match.leaf)
+                    }
                 }
-                .font(FashTypography.bodyMedium.weight(selected ? .semibold : .regular))
-                .foregroundStyle(selected ? FashColors.brandPrimary : FashColors.textPrimary)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            } else if postVM.catalogLoading && postVM.categoryTree.isEmpty {
+                ProgressView().tint(FashColors.brandPrimary)
+            } else {
+                ForEach(postVM.categoryTree, id: \.id) { root in
+                    categoryTreeSection(root: root, depth: 0)
+                }
             }
         }
         .task { await postVM.loadCatalogIfNeeded(deps: deps) }
+    }
+
+    @ViewBuilder
+    private func categoryTreeSection(root: CategoryTreeNode, depth: Int) -> some View {
+        if root.children.isEmpty {
+            PostSelectableListRow(
+                text: root.name,
+                selected: postVM.draft.categoryId == root.id
+            ) { selectCategory(root) }
+        } else {
+            Text(root.name)
+                .font(FashTypography.labelLarge.weight(.semibold))
+                .foregroundStyle(FashColors.textSecondary)
+                .padding(.top, depth == 0 ? 0 : 8)
+            ForEach(root.children, id: \.id) { child in
+                categoryTreeSection(root: child, depth: depth + 1)
+            }
+        }
+    }
+
+    private func selectCategory(_ leaf: CategoryTreeNode) {
+        postVM.updateDraft { $0 = $0.withLeafCategory(treeRoots: postVM.categoryTree, leaf: leaf) }
+        categoryQuery = leaf.name
+        Task { await postVM.ensureListingPhotoSlotsLoaded(deps: deps) }
     }
 
     private var aestheticStep: some View {
@@ -86,46 +111,41 @@ struct CreateListingPostSteps: View {
             if postVM.draft.fillMode == .fromProfileStyle {
                 PostProfilePrefilledBanner()
             }
-            PostStepSectionCard {
-                ForEach(postVM.aestheticTags.prefix(30), id: \.id) { tag in
+            Text(L10n.createListingStyleLabel)
+                .font(FashTypography.bodySmall)
+                .foregroundStyle(FashColors.textSecondary)
+            FlowPillsGrid {
+                ForEach(postVM.aestheticTags, id: \.id) { tag in
                     let selected = postVM.draft.selectedAestheticTagIds.contains(tag.id)
-                    Button {
+                    PostSelectablePill(
+                        text: tag.displayName.isEmpty ? tag.name : tag.displayName,
+                        selected: selected
+                    ) {
                         postVM.updateDraft { $0 = $0.toggleAestheticTag(tag.id) }
-                    } label: {
-                        HStack {
-                            Text(tag.displayName.isEmpty ? tag.name : tag.displayName)
-                            Spacer()
-                            if selected { Image(systemName: "checkmark.circle.fill") }
-                        }
                     }
-                    .foregroundStyle(selected ? FashColors.brandPrimary : FashColors.textPrimary)
                 }
             }
         }
     }
 
     private var brandStep: some View {
-        PostStepSectionCard {
-            TextField(L10n.createListingBrandLabel, text: brandQuery)
-                .padding(spacing.spacing3)
-                .background(FashColors.surfaceContainerLow)
-                .clipShape(RoundedRectangle(cornerRadius: spacing.radiusSoftMin, style: .continuous))
-            ForEach(postVM.brandsSearch.prefix(30), id: \.id) { brand in
-                let selected = postVM.draft.brandId == brand.id
-                Button(brand.name) {
+        VStack(alignment: .leading, spacing: spacing.spacing3) {
+            PostListingOutlinedField(label: L10n.createListingBrandLabel, text: brandQueryBinding)
+            ForEach(postVM.brandsSearch.filter { matchesBrandQuery($0, query: postVM.draft.brandName) }.prefix(40), id: \.id) { brand in
+                PostSelectableListRow(
+                    text: brand.name,
+                    selected: postVM.draft.brandId == brand.id
+                ) {
                     postVM.updateDraft {
                         $0.brandId = brand.id
                         $0.brandName = brand.name
                     }
                 }
-                .font(FashTypography.bodyMedium.weight(selected ? .semibold : .regular))
-                .foregroundStyle(selected ? FashColors.brandPrimary : FashColors.textPrimary)
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }
 
-    private var brandQuery: Binding<String> {
+    private var brandQueryBinding: Binding<String> {
         Binding(
             get: { postVM.draft.brandName },
             set: { new in
@@ -136,62 +156,122 @@ struct CreateListingPostSteps: View {
     }
 
     private var countryStep: some View {
-        PostStepSectionCard {
-            ForEach(postVM.countries.prefix(40), id: \.id) { country in
-                let selected = postVM.draft.countryId == country.id
-                Button(country.name) {
+        VStack(alignment: .leading, spacing: spacing.spacing3) {
+            PostListingOutlinedField(label: L10n.postStepCountry, text: $countryQuery)
+            ForEach(postVM.countries.filter { matchesCountryQuery($0, query: countryQuery) }.prefix(50), id: \.id) { country in
+                PostSelectableListRow(
+                    text: country.name,
+                    subtitle: country.iso2,
+                    leadingEmoji: country.emoji,
+                    selected: postVM.draft.countryId == country.id
+                ) {
                     postVM.updateDraft {
                         $0.countryId = country.id
                         $0.countryIso2 = country.iso2
                         $0.countryName = country.name
                     }
+                    countryQuery = country.name
                 }
-                .font(FashTypography.bodyMedium.weight(selected ? .semibold : .regular))
-                .foregroundStyle(selected ? FashColors.brandPrimary : FashColors.textPrimary)
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }
 
     private var detailsStep: some View {
-        PostStepSectionCard {
-            Picker(L10n.createListingConditionLabel, selection: conditionBinding) {
-                Text(L10n.conditionNew).tag("new")
-                Text(L10n.conditionLikeNew).tag("like_new")
-                Text(L10n.conditionGood).tag("good")
-                Text(L10n.conditionFair).tag("fair")
+        VStack(alignment: .leading, spacing: spacing.spacing4) {
+            Text(L10n.postListingDetailsIntro)
+                .font(FashTypography.bodySmall)
+                .foregroundStyle(FashColors.textSecondary)
+
+            Text(L10n.postStepConditionShort)
+                .font(FashTypography.labelLarge)
+                .foregroundStyle(FashColors.textSecondary)
+            FlowPillsGrid {
+                ForEach(ListingConditionOptions.uiValues, id: \.self) { cond in
+                    PostSelectablePill(text: cond, selected: postVM.draft.condition == cond) {
+                        postVM.updateDraft { $0.condition = cond }
+                    }
+                }
             }
-            .pickerStyle(.segmented)
-            TextField(L10n.createListingTitlePlaceholder, text: titleBinding)
-                .padding(spacing.spacing3)
-                .background(FashColors.surfaceContainerLow)
-                .clipShape(RoundedRectangle(cornerRadius: spacing.radiusSoftMin, style: .continuous))
-            TextField(L10n.createListingTipText, text: descriptionBinding, axis: .vertical)
-                .lineLimit(3...6)
-                .padding(spacing.spacing3)
-                .background(FashColors.surfaceContainerLow)
-                .clipShape(RoundedRectangle(cornerRadius: spacing.radiusSoftMin, style: .continuous))
-            Stepper(
-                value: Binding(get: { postVM.draft.conditionScore }, set: { v in postVM.updateDraft { $0.conditionScore = v } }),
-                in: 80...99
-            ) {
-                Text(L10n.postConditionScoreLabel(postVM.draft.conditionScore))
-                    .font(FashTypography.bodyMedium)
-                    .foregroundStyle(FashColors.textSecondary)
+
+            Text(L10n.postConditionScoreLabel(postVM.draft.conditionScore))
+                .font(FashTypography.labelLarge)
+                .foregroundStyle(FashColors.textSecondary)
+            Slider(
+                value: Binding(
+                    get: { Double(postVM.draft.conditionScore) },
+                    set: { postVM.updateDraft { $0.conditionScore = min(99, max(80, Int($0.rounded()))) } }
+                ),
+                in: 80...99,
+                step: 1
+            )
+            .tint(FashColors.brandPrimary)
+
+            Text(L10n.postConditionDefectsLabel)
+                .font(FashTypography.labelLarge)
+                .foregroundStyle(FashColors.textSecondary)
+            FlowPillsGrid {
+                ForEach(listingConditionDefectOptions, id: \.self) { key in
+                    PostSelectablePill(
+                        text: conditionDefectLabel(key),
+                        selected: postVM.draft.conditionDefects.contains(key)
+                    ) {
+                        postVM.updateDraft { $0 = $0.toggleConditionDefect(key) }
+                    }
+                }
+            }
+            if !postVM.draft.conditionDefects.isEmpty {
+                Text(L10n.postConditionDefectPhotoHint)
+                    .font(FashTypography.bodySmall)
+                    .foregroundStyle(FashColors.error)
+            }
+
+            PostListingOutlinedField(label: L10n.createListingTitleLabel, text: titleBinding)
+            Text("\(postVM.draft.title.count)/\(maxListingTitleLength)")
+                .font(FashTypography.labelSmall)
+                .foregroundStyle(FashColors.textSecondary)
+
+            PostListingOutlinedField(
+                label: L10n.postDescriptionLabel,
+                text: descriptionBinding,
+                axis: .vertical,
+                lineLimit: 4...8
+            )
+            Text("\(postVM.draft.description.count)/\(maxListingDescriptionLength)")
+                .font(FashTypography.labelSmall)
+                .foregroundStyle(FashColors.textSecondary)
+
+            Text(L10n.postStepColor)
+                .font(FashTypography.labelLarge)
+                .foregroundStyle(FashColors.textSecondary)
+            Text(L10n.postListingColorHint)
+                .font(FashTypography.bodySmall)
+                .foregroundStyle(FashColors.textSecondary)
+            FlowPillsGrid {
+                ForEach(listingPrimaryColorOptions, id: \.value) { option in
+                    PostSelectablePill(
+                        text: option.label(),
+                        selected: postVM.draft.color == option.value
+                    ) {
+                        postVM.updateDraft {
+                            $0.color = $0.color == option.value ? "" : option.value
+                        }
+                    }
+                }
             }
         }
     }
 
-    private var conditionBinding: Binding<String> {
-        Binding(get: { postVM.draft.condition }, set: { v in postVM.updateDraft { $0.condition = v } })
-    }
-
     private var titleBinding: Binding<String> {
-        Binding(get: { postVM.draft.title }, set: { v in postVM.updateDraft { $0.title = v } })
+        Binding(
+            get: { postVM.draft.title },
+            set: { v in postVM.updateDraft { $0.title = String(v.prefix(maxListingTitleLength)) } }
+        )
     }
 
     private var descriptionBinding: Binding<String> {
-        Binding(get: { postVM.draft.description }, set: { v in postVM.updateDraft { $0.description = v } })
+        Binding(
+            get: { postVM.draft.description },
+            set: { v in postVM.updateDraft { $0.description = String(v.prefix(maxListingDescriptionLength)) } }
+        )
     }
-
 }

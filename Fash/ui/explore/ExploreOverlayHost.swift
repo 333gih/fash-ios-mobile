@@ -13,13 +13,18 @@ struct ExploreOverlayHost: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            ExploreTopBar(viewModel: viewModel, isGuestMode: isGuestMode, onCloseOverlay: onClose)
+            ExploreTopBar(
+                viewModel: viewModel,
+                isGuestMode: isGuestMode,
+                animateSearchIcon: true,
+                onCloseOverlay: onClose
+            )
             ExploreScreen(
                 viewModel: viewModel,
                 router: router,
                 isGuestMode: isGuestMode,
                 hideInlineSearch: true,
-                openListingAsFullScreen: true,
+                openListingAsFullScreen: false,
                 promoSlides: promoSlides,
                 onPromoSlideClick: { slide, index in router.handlePromoSlideClick(slide) },
                 onFeaturedSellerClick: { seller in
@@ -53,7 +58,9 @@ struct ExploreOverlayHost: View {
                 await viewModel.loadSearchOverlayData(deps: deps)
             }
             await viewModel.loadFilterCatalogIfNeeded(deps: deps)
-            await viewModel.refresh(deps: deps, isGuestMode: isGuestMode)
+            if viewModel.items.isEmpty, !viewModel.isLoading {
+                await viewModel.refresh(deps: deps, isGuestMode: isGuestMode)
+            }
         }
     }
 }

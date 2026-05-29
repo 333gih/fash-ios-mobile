@@ -46,6 +46,7 @@ final class ExploreViewModel {
     var selectedAestheticTagIds: Set<String> = []
     var selectedBrandId: String?
     var selectedBrandName: String?
+    var selectedCountryId: String?
     var selectedCountryIso2: String?
     var selectedCountryName: String?
     var minPriceText = ""
@@ -61,6 +62,7 @@ final class ExploreViewModel {
 
     private var listingsFetchGeneration = 0
     private var sellersBrowseGeneration = 0
+    private var loadMoreCooldownUntil: Date?
 
     private static func initialSizingModeFilter() -> String? {
         let mode = ExploreSizingPreference.read()
@@ -95,11 +97,24 @@ final class ExploreViewModel {
         selectedCategoryId != nil
             || !selectedAestheticTagIds.isEmpty
             || selectedBrandId != nil
-            || selectedCountryIso2 != nil
+            || selectedCountryId != nil
+            || normalizedCountryIso2(selectedCountryIso2) != nil
             || !minPriceText.trimmingCharacters(in: .whitespaces).isEmpty
             || !maxPriceText.trimmingCharacters(in: .whitespaces).isEmpty
             || selectedConditionFilter != nil
             || (sizingModeFilter != nil && sizingModeFilter?.lowercased() != "all")
+    }
+
+    /// Root chip highlight when a nested category id is selected — Android category row behavior.
+    var categoryStripHighlightId: String? {
+        guard let id = selectedCategoryId?.trimmingCharacters(in: .whitespacesAndNewlines), !id.isEmpty else {
+            return nil
+        }
+        if categoryTree.contains(where: { $0.id == id }) { return id }
+        for root in categoryTree where root.containsCategoryId(id) {
+            return root.id
+        }
+        return id
     }
 
     var isSearchModeActive: Bool {
@@ -137,23 +152,26 @@ final class ExploreViewModel {
 
     var filterSummaryParts: [String] {
         var parts: [String] = []
-        if let name = selectedCategoryName?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty {
+        if let catId = selectedCategoryId?.trimmingCharacters(in: .whitespacesAndNewlines), !catId.isEmpty,
+           let name = categoryTree.categoryName(for: catId) {
             parts.append(name)
-        }
-        if let brand = selectedBrandName?.trimmingCharacters(in: .whitespacesAndNewlines), !brand.isEmpty {
-            parts.append(brand)
-        }
-        if let country = selectedCountryName?.trimmingCharacters(in: .whitespacesAndNewlines), !country.isEmpty {
-            parts.append(country)
-        }
-        if let condition = selectedConditionFilter?.trimmingCharacters(in: .whitespacesAndNewlines), !condition.isEmpty {
-            parts.append(Self.conditionLabel(for: condition))
         }
         for tagId in selectedAestheticTagIds.sorted() {
             if let label = aestheticTags.first(where: { $0.id == tagId })?.displayLabel().trimmingCharacters(in: .whitespacesAndNewlines),
                !label.isEmpty {
                 parts.append(label)
             }
+        }
+        if let brandId = selectedBrandId?.trimmingCharacters(in: .whitespacesAndNewlines), !brandId.isEmpty,
+           let brand = brands.first(where: { $0.id == brandId })?.name.trimmingCharacters(in: .whitespacesAndNewlines),
+           !brand.isEmpty {
+            parts.append(brand)
+        }
+        if let country = resolvedCountryDisplayName() {
+            parts.append(country)
+        }
+        if let condition = selectedConditionFilter?.trimmingCharacters(in: .whitespacesAndNewlines), !condition.isEmpty {
+            parts.append(Self.conditionLabel(for: condition))
         }
         let minP = minPriceText.trimmingCharacters(in: .whitespacesAndNewlines)
         let maxP = maxPriceText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -280,8 +298,9 @@ final class ExploreViewModel {
         } else {
             listingsFetchGeneration += 1
             hasMore = true
-            isLoading = true
-            defer { isLoading = false }
+            let showBlockingLoad = items.isEmpty
+            if showBlockingLoad { isLoading = true }
+            defer { if showBlockingLoad { isLoading = false } }
             await loadListings(deps: deps, isGuestMode: isGuestMode, offset: 0, append: false)
         }
     }
@@ -295,6 +314,9 @@ final class ExploreViewModel {
     func loadMore(deps: AppDependencies, isGuestMode: Bool) async {
         guard primarySection == .listings, hasMore, !isLoadingMore, !isLoading else { return }
         guard !(loadError && items.isEmpty) else { return }
+        let now = Date()
+        if let until = loadMoreCooldownUntil, now < until { return }
+        loadMoreCooldownUntil = now.addingTimeInterval(0.4)
         isLoadingMore = true
         defer { isLoadingMore = false }
         await loadListings(deps: deps, isGuestMode: isGuestMode, offset: items.count, append: true)
@@ -374,6 +396,7 @@ final class ExploreViewModel {
         selectedAestheticTagIds = []
         selectedBrandId = nil
         selectedBrandName = nil
+        selectedCountryId = nil
         selectedCountryIso2 = nil
         selectedCountryName = nil
         minPriceText = ""
@@ -409,19 +432,29 @@ final class ExploreViewModel {
     }
 
     func loadFilterCatalogIfNeeded(deps: AppDependencies) async {
-        guard categoryTree.isEmpty, !filterCatalogLoading else { return }
+        guard !filterCatalogLoading else { return }
+        let needsCatalog = categoryTree.isEmpty || aestheticTags.isEmpty || brands.isEmpty || countries.isEmpty
+        guard needsCatalog else { return }
         filterCatalogLoading = true
         defer { filterCatalogLoading = false }
-        if case .success(let tree) = await deps.commonCatalogRepository.getCategoryTree() {
-            categoryTree = tree
-        }
-        if case .success(let tags) = await deps.commonCatalogRepository.getAestheticTags(all: true) {
+        await ensureFilterCatalogLoaded(deps: deps)
+    }
+
+    private func ensureFilterCatalogLoaded(deps: AppDependencies) async {
+        if aestheticTags.isEmpty,
+           case .success(let tags) = await deps.commonCatalogRepository.getAestheticTags(all: true) {
             aestheticTags = tags
         }
-        if case .success(let page) = await deps.commonCatalogRepository.getBrands(limit: 80) {
+        if categoryTree.isEmpty,
+           case .success(let tree) = await deps.commonCatalogRepository.getCategoryTree() {
+            categoryTree = tree
+        }
+        if brands.isEmpty,
+           case .success(let page) = await deps.commonCatalogRepository.getBrands(limit: 80) {
             brands = page.items
         }
-        if case .success(let list) = await deps.commonCatalogRepository.getCountries(all: true) {
+        if countries.isEmpty,
+           case .success(let list) = await deps.commonCatalogRepository.getCountries(all: true) {
             countries = list
         }
     }
@@ -456,7 +489,7 @@ final class ExploreViewModel {
                 minPrice: minPrice,
                 maxPrice: maxPrice,
                 condition: selectedConditionFilter,
-                countryIso2: selectedCountryIso2,
+                countryIso2: countryIso2ForApi(),
                 limit: exploreFeedPageSize,
                 offset: offset,
                 sizingMode: sizingModeFilter,
@@ -468,7 +501,7 @@ final class ExploreViewModel {
                 categoryId: selectedCategoryId,
                 aestheticTagIds: tagIds,
                 brandId: selectedBrandId,
-                countryIso2: selectedCountryIso2,
+                countryIso2: countryIso2ForApi(),
                 minPrice: minPrice,
                 maxPrice: maxPrice,
                 condition: selectedConditionFilter,
@@ -483,7 +516,7 @@ final class ExploreViewModel {
                 aestheticTagIds: tagIds,
                 sizingMode: sizingModeFilter,
                 brandId: selectedBrandId,
-                countryIso2: selectedCountryIso2,
+                countryIso2: countryIso2ForApi(),
                 minPrice: minPrice,
                 maxPrice: maxPrice,
                 condition: selectedConditionFilter,
@@ -674,16 +707,8 @@ final class ExploreViewModel {
         loadError = false
         items = []
         hasMore = true
-        if aestheticTags.isEmpty {
-            if case .success(let tags) = await deps.commonCatalogRepository.getAestheticTags(all: true) {
-                aestheticTags = tags
-            }
-        }
-        if categoryTree.isEmpty {
-            if case .success(let tree) = await deps.commonCatalogRepository.getCategoryTree() {
-                categoryTree = tree
-            }
-        }
+        await ensureFilterCatalogLoaded(deps: deps)
+
         let q = searchQuery.trimmingCharacters(in: .whitespaces)
         let cat = categoryId?.trimmingCharacters(in: .whitespaces).nilIfEmpty
         let brand = brandId?.trimmingCharacters(in: .whitespaces).nilIfEmpty
@@ -695,17 +720,87 @@ final class ExploreViewModel {
                     || t.displayNameVi.caseInsensitiveCompare(q) == .orderedSame
             })?.id
         }
-        selectedCategoryId = cat
-        selectedCategoryName = nil
-        selectedBrandId = brand
-        selectedBrandName = nil
-        selectedAestheticTagIds = tag.map { Set([$0]) } ?? []
-        selectedCountryIso2 = countryIso2?.trimmingCharacters(in: .whitespaces).nilIfEmpty
-        selectedCountryName = nil
-        committedListingSearchQuery = (cat == nil && brand == nil && tag == nil) ? q : ""
-        isSearchMode = !committedListingSearchQuery.isEmpty
-        await refresh(deps: deps, isGuestMode: false)
+
+        if let cat {
+            selectedCategoryId = cat
+            selectedBrandId = nil
+            selectedAestheticTagIds = []
+        } else if let brand {
+            selectedCategoryId = nil
+            selectedBrandId = brand
+            selectedAestheticTagIds = []
+        } else if let tag {
+            selectedCategoryId = nil
+            selectedBrandId = nil
+            selectedAestheticTagIds = [tag]
+        } else {
+            selectedCategoryId = nil
+            selectedBrandId = nil
+            selectedAestheticTagIds = []
+        }
+        selectedCategoryName = categoryTree.categoryName(for: selectedCategoryId)
+        selectedBrandName = brands.first(where: { $0.id == selectedBrandId })?.name
+
+        selectedCountryId = countryId?.trimmingCharacters(in: .whitespaces).nilIfEmpty
+        selectedCountryIso2 = normalizedCountryIso2(countryIso2)
+        if selectedCountryIso2 == nil, let cid = selectedCountryId {
+            selectedCountryIso2 = normalizedCountryIso2(
+                countries.first(where: { $0.id == cid })?.iso2
+            )
+        }
+        selectedCountryName = resolvedCountryDisplayName()
+
+        let hasStructuredFilter = cat != nil || brand != nil || tag != nil
+            || selectedCountryId != nil || normalizedCountryIso2(selectedCountryIso2) != nil
+
+        if hasStructuredFilter {
+            committedListingSearchQuery = ""
+            isSearchMode = false
+            query = ""
+            await refresh(deps: deps, isGuestMode: false)
+        } else if !q.isEmpty {
+            committedListingSearchQuery = q
+            isSearchMode = true
+            query = ""
+            await refresh(deps: deps, isGuestMode: false)
+        } else {
+            committedListingSearchQuery = ""
+            isSearchMode = false
+            query = ""
+            await refresh(deps: deps, isGuestMode: false)
+        }
         isLoading = false
+    }
+
+    func countryIso2ForApi() -> String? {
+        if let iso = normalizedCountryIso2(selectedCountryIso2) { return iso }
+        guard let id = selectedCountryId?.trimmingCharacters(in: .whitespacesAndNewlines), !id.isEmpty else {
+            return nil
+        }
+        return normalizedCountryIso2(countries.first(where: { $0.id == id })?.iso2)
+    }
+
+    private func resolvedCountryDisplayName() -> String? {
+        let byId = selectedCountryId.flatMap { id in
+            countries.first(where: { $0.id == id })?.name
+        }
+        if let name = byId?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty {
+            return name
+        }
+        if let iso = normalizedCountryIso2(selectedCountryIso2),
+           let name = countries.first(where: { $0.iso2.caseInsensitiveCompare(iso) == .orderedSame })?.name
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+           !name.isEmpty {
+            return name
+        }
+        let stored = selectedCountryName?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return stored?.isEmpty == false ? stored : nil
+    }
+
+    private func normalizedCountryIso2(_ raw: String?) -> String? {
+        let trimmed = raw?.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() ?? ""
+        guard trimmed.count == 2, trimmed.allSatisfy({ $0 >= "A" && $0 <= "Z" }) else { return nil }
+        return trimmed
     }
 
     /// Realtime `feed.refresh` — Android ExploreViewModel first-page reload.
@@ -719,5 +814,33 @@ private extension String {
     var nilIfEmpty: String? {
         let t = trimmingCharacters(in: .whitespacesAndNewlines)
         return t.isEmpty ? nil : t
+    }
+}
+
+private extension CategoryTreeNode {
+    func containsCategoryId(_ target: String) -> Bool {
+        if id == target { return true }
+        return children.contains { $0.containsCategoryId(target) }
+    }
+
+    func findById(_ target: String) -> CategoryTreeNode? {
+        if id == target { return self }
+        for child in children {
+            if let found = child.findById(target) { return found }
+        }
+        return nil
+    }
+}
+
+private extension Array where Element == CategoryTreeNode {
+    func categoryName(for id: String?) -> String? {
+        guard let id = id?.trimmingCharacters(in: .whitespacesAndNewlines), !id.isEmpty else { return nil }
+        for root in self {
+            if let node = root.findById(id) {
+                let name = node.name.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !name.isEmpty { return name }
+            }
+        }
+        return nil
     }
 }

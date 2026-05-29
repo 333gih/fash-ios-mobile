@@ -239,7 +239,7 @@ extension CreateListingDraft {
             title: title.trimmingCharacters(in: .whitespaces),
             imageUrlSteps: imageUrlSteps,
             priceVnd: price,
-            condition: condition.trimmingCharacters(in: .whitespaces),
+            condition: ListingConditionOptions.normalizeUiToApi(condition),
             category: NamedRefPayload(id: categoryId.trimmingCharacters(in: .whitespaces), name: categoryName.trimmingCharacters(in: .whitespaces)),
             description: description.trimmingCharacters(in: .whitespaces),
             size: size.trimmingCharacters(in: .whitespaces),

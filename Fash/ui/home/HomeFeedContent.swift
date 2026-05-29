@@ -29,7 +29,7 @@ struct HomeFeedContent: View {
     }
 
     private var promoDockInset: CGFloat {
-        promoSlides.isEmpty ? 0 : FashPromoMetrics.dockHeight(compact: true)
+        promoSlides.isEmpty ? 0 : FashStickyPromoDockHeight
     }
 
     private var selectedTabIndex: Int {
@@ -75,12 +75,8 @@ struct HomeFeedContent: View {
             .refreshable { await viewModel.pullToRefresh(deps: deps, isGuestMode: isGuestMode) }
 
             if !promoSlides.isEmpty {
-                StickyBottomPromoBar {
-                    FashPromoSliderView(
-                        slides: promoSlides,
-                        compact: true,
-                        onSlideClick: { slide, _ in router.handlePromoSlideClick(slide) }
-                    )
+                FashPromoSliderAdFooterView(slides: promoSlides) { slide, _ in
+                    router.handlePromoSlideClick(slide)
                 }
             }
         }

@@ -12,14 +12,12 @@ struct ExploreFeaturedSellersSection: View {
     var body: some View {
         if sellers.isEmpty { EmptyView() } else {
             VStack(alignment: .leading, spacing: spacing.spacing2) {
-                HStack {
+                HStack(alignment: .top) {
                     Text(L10n.exploreFeaturedSellers)
                         .font(FashTypography.titleSmall.weight(.semibold))
                         .foregroundStyle(FashColors.textPrimary)
                     Spacer(minLength: 8)
-                    Button(L10n.exploreSeeAll, action: onSeeAllClick)
-                        .font(FashTypography.labelMedium)
-                        .foregroundStyle(FashColors.brandPrimary)
+                    FashSeeAllButton(action: onSeeAllClick)
                 }
 
                 ScrollView(.horizontal, showsIndicators: false) {

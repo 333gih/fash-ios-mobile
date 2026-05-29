@@ -61,7 +61,11 @@ struct ProductDetailScreen: View {
         }
         .sheet(item: $sharePayload) { payload in
             ActivityShareSheet(items: payload.items) { completed in
-                if completed { deps.showSnackbar(L10n.shareListingSuccess) }
+                FashActivityShare.showSuccessIfNeeded(
+                    completed,
+                    message: L10n.shareListingSuccess,
+                    deps: deps
+                )
             }
         }
     }

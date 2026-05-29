@@ -160,6 +160,10 @@ final class PostViewModel {
         }
     }
 
+    func clearListingPhotoForStep(stepKey: String) {
+        setListingPhotoForStep(stepKey: stepKey, uriString: nil)
+    }
+
     func nextStep(deps: AppDependencies) async {
         guard draft.canProceedFromStep(step) else { return }
         guard step < totalPostSteps else { return }
@@ -240,7 +244,7 @@ final class PostViewModel {
         defer { isSubmitting = false }
         await ensureListingPhotoSlotsLoaded(deps: deps)
         if let errKey = draft.validationErrorKeyForSubmit() {
-            eventMessage = errKey
+            eventMessage = resolvePostValidationMessage(errKey)
             return
         }
         let anyPhoto = draft.listingPhotoSlots.contains { $0.hasImageSelected() }

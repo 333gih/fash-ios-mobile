@@ -62,6 +62,7 @@ struct MainNavScreen: View {
                 }
             )
             .environment(\.locale, AppLocale.locale)
+            .fashInAppNotificationOverlay()
         }
         .sheet(isPresented: $router.showSettingsScreen) {
             SettingsScreen(
@@ -121,6 +122,7 @@ struct MainNavScreen: View {
                 onRequestSignIn: { reason in onRequestSignIn?(reason) }
             )
             .environment(\.locale, AppLocale.locale)
+            .fashInAppNotificationOverlay()
         }
         .overlay(alignment: .bottom) {
             if let message = deps.snackbarMessage {
@@ -139,6 +141,7 @@ struct MainNavScreen: View {
             )
         }
         .animation(.easeInOut(duration: 0.22), value: deps.snackbarMessage)
+        .fashInAppNotificationOverlay()
         .animation(.easeInOut(duration: 0.25), value: activePromoCampaign?.campaignId)
         .task(id: isGuestMode) {
             guard !isGuestMode else {
@@ -464,6 +467,8 @@ struct MainNavScreen: View {
                         await chatVM.pullToRefresh(deps: deps)
                     case .profile:
                         await profileVM.refresh(deps: deps)
+                    case .post:
+                        await postVM.reloadOnNavReselect(deps: deps)
                     default:
                         break
                     }

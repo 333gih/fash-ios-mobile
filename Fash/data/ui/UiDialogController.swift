@@ -13,6 +13,12 @@ final class UiDialogController {
         isPresented = true
     }
 
+    func showSuccess(message: String, title: String? = nil) {
+        self.title = title ?? L10n.createListingSuccessDialogTitle
+        self.message = message
+        isPresented = true
+    }
+
     func dismiss() {
         isPresented = false
     }

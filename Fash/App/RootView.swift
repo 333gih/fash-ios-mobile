@@ -15,22 +15,6 @@ struct RootView: View {
             ZStack {
                 rootContent
                 FashGlobalDialogHost()
-                if let banner = deps.inAppNotification {
-                    VStack {
-                        FashInAppNotificationBanner(
-                            session: banner,
-                            onTap: {
-                                RealtimeNotificationRouter.handleInAppBannerTap(
-                                    session: banner,
-                                    deps: deps,
-                                    router: router
-                                )
-                            },
-                            onDismiss: { deps.dismissInAppNotification() }
-                        )
-                        Spacer()
-                    }
-                }
                 if let message = deps.snackbarMessage {
                     VStack {
                         Spacer()
@@ -47,6 +31,8 @@ struct RootView: View {
                 set: { if $0 == nil { router.dismissFullScreen() } }
             )) { route in
                 fullScreenContent(route)
+                    .fashSnackbarOverlay()
+                    .fashInAppNotificationOverlay()
             }
             .onOpenURL { url in
                 if GoogleSignInClients.handle(url: url) { return }

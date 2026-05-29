@@ -88,16 +88,20 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     @ViewBuilder var compactHeader: () -> CompactHeader
 
     @State private var headerMinY: CGFloat = 0
-    @State private var headerMaxY: CGFloat = 10_000
+    @State private var headerHeight: CGFloat = 0
+    @State private var reportedTabsPinned = false
     @State private var showBriefBar = false
 
     private var collapseProgress: CGFloat {
         min(max(-headerMinY / ProfileCollapseMetrics.scrollDistance, 0), 1)
     }
 
-    /// Expanded hero fully above the viewport — sticky tab row is pinned (Android `firstVisibleItemIndex > 0`).
+    /// Sticky tab row pinned — Android `rememberProfilePromoFooterVisible` (`firstVisibleItemIndex > 0`).
     private var tabsPinnedAtTop: Bool {
-        headerMaxY <= 0
+        if headerHeight > 24 {
+            return headerMinY <= -(headerHeight - 12)
+        }
+        return headerMinY <= -ProfileCollapseMetrics.scrollDistance * 0.92
     }
 
     private var showSectionTitle: Bool {
@@ -157,17 +161,30 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                 }
             }
             .coordinateSpace(name: "profileScroll")
+            .onAppear {
+                reportedTabsPinned = false
+                headerMinY = 0
+                headerHeight = 0
+            }
             .onPreferenceChange(ProfileScrollOffsetKey.self) { offset in
                 headerMinY = offset
+                emitTabsPinnedIfNeeded()
                 refreshBriefBarVisibility()
             }
             .onPreferenceChange(ProfileHeaderBoundsKey.self) { frame in
                 guard frame.height > 10 else { return }
-                headerMaxY = frame.maxY
-                onTabsPinnedAtTopChange?(tabsPinnedAtTop)
+                headerHeight = frame.height
+                emitTabsPinnedIfNeeded()
                 refreshBriefBarVisibility()
             }
         }
+    }
+
+    private func emitTabsPinnedIfNeeded() {
+        let pinned = tabsPinnedAtTop
+        guard pinned != reportedTabsPinned else { return }
+        reportedTabsPinned = pinned
+        onTabsPinnedAtTopChange?(pinned)
     }
 
     private func refreshBriefBarVisibility() {
