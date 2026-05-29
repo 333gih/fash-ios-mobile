@@ -261,6 +261,9 @@ final class ChatRepository {
         }()
         let rawType = RepositoryHttp.optString(m, "MessageType", "message_type", "Type", "type").ifEmpty("text")
         let systemSubtype = RepositoryHttp.optString(m, "system_subtype", "system_type", "SystemSubtype").nilIfEmpty
+        let content = RepositoryHttp.optString(m, "Content", "content", "text", "Text")
+        let orderCancelled = OrderCancelledChatPayload.parse(messageType: rawType, fullText: content)
+        let messageType = orderCancelled != nil && rawType == "text" ? "order_cancelled" : rawType
         let isRead: Bool = {
             if m["ReadAt"] != nil && !(m["ReadAt"] is NSNull) { return true }
             if m["read_at"] != nil && !(m["read_at"] is NSNull) { return true }
@@ -268,17 +271,18 @@ final class ChatRepository {
         }()
         return ChatMessage(
             messageId: RepositoryHttp.optString(m, "ID", "id", "message_id"),
-            text: RepositoryHttp.optString(m, "Content", "content", "text", "Text"),
+            text: content,
             isFromMe: isFromMe,
             timestamp: RepositoryHttp.optString(m, "CreatedAt", "created_at", "timestamp", "sent_at"),
             isRead: isRead,
             senderId: senderId,
-            messageType: rawType,
+            messageType: messageType,
             offerAmountVnd: RepositoryHttp.optLong(m, "OfferAmountVND", "offer_amount_vnd"),
             offerStatus: RepositoryHttp.optString(m, "OfferStatus", "offer_status").lowercased().ifEmpty("pending"),
             outboundState: .none,
             systemSubtype: systemSubtype,
-            meetingAppointment: parseMeetingAppointmentPayload(m)
+            meetingAppointment: parseMeetingAppointmentPayload(m),
+            orderCancelled: orderCancelled
         )
     }
 

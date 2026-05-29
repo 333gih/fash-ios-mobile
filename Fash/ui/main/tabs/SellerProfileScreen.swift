@@ -72,8 +72,8 @@ struct SellerProfileScreen: View {
                     }
                     .transition(
                         .asymmetric(
-                            insertion: .move(edge: .bottom).combined(with: .opacity),
-                            removal: .move(edge: .bottom).combined(with: .opacity)
+                            insertion: .opacity.combined(with: .move(edge: .bottom)),
+                            removal: .opacity.combined(with: .move(edge: .bottom))
                         )
                     )
                 }
@@ -133,7 +133,7 @@ struct SellerProfileScreen: View {
                 onNavigateToExploreFromProfile(nil, nil, tagId, "", nil, nil)
             }
         )
-        if viewModel.canShowFollowUi() {
+        if viewModel.canShowFollowUi(deps: deps, isGuestMode: isGuestMode) {
             SellerProfileFollowBlock(
                 isFollowing: viewModel.isFollowing && !isGuestMode,
                 inFlight: viewModel.followInFlight,

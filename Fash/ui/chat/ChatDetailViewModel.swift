@@ -126,7 +126,8 @@ final class ChatDetailViewModel {
             offerStatus: "",
             outboundState: .sending,
             systemSubtype: nil,
-            meetingAppointment: nil
+            meetingAppointment: nil,
+            orderCancelled: nil
         )
         isSending = true
         inputText = ""
@@ -157,7 +158,8 @@ final class ChatDetailViewModel {
                     offerStatus: row.offerStatus,
                     outboundState: .failed,
                     systemSubtype: row.systemSubtype,
-                    meetingAppointment: row.meetingAppointment
+                    meetingAppointment: row.meetingAppointment,
+                    orderCancelled: row.orderCancelled
                 )
             }
             inputText = text
@@ -606,15 +608,7 @@ final class ChatDetailViewModel {
     }
 
     func formatTime(_ timestamp: String) -> String {
-        guard !timestamp.isEmpty else { return "" }
-        let normalized = timestamp.contains("T") ? timestamp : timestamp.replacingOccurrences(of: " ", with: "T")
-        if let date = ISO8601DateFormatter().date(from: normalized) {
-            let fmt = DateFormatter()
-            fmt.locale = AppLocale.locale
-            fmt.timeStyle = .short
-            return fmt.string(from: date)
-        }
-        return String(timestamp.prefix(5))
+        ChatMessageTimeFormat.clockTime(timestamp)
     }
 }
 

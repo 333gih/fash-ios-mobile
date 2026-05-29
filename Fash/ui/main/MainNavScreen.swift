@@ -16,6 +16,9 @@ struct MainNavScreen: View {
     @State private var notificationsVM: NotificationsViewModel?
     @State private var realtimeListenerId: UUID?
     @State private var realtimePingTask: Task<Void, Never>?
+    @State private var prevInboxUnreadCount = 0
+    @State private var activePromoCampaign: AppPromoCampaign?
+    @State private var accountSwitchPrompt: AccountSwitchPrompt?
 
     private var isPostListingFlow: Bool { router.selectedTab == .post }
 
@@ -130,9 +133,92 @@ struct MainNavScreen: View {
                             router: router
                         )
                     },
-                    onDismiss: { deps.inAppNotification = nil }
+                    onDismiss: { deps.dismissInAppNotification() }
                 )
             }
+        }
+        .overlay(alignment: .bottom) {
+            if let message = deps.snackbarMessage {
+                FashSnackbarHost(message: message) {
+                    deps.dismissSnackbar()
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .overlay {
+            FashAppPromoOverlayHost(
+                campaign: activePromoCampaign,
+                onDismiss: dismissActivePromo,
+                onPrimaryClick: handlePromoPrimary,
+                onSecondaryClick: handlePromoSecondary
+            )
+        }
+        .animation(.easeInOut(duration: 0.22), value: deps.snackbarMessage)
+        .animation(.easeInOut(duration: 0.25), value: activePromoCampaign?.campaignId)
+        .task(id: isGuestMode) {
+            guard !isGuestMode else {
+                activePromoCampaign = nil
+                return
+            }
+            for await promo in deps.appPromoShowSignals {
+                AppPromoPresenter.presentAdminPromoIfEligible(
+                    promo,
+                    active: &activePromoCampaign,
+                    isGuestMode: isGuestMode,
+                    selectedConversationId: router.selectedConversationId
+                )
+            }
+        }
+        .task(id: "promoOnAppOpen-\(isGuestMode)") {
+            guard !isGuestMode else { return }
+            try? await Task.sleep(for: .milliseconds(550))
+            guard router.selectedConversationId == nil else { return }
+            _ = AppPromoCampaignStore.incrementAppOpenCount()
+            if case .success(let campaigns) = await deps.appPromoInterstitialRepository.fetchActiveCampaigns() {
+                for campaign in campaigns where campaign.scheduleType == "on_app_open" || campaign.scheduleType == nil {
+                    AppPromoPendingQueue.enqueue(campaign)
+                }
+            }
+            if let remote = AppPromoPendingQueue.pollHighest(), !AppPromoCampaignStore.isDismissed(remote) {
+                activePromoCampaign = remote
+            }
+        }
+        .onChange(of: router.selectedConversationId) { _, conversationId in
+            if conversationId != nil {
+                activePromoCampaign = nil
+            } else {
+                AppPromoPresenter.pollQueuedPromoIfEligible(
+                    active: &activePromoCampaign,
+                    isGuestMode: isGuestMode,
+                    selectedConversationId: nil
+                )
+            }
+        }
+        .onChange(of: deps.pendingAccountSwitchPrompt) { _, prompt in
+            accountSwitchPrompt = prompt
+        }
+        .alert(
+            L10n.accountSwitchDialogTitle,
+            isPresented: Binding(
+                get: { accountSwitchPrompt != nil },
+                set: { if !$0 { deps.clearAccountSwitchPrompt(); accountSwitchPrompt = nil } }
+            ),
+            presenting: accountSwitchPrompt
+        ) { prompt in
+            Button(L10n.accountSwitchDialogConfirm) {
+                Task {
+                    deps.clearAccountSwitchPrompt()
+                    accountSwitchPrompt = nil
+                    await deps.authManager.logout()
+                    router.loginStep = .email
+                }
+            }
+            Button(L10n.accountSwitchDialogDismiss, role: .cancel) {
+                deps.clearAccountSwitchPrompt()
+                accountSwitchPrompt = nil
+            }
+        } message: { prompt in
+            Text(L10n.accountSwitchDialogMessage(prompt.emailMasked ?? "…", prompt.unreadCount))
         }
         .task {
             deps.consumePendingDeepLinks(router: router)
@@ -149,6 +235,7 @@ struct MainNavScreen: View {
         }
         .onChange(of: isGuestMode) { _, guest in
             if guest {
+                activePromoCampaign = nil
                 stopRealtimeServices()
                 homeVM.onGuestBrowseEntered(deps: deps)
                 router.selectedTab = .home
@@ -160,7 +247,20 @@ struct MainNavScreen: View {
             }
         }
         .onChange(of: deps.inboxUnreadRefreshGeneration) { _, _ in
-            Task { await refreshInboxUnreadCount() }
+            Task {
+                let before = prevInboxUnreadCount
+                await refreshInboxUnreadCount()
+                let after = deps.inboxUnreadCount
+                prevInboxUnreadCount = after
+                if after > before, deps.inAppNotification == nil, !isGuestMode {
+                    deps.showInAppNotification(FashInAppNotificationSession(
+                        title: L10n.notifications,
+                        body: L10n.notificationNewArrivalSnackbar,
+                        userNotificationId: nil,
+                        dataMap: [:]
+                    ))
+                }
+            }
         }
         .onChange(of: deps.inboxOpenRequestGeneration) { _, _ in
             if !isGuestMode {
@@ -248,12 +348,11 @@ struct MainNavScreen: View {
                 router: router,
                 isGuestMode: isGuestMode,
                 onOpenExplore: { openExploreOverlay(expandSearch: false) },
-                onOpenPost: { selectTab(.post) },
-                onOpenOrders: { selectTab(.orders) },
                 onOpenFeaturedSellersAll: { router.showFeaturedSellersAll = true },
                 onFeaturedSellerClick: { seller in
                     let username = seller.username.trimmingCharacters(in: .whitespaces)
-                    if !username.isEmpty {
+                    guard !username.isEmpty else { return }
+                    deps.navigateFromListingPreview(router: router) {
                         router.sellerShopUsername = username
                     }
                 },
@@ -286,6 +385,8 @@ struct MainNavScreen: View {
                 OrdersScreen(
                     viewModel: ordersVM,
                     embeddedInMainNav: true,
+                    promoSlides: homeVM.promoSlides.map(FashPromoSlideDef.fromAdvertising),
+                    onPromoSlideClick: { slide, _ in router.handlePromoSlideClick(slide) },
                     onDismiss: {},
                     onSelectOrder: { router.selectedOrderId = $0 }
                 )
@@ -370,12 +471,34 @@ struct MainNavScreen: View {
         }
     }
 
+    private func dismissActivePromo() {
+        if let campaign = activePromoCampaign {
+            AppPromoCampaignStore.markDismissed(campaign)
+        }
+        activePromoCampaign = nil
+    }
+
+    private func handlePromoPrimary(_ campaign: AppPromoCampaign) {
+        AppPromoCampaignStore.markDismissed(campaign)
+        activePromoCampaign = nil
+        AppPromoNavigation.applyPrimary(campaign: campaign, router: router)
+    }
+
+    private func handlePromoSecondary(_ campaign: AppPromoCampaign) {
+        AppPromoCampaignStore.markDismissed(campaign)
+        AppPromoNavigation.applySecondary(campaign: campaign, router: router)
+        activePromoCampaign = nil
+    }
+
     private func refreshInboxUnreadCount() async {
         if notificationsVM == nil {
             notificationsVM = NotificationsViewModel(userRepository: deps.userRepository)
         }
         await notificationsVM?.refreshUnreadSummary()
         deps.inboxUnreadCount = notificationsVM?.unreadCount ?? 0
+        if prevInboxUnreadCount == 0 {
+            prevInboxUnreadCount = deps.inboxUnreadCount
+        }
     }
 
     private func startRealtimeServices() {
@@ -509,25 +632,14 @@ private struct MainNavScreenChrome<TopBar: View, TabContent: View, BottomBar: Vi
             }
         }
         .background(FashColors.screen)
-        .sheet(isPresented: Binding(
-            get: { listingPreview.state != nil && !router.showExploreOverlay },
-            set: { presenting in
-                if !presenting { listingPreview.close(deps: deps) }
-            }
-        )) {
-            ListingPreviewSheetHost(
-                listingPreview: listingPreview,
-                router: router,
-                isGuestMode: isGuestMode,
-                onRequestLogin: { onRequestSignIn?(L10n.guestLoginReasonBuy) }
-            )
-        }
-        .onChange(of: listingPreview.state?.id) { _, _ in
-            if let pending = router.pendingListingIdAfterPreview, listingPreview.state == nil {
-                router.pendingListingIdAfterPreview = nil
-                DispatchQueue.main.async {
-                    deps.presentListingDetail(listingId: pending, router: router)
-                }
+        .overlay(alignment: .bottom) {
+            if !router.showExploreOverlay {
+                ListingPreviewOverlay(
+                    listingPreview: listingPreview,
+                    router: router,
+                    isGuestMode: isGuestMode,
+                    onRequestLogin: { onRequestSignIn?(L10n.guestLoginReasonBuy) }
+                )
             }
         }
     }
@@ -577,7 +689,7 @@ private struct HomeTopBar: View {
         .padding(.leading, 16)
         .padding(.trailing, 4)
         .padding(.vertical, 4)
-        .background(FashColors.surfaceContainerHighest)
+        .background(FashColors.surface)
     }
 
     private var searchIconButton: some View {
@@ -618,7 +730,7 @@ private struct MainTopBar: View {
         }
         .padding(.leading, 16)
         .padding(.trailing, 4)
-        .background(FashColors.surfaceContainerHighest)
+        .background(FashColors.surface)
     }
 }
 
@@ -657,6 +769,6 @@ private struct ProfileTopBar: View {
         }
         .padding(.leading, 16)
         .padding(.trailing, 4)
-        .background(FashColors.surfaceContainerHighest)
+        .background(FashColors.surface)
     }
 }

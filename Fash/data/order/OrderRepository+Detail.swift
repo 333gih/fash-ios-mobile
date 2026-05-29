@@ -29,7 +29,7 @@ extension OrderRepository {
         return await postJSONVoid(relativePath: "api/v1/orders/\(orderId.trimmingCharacters(in: .whitespaces))/cancel", body: body)
     }
 
-    private func postEmpty(relativePath: String) async -> Result<Void, Error> {
+    func postEmpty(relativePath: String) async -> Result<Void, Error> {
         let urls = AppEnvironment.coreApiCandidateURLs(relativePath)
         var lastError: Error = URLError(.cannotConnectToHost)
         for urlString in urls {
@@ -53,7 +53,7 @@ extension OrderRepository {
         return .failure(lastError)
     }
 
-    private func postJSONVoid(relativePath: String, body: [String: Any]) async -> Result<Void, Error> {
+    func postJSONVoid(relativePath: String, body: [String: Any]) async -> Result<Void, Error> {
         let urls = AppEnvironment.coreApiCandidateURLs(relativePath)
         var lastError: Error = URLError(.cannotConnectToHost)
         guard let payload = try? JSONSerialization.data(withJSONObject: body) else {

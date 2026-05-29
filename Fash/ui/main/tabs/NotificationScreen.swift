@@ -85,10 +85,8 @@ struct NotificationScreen: View {
                 }
             }
             if showPromoFooter {
-                StickyBottomPromoBar {
-                    FashPromoSliderView(slides: promoSlides, cardHeight: 100, onSlideClick: onPromoSlideClick)
-                }
-                .transition(.move(edge: .bottom).combined(with: .opacity))
+                FashPromoSliderAdFooterView(slides: promoSlides, onSlideClick: onPromoSlideClick)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
         .background(FashColors.screen)

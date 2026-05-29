@@ -8,11 +8,53 @@ struct ListingGridCard: View {
     var imageAspectRatio: CGFloat = 3 / 4
     var compactFooter: Bool = false
     var showQuickActions: Bool = false
+    var statusOverlayLabel: String? = nil
     var onLike: (() -> Void)? = nil
     var onSave: (() -> Void)? = nil
 
+    private enum FooterMetrics {
+        static let rowSpacing: CGFloat = 2
+        static let paddingH: CGFloat = 8
+        static let paddingV: CGFloat = 6
+        static let priceRow: CGFloat = 20
+        static let titleRow: CGFloat = 16
+        static let conditionRow: CGFloat = 20
+        static let secondaryRow: CGFloat = 14
+        static let sellerRow: CGFloat = 14
+
+        static func fullContentHeight() -> CGFloat {
+            let rows = priceRow + titleRow + conditionRow + secondaryRow + sellerRow
+            return rows + rowSpacing * 4 + paddingV * 2
+        }
+
+        static func compactContentHeight(hasTitle: Bool) -> CGFloat {
+            var rows = priceRow + sellerRow
+            if hasTitle { rows += titleRow }
+            let gaps: CGFloat = hasTitle ? rowSpacing * 2 : rowSpacing
+            return rows + gaps + paddingV * 2
+        }
+    }
+
     private var shape: RoundedRectangle {
         RoundedRectangle(cornerRadius: spacing.radiusSoftMin, style: .continuous)
+    }
+
+    private var meta: ListingMetaUi {
+        ListingMetaUi(
+            conditionLabel: conditionLabel(item.condition),
+            secondary: secondaryMeta
+        )
+    }
+
+    private var displayTitle: String {
+        item.title.trimmingCharacters(in: .whitespaces)
+    }
+
+    private var footerHeight: CGFloat {
+        if compactFooter {
+            return FooterMetrics.compactContentHeight(hasTitle: !displayTitle.isEmpty)
+        }
+        return FooterMetrics.fullContentHeight()
     }
 
     var body: some View {
@@ -23,7 +65,7 @@ struct ListingGridCard: View {
                 Button(action: onTap) {
                     ZStack(alignment: .bottomLeading) {
                         imageLayer
-                        footerGradient
+                        footerGradient(height: max(footerHeight + 12, 108))
                         footerContent
                     }
                     .frame(width: cardW, height: cardH)
@@ -31,8 +73,13 @@ struct ListingGridCard: View {
                 }
                 .buttonStyle(.plain)
 
-                badgesOverlay
-                    .frame(width: cardW, height: cardH, alignment: .top)
+                topLeadingOverlay
+                    .frame(width: cardW, height: cardH, alignment: .topLeading)
+                    .allowsHitTesting(false)
+
+                topTrailingBadges
+                    .frame(width: cardW, height: cardH, alignment: .topTrailing)
+                    .padding(.top, showQuickActions ? 44 : 0)
                     .allowsHitTesting(false)
 
                 if showQuickActions {
@@ -69,112 +116,164 @@ struct ListingGridCard: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private var footerGradient: some View {
+    private func footerGradient(height: CGFloat) -> some View {
         LinearGradient(
             colors: [.clear, Color.black.opacity(0.82)],
             startPoint: .top,
             endPoint: .bottom
         )
         .frame(maxWidth: .infinity)
-        .frame(height: 120)
+        .frame(height: height)
         .frame(maxHeight: .infinity, alignment: .bottom)
     }
 
     private var footerContent: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack(alignment: .center) {
-                Text(FeedPriceFormat.format(item.priceVnd))
-                    .font(FashTypography.titleSmall)
-                    .fontWeight(.bold)
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                Spacer(minLength: 4)
-                if item.likeCount > 0 {
-                    HStack(spacing: 3) {
-                        Image(systemName: "heart.fill")
-                            .font(.system(size: 13))
-                            .foregroundStyle(.white.opacity(0.95))
-                        Text(formatEngagement(item.likeCount))
-                            .font(FashTypography.labelSmall)
-                            .foregroundStyle(.white.opacity(0.95))
-                    }
-                }
+        VStack(alignment: .leading, spacing: FooterMetrics.rowSpacing) {
+            priceRow
+            titleRow
+            if !compactFooter {
+                conditionRow
+                secondaryMetaRow
             }
-            let title = item.title.trimmingCharacters(in: .whitespaces)
-            if !title.isEmpty {
-                FashMarqueeText(
-                    text: title,
-                    font: FashTypography.bodySmall,
-                    fontWeight: .semibold,
-                    color: .white,
-                    lineHeight: 16
-                )
-            }
-            if !compactFooter, metaLine.hasContent {
-                metaRow
-            }
-            FashMarqueeText(
-                text: sellerLine,
-                font: FashTypography.labelSmall,
-                color: .white.opacity(0.88),
-                lineHeight: 14
-            )
+            sellerRow
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
+        .padding(.horizontal, FooterMetrics.paddingH)
+        .padding(.vertical, FooterMetrics.paddingV)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var metaLine: ListingMetaUi {
-        ListingMetaUi(
-            conditionLabel: conditionLabel(item.condition),
-            secondary: secondaryMeta
+    private var priceRow: some View {
+        HStack(alignment: .center, spacing: 4) {
+            Text(FeedPriceFormat.format(item.priceVnd))
+                .font(FashTypography.titleSmall)
+                .fontWeight(.bold)
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+            Spacer(minLength: 0)
+            if item.likeCount > 0 {
+                HStack(spacing: 3) {
+                    Image(systemName: "heart.fill")
+                        .font(.system(size: 13))
+                        .foregroundStyle(.white.opacity(0.95))
+                    Text(formatEngagement(item.likeCount))
+                        .font(FashTypography.labelSmall)
+                        .foregroundStyle(.white.opacity(0.95))
+                        .lineLimit(1)
+                }
+                .layoutPriority(1)
+            }
+        }
+        .frame(height: FooterMetrics.priceRow, alignment: .center)
+    }
+
+    @ViewBuilder
+    private var titleRow: some View {
+        Group {
+            if !displayTitle.isEmpty {
+                FashMarqueeText(
+                    text: displayTitle,
+                    font: FashTypography.bodySmall,
+                    fontWeight: .semibold,
+                    color: .white,
+                    lineHeight: FooterMetrics.titleRow
+                )
+            } else {
+                Color.clear
+            }
+        }
+        .frame(
+            height: compactFooter ? (displayTitle.isEmpty ? 0 : FooterMetrics.titleRow) : FooterMetrics.titleRow,
+            alignment: .leading
         )
     }
 
     @ViewBuilder
-    private var metaRow: some View {
-        let parts = metaLine
-        if !parts.conditionLabel.isEmpty, !parts.secondary.isEmpty {
-            HStack(spacing: 6) {
-                conditionPill(parts.conditionLabel, maxWidth: 112)
+    private var conditionRow: some View {
+        Group {
+            if !meta.conditionLabel.isEmpty {
+                conditionPill(meta.conditionLabel)
+            } else {
+                Color.clear
+            }
+        }
+        .frame(height: FooterMetrics.conditionRow, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private var secondaryMetaRow: some View {
+        Group {
+            if !meta.secondary.isEmpty {
                 FashMarqueeText(
-                    text: parts.secondary,
+                    text: meta.secondary,
                     font: FashTypography.labelSmall,
                     color: .white.opacity(0.92),
-                    lineHeight: 14
+                    lineHeight: FooterMetrics.secondaryRow
                 )
-                .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                Color.clear
             }
-        } else if !parts.conditionLabel.isEmpty {
-            conditionPill(parts.conditionLabel, maxWidth: 160)
-        } else if !parts.secondary.isEmpty {
-            FashMarqueeText(
-                text: parts.secondary,
-                font: FashTypography.labelSmall,
-                color: .white.opacity(0.92),
-                lineHeight: 14
-            )
         }
+        .frame(height: FooterMetrics.secondaryRow, alignment: .leading)
     }
 
-    private func conditionPill(_ label: String, maxWidth: CGFloat) -> some View {
+    private var sellerRow: some View {
         FashMarqueeText(
-            text: label,
+            text: sellerLine,
             font: FashTypography.labelSmall,
-            fontWeight: .semibold,
-            color: .white,
-            lineHeight: 14
+            color: .white.opacity(0.88),
+            lineHeight: FooterMetrics.sellerRow
         )
-        .padding(.horizontal, 6)
-        .padding(.vertical, 3)
-        .frame(maxWidth: maxWidth, alignment: .leading)
-        .background(Color.white.opacity(0.24))
-        .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+        .frame(height: FooterMetrics.sellerRow, alignment: .leading)
+    }
+
+    private func conditionPill(_ label: String) -> some View {
+        Text(label)
+            .font(FashTypography.labelSmall.weight(.semibold))
+            .foregroundStyle(.white)
+            .lineLimit(1)
+            .truncationMode(.tail)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
+            .background(Color.white.opacity(0.24))
+            .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+            .frame(maxWidth: 160, alignment: .leading)
+            .fixedSize(horizontal: true, vertical: false)
     }
 
     @ViewBuilder
-    private var badgesOverlay: some View {
+    private var topLeadingOverlay: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if item.imageUrls.count > 1 {
+                HStack(spacing: 4) {
+                    Image(systemName: "photo.on.rectangle")
+                        .font(.system(size: 14))
+                    Text("\(item.imageUrls.count)")
+                        .font(FashTypography.labelSmall)
+                }
+                .foregroundStyle(.white)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 4)
+                .background(Color.black.opacity(0.45))
+                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            }
+            if let status = statusOverlayLabel?.trimmingCharacters(in: .whitespacesAndNewlines), !status.isEmpty {
+                Text(status)
+                    .font(FashTypography.labelSmall.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 4)
+                    .background(Color.black.opacity(0.45))
+                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            }
+        }
+        .padding(6)
+    }
+
+    @ViewBuilder
+    private var topTrailingBadges: some View {
         VStack(alignment: .trailing, spacing: 6) {
             if item.onsiteInspectionCommitment, !compactFooter {
                 badgePill(L10n.listingCommitmentBadge, color: Color(hex: 0x1B5E20, alpha: 0.88))
@@ -182,27 +281,8 @@ struct ListingGridCard: View {
             if let scarcity = scarcityBadge {
                 badgePill(scarcity, color: FashColors.brandPrimary.opacity(0.88))
             }
-            Spacer()
         }
         .padding(6)
-        .overlay(alignment: .topLeading) {
-            HStack(spacing: 6) {
-                if item.imageUrls.count > 1 {
-                    HStack(spacing: 4) {
-                        Image(systemName: "photo.on.rectangle")
-                            .font(.system(size: 14))
-                        Text("\(item.imageUrls.count)")
-                            .font(FashTypography.labelSmall)
-                    }
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 4)
-                    .background(Color.black.opacity(0.45))
-                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                }
-            }
-            .padding(6)
-        }
     }
 
     @ViewBuilder
@@ -248,6 +328,7 @@ struct ListingGridCard: View {
             .background(color)
             .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
             .lineLimit(1)
+            .truncationMode(.tail)
     }
 
     private var secondaryMeta: String {
@@ -321,5 +402,4 @@ struct ListingGridCard: View {
 private struct ListingMetaUi {
     let conditionLabel: String
     let secondary: String
-    var hasContent: Bool { !conditionLabel.isEmpty || !secondary.isEmpty }
 }

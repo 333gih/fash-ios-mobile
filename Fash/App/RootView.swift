@@ -15,7 +15,17 @@ struct RootView: View {
             ZStack {
                 rootContent
                 FashGlobalDialogHost()
+                if let message = deps.snackbarMessage {
+                    VStack {
+                        Spacer()
+                        FashSnackbarHost(message: message) {
+                            deps.dismissSnackbar()
+                        }
+                    }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
             }
+            .animation(.easeInOut(duration: 0.22), value: deps.snackbarMessage)
             .fullScreenCover(item: Binding(
                 get: { router.fullScreenRoute },
                 set: { if $0 == nil { router.dismissFullScreen() } }
@@ -72,25 +82,35 @@ struct RootView: View {
         case .listing(let id):
             ProductDetailScreen(
                 listingId: id,
+                isGuestMode: router.isGuestMode,
                 onDismiss: { router.selectedListingId = nil },
                 onBuyNow: { router.selectedCheckoutListingId = $0 },
+                onContinueOrder: { orderId in
+                    router.selectedListingId = nil
+                    router.selectedOrderId = orderId
+                },
                 onChat: { convId in
                     router.selectedListingId = nil
                     router.selectedConversationId = convId
+                },
+                onShare: { _, _ in },
+                onListingClick: { listingId in
+                    router.selectedListingId = listingId
                 },
                 onVisitSellerShop: { username in
                     router.selectedListingId = nil
                     router.sellerShopUsername = username
                 },
-                onNavigateToExplore: { cat, brand, tag, query in
+                onRequestLogin: { router.loginStep = .email },
+                onNavigateToExplore: { cat, brand, tag, query, countryId, iso in
                     router.selectedListingId = nil
                     router.pendingExploreProfileFilter = ExploreProfileFilterRequest(
                         categoryId: cat,
                         brandId: brand,
                         aestheticTagId: tag,
                         searchQuery: query,
-                        countryId: nil,
-                        countryIso2: nil
+                        countryId: countryId,
+                        countryIso2: iso
                     )
                 }
             )

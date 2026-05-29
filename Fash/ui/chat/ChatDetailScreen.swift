@@ -328,36 +328,69 @@ private struct ChatDetailScreenBody: View {
                 formatTime: viewModel.formatTime,
                 onAccept: { Task { await viewModel.acceptOffer(message, deps: deps) } },
                 onDecline: { Task { await viewModel.declineOffer(message, deps: deps) } },
-                onCounter: isBuyer ? nil : {
-                    viewModel.counterOfferSheet = CounterOfferSheetArgs(
-                        buyerOfferMessageId: message.messageId,
-                        buyerOfferAmountVnd: message.offerAmountVnd
-                    )
-                }
+                onCounter: (!isBuyer && !viewModel.hasOrder && message.messageType == "offer" && !message.isFromMe)
+                    ? {
+                        viewModel.counterOfferSheet = CounterOfferSheetArgs(
+                            buyerOfferMessageId: message.messageId,
+                            buyerOfferAmountVnd: message.offerAmountVnd
+                        )
+                    }
+                    : nil
             )
+        case "order_cancelled":
+            if let payload = message.orderCancelled
+                ?? OrderCancelledChatPayload.parse(messageType: message.messageType, fullText: message.text) {
+                ChatOrderCancelledCardBubble(
+                    message: message,
+                    payload: payload,
+                    isBuyer: isBuyer,
+                    formatTime: viewModel.formatTime,
+                    onViewOrder: { presentedOrderId = payload.orderId }
+                )
+            }
         case "system":
-            ChatSystemMessageBubble(text: message.text.isEmpty ? (message.systemSubtype ?? "") : message.text)
+            ChatSystemMessageBubble(
+                text: message.text,
+                timestamp: message.timestamp,
+                formatTime: viewModel.formatTime
+            )
         case "meeting_proposal":
             if let appt = message.meetingAppointment {
                 ChatMeetingProposalCard(
+                    message: message,
                     appointment: appt,
-                    isViewerBuyer: viewModel.detail?.isBuyer == true,
+                    isViewerBuyer: isBuyer,
+                    hasLinkedEscrowOrder: viewModel.hasOrder,
                     formatTime: viewModel.formatTime,
                     mutationInFlight: viewModel.meetingMutationInFlight,
                     onConfirm: { Task { await viewModel.confirmMeeting(appointmentId: appt.appointmentId, deps: deps) } },
                     onWithdrawOrReject: { Task { await viewModel.cancelMeeting(appointmentId: appt.appointmentId, deps: deps) } },
-                    onOnMyWay: ChatMapsUrlRules.isLenientMeetingMapsUrl(appt.locationUrl) && !appt.scheduledAt.isEmpty
+                    onOnMyWay: appt.status.lowercased() == "confirmed"
                         ? { Task { await viewModel.onMyWayMeeting(appointmentId: appt.appointmentId, deps: deps) } }
                         : nil,
-                    onCheckIn: ChatMapsUrlRules.isLenientMeetingMapsUrl(appt.locationUrl) && !appt.scheduledAt.isEmpty
+                    onCheckIn: appt.status.lowercased() == "confirmed"
                         ? { Task { await viewModel.checkInMeeting(appointmentId: appt.appointmentId, deps: deps) } }
                         : nil
                 )
-            } else {
-                ChatSystemMessageBubble(text: message.text)
+            } else if !message.text.isEmpty {
+                ChatSystemMessageBubble(
+                    text: message.text,
+                    timestamp: message.timestamp,
+                    formatTime: viewModel.formatTime
+                )
             }
         default:
-            textBubble(message)
+            if let legacy = OrderCancelledChatPayload.parse(messageType: "text", fullText: message.text) {
+                ChatOrderCancelledCardBubble(
+                    message: message,
+                    payload: legacy,
+                    isBuyer: isBuyer,
+                    formatTime: viewModel.formatTime,
+                    onViewOrder: { presentedOrderId = legacy.orderId }
+                )
+            } else if !message.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                textBubble(message)
+            }
         }
     }
 

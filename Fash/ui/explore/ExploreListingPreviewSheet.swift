@@ -10,6 +10,7 @@ struct ExploreListingPreviewSheet: View {
     var onLike: () -> Void
     var onSave: () -> Void
     var onMessageSeller: () -> Void
+    var onOpenSeller: (() -> Void)?
     var onRequestLogin: (() -> Void)?
 
     @State private var showScrollHint = true
@@ -175,20 +176,32 @@ struct ExploreListingPreviewSheet: View {
     }
 
     private var sellerRow: some View {
-        HStack(spacing: 6) {
-            sellerAvatar
-                .frame(width: 28, height: 28)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(sellerHeadline)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(FashColors.textPrimary)
-                    .lineLimit(1)
-                Text(sellerSubline)
-                    .font(.system(size: 10))
-                    .foregroundStyle(FashColors.textSecondary)
-                    .lineLimit(1)
+        Button {
+            onOpenSeller?()
+        } label: {
+            HStack(spacing: 6) {
+                sellerAvatar
+                    .frame(width: 28, height: 28)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(sellerHeadline)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(FashColors.textPrimary)
+                        .lineLimit(1)
+                    Text(sellerSubline)
+                        .font(.system(size: 10))
+                        .foregroundStyle(FashColors.textSecondary)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                if onOpenSeller != nil {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(FashColors.textSecondary.opacity(0.7))
+                }
             }
         }
+        .buttonStyle(.plain)
+        .disabled(onOpenSeller == nil)
     }
 
     private var sellerAvatar: some View {

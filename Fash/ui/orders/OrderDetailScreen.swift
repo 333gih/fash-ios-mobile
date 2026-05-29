@@ -3,6 +3,7 @@ import SwiftUI
 struct OrderDetailScreen: View {
     @Environment(\.fashSpacing) private var spacing
     @Environment(AppDependencies.self) private var deps
+
     let orderId: String
     var onDismiss: () -> Void
     var onNavigateToPayment: (String, Int64, String) -> Void = { _, _, _ in }
@@ -11,6 +12,23 @@ struct OrderDetailScreen: View {
     var onOpenUserProfile: (String) -> Void = { _ in }
 
     @State private var viewModel = OrderDetailViewModel()
+    @State private var showHelp = false
+    @State private var showShip = false
+    @State private var showReview = false
+    @State private var showOpenDispute = false
+    @State private var showDisputeEvidence = false
+    @State private var showCancel = false
+    @State private var showNoShow = false
+
+    @State private var trackingNumber = ""
+    @State private var carrierName = ""
+    @State private var selectedCarrierId = ""
+    @State private var reviewRating = 5
+    @State private var reviewComment = ""
+    @State private var disputeDescription = ""
+    @State private var disputePhotos: [String] = []
+    @State private var noShowReason = "other_absent"
+    @State private var noShowNote = ""
 
     var body: some View {
         FashScreenScaffold(title: L10n.orderDetailTitle, showBack: true, onBack: onDismiss) {
@@ -29,6 +47,14 @@ struct OrderDetailScreen: View {
             }
             .background(FashColors.screen)
         }
+        .overlay(alignment: .topTrailing) {
+            Button { showHelp = true } label: {
+                Image(systemName: "questionmark.circle")
+                    .font(.system(size: 20))
+                    .foregroundStyle(FashColors.textPrimary)
+                    .padding(12)
+            }
+        }
         .overlay(alignment: .top) {
             if viewModel.isRefreshing {
                 ProgressView().padding(.top, 8)
@@ -36,7 +62,7 @@ struct OrderDetailScreen: View {
         }
         .safeAreaInset(edge: .bottom) {
             if let detail = viewModel.detail {
-                bottomActions(detail)
+                stickyBottomBar(detail)
             }
         }
         .task(id: orderId) { await viewModel.load(orderId: orderId, deps: deps) }
@@ -48,87 +74,77 @@ struct OrderDetailScreen: View {
         } message: {
             Text(viewModel.toastMessage ?? "")
         }
+        .alert(L10n.orderDetailHelpCd, isPresented: $showHelp) {
+            Button(L10n.orderDetailHelpClose) {}
+        } message: {
+            Text(L10n.orderDetailHelpBody)
+        }
+        .sheet(isPresented: $showShip) { shipSheet }
+        .sheet(isPresented: $showReview) { reviewSheet }
+        .sheet(isPresented: $showOpenDispute) { disputeSheet(isEvidence: false) }
+        .sheet(isPresented: $showDisputeEvidence) { disputeSheet(isEvidence: true) }
+        .sheet(isPresented: $showCancel) {
+            OrderCancelFlowSheet(orderId: orderId, onDismiss: { showCancel = false }) {
+                Task { await viewModel.load(orderId: orderId, deps: deps) }
+            }
+        }
+        .confirmationDialog(L10n.orderDetailNoShowDialogTitle, isPresented: $showNoShow, titleVisibility: .visible) {
+            Button(L10n.orderDetailNoShowOtherAbsent) { noShowReason = "other_absent"; reportNoShow() }
+            Button(L10n.orderDetailNoShowOtherLate) { noShowReason = "other_late"; reportNoShow() }
+            Button(L10n.orderDetailNoShowMutualCancel) { noShowReason = "mutual_cancel"; reportNoShow() }
+            Button(L10n.orderCancelConfirmDismiss, role: .cancel) {}
+        }
     }
 
-    @ViewBuilder
     private func detailScroll(_ detail: OrderDetailPayload) -> some View {
-        ScrollView {
+        let role = viewModel.viewerRole(deps: deps)
+        return ScrollView {
             VStack(alignment: .leading, spacing: spacing.spacing3) {
-                HStack {
-                    OrderDetailComponents.statusBadge(detail.status)
-                    Spacer()
-                    if !detail.createdAt.isEmpty {
-                        Text(OrderFormatting.formatShortDate(detail.createdAt))
-                            .font(FashTypography.labelSmall)
-                            .foregroundStyle(FashColors.textSecondary)
-                    }
+                OrderDetailComponents.heroCard(detail: detail, role: role)
+                OrderDetailComponents.timelineSection(detail: detail)
+                OrderDetailComponents.meetupDeadlineStrip(detail: detail)
+                OrderDetailComponents.meetingSection(detail: detail)
+                OrderDetailComponents.meetingGraceSection(
+                    detail: detail,
+                    role: role,
+                    busy: viewModel.busyAction,
+                    onCheckIn: { Task { await viewModel.checkInAtMeeting(deps: deps) } },
+                    onNoShow: { showNoShow = true },
+                    onAckCash: { Task { await viewModel.acknowledgeOfflineCash(deps: deps) } }
+                )
+                if role == .buyer {
+                    OrderDetailComponents.buyerShippingCard(detail: detail)
                 }
-
+                counterpartyCard(detail, role: role)
                 productCard(detail)
-
-                counterpartyCard(detail)
-
-                OrderDetailComponents.sectionCard {
-                    Text(L10n.orderDetailPaymentBreakdownTitle)
-                        .font(FashTypography.titleSmall.weight(.semibold))
-                    OrderDetailComponents.infoRow(
-                        L10n.orderDetailBuyerProductPrice,
-                        FeedPriceFormat.format(detail.amountVnd > 0 ? detail.amountVnd : detail.listingPriceVnd)
-                    )
-                    if detail.shippingFeeVnd > 0 {
-                        OrderDetailComponents.infoRow(
-                            L10n.orderDetailBuyerShippingFee,
-                            FeedPriceFormat.format(detail.shippingFeeVnd)
-                        )
-                    }
-                    OrderDetailComponents.infoRow(
-                        L10n.orderDetailBuyerTotal,
-                        FeedPriceFormat.format(detail.effectiveBuyerTotal)
-                    )
-                }
-
-                if !detail.shippingAddressFormatted.isEmpty || !detail.recipientName.isEmpty {
-                    OrderDetailComponents.sectionCard {
-                        Text(L10n.orderDetailShippingTitle)
-                            .font(FashTypography.titleSmall.weight(.semibold))
-                        if !detail.recipientName.isEmpty {
-                            OrderDetailComponents.infoRow(L10n.checkoutFullName, detail.recipientName)
-                        }
-                        if !detail.recipientPhone.isEmpty {
-                            OrderDetailComponents.infoRow(L10n.checkoutPhone, detail.recipientPhone)
-                        }
-                        if !detail.shippingAddressFormatted.isEmpty {
-                            Text(detail.shippingAddressFormatted)
-                                .font(FashTypography.bodyMedium)
-                                .foregroundStyle(FashColors.textPrimary)
-                        }
-                        if !detail.trackingNumber.isEmpty {
-                            OrderDetailComponents.infoRow(L10n.orderDetailTracking, detail.trackingNumber)
-                        }
-                        if !detail.trackingStatusSummary.isEmpty {
-                            OrderDetailComponents.infoRow(L10n.orderDetailTracking, detail.trackingStatusSummary)
-                        }
-                    }
-                }
-
-                if let review = detail.buyerReview {
-                    OrderDetailComponents.sectionCard {
-                        Text(L10n.orderDetailBuyerReviewHeadingViewer)
-                            .font(FashTypography.titleSmall.weight(.semibold))
-                        Text("★ \(review.rating)")
-                            .font(FashTypography.titleMedium)
-                            .foregroundStyle(FashColors.brandPrimary)
-                        if !review.comment.isEmpty {
-                            Text(review.comment)
-                                .font(FashTypography.bodyMedium)
-                                .foregroundStyle(FashColors.textSecondary)
-                        }
-                    }
-                }
+                paymentCard(detail, role: role)
+                OrderDetailComponents.trackingCard(detail: detail)
+                OrderDetailComponents.buyerReviewSection(detail: detail, role: role)
             }
             .padding(.horizontal, spacing.editorialStart)
             .padding(.vertical, spacing.spacing3)
-            .padding(.bottom, 88)
+            .padding(.bottom, 120)
+        }
+    }
+
+    private func paymentCard(_ detail: OrderDetailPayload, role: OrderViewerRole) -> some View {
+        OrderDetailComponents.sectionCard {
+            Text(role == .seller ? L10n.orderDetailSellerRevenueTitle : L10n.orderDetailPaymentBreakdownTitle)
+                .font(FashTypography.titleSmall.weight(.semibold))
+            OrderDetailComponents.infoRow(
+                L10n.orderDetailBuyerProductPrice,
+                FeedPriceFormat.format(detail.amountVnd > 0 ? detail.amountVnd : detail.listingPriceVnd)
+            )
+            if detail.shippingFeeVnd > 0 {
+                OrderDetailComponents.infoRow(L10n.orderDetailBuyerShippingFee, FeedPriceFormat.format(detail.shippingFeeVnd))
+            }
+            if role == .seller, detail.platformFeeVnd > 0 {
+                OrderDetailComponents.infoRow(L10n.orderDetailPlatformFee, FeedPriceFormat.format(detail.platformFeeVnd))
+            }
+            if role == .seller, detail.sellerPayoutVnd > 0 {
+                OrderDetailComponents.infoRow(L10n.orderDetailSellerPayout, FeedPriceFormat.format(detail.sellerPayoutVnd))
+            }
+            OrderDetailComponents.infoRow(L10n.orderDetailBuyerTotal, FeedPriceFormat.format(detail.effectiveBuyerTotal))
         }
     }
 
@@ -139,15 +155,15 @@ struct OrderDetailScreen: View {
             HStack(spacing: 12) {
                 let img = FeedImageUrl.resolveListingImageUrlOrNil(detail.listingImageUrl)
                 Group {
-                    if let img {
-                        FashAsyncImage(url: img, contentMode: .fill)
-                    } else {
-                        FashColors.surfaceVariant
-                    }
+                    if let img { FashAsyncImage(url: img, contentMode: .fill) }
+                    else { FashColors.surfaceVariant }
                 }
                 .frame(width: 80, height: 80)
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 VStack(alignment: .leading, spacing: 4) {
+                    Text(L10n.orderDetailProduct)
+                        .font(FashTypography.labelSmall)
+                        .foregroundStyle(FashColors.textSecondary)
                     Text(detail.listingTitle)
                         .font(FashTypography.titleSmall.weight(.bold))
                         .foregroundStyle(FashColors.textPrimary)
@@ -157,23 +173,20 @@ struct OrderDetailScreen: View {
                             .font(FashTypography.bodySmall)
                             .foregroundStyle(FashColors.textSecondary)
                     }
-                    Text(FeedPriceFormat.format(detail.listingPriceVnd > 0 ? detail.listingPriceVnd : detail.amountVnd))
-                        .font(FashTypography.labelLarge)
-                        .foregroundStyle(FashColors.brandPrimary)
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
                     .foregroundStyle(FashColors.textSecondary)
             }
-            .padding(12)
-            .background(FashColors.surfaceContainer)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         .buttonStyle(.plain)
+        .padding(12)
+        .background(FashColors.surfaceContainer)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
-    private func counterpartyCard(_ detail: OrderDetailPayload) -> some View {
-        let isBuyer = viewModel.isCurrentUserBuyer(deps: deps)
+    private func counterpartyCard(_ detail: OrderDetailPayload, role: OrderViewerRole) -> some View {
+        let isBuyer = role == .buyer
         let username = isBuyer ? detail.sellerUsername : detail.buyerUsername
         let display = isBuyer
             ? (detail.sellerDisplayName.isEmpty ? detail.sellerUsername : detail.sellerDisplayName)
@@ -204,47 +217,204 @@ struct OrderDetailScreen: View {
             }
             .buttonStyle(.plain)
             if !detail.conversationId.isEmpty {
-                Button(L10n.orderDetailContinueInChat) {
-                    onNavigateToChat(detail.conversationId)
-                }
-                .font(FashTypography.labelLarge)
-                .foregroundStyle(FashColors.brandPrimary)
+                Button(L10n.orderDetailContinueInChat) { onNavigateToChat(detail.conversationId) }
+                    .font(FashTypography.labelLarge)
+                    .foregroundStyle(FashColors.brandPrimary)
             }
         }
     }
 
     @ViewBuilder
-    private func bottomActions(_ detail: OrderDetailPayload) -> some View {
+    private func stickyBottomBar(_ detail: OrderDetailPayload) -> some View {
+        let role = viewModel.viewerRole(deps: deps)
+        let st = OrderFormatting.normalizeStatus(detail.status)
+        let idle = viewModel.busyAction == .none
         VStack(spacing: 8) {
-            if viewModel.shouldShowPayButton(deps: deps), !detail.listingId.isEmpty {
+            if role == .buyer, st == "payment_pending", !detail.listingId.isEmpty {
                 FashPrimaryButton(title: L10n.orderDetailPay) {
                     onNavigateToPayment(detail.listingId, detail.effectiveBuyerTotal, detail.orderId)
                 }
             }
-            if detail.canConfirmReceipt, viewModel.isCurrentUserBuyer(deps: deps) {
+            if role == .buyer, st == "fulfillment_pending" || st == "cash_meetup_open", !detail.conversationId.isEmpty {
+                Button(L10n.orderDetailContinueInChat) { onNavigateToChat(detail.conversationId) }
+                    .font(FashTypography.labelLarge.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(FashColors.brandPrimary)
+                    .foregroundStyle(FashColors.onBrandPrimary)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+            if role == .seller, OrderDetailLogic.sellerShowsConfirmHandoffCta(detail) {
+                FashPrimaryButton(title: L10n.orderDetailConfirmHandoff, enabled: idle) {
+                    Task { await viewModel.confirmHandoff(deps: deps) }
+                }
+            } else if role == .seller, st == "payment_held", detail.canShip {
+                FashPrimaryButton(title: L10n.orderDetailActionShip, enabled: idle) {
+                    Task { await viewModel.loadShipmentCarriers(deps: deps) }
+                    showShip = true
+                }
+            }
+            if detail.canConfirmReceipt, role == .buyer {
                 Button {
                     Task { await viewModel.confirmReceipt(deps: deps) }
                 } label: {
                     HStack {
-                        if viewModel.busyAction == .confirmingReceipt {
-                            ProgressView().scaleEffect(0.85)
-                        }
+                        if viewModel.busyAction == .confirmReceipt { ProgressView().scaleEffect(0.85) }
                         Text(L10n.ordersConfirmReceived)
                     }
                     .font(FashTypography.labelLarge.weight(.semibold))
-                    .foregroundStyle(FashColors.brandPrimary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .stroke(FashColors.brandPrimary, lineWidth: 1)
-                    )
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(FashColors.brandPrimary, lineWidth: 1))
                 }
-                .disabled(viewModel.busyAction == .confirmingReceipt)
+                .foregroundStyle(FashColors.brandPrimary)
+                .disabled(!idle)
             }
+            if detail.canReview, role == .buyer, detail.buyerReview == nil {
+                Button(L10n.orderDetailReviewTitle) { showReview = true }
+                    .font(FashTypography.labelLarge)
+                    .foregroundStyle(FashColors.brandPrimary)
+            }
+            HStack(spacing: 12) {
+                if role != .viewer, (st == "in_transit" || st == "delivered_confirmed") {
+                    Button(L10n.orderDetailDisputeOpen) { showOpenDispute = true }
+                        .font(FashTypography.labelMedium)
+                }
+                if st == "disputed" {
+                    Button(L10n.orderDetailDisputeEvidence) { showDisputeEvidence = true }
+                        .font(FashTypography.labelMedium)
+                }
+                if role == .buyer, OrderBuyerCancelPolicy.buyerCanCancel(status: st) {
+                    Button(L10n.orderCancelConfirmAction) { showCancel = true }
+                        .font(FashTypography.labelMedium)
+                }
+            }
+            .foregroundStyle(FashColors.textPrimary)
         }
         .padding(.horizontal, spacing.editorialStart)
         .padding(.vertical, 12)
         .background(FashColors.surfaceContainerHighest)
+    }
+
+    private var shipSheet: some View {
+        NavigationStack {
+            Form {
+                if !viewModel.shipmentCarriers.isEmpty {
+                    Section(L10n.orderDetailShipBookCarrier) {
+                        Picker(L10n.orderDetailShipCarrierLabel, selection: $selectedCarrierId) {
+                            Text("—").tag("")
+                            ForEach(viewModel.shipmentCarriers) { c in
+                                Text(c.name).tag(c.id)
+                            }
+                        }
+                        if !selectedCarrierId.isEmpty {
+                            Button(L10n.orderDetailShipConfirm) {
+                                Task {
+                                    await viewModel.bookShipment(carrierId: selectedCarrierId, deps: deps)
+                                    showShip = false
+                                }
+                            }
+                        }
+                    }
+                }
+                Section(L10n.orderDetailShipManualSection) {
+                    TextField(L10n.orderDetailShipTrackingLabel, text: $trackingNumber)
+                    TextField(L10n.orderDetailShipCarrierLabel, text: $carrierName)
+                    Button(L10n.orderDetailShipConfirm) {
+                        Task {
+                            await viewModel.shipOrder(tracking: trackingNumber, carrier: carrierName, deps: deps)
+                            showShip = false
+                        }
+                    }
+                }
+            }
+            .navigationTitle(L10n.orderDetailShipDialogTitle)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(L10n.orderCancelConfirmDismiss) { showShip = false }
+                }
+            }
+        }
+    }
+
+    private var reviewSheet: some View {
+        NavigationStack {
+            Form {
+                Stepper("★ \(reviewRating)", value: $reviewRating, in: 1...5)
+                TextField(L10n.orderDetailReviewCommentLabel, text: $reviewComment, axis: .vertical)
+                    .lineLimit(3...8)
+            }
+            .navigationTitle(L10n.orderDetailReviewTitle)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(L10n.orderCancelConfirmDismiss) { showReview = false }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(L10n.orderDetailReviewSubmit) {
+                        Task {
+                            await viewModel.submitReview(
+                                rating: reviewRating,
+                                comment: reviewComment.nilIfEmpty,
+                                deps: deps
+                            )
+                            showReview = false
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func disputeSheet(isEvidence: Bool) -> some View {
+        NavigationStack {
+            Form {
+                TextField(L10n.orderDetailDisputeDescriptionLabel, text: $disputeDescription, axis: .vertical)
+                    .lineLimit(4...10)
+            }
+            .navigationTitle(isEvidence ? L10n.orderDetailDisputeDialogTitleEvidence : L10n.orderDetailDisputeDialogTitleOpen)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(L10n.orderCancelConfirmDismiss) {
+                        showOpenDispute = false
+                        showDisputeEvidence = false
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(L10n.orderDetailDisputeSubmit) {
+                        Task {
+                            if isEvidence {
+                                await viewModel.submitDisputeEvidence(
+                                    description: disputeDescription,
+                                    photoUrls: disputePhotos,
+                                    deps: deps
+                                )
+                            } else {
+                                await viewModel.openDispute(
+                                    description: disputeDescription,
+                                    photoUrls: disputePhotos,
+                                    deps: deps
+                                )
+                            }
+                            showOpenDispute = false
+                            showDisputeEvidence = false
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func reportNoShow() {
+        Task {
+            await viewModel.reportMeetingNoShow(reason: noShowReason, note: noShowNote, deps: deps)
+        }
+    }
+}
+
+private extension String {
+    var nilIfEmpty: String? {
+        let t = trimmingCharacters(in: .whitespacesAndNewlines)
+        return t.isEmpty ? nil : t
     }
 }

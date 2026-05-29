@@ -65,15 +65,24 @@ final class AppDependencies {
     var inboxUnreadRefreshGeneration: Int = 0
     var inboxUnreadCount: Int = 0
     var inAppNotification: FashInAppNotificationSession?
+    var snackbarMessage: String?
+    var pendingAccountSwitchPrompt: AccountSwitchPrompt?
 
     /// Set from [RootView] so push notification taps can open overlays while the app is running.
     weak var navigationRouter: AppRouter?
 
     private var sessionValidationTask: Task<Bool, Never>?
+    private var appPromoShowContinuation: AsyncStream<AppPromoCampaign>.Continuation?
+    let appPromoShowSignals: AsyncStream<AppPromoCampaign>
     private var proactiveTokenRefreshTask: Task<Void, Never>?
     private var inboxRefreshDebounceTask: Task<Void, Never>?
+    private var snackbarDismissTask: Task<Void, Never>?
 
     private init() {
+        var promoContinuation: AsyncStream<AppPromoCampaign>.Continuation!
+        appPromoShowSignals = AsyncStream { promoContinuation = $0 }
+        appPromoShowContinuation = promoContinuation
+
         authRepository = AuthRepository()
         authManager = AppAuthManager(sessionStore: authSessionStore, authRepository: authRepository)
         securedClient = SecuredApiClient(
@@ -203,6 +212,8 @@ final class AppDependencies {
         inboxRefreshDebounceTask?.cancel()
         inboxUnreadCount = 0
         inAppNotification = nil
+        pendingAccountSwitchPrompt = nil
+        AppPromoPendingQueue.clear()
         authSessionStore.clear()
         isGuestBrowseActive = false
         onboardingLocalStore.clearAll()
@@ -248,6 +259,42 @@ final class AppDependencies {
 
     func showInAppNotification(_ session: FashInAppNotificationSession) {
         inAppNotification = session
+    }
+
+    func dismissInAppNotification() {
+        inAppNotification = nil
+    }
+
+    func requestShowAppPromo(_ campaign: AppPromoCampaign) {
+        appPromoShowContinuation?.yield(campaign)
+    }
+
+    func requestAccountSwitchPrompt(_ prompt: AccountSwitchPrompt) {
+        pendingAccountSwitchPrompt = prompt
+    }
+
+    func clearAccountSwitchPrompt() {
+        pendingAccountSwitchPrompt = nil
+    }
+
+    /// Global snackbar — Android MainActivity `SerialSnackbarChannel` + VM `events`.
+    func showSnackbar(_ message: String) {
+        let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        snackbarDismissTask?.cancel()
+        snackbarMessage = trimmed
+        snackbarDismissTask = Task {
+            try? await Task.sleep(for: .seconds(4))
+            guard !Task.isCancelled else { return }
+            if snackbarMessage == trimmed {
+                snackbarMessage = nil
+            }
+        }
+    }
+
+    func dismissSnackbar() {
+        snackbarDismissTask?.cancel()
+        snackbarMessage = nil
     }
 }
 

@@ -17,15 +17,17 @@ enum RealtimeNotificationRouter {
         case .inboxRefresh:
             deps.requestInboxUnreadRefresh()
         case .notificationShow(let title, let body, let data, let userNotificationId):
-            if AppPromoPushParsing.isAppPromoPushData(data),
+            let pushData = data ?? [:]
+            if AccountSwitchDeepLinks.parseFromFcmData(pushData) != nil {
+                return
+            }
+            if AppPromoPushParsing.isAppPromoPushData(pushData),
                let campaign = AppPromoPushParsing.parseAppPromoFromPushData(
-                   data: data ?? [:],
+                   data: pushData,
                    fallbackTitle: title,
                    fallbackBody: body
                ) {
-                deps.uiDialog.title = campaign.title
-                deps.uiDialog.message = campaign.body
-                deps.uiDialog.isPresented = true
+                deps.requestShowAppPromo(campaign)
                 deps.requestInboxUnreadRefresh()
                 return
             }
@@ -34,7 +36,7 @@ enum RealtimeNotificationRouter {
                 title: title,
                 body: body,
                 userNotificationId: userNotificationId,
-                dataMap: data ?? [:]
+                dataMap: pushData
             ))
             deps.requestInboxUnreadRefresh()
             if isChatPushData(data) {
@@ -42,9 +44,7 @@ enum RealtimeNotificationRouter {
             }
         case .appPromoShow(let campaignJson):
             if let campaign = AppPromoPushParsing.parseRealtimeCampaignJson(campaignJson) {
-                deps.uiDialog.title = campaign.title
-                deps.uiDialog.message = campaign.body
-                deps.uiDialog.isPresented = true
+                deps.requestShowAppPromo(campaign)
                 deps.requestInboxUnreadRefresh()
             }
         case .feedRefresh:
@@ -71,7 +71,7 @@ enum RealtimeNotificationRouter {
         deps: AppDependencies,
         router: AppRouter
     ) {
-        deps.inAppNotification = nil
+        deps.dismissInAppNotification()
         let data = session.dataMap
 
         if let inboxId = session.userNotificationId?.trimmingCharacters(in: .whitespaces), !inboxId.isEmpty {

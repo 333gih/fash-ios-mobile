@@ -222,42 +222,52 @@ final class HomeViewModel {
 
     func toggleLike(_ item: ListingFeedItem, surface: String, position: Int, deps: AppDependencies) {
         Task {
-            guard case .success(let liked) = await deps.listingRepository.toggleLike(listingId: item.id) else { return }
-            patchListingInFeeds(item.id) { cur in
-                let delta = (liked && !cur.isLiked) ? 1 : ((!liked && cur.isLiked) ? -1 : 0)
-                return cur.withEngagement(
-                    likeCount: max(0, cur.likeCount + delta),
-                    isLiked: liked,
-                    saveCount: cur.saveCount,
-                    isSaved: cur.isSaved
-                )
-            }
-            if liked {
-                deps.feedEventReporter.like(listingId: item.id, surface: surface, position: position)
+            switch await deps.listingRepository.toggleLike(listingId: item.id) {
+            case .success(let liked):
+                patchListingInFeeds(item.id) { cur in
+                    let delta = (liked && !cur.isLiked) ? 1 : ((!liked && cur.isLiked) ? -1 : 0)
+                    return cur.withEngagement(
+                        likeCount: max(0, cur.likeCount + delta),
+                        isLiked: liked,
+                        saveCount: cur.saveCount,
+                        isSaved: cur.isSaved
+                    )
+                }
+                if liked {
+                    deps.feedEventReporter.like(listingId: item.id, surface: surface, position: position)
+                }
+                deps.showSnackbar(FeedEngagementFeedback.likeMessage(liked: liked))
+            case .failure(let error):
+                deps.showSnackbar(FeedEngagementFeedback.actionErrorMessage(for: error))
             }
         }
     }
 
     func toggleSave(_ item: ListingFeedItem, surface: String, position: Int, deps: AppDependencies, isGuestMode: Bool) {
         Task {
-            guard case .success(let saved) = await deps.listingRepository.toggleSave(
+            switch await deps.listingRepository.toggleSave(
                 listingId: item.id,
                 currentlySaved: item.isSaved
-            ) else { return }
-            patchListingInFeeds(item.id) { cur in
-                let delta = (saved && !cur.isSaved) ? 1 : ((!saved && cur.isSaved) ? -1 : 0)
-                return cur.withEngagement(
-                    likeCount: cur.likeCount,
-                    isLiked: cur.isLiked,
-                    saveCount: max(0, cur.saveCount + delta),
-                    isSaved: saved
-                )
-            }
-            if saved {
-                deps.feedEventReporter.save(listingId: item.id, surface: surface, position: position)
-            }
-            if !isGuestMode {
-                await loadBuyerHomeStats(deps: deps, isGuestMode: false)
+            ) {
+            case .success(let saved):
+                patchListingInFeeds(item.id) { cur in
+                    let delta = (saved && !cur.isSaved) ? 1 : ((!saved && cur.isSaved) ? -1 : 0)
+                    return cur.withEngagement(
+                        likeCount: cur.likeCount,
+                        isLiked: cur.isLiked,
+                        saveCount: max(0, cur.saveCount + delta),
+                        isSaved: saved
+                    )
+                }
+                if saved {
+                    deps.feedEventReporter.save(listingId: item.id, surface: surface, position: position)
+                }
+                deps.showSnackbar(FeedEngagementFeedback.saveMessage(saved: saved))
+                if !isGuestMode {
+                    await loadBuyerHomeStats(deps: deps, isGuestMode: false)
+                }
+            case .failure(let error):
+                deps.showSnackbar(FeedEngagementFeedback.actionErrorMessage(for: error))
             }
         }
     }

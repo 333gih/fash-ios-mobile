@@ -1,8 +1,5 @@
 import SwiftUI
 
-/// Space reserved above bottom nav — Android [FashStickyPromoDockHeight] (divider + slider + dots).
-let FashStickyPromoDockHeight: CGFloat = 144
-
 /// Bottom-docked promo chrome — Android [StickyBottomPromoBar].
 struct StickyBottomPromoBar<Content: View>: View {
     var elevated: Bool = false

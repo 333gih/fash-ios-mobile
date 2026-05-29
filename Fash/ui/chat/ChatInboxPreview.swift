@@ -34,8 +34,7 @@ enum ChatInboxPreview {
 
         let rawLast = item.lastMessageText.trimmingCharacters(in: .whitespacesAndNewlines)
         let lastType = item.lastMessageType.trimmingCharacters(in: .whitespacesAndNewlines)
-        if isOrderCancelledChatMessage(type: lastType, fullText: rawLast)
-            || lastType.lowercased() == "order_cancelled"
+        if isOrderCancelledChatMessage(messageType: lastType, fullText: rawLast)
             || rawLast == L10n.chatInboxPreviewOrderCancelledShort {
             if isSeller {
                 return L10n.chatInboxPreviewOrderCancelledSeller
@@ -58,14 +57,8 @@ enum ChatInboxPreview {
         if isOfferRow { return false }
 
         let rawLast = item.lastMessageText.trimmingCharacters(in: .whitespacesAndNewlines)
-        if isOrderCancelledChatMessage(type: item.lastMessageType, fullText: rawLast) { return false }
+        if isOrderCancelledChatMessage(messageType: item.lastMessageType, fullText: rawLast) { return false }
         return rawLast.isEmpty
-    }
-
-    private static func isOrderCancelledChatMessage(type: String, fullText: String) -> Bool {
-        type.lowercased() == "order_cancelled"
-            || fullText.trimmingCharacters(in: .whitespacesAndNewlines)
-                .hasPrefix(OrderCancelledChatPayload.orderIdPrefix)
     }
 
     private static func orderCancelledChatPreviewText(_ fullText: String) -> String? {

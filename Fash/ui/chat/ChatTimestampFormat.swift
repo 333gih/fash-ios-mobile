@@ -5,21 +5,12 @@ enum ChatTimestampFormat {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return "" }
 
-        let toParse: String = {
-            if trimmed.contains("T") { return trimmed }
-            if trimmed.contains(" ") { return trimmed.replacingOccurrences(of: " ", with: "T") }
-            if trimmed.count == 10 { return "\(trimmed)T00:00:00Z" }
-            return trimmed
-        }()
-
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        var instant = formatter.date(from: toParse)
-        if instant == nil {
-            formatter.formatOptions = [.withInternetDateTime]
-            instant = formatter.date(from: toParse)
+        guard let date = ChatInstantParse.parse(trimmed) else {
+            if let range = trimmed.range(of: #"(?<!\d)\d{2}:\d{2}(?!\d)"#, options: .regularExpression) {
+                return String(trimmed[range])
+            }
+            return ""
         }
-        guard let date = instant else { return String(trimmed.prefix(16)) }
 
         let now = Date()
         let diff = now.timeIntervalSince(date)

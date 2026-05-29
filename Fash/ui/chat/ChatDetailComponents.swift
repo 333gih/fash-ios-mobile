@@ -239,20 +239,115 @@ struct ChatOfferStatusBadge: View {
 
 struct ChatSystemMessageBubble: View {
     let text: String
+    let timestamp: String
+    let formatTime: (String) -> String
 
     var body: some View {
-        Text(text)
-            .font(FashTypography.bodySmall.italic())
-            .foregroundStyle(FashColors.textSecondary)
-            .multilineTextAlignment(.center)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 6)
+        VStack(spacing: 2) {
+            if !text.isEmpty {
+                Text(text)
+                    .font(FashTypography.bodySmall.italic())
+                    .foregroundStyle(FashColors.textSecondary.opacity(0.65))
+                    .multilineTextAlignment(.center)
+            }
+            if !timestamp.isEmpty {
+                Text(formatTime(timestamp))
+                    .font(FashTypography.labelSmall)
+                    .foregroundStyle(FashColors.textSecondary.opacity(0.4))
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 4)
+        .padding(.horizontal, 24)
     }
 }
 
+// MARK: - Order cancelled card
+
+struct ChatOrderCancelledCardBubble: View {
+    let message: ChatMessage
+    let payload: OrderCancelledChatPayload
+    let isBuyer: Bool
+    let formatTime: (String) -> String
+    let onViewOrder: () -> Void
+
+    private var whoText: String {
+        if payload.cancelledBy.hasPrefix("system") {
+            return L10n.chatOrderCancelledBySystem
+        }
+        if isBuyer, message.isFromMe {
+            return L10n.chatMessageOrderCancelledByBuyer
+        }
+        return L10n.chatOrderCancelledByBuyer
+    }
+
+    private var reasonLine: String? {
+        let label = OrderCancelReasons.label(forCode: payload.reasonCode)
+        if label != payload.reasonCode, !label.isEmpty {
+            return L10n.chatOrderCancelledReason(label)
+        }
+        let note = payload.reasonNote.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !note.isEmpty {
+            return L10n.chatOrderCancelledReason(note)
+        }
+        return nil
+    }
+
+    var body: some View {
+        VStack(spacing: 4) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 6) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 18))
+                        .foregroundStyle(FashColors.error)
+                    Text(L10n.chatOrderCancelledCardLabel)
+                        .font(FashTypography.labelMedium.weight(.semibold))
+                        .foregroundStyle(FashColors.error)
+                }
+                Text(whoText)
+                    .font(FashTypography.titleMedium.weight(.semibold))
+                    .foregroundStyle(FashColors.textPrimary)
+                if let reasonLine {
+                    Text(reasonLine)
+                        .font(FashTypography.bodyMedium)
+                        .foregroundStyle(FashColors.textSecondary)
+                }
+                if payload.amountVnd > 0 {
+                    Text(FeedPriceFormat.format(payload.amountVnd))
+                        .font(FashTypography.headlineSmall.weight(.bold))
+                        .foregroundStyle(FashColors.textPrimary)
+                }
+                Button(action: onViewOrder) {
+                    Text(L10n.chatOrderCancelledViewOrder)
+                        .font(FashTypography.labelLarge)
+                        .foregroundStyle(FashColors.brandPrimary)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(FashColors.surfaceContainerLow)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(FashColors.error.opacity(0.45), lineWidth: 1)
+            )
+
+            Text(formatTime(message.timestamp))
+                .font(FashTypography.labelSmall)
+                .foregroundStyle(FashColors.textSecondary.opacity(0.6))
+        }
+        .padding(.horizontal, 4)
+    }
+}
+
+// MARK: - Meeting proposal card
+
 struct ChatMeetingProposalCard: View {
+    let message: ChatMessage
     let appointment: MeetingAppointmentPayload
     let isViewerBuyer: Bool
+    let hasLinkedEscrowOrder: Bool
     let formatTime: (String) -> String
     let mutationInFlight: Bool
     let onConfirm: () -> Void
@@ -263,83 +358,27 @@ struct ChatMeetingProposalCard: View {
     private var status: String { appointment.status.lowercased() }
     private var preferVi: Bool { AppLocale.currentTag != AppLocale.tagEN }
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(L10n.chatMeetingCardTitle)
-                .font(FashTypography.labelMedium.weight(.semibold))
-                .foregroundStyle(FashColors.brandPrimary)
-            Text(statusLabel)
-                .font(FashTypography.labelSmall.weight(.semibold))
-                .foregroundStyle(FashColors.textSecondary)
-            if !appointment.scheduledAt.isEmpty {
-                Text(MeetingUi.formatMeetingWhen(appointment.scheduledAt, preferVi: preferVi))
-                    .font(FashTypography.bodyMedium)
-            }
-            if !appointment.safeZoneName.isEmpty {
-                Text(appointment.safeZoneName)
-                    .font(FashTypography.bodySmall.weight(.medium))
-            }
-            if !appointment.locationUrl.isEmpty, let url = URL(string: appointment.locationUrl) {
-                Link(L10n.chatMeetingOpenMaps, destination: url)
-                    .font(FashTypography.labelMedium)
-            }
-            if showOnMyWay, let onOnMyWay {
-                outlineAction(L10n.meetingOnMyWay, action: onOnMyWay)
-            }
-            if showCheckIn, let onCheckIn {
-                FashPrimaryButton(title: L10n.chatMeetingCheckInCta, isLoading: mutationInFlight) {
-                    onCheckIn()
-                }
-            }
-            if showConfirmReject {
-                HStack(spacing: 10) {
-                    Button(L10n.chatMeetingReject, action: onWithdrawOrReject)
-                        .buttonStyle(.bordered)
-                    FashPrimaryButton(title: L10n.chatMeetingConfirm, isLoading: mutationInFlight) {
-                        onConfirm()
-                    }
-                }
-            } else if showWithdrawOnly {
-                Button(L10n.chatMeetingWithdraw, action: onWithdrawOrReject)
-                    .buttonStyle(.bordered)
-            }
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(FashColors.surfaceContainerLow)
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .padding(.horizontal, 4)
+    private var myCheckInAt: String {
+        isViewerBuyer ? appointment.buyerCheckInAt : appointment.sellerCheckInAt
     }
 
-    private var statusLabel: String {
-        switch status {
-        case "confirmed": return L10n.chatMeetingStatusConfirmed
-        case "cancelled": return L10n.chatMeetingStatusCancelled
-        default: return L10n.chatMeetingStatusPending
-        }
-    }
-
-    private var showConfirmReject: Bool {
-        status == "pending" && !appointment.isProposerMe
-    }
-
-    private var showWithdrawOnly: Bool {
-        status == "pending" && appointment.isProposerMe
+    private var otherCheckInAt: String {
+        isViewerBuyer ? appointment.sellerCheckInAt : appointment.buyerCheckInAt
     }
 
     private var myOnMyWayAt: String {
         isViewerBuyer ? appointment.buyerOnMyWayAt : appointment.sellerOnMyWayAt
     }
 
-    private var myCheckInAt: String {
-        isViewerBuyer ? appointment.buyerCheckInAt : appointment.sellerCheckInAt
+    private var otherOnMyWayAt: String {
+        isViewerBuyer ? appointment.sellerOnMyWayAt : appointment.buyerOnMyWayAt
     }
 
-    private var showOnMyWay: Bool {
+    private var showOnMyWayCta: Bool {
         status == "confirmed" && onOnMyWay != nil && myOnMyWayAt.isEmpty && myCheckInAt.isEmpty
     }
 
-    private var showCheckIn: Bool {
+    private var showCheckInCta: Bool {
         status == "confirmed"
             && onCheckIn != nil
             && myCheckInAt.isEmpty
@@ -347,15 +386,186 @@ struct ChatMeetingProposalCard: View {
             && MeetingUi.isWithinMeetingActionWindow(scheduledAtIso: appointment.scheduledAt)
     }
 
-    private func outlineAction(_ title: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(title)
-                .font(FashTypography.labelLarge)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
+    private var showConfirm: Bool { status == "pending" && !appointment.isProposerMe }
+    private var showWithdraw: Bool { status == "pending" && appointment.isProposerMe }
+
+    var body: some View {
+        VStack(spacing: 4) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 6) {
+                    Image(systemName: "calendar")
+                        .font(.system(size: 18))
+                        .foregroundStyle(FashColors.brandPrimary)
+                    Text(L10n.chatMeetingCardTitle)
+                        .font(FashTypography.labelMedium.weight(.semibold))
+                        .foregroundStyle(FashColors.brandPrimary)
+                }
+
+                Text(MeetingUi.meetingStatusLabel(status))
+                    .font(FashTypography.labelMedium.weight(.semibold))
+                    .foregroundStyle(MeetingUi.meetingStatusChipForeground(status))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(MeetingUi.meetingStatusChipBackground(status))
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+                Text(MeetingUi.meetingStateDescription(status))
+                    .font(FashTypography.bodySmall)
+                    .foregroundStyle(FashColors.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if !appointment.scheduledAt.isEmpty {
+                    Text(MeetingUi.formatMeetingWhen(appointment.scheduledAt, preferVi: preferVi))
+                        .font(FashTypography.bodyMedium)
+                        .foregroundStyle(FashColors.textPrimary)
+                }
+
+                if !appointment.safeZoneName.isEmpty {
+                    Text(appointment.safeZoneName)
+                        .font(FashTypography.bodySmall.weight(.medium))
+                        .foregroundStyle(FashColors.textPrimary)
+                }
+
+                if !appointment.locationUrl.isEmpty, let url = URL(string: appointment.locationUrl) {
+                    Button {
+                        UIApplication.shared.open(url)
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "arrow.up.right.square")
+                            Text(L10n.chatMeetingOpenMaps)
+                        }
+                        .font(FashTypography.labelLarge)
+                        .foregroundStyle(FashColors.brandPrimary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .stroke(FashColors.brandPrimary.opacity(0.5), lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(mutationInFlight)
+                } else if status == "confirmed" {
+                    Text(L10n.chatMeetingConfirmedNoMapsHint)
+                        .font(FashTypography.bodySmall)
+                        .foregroundStyle(FashColors.textSecondary.opacity(0.9))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                if status == "confirmed", !myOnMyWayAt.isEmpty {
+                    Text(L10n.meetingSelfOnMyWay)
+                        .font(FashTypography.bodySmall.weight(.medium))
+                        .foregroundStyle(FashColors.brandPrimary)
+                }
+                if status == "confirmed", !otherOnMyWayAt.isEmpty {
+                    Text(L10n.meetingOtherOnMyWay)
+                        .font(FashTypography.bodySmall.weight(.medium))
+                        .foregroundStyle(FashColors.brandPrimary)
+                }
+
+                if status == "confirmed", !otherCheckInAt.isEmpty || !myCheckInAt.isEmpty {
+                    Divider().opacity(0.4)
+                    if !otherCheckInAt.isEmpty {
+                        Text(L10n.chatMeetingOtherCheckedInAt(formatTime(otherCheckInAt)))
+                            .font(FashTypography.bodySmall)
+                            .foregroundStyle(FashColors.textSecondary)
+                    }
+                    if !myCheckInAt.isEmpty {
+                        Text(L10n.chatMeetingYouCheckedInAt(formatTime(myCheckInAt)))
+                            .font(FashTypography.bodySmall.weight(.medium))
+                            .foregroundStyle(FashColors.textPrimary)
+                    }
+                }
+
+                if status == "confirmed", hasLinkedEscrowOrder {
+                    Text(L10n.chatMeetingCheckInNotOrderComplete)
+                        .font(FashTypography.bodySmall)
+                        .foregroundStyle(FashColors.textSecondary)
+                    Text(isViewerBuyer
+                        ? L10n.chatMeetingNextStepsBuyerAfterCheckIn
+                        : L10n.chatMeetingNextStepsSellerAfterCheckIn)
+                        .font(FashTypography.bodySmall)
+                        .foregroundStyle(FashColors.textSecondary)
+                }
+
+                if showOnMyWayCta, let onOnMyWay {
+                    meetingOutlineButton(title: L10n.meetingOnMyWay, action: onOnMyWay)
+                }
+
+                if showCheckInCta, let onCheckIn {
+                    Divider().opacity(0.4)
+                    Text(L10n.chatMeetingCheckInWindowHint)
+                        .font(FashTypography.labelSmall)
+                        .foregroundStyle(FashColors.textSecondary.opacity(0.85))
+                    meetingPrimaryButton(title: L10n.chatMeetingCheckInCta, action: onCheckIn)
+                }
+
+                if showConfirm || showWithdraw {
+                    Divider().opacity(0.4)
+                    if showConfirm {
+                        meetingOutlineButton(title: L10n.chatMeetingReject, action: onWithdrawOrReject)
+                        meetingPrimaryButton(title: L10n.chatMeetingConfirm, action: onConfirm)
+                    } else {
+                        meetingOutlineButton(title: L10n.chatMeetingWithdraw, action: onWithdrawOrReject)
+                    }
+                }
+
+                Text(formatTime(message.timestamp))
+                    .font(FashTypography.labelSmall)
+                    .foregroundStyle(FashColors.textSecondary.opacity(0.5))
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(FashColors.surfaceContainerLow)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(FashColors.outlineMuted.opacity(0.68))
+            )
         }
-        .buttonStyle(.bordered)
+        .padding(.horizontal, 4)
+    }
+
+    private func meetingOutlineButton(title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            meetingButtonLabel(title: title, inverted: false)
+        }
+        .buttonStyle(.plain)
         .disabled(mutationInFlight)
+    }
+
+    private func meetingPrimaryButton(title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            meetingButtonLabel(title: title, inverted: true)
+        }
+        .buttonStyle(.plain)
+        .disabled(mutationInFlight)
+    }
+
+    @ViewBuilder
+    private func meetingButtonLabel(title: String, inverted: Bool) -> some View {
+        ZStack {
+            if mutationInFlight {
+                ProgressView()
+                    .tint(inverted ? .white : FashColors.brandPrimary)
+            }
+            Text(title)
+                .font(FashTypography.labelLarge.weight(.semibold))
+                .opacity(mutationInFlight ? 0 : 1)
+        }
+        .foregroundStyle(inverted ? Color.white : FashColors.brandPrimary)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .background {
+            if inverted {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(FashColors.brandPrimary)
+            } else {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(inverted ? Color.clear : FashColors.brandPrimary.opacity(0.45), lineWidth: 1)
+            }
+        }
     }
 }
 

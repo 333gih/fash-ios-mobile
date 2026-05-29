@@ -55,7 +55,6 @@ struct ChatScreen: View {
                 StickyBottomPromoBar {
                     FashPromoSliderView(
                         slides: promoSlides,
-                        cardHeight: 112,
                         onSlideClick: onPromoSlideClick
                     )
                 }

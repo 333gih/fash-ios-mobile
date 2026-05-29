@@ -13,6 +13,8 @@ enum FashColors {
                 ? FashColorTokens.LightPureWhite.screen
                 : FashColorTokens.LightEditorial.screen)
     }
+    /// Material `surface` — same canvas as [screen] (Android TopAppBar containerColor).
+    static var surface: Color { screen }
     static var textPrimary: Color {
         FashThemeState.shared.isDark ? FashColorTokens.Dark.textPrimary : FashColorTokens.LightEditorial.textPrimary
     }

@@ -118,13 +118,16 @@ final class UserRepository {
     }
 
     func getMeProfile() async -> Result<ProfileInfo, Error> {
+        async let authMe = fetchAuthMeData()
         do {
             let data = try await RepositoryHttp.executeCoreGet(relativePath: "api/v1/users/me", client: client)
-            return .success(try parseProfileInfo(data))
+            let profile = try parseProfileInfo(data)
+            return .success(mergeAuthMeIntoProfile(profile, authData: await authMe))
         } catch {
             do {
                 let data = try await RepositoryHttp.executeCoreGet(relativePath: "v1/users/me", client: client)
-                return .success(try parseProfileInfo(data))
+                let profile = try parseProfileInfo(data)
+                return .success(mergeAuthMeIntoProfile(profile, authData: await authMe))
             } catch {
                 return .failure(error)
             }
@@ -346,33 +349,62 @@ final class UserRepository {
     }
 
     func follow(_ userIdOrUsername: String) async -> Result<Void, Error> {
-        await mutateFollow(userIdOrUsername, method: "POST")
+        await mutateFollow(userIdOrUsername, follow: true)
     }
 
     func unfollow(_ userIdOrUsername: String) async -> Result<Void, Error> {
-        await mutateFollow(userIdOrUsername, method: "DELETE")
+        await mutateFollow(userIdOrUsername, follow: false)
     }
 
-    private func mutateFollow(_ userIdOrUsername: String, method: String) async -> Result<Void, Error> {
-        let raw = userIdOrUsername.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: "@", with: "")
-        guard !raw.isEmpty else { return .failure(URLError(.badURL)) }
-        let encoded = raw.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? raw
-        let path = "api/v1/users/\(encoded)/follow"
-        var lastError: Error = URLError(.cannotConnectToHost)
-        for urlString in AppEnvironment.coreApiCandidateURLs(path) {
-            guard let url = URL(string: urlString) else { continue }
-            var req = URLRequest(url: url)
-            req.httpMethod = method
-            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            if method == "POST" { req.httpBody = Data("{}".utf8) }
+    /// core-service follow/unfollow expect canonical `user_id` (UUID) in path — Android [resolveFollowTargetUserId].
+    private func resolveFollowTargetUserId(_ raw: String) async -> Result<String, Error> {
+        let t = raw.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "@", with: "")
+        guard !t.isEmpty else { return .failure(URLError(.badURL)) }
+        if Self.isUserUuid(t) { return .success(t) }
+        switch await getProfile(t) {
+        case .success(let prof):
+            let id = prof.userId.trimmingCharacters(in: .whitespacesAndNewlines)
+            return id.isEmpty
+                ? .failure(NSError(domain: "FashUser", code: 0, userInfo: [NSLocalizedDescriptionKey: L10n.feedActionError]))
+                : .success(id)
+        case .failure(let error):
+            return .failure(error)
+        }
+    }
+
+    private static func isUserUuid(_ value: String) -> Bool {
+        value.range(
+            of: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+            options: .regularExpression
+        ) != nil
+    }
+
+    private static func encodeFollowPathSegment(_ segment: String) -> String {
+        if isUserUuid(segment) { return segment }
+        return segment.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? segment
+    }
+
+    private func mutateFollow(_ userIdOrUsername: String, follow: Bool) async -> Result<Void, Error> {
+        switch await resolveFollowTargetUserId(userIdOrUsername) {
+        case .failure(let error):
+            return .failure(error)
+        case .success(let targetId):
+            let encoded = Self.encodeFollowPathSegment(targetId)
+            let path = "api/v1/users/\(encoded)/follow"
             do {
-                let (_, http) = try await client.data(for: req)
-                guard (200..<300).contains(http.statusCode) else { continue }
+                if follow {
+                    try await RepositoryHttp.executeCorePost(
+                        relativePath: path,
+                        client: client,
+                        body: Data("{}".utf8)
+                    )
+                } else {
+                    try await RepositoryHttp.executeCoreDelete(relativePath: path, client: client)
+                }
                 return .success(())
             } catch {
-                lastError = error
+                return .failure(error)
             }
         }
-        return .failure(lastError)
     }
 }

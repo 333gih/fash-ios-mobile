@@ -23,8 +23,9 @@ final class SellerProfileViewModel {
         let key = username.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: "@", with: "")
         guard !key.isEmpty else { return }
         if key == activeKey, profile != nil { return }
+        let sellerChanged = activeKey != nil && activeKey != key
         activeKey = key
-        if profile == nil || activeKey != key {
+        if sellerChanged || profile == nil {
             profile = nil
             sellingListings = []
             soldListings = []
@@ -79,28 +80,52 @@ final class SellerProfileViewModel {
 
     func toggleFollow(deps: AppDependencies, isGuestMode: Bool) async {
         guard !isGuestMode, let prof = profile, canFollow(deps: deps) else { return }
-        let target = prof.username.nilIfEmpty ?? prof.userId
-        guard !target.isEmpty else { return }
+        let target = prof.userId.nilIfEmpty ?? prof.username.nilIfEmpty
+        guard let target, !target.isEmpty else { return }
         followInFlight = true
         defer { followInFlight = false }
-        let result: Result<Void, Error> = if isFollowing {
+        let wasFollowing = isFollowing
+        let result: Result<Void, Error> = if wasFollowing {
             await deps.userRepository.unfollow(target)
         } else {
             await deps.userRepository.follow(target)
         }
-        guard case .success = result else { return }
-        isFollowing.toggle()
-        profile = copyProfile(prof, isFollowing: isFollowing, followerDelta: isFollowing ? 1 : -1)
+        switch result {
+        case .success:
+            isFollowing = !wasFollowing
+            profile = copyProfile(prof, isFollowing: isFollowing, followerDelta: isFollowing ? 1 : -1)
+            if isFollowing {
+                deps.showSnackbar(L10n.followSuccess)
+            }
+        case .failure(let error):
+            deps.showSnackbar(FeedEngagementFeedback.actionErrorMessage(for: error))
+        }
     }
 
     func toggleLike(_ item: ListingFeedItem, deps: AppDependencies) async {
-        guard case .success(let liked) = await deps.listingRepository.toggleLike(listingId: item.id) else { return }
-        patch(item.id, liked: liked, saved: nil)
+        switch await deps.listingRepository.toggleLike(listingId: item.id) {
+        case .success(let liked):
+            patch(item.id, liked: liked, saved: nil)
+            if liked {
+                deps.feedEventReporter.like(listingId: item.id, surface: "seller_profile")
+            }
+            deps.showSnackbar(FeedEngagementFeedback.likeMessage(liked: liked))
+        case .failure(let error):
+            deps.showSnackbar(FeedEngagementFeedback.actionErrorMessage(for: error))
+        }
     }
 
     func toggleSave(_ item: ListingFeedItem, deps: AppDependencies) async {
-        guard case .success(let saved) = await deps.listingRepository.toggleSave(listingId: item.id, currentlySaved: item.isSaved) else { return }
-        patch(item.id, liked: nil, saved: saved)
+        switch await deps.listingRepository.toggleSave(listingId: item.id, currentlySaved: item.isSaved) {
+        case .success(let saved):
+            patch(item.id, liked: nil, saved: saved)
+            if saved {
+                deps.feedEventReporter.save(listingId: item.id, surface: "seller_profile")
+            }
+            deps.showSnackbar(FeedEngagementFeedback.saveMessage(saved: saved))
+        case .failure(let error):
+            deps.showSnackbar(FeedEngagementFeedback.actionErrorMessage(for: error))
+        }
     }
 
     func canFollow(deps: AppDependencies) -> Bool {
@@ -110,8 +135,10 @@ final class SellerProfileViewModel {
         return myId.caseInsensitiveCompare(prof.userId) != .orderedSame
     }
 
-    func canShowFollowUi() -> Bool {
-        profile != nil
+    func canShowFollowUi(deps: AppDependencies, isGuestMode: Bool) -> Bool {
+        guard let prof = profile, !prof.userId.trimmingCharacters(in: .whitespaces).isEmpty else { return false }
+        if isGuestMode { return true }
+        return canFollow(deps: deps)
     }
 
     var listingsForSelectedTab: [ListingFeedItem] {

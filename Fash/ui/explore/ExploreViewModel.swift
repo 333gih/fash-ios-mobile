@@ -604,42 +604,53 @@ final class ExploreViewModel {
     }
 
     func toggleLike(_ item: ListingFeedItem, position: Int = 0, deps: AppDependencies) async {
-        guard case .success(let liked) = await deps.listingRepository.toggleLike(listingId: item.id) else { return }
-        if liked {
-            deps.feedEventReporter.like(listingId: item.id, surface: "explore", position: position)
-        }
-        patchListing(item.id) { cur in
-            let delta = (liked && !cur.isLiked) ? 1 : ((!liked && cur.isLiked) ? -1 : 0)
-            return ListingFeedItem(
-                id: cur.id, title: cur.title, coverImageUrl: cur.coverImageUrl, imageUrls: cur.imageUrls,
-                priceVnd: cur.priceVnd, brand: cur.brand, size: cur.size, categoryName: cur.categoryName,
-                listingAestheticTag: cur.listingAestheticTag, condition: cur.condition,
-                likeCount: max(0, cur.likeCount + delta), saveCount: cur.saveCount,
-                sellerId: cur.sellerId, sellerUsername: cur.sellerUsername, sellerStyleTag: cur.sellerStyleTag,
-                createdAt: cur.createdAt, isLiked: liked, isSaved: cur.isSaved,
-                onsiteInspectionCommitment: cur.onsiteInspectionCommitment,
-                listingStatus: cur.listingStatus, descriptionText: cur.descriptionText
-            )
+        switch await deps.listingRepository.toggleLike(listingId: item.id) {
+        case .failure(let error):
+            deps.showSnackbar(FeedEngagementFeedback.actionErrorMessage(for: error))
+            return
+        case .success(let liked):
+            if liked {
+                deps.feedEventReporter.like(listingId: item.id, surface: "explore", position: position)
+            }
+            deps.showSnackbar(FeedEngagementFeedback.likeMessage(liked: liked))
+            patchListing(item.id) { cur in
+                let delta = (liked && !cur.isLiked) ? 1 : ((!liked && cur.isLiked) ? -1 : 0)
+                return ListingFeedItem(
+                    id: cur.id, title: cur.title, coverImageUrl: cur.coverImageUrl, imageUrls: cur.imageUrls,
+                    priceVnd: cur.priceVnd, brand: cur.brand, size: cur.size, categoryName: cur.categoryName,
+                    listingAestheticTag: cur.listingAestheticTag, condition: cur.condition,
+                    likeCount: max(0, cur.likeCount + delta), saveCount: cur.saveCount,
+                    sellerId: cur.sellerId, sellerUsername: cur.sellerUsername, sellerStyleTag: cur.sellerStyleTag,
+                    createdAt: cur.createdAt, isLiked: liked, isSaved: cur.isSaved,
+                    onsiteInspectionCommitment: cur.onsiteInspectionCommitment,
+                    listingStatus: cur.listingStatus, descriptionText: cur.descriptionText
+                )
+            }
         }
     }
 
     func toggleSave(_ item: ListingFeedItem, position: Int = 0, deps: AppDependencies) async {
-        guard case .success(let saved) = await deps.listingRepository.toggleSave(listingId: item.id, currentlySaved: item.isSaved) else { return }
-        if saved {
-            deps.feedEventReporter.save(listingId: item.id, surface: "explore", position: position)
-        }
-        patchListing(item.id) { cur in
-            let delta = (saved && !cur.isSaved) ? 1 : ((!saved && cur.isSaved) ? -1 : 0)
-            return ListingFeedItem(
-                id: cur.id, title: cur.title, coverImageUrl: cur.coverImageUrl, imageUrls: cur.imageUrls,
-                priceVnd: cur.priceVnd, brand: cur.brand, size: cur.size, categoryName: cur.categoryName,
-                listingAestheticTag: cur.listingAestheticTag, condition: cur.condition,
-                likeCount: cur.likeCount, saveCount: max(0, cur.saveCount + delta),
-                sellerId: cur.sellerId, sellerUsername: cur.sellerUsername, sellerStyleTag: cur.sellerStyleTag,
-                createdAt: cur.createdAt, isLiked: cur.isLiked, isSaved: saved,
-                onsiteInspectionCommitment: cur.onsiteInspectionCommitment,
-                listingStatus: cur.listingStatus, descriptionText: cur.descriptionText
-            )
+        switch await deps.listingRepository.toggleSave(listingId: item.id, currentlySaved: item.isSaved) {
+        case .failure(let error):
+            deps.showSnackbar(FeedEngagementFeedback.actionErrorMessage(for: error))
+        case .success(let saved):
+            if saved {
+                deps.feedEventReporter.save(listingId: item.id, surface: "explore", position: position)
+            }
+            deps.showSnackbar(FeedEngagementFeedback.saveMessage(saved: saved))
+            patchListing(item.id) { cur in
+                let delta = (saved && !cur.isSaved) ? 1 : ((!saved && cur.isSaved) ? -1 : 0)
+                return ListingFeedItem(
+                    id: cur.id, title: cur.title, coverImageUrl: cur.coverImageUrl, imageUrls: cur.imageUrls,
+                    priceVnd: cur.priceVnd, brand: cur.brand, size: cur.size, categoryName: cur.categoryName,
+                    listingAestheticTag: cur.listingAestheticTag, condition: cur.condition,
+                    likeCount: cur.likeCount, saveCount: max(0, cur.saveCount + delta),
+                    sellerId: cur.sellerId, sellerUsername: cur.sellerUsername, sellerStyleTag: cur.sellerStyleTag,
+                    createdAt: cur.createdAt, isLiked: cur.isLiked, isSaved: saved,
+                    onsiteInspectionCommitment: cur.onsiteInspectionCommitment,
+                    listingStatus: cur.listingStatus, descriptionText: cur.descriptionText
+                )
+            }
         }
     }
 

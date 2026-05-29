@@ -14,6 +14,11 @@ struct ExploreListingPreviewState: Identifiable {
 @MainActor
 final class ListingPreviewStore {
     var state: ExploreListingPreviewState?
+    /// Keeps overlay in tree briefly while dismissing (navigation runs in parallel).
+    private(set) var isDismissing = false
+
+    var isOverlayVisible: Bool { state != nil || isDismissing }
+
     private var loadTask: Task<Void, Never>?
     private var previewContext: (listingId: String, surface: String, position: Int, openedAt: Date)?
 
@@ -54,7 +59,20 @@ final class ListingPreviewStore {
         }
     }
 
-    func close(deps: AppDependencies? = nil) {
+    func close(deps: AppDependencies? = nil, animated: Bool = false) {
+        guard state != nil || isDismissing else { return }
+        if animated {
+            isDismissing = true
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(280))
+                finishClose(deps: deps)
+            }
+        } else {
+            finishClose(deps: deps)
+        }
+    }
+
+    private func finishClose(deps: AppDependencies?) {
         if let deps, let ctx = previewContext {
             let dwellMs = Int(Date().timeIntervalSince(ctx.openedAt) * 1_000)
             deps.feedEventReporter.previewDismiss(
@@ -68,6 +86,7 @@ final class ListingPreviewStore {
         loadTask?.cancel()
         loadTask = nil
         state = nil
+        isDismissing = false
     }
 
     func openDetail(deps: AppDependencies) {

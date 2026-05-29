@@ -9,6 +9,11 @@ struct VnAddressDropdowns: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: spacing.spacing3) {
+            if addressVM.districts.isEmpty && selectedProvince != nil && addressVM.eventMessage != nil {
+                Text(L10n.addressCatalogLoadFailed)
+                    .font(FashTypography.bodySmall)
+                    .foregroundStyle(FashColors.error)
+            }
             adminMenu(
                 title: L10n.addressFieldProvince,
                 placeholder: L10n.addressSelectProvince,
@@ -18,7 +23,6 @@ struct VnAddressDropdowns: View {
                     selectedProvince = dto
                     selectedDistrict = nil
                     selectedWard = nil
-                    Task { await addressVM.onProvinceSelected(deps: deps, provinceId: dto?.id) }
                 }
             )
             adminMenu(
@@ -30,7 +34,6 @@ struct VnAddressDropdowns: View {
                 onSelect: { dto in
                     selectedDistrict = dto
                     selectedWard = nil
-                    Task { await addressVM.onDistrictSelected(deps: deps, districtId: dto?.id) }
                 }
             )
             adminMenu(
@@ -45,8 +48,6 @@ struct VnAddressDropdowns: View {
             )
         }
     }
-
-    @Environment(AppDependencies.self) private var deps
 
     private func adminMenu(
         title: String,

@@ -46,10 +46,9 @@ struct ExploreScreen: View {
                 }
             }
             if !promoSlides.isEmpty, !(viewModel.searchBarExpanded && !viewModel.isSearchModeActive) {
-                StickyBottomPromoBar {
+                StickyBottomPromoBar(elevated: true) {
                     FashPromoSliderView(
                         slides: promoSlides,
-                        cardHeight: 112,
                         onSlideClick: onPromoSlideClick
                     )
                 }

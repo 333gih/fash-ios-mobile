@@ -21,14 +21,22 @@ extension AppDependencies {
         )
     }
 
-    /// Opens full product detail; clears preview and Explore overlay to avoid nested covers.
+    /// Opens full product detail; preview dismisses in parallel (no wait for sheet).
     func presentListingDetail(listingId: String, router: AppRouter) {
         let id = listingId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !id.isEmpty else { return }
         dismissExploreOverlayIfNeeded(router)
-        listingPreview.close(deps: self)
         router.pendingListingIdAfterPreview = nil
         router.selectedListingId = id
+        listingPreview.close(deps: self, animated: true)
+    }
+
+    /// Navigate to seller shop while preview animates away underneath the new screen.
+    func navigateFromListingPreview(router: AppRouter, _ navigate: () -> Void) {
+        dismissExploreOverlayIfNeeded(router)
+        router.pendingListingIdAfterPreview = nil
+        navigate()
+        listingPreview.close(deps: self, animated: true)
     }
 
     private func dismissExploreOverlayIfNeeded(_ router: AppRouter) {

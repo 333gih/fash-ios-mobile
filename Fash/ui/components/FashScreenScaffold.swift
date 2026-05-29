@@ -28,7 +28,7 @@ struct FashScreenScaffold<Content: View>: View {
             .padding(.leading, spacing.editorialStart)
             .padding(.trailing, spacing.editorialEnd)
             .padding(.vertical, spacing.spacing3)
-            .background(FashColors.surfaceContainerHighest)
+            .background(FashColors.surface)
             Divider().overlay(FashColors.outlineMuted.opacity(0.72))
             content()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

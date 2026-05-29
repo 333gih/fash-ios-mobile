@@ -1,286 +1,297 @@
-import SwiftUI
-
-struct HomeFeedContent: View {
-    @Environment(\.fashSpacing) private var spacing
-    @Environment(AppDependencies.self) private var deps
-    @Bindable var viewModel: HomeViewModel
-    @Bindable var router: AppRouter
-    var isGuestMode: Bool
-    var onOpenExplore: () -> Void = {}
-    var onOpenPost: () -> Void = {}
-    var onOpenOrders: () -> Void = {}
-    var onOpenFeaturedSellersAll: () -> Void = {}
-    var onFeaturedSellerClick: (FeaturedSellerItem) -> Void = { _ in }
-    var onRequestSignIn: (String) -> Void = { _ in }
-    var onOpenSizingSetup: (() -> Void)? = nil
-    var onDeliveringJourneyClick: () -> Void = {}
-    var onSavedJourneyClick: () -> Void = {}
-    var onInReviewJourneyClick: () -> Void = {}
-    var onExploreShortcutClick: (HomeExploreShortcut) -> Void = { _ in }
-
-    private var tabs: [HomeFeedTab] {
-        viewModel.orderedTabs(isGuestMode: isGuestMode)
-    }
-
-    private var showGuestGate: Bool {
-        isGuestMode && viewModel.selectedFeedTab.requiresAuth
-    }
-
-    private var promoSlides: [FashPromoSlideDef] {
-        viewModel.promoSlides.map(FashPromoSlideDef.fromAdvertising)
-    }
-
-    private var promoDockInset: CGFloat {
-        promoSlides.isEmpty ? 0 : FashStickyPromoDockHeight
-    }
-
-    private var selectedTabIndex: Int {
-        tabs.firstIndex(of: viewModel.selectedFeedTab) ?? 0
-    }
-
-    private var analyticsSurface: String {
-        viewModel.selectedFeedTab.analyticsSurface
-    }
-
-    private var showJourneyRow: Bool {
-        !isGuestMode && viewModel.buyerStats.hasJourneyActivity()
-    }
-
-    private var exploreShortcut: HomeExploreShortcut? {
-        isGuestMode ? nil : viewModel.homeUxPersonalization.exploreShortcut
-    }
-
-    var body: some View {
-        ZStack(alignment: .bottom) {
-            ScrollView {
-                VStack(spacing: 0) {
-                    HomeQuickActionsRow(
-                        onExplore: onOpenExplore,
-                        onSell: onOpenPost,
-                        onOrders: onOpenOrders,
-                        compact: true
-                    )
-
-                    if showJourneyRow {
-                        BuyerHomeJourneyCompactBar(
-                            stats: viewModel.buyerStats,
-                            onDeliveringClick: onDeliveringJourneyClick,
-                            onSavedClick: onSavedJourneyClick,
-                            onInReviewClick: onInReviewJourneyClick
-                        )
-                    }
-
-                    if viewModel.showSizingBanner, let onOpenSizingSetup {
-                        HomeSizingBanner(
-                            onAddSizeClick: onOpenSizingSetup,
-                            onDismiss: { viewModel.dismissSizingBanner() }
-                        )
-                    }
-
-                    if !viewModel.featuredSellers.isEmpty {
-                        HomeRecommendedSellersSection(
-                            sellers: viewModel.featuredSellers,
-                            onSellerClick: onFeaturedSellerClick,
-                            onSeeAllClick: onOpenFeaturedSellersAll
-                        )
-                    }
-
-                    if let exploreShortcut {
-                        HomeExploreShortcutBanner(
-                            shortcut: exploreShortcut,
-                            onClick: { onExploreShortcutClick(exploreShortcut) }
-                        )
-                    }
-
-                    HomeFeedTabSwitcher(
-                        tabs: tabs,
-                        selectedTab: viewModel.selectedFeedTab,
-                        isGuestBrowse: isGuestMode,
-                        onSelect: { tab in
-                            viewModel.selectFeedTab(tab, deps: deps, isGuestMode: isGuestMode)
-                        }
-                    )
-
-                    feedBody
-                        .animation(.easeInOut(duration: 0.2), value: viewModel.selectedFeedTabKey)
-
-                    HomeBrandFooterStrip()
-                }
-                .padding(.bottom, promoDockInset + spacing.spacing2)
-                .fashScrollViewTabSwipe(
-                    currentIndex: selectedTabIndex,
-                    tabCount: tabs.count
-                ) { index in
-                    viewModel.selectFeedTab(tabs[index], deps: deps, isGuestMode: isGuestMode)
-                }
-            }
-            .refreshable { await viewModel.pullToRefresh(deps: deps, isGuestMode: isGuestMode) }
-
-            if !promoSlides.isEmpty {
-                StickyBottomPromoBar {
-                    FashPromoSliderView(
-                        slides: promoSlides,
-                        cardHeight: 72,
-                        onSlideClick: { slide, _ in router.handlePromoSlideClick(slide) }
-                    )
-                }
-            }
-        }
-        .task {
-            viewModel.normalizeSelectedFeedTab(isGuestMode: isGuestMode, deps: deps)
-            await viewModel.loadShell(deps: deps, isGuestMode: isGuestMode)
-        }
-        .onChange(of: isGuestMode) { _, guest in
-            viewModel.normalizeSelectedFeedTab(isGuestMode: guest, deps: deps)
-        }
-    }
-
-    @ViewBuilder
-    private var feedBody: some View {
-        if showGuestGate {
-            HomeFeedTabGuestGate(tab: viewModel.selectedFeedTab) {
-                onRequestSignIn(guestLoginReason(for: viewModel.selectedFeedTab))
-            }
-        } else if viewModel.isTabLoadError(viewModel.selectedFeedTab), viewModel.items.isEmpty {
-            FashEmptyStateView(
-                title: L10n.feedLoadError,
-                subtitle: L10n.feedRetry,
-                actionTitle: L10n.feedRetry
-            ) {
-                viewModel.retryTab(viewModel.selectedFeedTab, deps: deps, isGuestMode: isGuestMode)
-            }
-            .padding(.vertical, spacing.spacing4)
-        } else if (viewModel.isShellLoading || viewModel.isTabLoading(viewModel.selectedFeedTab)) && viewModel.items.isEmpty {
-            FashSkeleton.listingGrid()
-                .padding(.horizontal, spacing.editorialStart)
-                .padding(.vertical, spacing.spacing4)
-        } else if viewModel.items.isEmpty {
-            if viewModel.selectedFeedTab == .following {
-                HomePersonalizedFeedEmptyCard(
-                    onExploreClick: onOpenExplore,
-                    onFeaturedSellersClick: onOpenFeaturedSellersAll
-                )
-            } else {
-                HomeFeedTabGenericEmpty(tab: viewModel.selectedFeedTab)
-            }
-        } else {
-            VStack(spacing: spacing.spacing4) {
-                ListingMasonryGridView(items: viewModel.items) { item, index in
-                    HomeFeedListingCell(
-                        item: item,
-                        index: index,
-                        surface: analyticsSurface,
-                        imageAspectRatio: ListingMasonryGrid.staggerAspectRatio(for: item.id),
-                        onTap: {
-                            viewModel.reportListingClick(
-                                item: item,
-                                surface: analyticsSurface,
-                                position: index,
-                                deps: deps
-                            )
-                            deps.presentListingPreview(
-                                item: item,
-                                router: router,
-                                publicBrowse: isGuestMode,
-                                surface: analyticsSurface,
-                                position: index
-                            )
-                        },
-                        onLike: {
-                            viewModel.toggleLike(item, surface: analyticsSurface, position: index, deps: deps)
-                        },
-                        onSave: {
-                            viewModel.toggleSave(
-                                item,
-                                surface: analyticsSurface,
-                                position: index,
-                                deps: deps,
-                                isGuestMode: isGuestMode
-                            )
-                        },
-                        onRecordView: {
-                            viewModel.recordView(
-                                item: item,
-                                position: index,
-                                surface: analyticsSurface,
-                                deps: deps
-                            )
-                        },
-                        onDwell: { dwellMs in
-                            viewModel.recordDwell(
-                                item: item,
-                                surface: analyticsSurface,
-                                position: index,
-                                dwellMs: dwellMs,
-                                deps: deps
-                            )
-                        },
-                        onNearEnd: {
-                            if viewModel.selectedFeedTab == .following {
-                                viewModel.loadMoreFollowing(deps: deps, isGuestMode: isGuestMode)
-                            }
-                        },
-                        nearEndThreshold: viewModel.items.count - 3
-                    )
-                }
-                if viewModel.selectedFeedTab == .following, viewModel.isLoadingMoreFollowing {
-                    ProgressView()
-                        .padding(.bottom, spacing.spacing2)
-                }
-            }
-            .padding(.vertical, spacing.spacing4)
-        }
-    }
-
-    private func guestLoginReason(for tab: HomeFeedTab) -> String {
-        switch tab {
-        case .forYou: return L10n.guestLoginReasonHomeForYou
-        case .following: return L10n.guestLoginReasonHomeFollowing
-        case .stylePicks: return L10n.guestLoginReasonHomeStyle
-        case .similarSaved: return L10n.guestLoginReasonHomeSimilar
-        default: return L10n.guestLoginSheetTitle
-        }
-    }
-}
-
-private struct HomeFeedListingCell: View {
-    let item: ListingFeedItem
-    let index: Int
-    let surface: String
-    let imageAspectRatio: CGFloat
-    let onTap: () -> Void
-    let onLike: () -> Void
-    let onSave: () -> Void
-    let onRecordView: () -> Void
-    let onDwell: (Int) -> Void
-    let onNearEnd: () -> Void
-    let nearEndThreshold: Int
-
-    @State private var appearedAt: Date?
-
-    var body: some View {
-        ListingGridCard(
-            item: item,
-            onTap: onTap,
-            imageAspectRatio: imageAspectRatio,
-            showQuickActions: true,
-            onLike: onLike,
-            onSave: onSave
-        )
-        .onAppear {
-            appearedAt = Date()
-            onRecordView()
-            if index >= nearEndThreshold {
-                onNearEnd()
-            }
-        }
-        .onDisappear {
-            if let appearedAt {
-                let dwellMs = Int(Date().timeIntervalSince(appearedAt) * 1_000)
-                onDwell(dwellMs)
-            }
-            self.appearedAt = nil
-        }
-    }
-}
-
+import SwiftUI
+
+struct HomeFeedContent: View {
+    @Environment(\.fashSpacing) private var spacing
+    @Environment(AppDependencies.self) private var deps
+    @Bindable var viewModel: HomeViewModel
+    @Bindable var router: AppRouter
+    var isGuestMode: Bool
+    var onOpenExplore: () -> Void = {}
+    var onOpenFeaturedSellersAll: () -> Void = {}
+    var onFeaturedSellerClick: (FeaturedSellerItem) -> Void = { _ in }
+    var onRequestSignIn: (String) -> Void = { _ in }
+    var onOpenSizingSetup: (() -> Void)? = nil
+    var onDeliveringJourneyClick: () -> Void = {}
+    var onSavedJourneyClick: () -> Void = {}
+    var onInReviewJourneyClick: () -> Void = {}
+    var onExploreShortcutClick: (HomeExploreShortcut) -> Void = { _ in }
+
+    private var tabs: [HomeFeedTab] {
+        viewModel.orderedTabs(isGuestMode: isGuestMode)
+    }
+
+    private var showGuestGate: Bool {
+        isGuestMode && viewModel.selectedFeedTab.requiresAuth
+    }
+
+    private var promoSlides: [FashPromoSlideDef] {
+        viewModel.promoSlides.map(FashPromoSlideDef.fromAdvertising)
+    }
+
+    private var promoDockInset: CGFloat {
+        promoSlides.isEmpty ? 0 : FashPromoMetrics.dockHeight(compact: true)
+    }
+
+    private var selectedTabIndex: Int {
+        tabs.firstIndex(of: viewModel.selectedFeedTab) ?? 0
+    }
+
+    private var analyticsSurface: String {
+        viewModel.selectedFeedTab.analyticsSurface
+    }
+
+    private var showJourneyRow: Bool {
+        !isGuestMode
+    }
+
+    private var exploreShortcut: HomeExploreShortcut? {
+        isGuestMode ? nil : viewModel.homeUxPersonalization.exploreShortcut
+    }
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            ScrollView {
+                LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+                    Section {
+                        homeScrollAwayHeader
+                    }
+                    Section {
+                        feedBody
+                            .animation(.easeInOut(duration: 0.2), value: viewModel.selectedFeedTabKey)
+
+                        HomeBrandFooterStrip()
+                    } header: {
+                        homeFeedTabsStickyHeader
+                    }
+                }
+                .padding(.bottom, promoDockInset + spacing.spacing2)
+                .fashScrollViewTabSwipe(
+                    currentIndex: selectedTabIndex,
+                    tabCount: tabs.count
+                ) { index in
+                    viewModel.selectFeedTab(tabs[index], deps: deps, isGuestMode: isGuestMode)
+                }
+            }
+            .refreshable { await viewModel.pullToRefresh(deps: deps, isGuestMode: isGuestMode) }
+
+            if !promoSlides.isEmpty {
+                StickyBottomPromoBar {
+                    FashPromoSliderView(
+                        slides: promoSlides,
+                        compact: true,
+                        onSlideClick: { slide, _ in router.handlePromoSlideClick(slide) }
+                    )
+                }
+            }
+        }
+        .task {
+            viewModel.normalizeSelectedFeedTab(isGuestMode: isGuestMode, deps: deps)
+            await viewModel.loadShell(deps: deps, isGuestMode: isGuestMode)
+        }
+        .onChange(of: isGuestMode) { _, guest in
+            viewModel.normalizeSelectedFeedTab(isGuestMode: guest, deps: deps)
+        }
+    }
+
+    @ViewBuilder
+    private var homeScrollAwayHeader: some View {
+        VStack(spacing: 0) {
+            if showJourneyRow {
+                BuyerHomeJourneyCompactBar(
+                    stats: viewModel.buyerStats,
+                    onDeliveringClick: onDeliveringJourneyClick,
+                    onSavedClick: onSavedJourneyClick,
+                    onInReviewClick: onInReviewJourneyClick
+                )
+            }
+
+            if viewModel.showSizingBanner, let onOpenSizingSetup {
+                HomeSizingBanner(
+                    onAddSizeClick: onOpenSizingSetup,
+                    onDismiss: { viewModel.dismissSizingBanner() }
+                )
+            }
+
+            if !viewModel.featuredSellers.isEmpty {
+                HomeRecommendedSellersSection(
+                    sellers: viewModel.featuredSellers,
+                    onSellerClick: onFeaturedSellerClick,
+                    onSeeAllClick: onOpenFeaturedSellersAll
+                )
+            }
+
+            if let exploreShortcut {
+                HomeExploreShortcutBanner(
+                    shortcut: exploreShortcut,
+                    onClick: { onExploreShortcutClick(exploreShortcut) }
+                )
+            }
+        }
+    }
+
+    private var homeFeedTabsStickyHeader: some View {
+        VStack(spacing: 0) {
+            HomeFeedTabSwitcher(
+                tabs: tabs,
+                selectedTab: viewModel.selectedFeedTab,
+                isGuestBrowse: isGuestMode,
+                onSelect: { tab in
+                    viewModel.selectFeedTab(tab, deps: deps, isGuestMode: isGuestMode)
+                }
+            )
+            Divider()
+                .overlay(FashColors.outlineMuted.opacity(0.35))
+        }
+        .background(FashColors.screen)
+        .shadow(color: .black.opacity(0.06), radius: 2, y: 1)
+    }
+
+    @ViewBuilder
+    private var feedBody: some View {
+        if showGuestGate {
+            HomeFeedTabGuestGate(tab: viewModel.selectedFeedTab) {
+                onRequestSignIn(guestLoginReason(for: viewModel.selectedFeedTab))
+            }
+        } else if viewModel.isTabLoadError(viewModel.selectedFeedTab), viewModel.items.isEmpty {
+            FashEmptyStateView(
+                title: L10n.feedLoadError,
+                subtitle: L10n.feedRetry,
+                actionTitle: L10n.feedRetry
+            ) {
+                viewModel.retryTab(viewModel.selectedFeedTab, deps: deps, isGuestMode: isGuestMode)
+            }
+            .padding(.vertical, spacing.spacing4)
+        } else if (viewModel.isShellLoading || viewModel.isTabLoading(viewModel.selectedFeedTab)) && viewModel.items.isEmpty {
+            FashSkeleton.listingGrid()
+                .padding(.horizontal, spacing.editorialStart)
+                .padding(.vertical, spacing.spacing4)
+        } else if viewModel.items.isEmpty {
+            if viewModel.selectedFeedTab == .following {
+                HomePersonalizedFeedEmptyCard(
+                    onExploreClick: onOpenExplore,
+                    onFeaturedSellersClick: onOpenFeaturedSellersAll
+                )
+            } else {
+                HomeFeedTabGenericEmpty(tab: viewModel.selectedFeedTab)
+            }
+        } else {
+            VStack(spacing: spacing.spacing4) {
+                ListingMasonryGridView(items: viewModel.items) { item, index in
+                    HomeFeedListingCell(
+                        item: item,
+                        index: index,
+                        surface: analyticsSurface,
+                        imageAspectRatio: ListingMasonryGrid.staggerAspectRatio(for: item.id),
+                        onTap: {
+                            viewModel.reportListingClick(
+                                item: item,
+                                surface: analyticsSurface,
+                                position: index,
+                                deps: deps
+                            )
+                            deps.presentListingPreview(
+                                item: item,
+                                router: router,
+                                publicBrowse: isGuestMode,
+                                surface: analyticsSurface,
+                                position: index
+                            )
+                        },
+                        onLike: {
+                            viewModel.toggleLike(item, surface: analyticsSurface, position: index, deps: deps)
+                        },
+                        onSave: {
+                            viewModel.toggleSave(
+                                item,
+                                surface: analyticsSurface,
+                                position: index,
+                                deps: deps,
+                                isGuestMode: isGuestMode
+                            )
+                        },
+                        onRecordView: {
+                            viewModel.recordView(
+                                item: item,
+                                position: index,
+                                surface: analyticsSurface,
+                                deps: deps
+                            )
+                        },
+                        onDwell: { dwellMs in
+                            viewModel.recordDwell(
+                                item: item,
+                                surface: analyticsSurface,
+                                position: index,
+                                dwellMs: dwellMs,
+                                deps: deps
+                            )
+                        },
+                        onNearEnd: {
+                            if viewModel.selectedFeedTab == .following {
+                                viewModel.loadMoreFollowing(deps: deps, isGuestMode: isGuestMode)
+                            }
+                        },
+                        nearEndThreshold: viewModel.items.count - 3
+                    )
+                }
+                if viewModel.selectedFeedTab == .following, viewModel.isLoadingMoreFollowing {
+                    ProgressView()
+                        .padding(.bottom, spacing.spacing2)
+                }
+            }
+            .padding(.vertical, spacing.spacing4)
+        }
+    }
+
+    private func guestLoginReason(for tab: HomeFeedTab) -> String {
+        switch tab {
+        case .forYou: return L10n.guestLoginReasonHomeForYou
+        case .following: return L10n.guestLoginReasonHomeFollowing
+        case .stylePicks: return L10n.guestLoginReasonHomeStyle
+        case .similarSaved: return L10n.guestLoginReasonHomeSimilar
+        default: return L10n.guestLoginSheetTitle
+        }
+    }
+}
+
+private struct HomeFeedListingCell: View {
+    let item: ListingFeedItem
+    let index: Int
+    let surface: String
+    let imageAspectRatio: CGFloat
+    let onTap: () -> Void
+    let onLike: () -> Void
+    let onSave: () -> Void
+    let onRecordView: () -> Void
+    let onDwell: (Int) -> Void
+    let onNearEnd: () -> Void
+    let nearEndThreshold: Int
+
+    @State private var appearedAt: Date?
+
+    var body: some View {
+        ListingGridCard(
+            item: item,
+            onTap: onTap,
+            imageAspectRatio: imageAspectRatio,
+            showQuickActions: true,
+            onLike: onLike,
+            onSave: onSave
+        )
+        .onAppear {
+            appearedAt = Date()
+            onRecordView()
+            if index >= nearEndThreshold {
+                onNearEnd()
+            }
+        }
+        .onDisappear {
+            if let appearedAt {
+                let dwellMs = Int(Date().timeIntervalSince(appearedAt) * 1_000)
+                onDwell(dwellMs)
+            }
+            self.appearedAt = nil
+        }
+    }
+}
+

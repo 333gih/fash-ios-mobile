@@ -12,17 +12,16 @@ struct FashBrandMarkText: View {
             .fashBrandMarkStyle(style)
             .foregroundStyle(color)
             .multilineTextAlignment(textAlign)
-            .fixedSize(horizontal: false, vertical: true)
-            .padding(.trailing, style.size * 0.06)
+            .fixedSize(horizontal: true, vertical: true)
     }
 }
 
-/// `FASH.` + screen suffix — Android [FashScreenTitle].
+/// `FASH.` + screen suffix — Android [FashScreenTitle] (`spacedBy(10.dp)`).
 struct FashScreenTitle: View {
     let suffix: String
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
             FashBrandMarkText(
                 style: FashBrandTypography.markBoldItalicMedium,
                 textAlign: .leading
@@ -33,5 +32,6 @@ struct FashScreenTitle: View {
                 .foregroundStyle(FashColors.textPrimary)
                 .lineLimit(1)
         }
+        .fixedSize(horizontal: true, vertical: false)
     }
 }

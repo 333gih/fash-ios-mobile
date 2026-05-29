@@ -1,12 +1,14 @@
 import SwiftUI
 
-/// Promo carousel footer wrapper — Android [FashPromoSliderAdFooter].
+/// Promo carousel footer — Android `FashPromoSliderAdFooter` (Orders / Notifications).
 struct FashPromoSliderAdFooterView: View {
     let slides: [FashPromoSlideDef]
     var onSlideClick: (FashPromoSlideDef, Int) -> Void = { _, _ in }
 
     var body: some View {
-        FashPromoSliderView(slides: slides, onSlideClick: onSlideClick)
+        StickyBottomPromoBar {
+            FashPromoSliderView(slides: slides, onSlideClick: onSlideClick)
+        }
     }
 }
 

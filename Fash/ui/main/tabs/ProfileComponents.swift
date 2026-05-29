@@ -113,6 +113,7 @@ struct ProfileIdentityBlock: View {
                         .foregroundStyle(FashColors.brandPrimary)
                         .frame(maxWidth: .infinity)
                         .frame(height: 42)
+                        .contentShape(Rectangle())
                         .overlay {
                             RoundedRectangle(cornerRadius: 12, style: .continuous)
                                 .stroke(FashColors.brandPrimary.opacity(0.45), lineWidth: 1)
@@ -193,28 +194,36 @@ struct ProfileCompactHeaderBar: View {
     var onTap: (() -> Void)? = nil
 
     var body: some View {
-        Button(action: { onTap?() }) {
-            HStack(spacing: 12) {
-                FashAvatarCircle(url: profile?.avatarUrl, size: 40)
-                    .background(FashColors.surfaceContainerHigh)
-                    .clipShape(Circle())
-                VStack(alignment: .leading, spacing: 2) {
+        HStack(spacing: 12) {
+            FashAvatarCircle(url: profile?.avatarUrl, size: 40)
+                .background(FashColors.surfaceContainerHigh)
+                .clipShape(Circle())
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 4) {
                     Text(displayName)
                         .font(FashTypography.titleSmall.weight(.semibold))
                         .foregroundStyle(FashColors.textPrimary)
                         .lineLimit(1)
-                    Text("@\(handle)")
-                        .font(FashTypography.bodySmall)
-                        .foregroundStyle(FashColors.textSecondary)
-                        .lineLimit(1)
+                    if profile?.verified == true {
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 14))
+                            .foregroundStyle(FashColors.brandPrimary)
+                            .accessibilityLabel(L10n.profileVerifiedCd)
+                    }
                 }
-                Spacer()
+                Text("@\(handle)")
+                    .font(FashTypography.bodySmall)
+                    .foregroundStyle(FashColors.textSecondary)
+                    .lineLimit(1)
             }
-            .padding(.horizontal, spacing.editorialStart)
-            .padding(.vertical, 10)
+            Spacer(minLength: 0)
         }
-        .buttonStyle(.plain)
-        .disabled(onTap == nil)
+        .padding(.horizontal, spacing.editorialStart)
+        .padding(.vertical, 10)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onTap?()
+        }
     }
 
     private var displayName: String {

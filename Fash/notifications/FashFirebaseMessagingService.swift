@@ -12,7 +12,7 @@ enum FashFirebaseMessagingService {
         let data = stringDataMap(from: userInfo)
         guard isNotificationForLoggedInUser(data) else { return }
 
-        if data["type"] == "account.notification_pending" {
+        if data["type"] == AccountSwitchDeepLinks.fcmType {
             return
         }
 
@@ -26,9 +26,7 @@ enum FashFirebaseMessagingService {
                fallbackTitle: data["title"],
                fallbackBody: data["body"]
            ) {
-            AppDependencies.shared.uiDialog.title = campaign.title
-            AppDependencies.shared.uiDialog.message = campaign.body
-            AppDependencies.shared.uiDialog.isPresented = true
+            AppDependencies.shared.requestShowAppPromo(campaign)
             AppDependencies.shared.requestInboxUnreadRefresh()
             return
         }
@@ -48,15 +46,17 @@ enum FashFirebaseMessagingService {
     private static func routeFromPushData(_ data: [String: String]) {
         Task { @MainActor in
             let deps = AppDependencies.shared
+            if let prompt = AccountSwitchDeepLinks.parseFromFcmData(data) {
+                deps.requestAccountSwitchPrompt(prompt)
+                return
+            }
             if AppPromoPushParsing.isAppPromoPushData(data),
                let campaign = AppPromoPushParsing.parseAppPromoFromPushData(
                    data: data,
                    fallbackTitle: data["title"],
                    fallbackBody: data["body"]
                ) {
-                deps.uiDialog.title = campaign.title
-                deps.uiDialog.message = campaign.body
-                deps.uiDialog.isPresented = true
+                deps.requestShowAppPromo(campaign)
                 deps.requestInboxUnreadRefresh()
                 return
             }

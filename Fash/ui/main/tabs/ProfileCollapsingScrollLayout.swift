@@ -56,6 +56,10 @@ enum ProfileListingTabSet {
     }
 }
 
+private enum ProfileCollapseMetrics {
+    static let scrollDistance: CGFloat = 280
+}
+
 private struct ProfileScrollOffsetKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
@@ -75,7 +79,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     var showQuickActions: Bool = false
     var showStatusOverlay: Bool = false
     var additionalBottomInset: CGFloat = 0
-    /// Seller profile promo dock — Android [rememberProfilePromoFooterVisible].
+    /// Hero scrolled off + tabs pinned — Android `rememberProfilePromoFooterVisible` (index > 0).
     var onTabsPinnedAtTopChange: ((Bool) -> Void)? = nil
     var onListingClick: (ListingFeedItem) -> Void
     var onLike: ((ListingFeedItem) -> Void)?
@@ -83,72 +87,111 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     @ViewBuilder var expandedHeader: () -> ExpandedHeader
     @ViewBuilder var compactHeader: () -> CompactHeader
 
-    @State private var showCompactHeader = false
-    @State private var showSectionTitle = false
+    @State private var headerMinY: CGFloat = 0
+    @State private var headerMaxY: CGFloat = 10_000
+    @State private var showBriefBar = false
+
+    private var collapseProgress: CGFloat {
+        min(max(-headerMinY / ProfileCollapseMetrics.scrollDistance, 0), 1)
+    }
+
+    /// Expanded hero fully above the viewport — sticky tab row is pinned (Android `firstVisibleItemIndex > 0`).
+    private var tabsPinnedAtTop: Bool {
+        headerMaxY <= 0
+    }
+
+    private var showSectionTitle: Bool {
+        tabsPinnedAtTop || collapseProgress > 0.55
+    }
 
     var body: some View {
-        ScrollView {
-            LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
-                Section {
-                    expandedHeader()
-                        .background(
-                            GeometryReader { geo in
-                                let frame = geo.frame(in: .named("profileScroll"))
-                                Color.clear
-                                    .preference(key: ProfileScrollOffsetKey.self, value: frame.minY)
-                                    .preference(key: ProfileHeaderBoundsKey.self, value: frame)
-                            }
-                        )
-                }
-                Section {
-                    Group {
-                        if items.isEmpty {
-                            emptyBlock
-                        } else {
-                            ListingMasonryGridView(items: items) { item, _ in
-                                ListingGridCard(
-                                    item: item,
-                                    onTap: { onListingClick(item) },
-                                    imageAspectRatio: ListingMasonryGrid.staggerAspectRatio(for: item.id),
-                                    showQuickActions: showQuickActions,
-                                    onLike: onLike.map { h in { h(item) } },
-                                    onSave: onSave.map { h in { h(item) } }
-                                )
-                            }
-                            .padding(.top, 4)
-                        }
+        ScrollViewReader { scrollProxy in
+            ScrollView {
+                LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+                    Section {
+                        expandedHeader()
+                            .id(ProfileScrollIds.expandedHeader)
+                            .background(
+                                GeometryReader { geo in
+                                    let frame = geo.frame(in: .named("profileScroll"))
+                                    Color.clear
+                                        .preference(key: ProfileScrollOffsetKey.self, value: frame.minY)
+                                        .preference(key: ProfileHeaderBoundsKey.self, value: frame)
+                                }
+                                .allowsHitTesting(false)
+                            )
                     }
-                    .animation(.easeInOut(duration: 0.2), value: selectedTab)
+                    Section {
+                        Group {
+                            if items.isEmpty {
+                                emptyBlock
+                            } else {
+                                ListingMasonryGridView(items: items) { item, _ in
+                                    ListingGridCard(
+                                        item: item,
+                                        onTap: { onListingClick(item) },
+                                        imageAspectRatio: ListingMasonryGrid.staggerAspectRatio(for: item.id),
+                                        showQuickActions: showQuickActions,
+                                        statusOverlayLabel: showStatusOverlay
+                                            ? ListingStatusUi.overlayLabel(for: item.listingStatus)
+                                            : nil,
+                                        onLike: onLike.map { h in { h(item) } },
+                                        onSave: onSave.map { h in { h(item) } }
+                                    )
+                                }
+                                .padding(.top, 4)
+                            }
+                        }
+                        .animation(.easeInOut(duration: 0.2), value: selectedTab)
 
-                    Color.clear.frame(height: max(120, additionalBottomInset + 80))
-                } header: {
-                    stickyChrome
+                        Color.clear.frame(height: max(120, additionalBottomInset + 80))
+                    } header: {
+                        stickyChrome(scrollProxy: scrollProxy)
+                    }
+                }
+                .fashScrollViewTabSwipe(
+                    currentIndex: selectedTab,
+                    tabCount: tabSet.tabCount
+                ) { index in
+                    selectedTab = index
                 }
             }
-            .fashScrollViewTabSwipe(
-                currentIndex: selectedTab,
-                tabCount: tabSet.tabCount
-            ) { index in
-                selectedTab = index
+            .coordinateSpace(name: "profileScroll")
+            .onPreferenceChange(ProfileScrollOffsetKey.self) { offset in
+                headerMinY = offset
+                refreshBriefBarVisibility()
             }
-        }
-        .coordinateSpace(name: "profileScroll")
-        .onPreferenceChange(ProfileScrollOffsetKey.self) { offset in
-            let progress = min(max(-offset / 280, 0), 1)
-            showCompactHeader = progress > 0.52
-            showSectionTitle = progress > 0.55
-        }
-        .onPreferenceChange(ProfileHeaderBoundsKey.self) { frame in
-            // Android: listState.firstVisibleItemIndex > 0 — hero scrolled off, tabs pinned under top bar.
-            onTabsPinnedAtTopChange?(frame.maxY <= 1)
+            .onPreferenceChange(ProfileHeaderBoundsKey.self) { frame in
+                guard frame.height > 10 else { return }
+                headerMaxY = frame.maxY
+                onTabsPinnedAtTopChange?(tabsPinnedAtTop)
+                refreshBriefBarVisibility()
+            }
         }
     }
 
-    private var stickyChrome: some View {
+    private func refreshBriefBarVisibility() {
+        // Android ProfileStickyProfileChrome hysteresis — avoid elastic-scroll flicker.
+        if tabsPinnedAtTop || collapseProgress > 0.52 {
+            if !showBriefBar { showBriefBar = true }
+        } else if collapseProgress < 0.36, !tabsPinnedAtTop {
+            if showBriefBar { showBriefBar = false }
+        }
+    }
+
+    @ViewBuilder
+    private func stickyChrome(scrollProxy: ScrollViewProxy) -> some View {
         VStack(spacing: 0) {
-            if showCompactHeader {
+            if showBriefBar {
                 compactHeader()
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        withAnimation(.easeInOut(duration: 0.28)) {
+                            scrollProxy.scrollTo(ProfileScrollIds.expandedHeader, anchor: .top)
+                        }
+                    }
                 Divider().opacity(0.45)
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
             ProfileTabSwitcher(
                 tabSet: tabSet,
@@ -162,10 +205,17 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, spacing.editorialStart)
                     .padding(.vertical, 8)
+                    .transition(.opacity)
             }
         }
         .background(FashColors.screen)
-        .shadow(color: .black.opacity(showCompactHeader ? 0.08 : 0.04), radius: 3, y: 1)
+        .shadow(
+            color: .black.opacity(showBriefBar || tabsPinnedAtTop ? 0.08 : 0.04),
+            radius: 3,
+            y: 1
+        )
+        .animation(.easeInOut(duration: 0.24), value: showBriefBar)
+        .animation(.easeInOut(duration: 0.2), value: showSectionTitle)
     }
 
     private var emptyBlock: some View {
@@ -186,6 +236,10 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         }
         .padding(.vertical, 24)
     }
+}
+
+private enum ProfileScrollIds {
+    static let expandedHeader = "profile_expanded_header"
 }
 
 /// Scrollable tab row with primary underline — Android [ProfileTabSwitcher].

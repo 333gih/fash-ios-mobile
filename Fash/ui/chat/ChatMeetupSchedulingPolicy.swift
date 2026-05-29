@@ -3,14 +3,7 @@ import Foundation
 /// Meetup scheduling policy — Android `ChatMeetupSchedulingPolicy.kt`.
 enum ChatMeetupSchedulingPolicy {
     static func parseInstant(_ raw: String) -> Date? {
-        let t = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !t.isEmpty else { return nil }
-        let normalized = t.contains("T") ? t : t.replacingOccurrences(of: " ", with: "T")
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let d = formatter.date(from: normalized) { return d }
-        formatter.formatOptions = [.withInternetDateTime]
-        return formatter.date(from: normalized)
+        ChatInstantParse.parse(raw)
     }
 
     static func isMeetupSlotStillUpcoming(status: String, scheduledAtRaw: String, now: Date = Date()) -> Bool {

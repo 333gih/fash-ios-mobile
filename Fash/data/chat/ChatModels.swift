@@ -94,6 +94,7 @@ struct ChatMessage: Identifiable, Equatable {
     let outboundState: OutboundSendState
     let systemSubtype: String?
     let meetingAppointment: MeetingAppointmentPayload?
+    let orderCancelled: OrderCancelledChatPayload?
 
     var isOfferType: Bool {
         messageType == "offer" || messageType == "counter_offer"

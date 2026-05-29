@@ -24,8 +24,8 @@ struct ExploreOverlayHost: View {
                 onPromoSlideClick: { slide, index in router.handlePromoSlideClick(slide) },
                 onFeaturedSellerClick: { seller in
                     let username = seller.username.trimmingCharacters(in: .whitespaces)
-                    if !username.isEmpty {
-                        onClose()
+                    guard !username.isEmpty else { return }
+                    deps.navigateFromListingPreview(router: router) {
                         router.sellerShopUsername = username
                     }
                 },
@@ -36,17 +36,16 @@ struct ExploreOverlayHost: View {
             )
         }
         .background(FashColors.screen)
+        .overlay(alignment: .bottom) {
+            ListingPreviewOverlay(
+                listingPreview: deps.listingPreview,
+                router: router,
+                isGuestMode: isGuestMode,
+                onRequestLogin: { onRequestSignIn?(L10n.guestLoginReasonBuy) }
+            )
+        }
         .onAppear {
             deps.listingPreview.close(deps: deps)
-        }
-        .onChange(of: deps.listingPreview.state?.id) { _, _ in
-            if let pending = router.pendingListingIdAfterPreview, deps.listingPreview.state == nil {
-                router.pendingListingIdAfterPreview = nil
-                onClose()
-                DispatchQueue.main.async {
-                    deps.presentListingDetail(listingId: pending, router: router)
-                }
-            }
         }
         .task {
             if expandSearchOnAppear {

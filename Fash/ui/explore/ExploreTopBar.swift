@@ -40,7 +40,7 @@ struct ExploreTopBar: View {
         }
         .padding(.leading, spacing.editorialStart)
         .padding(.trailing, spacing.editorialEnd)
-        .background(FashColors.surfaceContainerHighest)
+        .background(FashColors.surface)
         .onChange(of: viewModel.searchBarExpanded) { _, expanded in
             if expanded {
                 searchFocused = true

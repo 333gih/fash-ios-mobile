@@ -6,12 +6,18 @@ struct OrdersScreen: View {
     @State private var internalViewModel = OrdersViewModel()
     var viewModel: OrdersViewModel? = nil
     var embeddedInMainNav: Bool = false
+    var promoSlides: [FashPromoSlideDef] = []
+    var onPromoSlideClick: (FashPromoSlideDef, Int) -> Void = { _, _ in }
     var onDismiss: () -> Void
     var onSelectOrder: (String) -> Void
 
     private var activeVM: OrdersViewModel {
         if let viewModel { return viewModel }
         return internalViewModel
+    }
+
+    private var promoDockInset: CGFloat {
+        promoSlides.isEmpty ? 0 : FashStickyPromoDockHeight
     }
 
     var body: some View {
@@ -30,69 +36,76 @@ struct OrdersScreen: View {
 
     @ViewBuilder
     private var ordersBody: some View {
-        VStack(spacing: 0) {
-            Picker("", selection: bindableRole) {
-                Text(L10n.ordersTabBuying).tag(OrdersViewModel.OrderRole.buying)
-                Text(L10n.ordersTabSelling).tag(OrdersViewModel.OrderRole.selling)
-            }
-            .pickerStyle(.segmented)
-            .padding(.horizontal, spacing.editorialStart)
-            .padding(.vertical, 12)
+        ZStack(alignment: .bottom) {
+            VStack(spacing: 0) {
+                Picker("", selection: bindableRole) {
+                    Text(L10n.ordersTabBuying).tag(OrdersViewModel.OrderRole.buying)
+                    Text(L10n.ordersTabSelling).tag(OrdersViewModel.OrderRole.selling)
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, spacing.editorialStart)
+                .padding(.vertical, 12)
 
-            orderFilterBar
+                orderFilterBar
 
-            Group {
-                if activeVM.isLoading, activeVM.buyingOrders.isEmpty, activeVM.sellingOrders.isEmpty {
-                    ProgressView()
-                        .tint(FashColors.brandPrimary)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if let error = activeVM.errorMessage, activeVM.sourceOrders.isEmpty {
-                    FashEmptyStateView(
-                        title: L10n.ordersErrorTitle,
-                        subtitle: error,
-                        systemImage: "exclamationmark.triangle",
-                        actionTitle: L10n.feedRetry
-                    ) {
-                        Task { await activeVM.refresh(deps: deps) }
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if activeVM.sourceOrders.isEmpty {
-                    FashEmptyStateView(
-                        title: activeVM.selectedRole == .buying ? L10n.ordersEmptyBuying : L10n.ordersEmptySelling,
-                        subtitle: activeVM.selectedRole == .buying ? L10n.ordersEmptyBuyingSub : L10n.ordersEmptySellingSub,
-                        systemImage: activeVM.selectedRole == .buying ? "bag" : "storefront"
-                    )
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if activeVM.filteredOrders.isEmpty {
-                    FashEmptyStateView(
-                        title: L10n.ordersEmptyFilteredTitle,
-                        subtitle: L10n.ordersEmptyFilteredSub,
-                        actionTitle: L10n.ordersFilterClear
-                    ) {
-                        activeVM.selectStatusFilter(.all)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    ScrollView {
-                        LazyVStack(spacing: 12) {
-                            ForEach(activeVM.filteredOrders) { order in
-                                OrderListCard(
-                                    order: order,
-                                    showReviewButton: activeVM.selectedRole == .buying,
-                                    isConfirming: activeVM.confirmingOrderId == order.orderId,
-                                    onConfirm: {
-                                        Task { await activeVM.confirmReceipt(orderId: order.orderId, deps: deps) }
-                                    },
-                                    onTap: { onSelectOrder(order.orderId) }
-                                )
-                            }
+                Group {
+                    if activeVM.isLoading, activeVM.buyingOrders.isEmpty, activeVM.sellingOrders.isEmpty {
+                        ProgressView()
+                            .tint(FashColors.brandPrimary)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else if let error = activeVM.errorMessage, activeVM.sourceOrders.isEmpty {
+                        FashEmptyStateView(
+                            title: L10n.ordersErrorTitle,
+                            subtitle: error,
+                            systemImage: "exclamationmark.triangle",
+                            actionTitle: L10n.feedRetry
+                        ) {
+                            Task { await activeVM.refresh(deps: deps) }
                         }
-                        .padding(.horizontal, spacing.editorialStart)
-                        .padding(.vertical, 16)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else if activeVM.sourceOrders.isEmpty {
+                        FashEmptyStateView(
+                            title: activeVM.selectedRole == .buying ? L10n.ordersEmptyBuying : L10n.ordersEmptySelling,
+                            subtitle: activeVM.selectedRole == .buying ? L10n.ordersEmptyBuyingSub : L10n.ordersEmptySellingSub,
+                            systemImage: activeVM.selectedRole == .buying ? "bag" : "storefront"
+                        )
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else if activeVM.filteredOrders.isEmpty {
+                        FashEmptyStateView(
+                            title: L10n.ordersEmptyFilteredTitle,
+                            subtitle: L10n.ordersEmptyFilteredSub,
+                            actionTitle: L10n.ordersFilterClear
+                        ) {
+                            activeVM.selectStatusFilter(.all)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        ScrollView {
+                            LazyVStack(spacing: 12) {
+                                ForEach(activeVM.filteredOrders) { order in
+                                    OrderListCard(
+                                        order: order,
+                                        showReviewButton: activeVM.selectedRole == .buying,
+                                        isConfirming: activeVM.confirmingOrderId == order.orderId,
+                                        onConfirm: {
+                                            Task { await activeVM.confirmReceipt(orderId: order.orderId, deps: deps) }
+                                        },
+                                        onTap: { onSelectOrder(order.orderId) }
+                                    )
+                                }
+                            }
+                            .padding(.horizontal, spacing.editorialStart)
+                            .padding(.vertical, 16)
+                        }
                     }
                 }
+                .padding(.bottom, promoDockInset)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            if !promoSlides.isEmpty {
+                FashPromoSliderAdFooterView(slides: promoSlides, onSlideClick: onPromoSlideClick)
+            }
         }
         .background(FashColors.screen)
     }

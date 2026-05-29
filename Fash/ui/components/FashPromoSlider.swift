@@ -36,13 +36,14 @@ struct FashPromoSlideDef: Identifiable, Equatable {
 struct FashPromoSliderView: View {
     @Environment(\.fashSpacing) private var spacing
     let slides: [FashPromoSlideDef]
-    var cardHeight: CGFloat = 112
+    /// When true, uses 72pt cards (Home only). All other tabs use standard 112pt.
+    var compact: Bool = false
     var onSlideClick: (FashPromoSlideDef, Int) -> Void = { _, _ in }
 
     @State private var selectedIndex = 0
     @State private var autoAdvanceTask: Task<Void, Never>?
 
-    private var compact: Bool { cardHeight < 100 }
+    private var cardHeight: CGFloat { FashPromoMetrics.cardHeight(compact: compact) }
 
     var body: some View {
         if slides.isEmpty {
@@ -82,65 +83,116 @@ struct FashPromoSliderView: View {
         let shape = RoundedRectangle(cornerRadius: spacing.radiusCard, style: .continuous)
         let badge = slide.badgeText?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
             ?? L10n.ordersPromoBadge
-        let hasBanner = !(slide.bannerImageUrl?.isEmpty ?? true)
-        let titleColor: Color = hasBanner ? .white : slide.gradientColors.first?.fashReadableOn() ?? .white
-        let hPad: CGFloat = compact ? 10 : 16
-        let vPad: CGFloat = compact ? 8 : 12
+        let bannerURL = slide.bannerImageUrl?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+        let hasBanner = bannerURL != nil
+        let hPad: CGFloat = compact ? 10 : 14
+        let vPad: CGFloat = compact ? 8 : 10
+        let titleFont = compact ? FashTypography.labelLarge.weight(.bold) : FashTypography.titleSmall.weight(.bold)
+        let subtitleFont = compact ? FashTypography.labelSmall : FashTypography.bodySmall
 
-        return ZStack(alignment: .topTrailing) {
-            Group {
-                if let url = slide.bannerImageUrl, !url.isEmpty {
-                    FashAsyncImage(url: FeedImageUrl.resolveListingImageUrl(url), contentMode: .fill)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .clipped()
-                    LinearGradient(
-                        colors: [
-                            Color.black.opacity(0.55),
-                            Color.black.opacity(0.28),
-                            Color.black.opacity(0.62),
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                } else {
-                    LinearGradient(
-                        colors: slide.gradientColors,
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
+        return GeometryReader { geo in
+            let imageStripWidth = hasBanner ? geo.size.width * FashPromoMetrics.imageStripWidthFraction : 0
+            HStack(spacing: 0) {
+                textPanel(
+                    slide: slide,
+                    hasBanner: hasBanner,
+                    hPad: hPad,
+                    vPad: vPad,
+                    titleFont: titleFont,
+                    subtitleFont: subtitleFont
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                if hasBanner, let url = bannerURL {
+                    promoImageStrip(url: url, width: imageStripWidth)
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .overlay(alignment: .topTrailing) {
+                Text(badge)
+                    .font(FashTypography.labelSmall.weight(.semibold))
+                    .foregroundStyle(badgeForeground(hasBanner: hasBanner, slide: slide))
+                    .padding(.horizontal, hPad)
+                    .padding(.vertical, compact ? 6 : 8)
+            }
+        }
+        .frame(height: cardHeight)
+        .clipShape(shape)
+        .overlay(shape.stroke(FashColors.outlineMuted.opacity(0.2), lineWidth: 1))
+        .contentShape(shape)
+    }
 
-            Text(badge)
-                .font(FashTypography.labelSmall.weight(.semibold))
-                .foregroundStyle(titleColor.opacity(0.85))
-                .padding(.horizontal, hPad)
-                .padding(.vertical, compact ? 6 : 12)
+    @ViewBuilder
+    private func textPanel(
+        slide: FashPromoSlideDef,
+        hasBanner: Bool,
+        hPad: CGFloat,
+        vPad: CGFloat,
+        titleFont: Font,
+        subtitleFont: Font
+    ) -> some View {
+        let titleColor = textColor(hasBanner: hasBanner, slide: slide)
+        ZStack(alignment: .bottomLeading) {
+            if hasBanner {
+                LinearGradient(
+                    colors: [
+                        slide.gradientColors.first?.opacity(0.92) ?? FashColors.brandPrimary.opacity(0.92),
+                        slide.gradientColors.last?.opacity(0.88) ?? FashColors.brandPrimary.opacity(0.75),
+                    ],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            } else {
+                LinearGradient(
+                    colors: slide.gradientColors,
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            }
 
             VStack(alignment: .leading, spacing: compact ? 2 : 4) {
                 Text(slide.title)
-                    .font((compact ? FashTypography.labelLarge : FashTypography.titleSmall).weight(.bold))
+                    .font(titleFont)
                     .foregroundStyle(titleColor)
                     .lineLimit(compact ? 1 : 2)
+                    .minimumScaleFactor(0.85)
                 if !compact || !slide.subtitle.isEmpty {
                     Text(slide.subtitle)
-                        .font(compact ? FashTypography.labelSmall : FashTypography.bodySmall)
+                        .font(subtitleFont)
                         .foregroundStyle(titleColor.opacity(0.92))
                         .lineLimit(compact ? 1 : 2)
+                        .minimumScaleFactor(0.85)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, hPad)
             .padding(.vertical, vPad)
-            .padding(.trailing, compact ? 32 : 48)
-            .padding(.bottom, compact ? 4 : 10)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+            .padding(.trailing, compact ? 28 : 40)
+            .padding(.bottom, compact ? 4 : 8)
         }
-        .frame(height: cardHeight)
-        .clipShape(shape)
+    }
+
+    @ViewBuilder
+    private func promoImageStrip(url: String, width: CGFloat) -> some View {
+        ZStack {
+            FashColors.surfaceContainer
+            FashAsyncImage(url: FeedImageUrl.resolveListingImageUrl(url), contentMode: .fit)
+                .frame(maxWidth: width, maxHeight: cardHeight)
+                .padding(.horizontal, 4)
+                .padding(.vertical, 6)
+        }
+        .frame(width: width)
         .clipped()
-        .contentShape(shape)
+    }
+
+    private func textColor(hasBanner: Bool, slide: FashPromoSlideDef) -> Color {
+        if hasBanner {
+            return .white
+        }
+        return slide.gradientColors.first?.fashReadableOn() ?? .white
+    }
+
+    private func badgeForeground(hasBanner: Bool, slide: FashPromoSlideDef) -> Color {
+        textColor(hasBanner: hasBanner, slide: slide).opacity(0.88)
     }
 
     private func startAutoAdvance(count: Int) {

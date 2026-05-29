@@ -47,9 +47,13 @@ final class AddressBookViewModel {
         guard provinces.isEmpty else { return }
         provincesLoading = true
         defer { provincesLoading = false }
+        eventMessage = nil
         switch await deps.commonCatalogRepository.getProvincesCatalog() {
-        case .success(let list): provinces = list
-        case .failure: eventMessage = L10n.addressCatalogLoadFailed
+        case .success(let list):
+            provinces = list
+            if list.isEmpty { eventMessage = L10n.addressCatalogLoadFailed }
+        case .failure:
+            eventMessage = L10n.addressCatalogLoadFailed
         }
     }
 
@@ -59,8 +63,11 @@ final class AddressBookViewModel {
             wards = []
             return
         }
+        eventMessage = nil
         switch await deps.commonCatalogRepository.getAdministrativeChildren(parentId: provinceId, childLevel: 2) {
-        case .success(let list): districts = list
+        case .success(let list):
+            districts = list
+            if list.isEmpty { eventMessage = L10n.addressCatalogLoadFailed }
         case .failure:
             districts = []
             eventMessage = L10n.addressCatalogLoadFailed
@@ -73,8 +80,11 @@ final class AddressBookViewModel {
             wards = []
             return
         }
+        eventMessage = nil
         switch await deps.commonCatalogRepository.getAdministrativeChildren(parentId: districtId, childLevel: 3) {
-        case .success(let list): wards = list
+        case .success(let list):
+            wards = list
+            if list.isEmpty { eventMessage = L10n.addressCatalogLoadFailed }
         case .failure:
             wards = []
             eventMessage = L10n.addressCatalogLoadFailed

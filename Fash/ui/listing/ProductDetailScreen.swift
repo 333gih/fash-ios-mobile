@@ -3,64 +3,146 @@ import SwiftUI
 struct ProductDetailScreen: View {
     @Environment(\.fashSpacing) private var spacing
     @Environment(AppDependencies.self) private var deps
+
     let listingId: String
+    var isGuestMode: Bool = false
     var onDismiss: () -> Void
     var onBuyNow: (String) -> Void = { _ in }
+    var onContinueOrder: (String) -> Void = { _ in }
     var onChat: (String) -> Void = { _ in }
+    var onShare: (String, String) -> Void = { _, _ in }
+    var onListingClick: (String) -> Void = { _ in }
     var onVisitSellerShop: (String) -> Void = { _ in }
+    var onRequestLogin: () -> Void = {}
     var onNavigateToExplore: (
         _ categoryId: String?,
         _ brandId: String?,
         _ aestheticTagId: String?,
-        _ searchQuery: String
-    ) -> Void = { _, _, _, _ in }
+        _ searchQuery: String,
+        _ countryId: String?,
+        _ countryIso2: String?
+    ) -> Void = { _, _, _, _, _, _ in }
 
     @State private var viewModel = ProductDetailViewModel()
+    @State private var showShippingInfo = false
+    @State private var showSaveNudge = false
+    @State private var sharePayload: SharePayload?
 
     private var buyNowEnabled: Bool { BusinessFlowConfig.c2cBuyNowEnabled }
 
     var body: some View {
         ZStack(alignment: .top) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: spacing.spacing3) {
-                    if viewModel.isLoading {
-                        ProgressView().frame(maxWidth: .infinity, minHeight: 320)
-                    } else if let item = viewModel.item {
-                        imageGallery
-                        titlePriceSection(item)
-                        metaChips(item, preview: viewModel.preview)
-                        if let description = viewModel.preview?.description ?? Optional(item.descriptionText),
-                           !description.isEmpty {
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text(L10n.productSectionDescription)
-                                    .font(FashTypography.titleSmall.weight(.semibold))
-                                Text(description)
-                                    .font(FashTypography.bodyMedium)
-                                    .foregroundStyle(FashColors.textSecondary)
-                            }
-                        }
-                        sellerSection(item)
-                        Spacer(minLength: 100)
-                    } else if let err = viewModel.errorMessage {
-                        FashEmptyStateView(title: err, actionTitle: L10n.feedRetry) {
-                            Task { await viewModel.load(listingId: listingId, deps: deps) }
-                        }
-                    }
-                }
-                .padding(.horizontal, spacing.editorialStart)
-                .padding(.top, 56)
-                .padding(.bottom, 24)
-            }
+            content
             topBar
         }
         .background(FashColors.screen)
-        .safeAreaInset(edge: .bottom) {
-            if viewModel.item != nil, !viewModel.isSold {
-                bottomBar
-            }
+        .safeAreaInset(edge: .bottom) { bottomBar }
+        .task(id: listingId) { await viewModel.load(listingId: listingId, deps: deps) }
+        .alert(L10n.productShippingInfoTitle, isPresented: $showShippingInfo) {
+            Button(L10n.dialogOk) {}
+        } message: {
+            Text(L10n.productShippingInfoBody)
         }
-        .task(id: listingId) {
-            await viewModel.load(listingId: listingId, deps: deps)
+        .alert(L10n.productPurchaseGuideTitle, isPresented: Binding(
+            get: { viewModel.showPurchaseGuide },
+            set: { viewModel.showPurchaseGuide = $0 }
+        )) {
+            Button(L10n.productPurchaseGuideGotIt) { viewModel.dismissPurchaseGuide(deps: deps) }
+        } message: {
+            Text(buyNowEnabled ? L10n.productPurchaseGuideBody : L10n.productPurchaseGuideBodyNoBuyNow)
+        }
+        .alert(L10n.dialogTitleInfo, isPresented: Binding(
+            get: { viewModel.snackbarMessage != nil },
+            set: { if !$0 { viewModel.snackbarMessage = nil } }
+        )) {
+            Button(L10n.dialogOk) { viewModel.snackbarMessage = nil }
+        } message: {
+            Text(viewModel.snackbarMessage ?? "")
+        }
+        .sheet(item: $sharePayload) { payload in
+            ActivityShareSheet(items: [payload.text])
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if viewModel.isLoading, viewModel.detail == nil {
+            ProgressView()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if let err = viewModel.loadError, viewModel.detail == nil {
+            FashEmptyStateView(title: err, actionTitle: L10n.feedRetry) {
+                Task { await viewModel.load(listingId: listingId, deps: deps) }
+            }
+        } else if let detail = viewModel.detail {
+            ScrollView {
+                VStack(alignment: .leading, spacing: spacing.spacing3) {
+                    ProductDetailComponents.heroImage(
+                        detail: detail,
+                        galleryIndex: $viewModel.galleryIndex,
+                        onLike: { guestGate { Task { await viewModel.toggleLike(deps: deps) } } },
+                        onSave: {
+                            guestGate {
+                                Task {
+                                    let wasSaved = detail.isSaved
+                                    let added = await viewModel.toggleSave(deps: deps)
+                                    if added, !wasSaved { showSaveNudge = true }
+                                }
+                            }
+                        }
+                    )
+                    if viewModel.bottomBarMode != .normal {
+                        ProductDetailComponents.statusBanner(mode: viewModel.bottomBarMode)
+                            .padding(.horizontal, spacing.editorialStart)
+                    }
+                    ProductDetailComponents.sellerCard(
+                        detail: detail,
+                        profile: viewModel.sellerProfile,
+                        isFollowing: viewModel.isFollowing,
+                        onVisitShop: {
+                            if let u = detail.sellerUsername?.nilIfEmpty { onVisitSellerShop(u) }
+                        },
+                        onFollow: { guestGate { Task { await viewModel.follow(deps: deps) } } },
+                        onUnfollow: { Task { await viewModel.unfollow(deps: deps) } }
+                    )
+                    .padding(.horizontal, spacing.editorialStart)
+                    ProductDetailComponents.priceInfoCard(detail: detail) { catId, _ in
+                        onNavigateToExplore(catId, nil, nil, detail.category ?? "", detail.countryId, detail.countryIso2)
+                    }
+                    .padding(.horizontal, spacing.editorialStart)
+                    if let order = viewModel.buyerActiveOrder, order.amountVnd >= 1000 {
+                        DealAgreedPriceBannerView(
+                            amountVnd: order.amountVnd,
+                            fromBuyNow: order.status.lowercased() == "payment_pending"
+                        )
+                        .padding(.horizontal, spacing.editorialStart)
+                    }
+                    ProductDetailComponents.atGlanceCard(detail: detail, onBrandTap: {
+                        onNavigateToExplore(nil, detail.brandId, nil, detail.brand ?? "", nil, nil)
+                    }, onOriginTap: {
+                        onNavigateToExplore(nil, nil, nil, detail.countryName ?? "", detail.countryId, detail.countryIso2)
+                    })
+                    .padding(.horizontal, spacing.editorialStart)
+                    ProductDetailComponents.measurementsCard(detail: detail)
+                        .padding(.horizontal, spacing.editorialStart)
+                    ProductDetailComponents.shippingCard(detail: detail, showInfo: $showShippingInfo)
+                        .padding(.horizontal, spacing.editorialStart)
+                    ProductDetailComponents.aboutCard(detail: detail) { tag in
+                        onNavigateToExplore(nil, nil, tag.id, tag.label, nil, nil)
+                    }
+                    .padding(.horizontal, spacing.editorialStart)
+                    ProductDetailComponents.moreFromSellerSection(
+                        sellerUsername: detail.sellerUsername,
+                        items: viewModel.moreFromSeller,
+                        onListingTap: onListingClick
+                    )
+                    if showSaveNudge {
+                        saveNudge
+                            .padding(.horizontal, spacing.editorialStart)
+                    }
+                    Spacer(minLength: 100)
+                }
+                .padding(.top, 56)
+            }
         }
     }
 
@@ -69,217 +151,143 @@ struct ProductDetailScreen: View {
             Button(action: onDismiss) {
                 Image(systemName: "chevron.left")
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(FashColors.textPrimary)
+                    .foregroundStyle(FashColors.brandPrimary)
                     .frame(width: 44, height: 44)
-                    .background(FashColors.screen.opacity(0.85))
-                    .clipShape(Circle())
             }
             Spacer()
-            if viewModel.item != nil {
-                HStack(spacing: 8) {
-                    circleIconButton(
-                        viewModel.isLiked ? "heart.fill" : "heart",
-                        highlighted: viewModel.isLiked
-                    ) {
-                        Task { await viewModel.toggleLike(deps: deps) }
-                    }
-                    circleIconButton(
-                        viewModel.isSaved ? "bookmark.fill" : "bookmark",
-                        highlighted: viewModel.isSaved
-                    ) {
-                        Task { await viewModel.toggleSave(deps: deps) }
-                    }
+            Text(L10n.productDetailTitle)
+                .font(FashTypography.titleSmall.weight(.semibold))
+                .foregroundStyle(FashColors.textPrimary)
+            Spacer()
+            if viewModel.detail != nil {
+                Button {
+                    guard let d = viewModel.detail else { return }
+                    viewModel.reportShare(deps: deps)
+                    let url = AppEnvironment.listingShareURL(listingId: d.id)
+                    sharePayload = SharePayload(text: "\(d.title)\n\(url)")
+                    onShare(d.id, d.title)
+                } label: {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(FashColors.brandPrimary)
+                        .frame(width: 44, height: 44)
                 }
+            } else {
+                Color.clear.frame(width: 44, height: 44)
             }
         }
         .padding(.horizontal, 8)
-        .padding(.top, 4)
-    }
-
-    private func circleIconButton(_ systemName: String, highlighted: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: systemName)
-                .foregroundStyle(highlighted ? FashColors.brandPrimary : FashColors.textPrimary)
-                .frame(width: 44, height: 44)
-                .background(FashColors.screen.opacity(0.9))
-                .clipShape(Circle())
-        }
+        .background(FashColors.screen.opacity(0.92))
     }
 
     @ViewBuilder
-    private var imageGallery: some View {
-        let urls = viewModel.resolvedImageUrls
-        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
-        if urls.isEmpty {
-            Rectangle()
-                .fill(FashColors.surfaceContainerHigh)
-                .frame(height: 360)
-                .clipShape(shape)
-        } else if urls.count == 1 {
-            FashAsyncImage(url: urls[0], contentMode: .fill)
-                .frame(height: 360)
-                .clipShape(shape)
-        } else {
-            let safeIndex = min(max(viewModel.galleryIndex, 0), urls.count - 1)
-            TabView(selection: Binding(
-                get: { safeIndex },
-                set: { viewModel.galleryIndex = $0 }
-            )) {
-                ForEach(Array(urls.enumerated()), id: \.offset) { index, url in
-                    FashAsyncImage(url: url, contentMode: .fill)
-                        .frame(height: 360)
-                        .clipShape(shape)
-                        .tag(index)
-                }
-            }
-            .tabViewStyle(.page(indexDisplayMode: .automatic))
-            .frame(height: 380)
-        }
-    }
-
-    private func titlePriceSection(_ item: ListingFeedItem) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(viewModel.preview?.title ?? item.title)
-                .font(FashTypography.headlineSmall.weight(.bold))
-                .foregroundStyle(FashColors.textPrimary)
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(FeedPriceFormat.format(viewModel.preview?.priceVnd ?? item.priceVnd))
-                    .font(FashTypography.titleLarge)
-                    .foregroundStyle(FashColors.brandPrimary)
-                if let original = viewModel.preview?.listPriceVnd, original > item.priceVnd {
-                    Text(FeedPriceFormat.format(original))
-                        .font(FashTypography.bodyMedium)
+    private var bottomBar: some View {
+        if viewModel.detail != nil {
+            VStack(spacing: 10) {
+                switch viewModel.bottomBarMode {
+                case .sold:
+                    Text(L10n.productListingSoldBar)
+                        .font(FashTypography.labelLarge.weight(.semibold))
                         .foregroundStyle(FashColors.textSecondary)
-                        .strikethrough()
-                }
-            }
-            if let fee = viewModel.preview?.estimatedShippingVnd, fee > 0 {
-                Text(L10n.productShippingEstimate(FeedPriceFormat.format(fee)))
-                    .font(FashTypography.bodySmall)
-                    .foregroundStyle(FashColors.textSecondary)
-            }
-        }
-    }
-
-    private struct MetaChip: Identifiable {
-        let id: String
-        let label: String
-        let categoryId: String?
-        let brandId: String?
-        let aestheticTagId: String?
-    }
-
-    private func metaChips(_ item: ListingFeedItem, preview: ListingPreviewDetail?) -> some View {
-        var chips: [MetaChip] = []
-        if let condition = ProductConditionFormat.label(for: preview?.condition ?? item.condition),
-           !condition.isEmpty {
-            chips.append(MetaChip(id: "cond", label: condition, categoryId: nil, brandId: nil, aestheticTagId: nil))
-        }
-        if let size = preview?.size ?? item.size, !size.isEmpty {
-            chips.append(MetaChip(id: "size", label: size, categoryId: nil, brandId: nil, aestheticTagId: nil))
-        }
-        if let brand = preview?.brand ?? item.brand, !brand.isEmpty {
-            chips.append(MetaChip(
-                id: "brand",
-                label: brand,
-                categoryId: nil,
-                brandId: preview?.brandId,
-                aestheticTagId: nil
-            ))
-        }
-        if let category = preview?.category ?? item.categoryName, !category.isEmpty {
-            chips.append(MetaChip(
-                id: "cat",
-                label: category,
-                categoryId: preview?.categoryId,
-                brandId: nil,
-                aestheticTagId: nil
-            ))
-        }
-        return Group {
-            if !chips.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(chips) { chip in
-                            Button {
-                                onNavigateToExplore(chip.categoryId, chip.brandId, chip.aestheticTagId, chip.label)
-                            } label: {
-                                Text(chip.label)
-                                    .font(FashTypography.labelMedium)
-                                    .foregroundStyle(FashColors.textPrimary)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 6)
-                                    .background(FashColors.surfaceContainer)
-                                    .clipShape(Capsule())
-                            }
-                            .buttonStyle(.plain)
-                            .disabled(chip.categoryId == nil && chip.brandId == nil && chip.aestheticTagId == nil)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private func sellerSection(_ item: ListingFeedItem) -> some View {
-        Button {
-            if let u = item.sellerUsername, !u.isEmpty { onVisitSellerShop(u) }
-        } label: {
-            HStack(spacing: 12) {
-                FashAvatarCircle(url: viewModel.sellerAvatarUrl, size: 48)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(viewModel.sellerDisplayName)
-                        .font(FashTypography.titleSmall.weight(.semibold))
-                        .foregroundStyle(FashColors.textPrimary)
-                    if let username = item.sellerUsername, !username.isEmpty {
-                        Text("@\(username)")
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                case .reservedOther:
+                    Text(L10n.productReservedOther)
+                        .font(FashTypography.labelLarge.weight(.semibold))
+                        .foregroundStyle(FashColors.textSecondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                case .reservedBuyer:
+                    if let order = viewModel.buyerActiveOrder {
+                        Text(L10n.productReservedBuyerContinue(FeedPriceFormat.format(order.amountVnd)))
                             .font(FashTypography.bodySmall)
                             .foregroundStyle(FashColors.textSecondary)
+                            .multilineTextAlignment(.center)
+                        FashPrimaryButton(title: L10n.productContinueCheckout) {
+                            onContinueOrder(order.orderId)
+                        }
                     }
-                }
-                Spacer()
-                if let u = item.sellerUsername, !u.isEmpty {
-                    Text(L10n.productVisitShop)
-                        .font(FashTypography.labelLarge)
-                        .foregroundStyle(FashColors.brandPrimary)
+                case .normal:
+                    if buyNowEnabled {
+                        FashPrimaryButton(title: L10n.buyNow) { onBuyNow(detail.id) }
+                    }
+                    messageButton(outlined: buyNowEnabled)
                 }
             }
-            .padding(14)
-            .background(FashColors.surfaceContainer)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .padding(.horizontal, spacing.editorialStart)
+            .padding(.vertical, 12)
+            .background(FashColors.surfaceContainerHighest)
         }
-        .buttonStyle(.plain)
     }
 
-    private var bottomBar: some View {
-        VStack(spacing: 10) {
-            FashPrimaryButton(title: L10n.buyNow, enabled: buyNowEnabled) {
-                if buyNowEnabled, let id = viewModel.item?.id { onBuyNow(id) }
+    private func messageButton(outlined: Bool) -> some View {
+        Button {
+            Task {
+                if let convId = await viewModel.openChat(deps: deps) { onChat(convId) }
             }
-            Button {
-                Task {
-                    if let convId = await viewModel.openChat(deps: deps) {
-                        onChat(convId)
-                    }
-                }
-            } label: {
-                HStack {
-                    if viewModel.isOpeningChat { ProgressView().scaleEffect(0.8) }
-                    Text(L10n.productChat)
-                }
-                .font(FashTypography.labelLarge.weight(.semibold))
-                .foregroundStyle(FashColors.brandPrimary)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .overlay(
+        } label: {
+            HStack {
+                if viewModel.isOpeningChat { ProgressView().scaleEffect(0.8) }
+                Image(systemName: "message")
+                Text(L10n.productChat)
+            }
+            .font(FashTypography.labelLarge.weight(.semibold))
+            .foregroundStyle(outlined ? FashColors.brandPrimary : FashColors.onBrandPrimary)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(outlined ? Color.clear : FashColors.brandPrimary)
+            .overlay {
+                if outlined {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .stroke(FashColors.brandPrimary, lineWidth: 1)
-                )
+                }
             }
-            .disabled(viewModel.isOpeningChat)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
-        .padding(.horizontal, spacing.editorialStart)
-        .padding(.vertical, 12)
-        .background(FashColors.surfaceContainerHighest)
+        .disabled(viewModel.isOpeningChat)
+    }
+
+    private var saveNudge: some View {
+        HStack {
+            Text(L10n.productSaveNudge)
+                .font(FashTypography.bodySmall)
+            Spacer()
+            Button(L10n.productSaveNudgeCta) {
+                showSaveNudge = false
+                Task { if let convId = await viewModel.openChat(deps: deps) { onChat(convId) } }
+            }
+            .font(FashTypography.labelMedium.weight(.semibold))
+            .foregroundStyle(FashColors.brandPrimary)
+            Button(L10n.productSaveNudgeDismiss) { showSaveNudge = false }
+                .font(FashTypography.labelMedium)
+                .foregroundStyle(FashColors.textSecondary)
+        }
+        .padding(12)
+        .background(FashColors.surfaceContainer)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private func guestGate(_ action: () -> Void) {
+        if isGuestMode { onRequestLogin() } else { action() }
+    }
+}
+
+private struct SharePayload: Identifiable {
+    let id = UUID()
+    let text: String
+}
+
+private struct ActivityShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+
+private extension String {
+    var nilIfEmpty: String? {
+        let t = trimmingCharacters(in: .whitespacesAndNewlines)
+        return t.isEmpty ? nil : t
     }
 }

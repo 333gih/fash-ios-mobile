@@ -14,6 +14,17 @@ final class CommonServiceRepository {
         AppEnvironment.commonServicePath("api/v1/\(path.trimmingCharacters(in: CharacterSet(charactersIn: "/")))")
     }
 
+    /// Encodes query the same way as the admin portal BFF / Android [apiV1UrlWithQuery].
+    private func apiV1UrlWithQuery(_ pathAfterApiV1: String, queryParams: [(String, String)]) -> String {
+        guard var components = URLComponents(string: apiV1(pathAfterApiV1)) else {
+            return apiV1(pathAfterApiV1)
+        }
+        if !queryParams.isEmpty {
+            components.queryItems = queryParams.map { URLQueryItem(name: $0.0, value: $0.1) }
+        }
+        return components.url?.absoluteString ?? apiV1(pathAfterApiV1)
+    }
+
     private func executeGet(_ urlString: String) async throws -> Data {
         guard let url = URL(string: urlString) else { throw URLError(.badURL) }
         var req = URLRequest(url: url)
@@ -25,46 +36,96 @@ final class CommonServiceRepository {
         return data
     }
 
-    func getProvincesCatalog() async -> Result<[CommonAddressDto], Error> {
+    // MARK: - Addresses
+
+    func getAddressTree() async -> Result<[AddressTreeNodeInternal], Error> {
         do {
-            let listURL = apiV1("addresses?level=1&current=true")
-            let data = try await executeGet(listURL)
+            let data = try await executeGet(apiV1("addresses/tree"))
             let obj = try RepositoryHttp.jsonObject(data)
-            let rows = obj["addresses"] as? [[String: Any]] ?? RepositoryHttp.jsonArray(data)
-            let list = rows.map(parseAddressDto)
-            if !list.isEmpty { return .success(list) }
-            let treeData = try await executeGet(apiV1("addresses/tree"))
-            let treeObj = try RepositoryHttp.jsonObject(treeData)
-            let tree = (treeObj["tree"] as? [[String: Any]] ?? []).map(parseAddressTreeNode)
-            return .success(flattenAddressesAtLevel(tree, targetLevel: 1))
+            let tree = (obj["tree"] as? [[String: Any]] ?? []).map(parseAddressTreeNode)
+            return .success(tree)
         } catch {
             return .failure(error)
         }
     }
 
-    func getAdministrativeChildren(parentId: String, childLevel: Int) async -> Result<[CommonAddressDto], Error> {
-        let pid = parentId.trimmingCharacters(in: .whitespaces)
-        guard !pid.isEmpty, (2...3).contains(childLevel) else { return .success([]) }
+    func getAddresses(level: Int? = nil, parentId: String? = nil, current: Bool = true) async -> Result<[CommonAddressDto], Error> {
+        var params: [(String, String)] = [("current", current ? "true" : "false")]
+        if let level { params.append(("level", String(level))) }
+        if let pid = parentId?.trimmingCharacters(in: .whitespaces), !pid.isEmpty {
+            params.append(("parent_id", pid))
+        }
         do {
-            let listURL = apiV1("addresses?level=\(childLevel)&parent_id=\(pid)&current=true")
-            let data = try await executeGet(listURL)
+            let data = try await executeGet(apiV1UrlWithQuery("addresses", queryParams: params))
             let obj = try RepositoryHttp.jsonObject(data)
-            let rows = obj["addresses"] as? [[String: Any]] ?? RepositoryHttp.jsonArray(data)
-            let list = rows.map(parseAddressDto)
-            if !list.isEmpty { return .success(list) }
-            let treeData = try await executeGet(apiV1("addresses/tree"))
-            let treeObj = try RepositoryHttp.jsonObject(treeData)
-            let tree = (treeObj["tree"] as? [[String: Any]] ?? []).map(parseAddressTreeNode)
-            if let parent = findTreeNodeById(tree, id: pid) {
-                return .success(parent.children.filter { $0.level == childLevel }.map { n in
-                    CommonAddressDto(id: n.id, name: n.name, code: n.code, parentId: n.parentId, level: n.level, status: "")
-                })
-            }
-            return .success([])
+            return .success(parseAddressList(obj))
         } catch {
             return .failure(error)
         }
     }
+
+    /// Level-1 provinces: list API first, then tree fallback (Android `getProvincesCatalog`).
+    func getProvincesCatalog() async -> Result<[CommonAddressDto], Error> {
+        let listAttempt = await getAddresses(level: 1, current: true)
+        if case .success(let list) = listAttempt, !list.isEmpty {
+            return .success(list)
+        }
+        switch await getAddressTree() {
+        case .success(let tree):
+            return .success(flattenAddressesAtLevel(tree, targetLevel: 1))
+        case .failure(let treeErr):
+            if case .failure(let listErr) = listAttempt { return .failure(listErr) }
+            return .failure(treeErr)
+        }
+    }
+
+    /// Direct children at level 2 (district) or 3 (ward) — Android `getAdministrativeChildren`.
+    func getAdministrativeChildren(parentId: String, childLevel: Int) async -> Result<[CommonAddressDto], Error> {
+        let pid = parentId.trimmingCharacters(in: .whitespaces)
+        guard !pid.isEmpty, (2...3).contains(childLevel) else { return .success([]) }
+
+        let listTry = await getAddresses(level: childLevel, parentId: pid, current: true)
+        if case .success(let list) = listTry, !list.isEmpty {
+            return .success(list)
+        }
+
+        let treeResult = await getAddressTree()
+        let fromTree: [CommonAddressDto]
+        switch treeResult {
+        case .success(let tree):
+            let node = findTreeNodeById(tree, id: pid)
+            fromTree = (node?.children ?? [])
+                .filter { $0.level == childLevel }
+                .map { n in
+                    CommonAddressDto(id: n.id, name: n.name, code: n.code, parentId: n.parentId, level: n.level, status: "")
+                }
+                .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        case .failure:
+            fromTree = []
+        }
+
+        let looseList: [CommonAddressDto]?
+        switch await getAddresses(level: nil, parentId: pid, current: true) {
+        case .success(let loose):
+            let filtered = loose.filter { $0.level == childLevel }
+                .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+            looseList = filtered.isEmpty ? nil : filtered
+        case .failure:
+            looseList = nil
+        }
+
+        if !fromTree.isEmpty { return .success(fromTree) }
+        if let looseList { return .success(looseList) }
+        if case .success(let empty) = listTry { return .success(empty) }
+        if case .failure(let listErr) = listTry {
+            if case .failure(let treeErr) = treeResult { return .failure(listErr) }
+            return .failure(listErr)
+        }
+        if case .failure(let treeErr) = treeResult { return .failure(treeErr) }
+        return .success([])
+    }
+
+    // MARK: - Public catalog delegates
 
     func getCategoryTree() async -> Result<[CategoryTreeNode], Error> {
         await publicCatalog.getCategoryTree()
@@ -106,6 +167,8 @@ final class CommonServiceRepository {
     }
 }
 
+// MARK: - Address parsing
+
 private struct AddressTreeNodeInternal {
     var id: String
     var name: String
@@ -115,13 +178,21 @@ private struct AddressTreeNodeInternal {
     var children: [AddressTreeNodeInternal]
 }
 
+/// Matches Android `parseAddressList` — API returns `items`, not `addresses`.
+private func parseAddressList(_ obj: [String: Any]) -> [CommonAddressDto] {
+    let rows = obj["items"] as? [[String: Any]]
+        ?? obj["addresses"] as? [[String: Any]]
+        ?? []
+    return rows.map(parseAddressDto)
+}
+
 private func parseAddressDto(_ o: [String: Any]) -> CommonAddressDto {
     CommonAddressDto(
         id: RepositoryHttp.optString(o, "id", "ID"),
         name: RepositoryHttp.optString(o, "name", "Name"),
         code: RepositoryHttp.optString(o, "code", "Code"),
         parentId: RepositoryHttp.optString(o, "parent_id", "parentId", "ParentID"),
-        level: RepositoryHttp.optInt(o, "level", "Level"),
+        level: RepositoryHttp.optInt(o, "level", "Level", default: 1),
         status: RepositoryHttp.optString(o, "status", "Status")
     )
 }
@@ -133,7 +204,7 @@ private func parseAddressTreeNode(_ o: [String: Any]) -> AddressTreeNodeInternal
         name: RepositoryHttp.optString(o, "name", "Name"),
         code: RepositoryHttp.optString(o, "code", "Code"),
         parentId: RepositoryHttp.optString(o, "parent_id", "parentId", "ParentID"),
-        level: RepositoryHttp.optInt(o, "level", "Level"),
+        level: RepositoryHttp.optInt(o, "level", "Level", default: 1),
         children: children
     )
 }
@@ -154,6 +225,7 @@ private func flattenAddressesAtLevel(_ nodes: [AddressTreeNodeInternal], targetL
 
 private func findTreeNodeById(_ nodes: [AddressTreeNodeInternal], id: String) -> AddressTreeNodeInternal? {
     let target = id.trimmingCharacters(in: .whitespaces)
+    guard !target.isEmpty else { return nil }
     for n in nodes {
         if n.id.caseInsensitiveCompare(target) == .orderedSame { return n }
         if let found = findTreeNodeById(n.children, id: target) { return found }

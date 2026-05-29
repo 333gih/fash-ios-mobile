@@ -1,4 +1,4 @@
-import Foundation
+import SwiftUI
 
 /// Meetup date/time helpers — Android `MeetingUi.kt` (scheduling subset).
 enum MeetingUi {
@@ -52,5 +52,37 @@ enum MeetingUi {
         let start = instant.addingTimeInterval(TimeInterval(-windowMinutes * 60))
         let end = instant.addingTimeInterval(TimeInterval(windowMinutes * 60))
         return now >= start && now <= end
+    }
+
+    static func meetingStatusLabel(_ status: String) -> String {
+        switch status.lowercased() {
+        case "confirmed": return L10n.chatMeetingStatusConfirmed
+        case "cancelled": return L10n.chatMeetingStatusCancelled
+        default: return L10n.chatMeetingStatusPending
+        }
+    }
+
+    static func meetingStateDescription(_ status: String) -> String {
+        switch status.lowercased() {
+        case "confirmed": return L10n.chatMeetingStateDescConfirmed
+        case "cancelled": return L10n.chatMeetingStateDescCancelled
+        default: return L10n.chatMeetingStateDescPending
+        }
+    }
+
+    static func meetingStatusChipForeground(_ status: String) -> Color {
+        switch status.lowercased() {
+        case "confirmed": return Color(red: 0.11, green: 0.37, blue: 0.13)
+        case "cancelled": return Color(red: 0.72, green: 0.11, blue: 0.10)
+        default: return Color(red: 0.52, green: 0.39, blue: 0.02)
+        }
+    }
+
+    static func meetingStatusChipBackground(_ status: String) -> Color {
+        switch status.lowercased() {
+        case "confirmed": return Color(red: 0.91, green: 0.96, blue: 0.91)
+        case "cancelled": return Color(red: 1, green: 0.92, blue: 0.93)
+        default: return Color(red: 1, green: 0.97, blue: 0.88)
+        }
     }
 }
