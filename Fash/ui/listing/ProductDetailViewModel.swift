@@ -276,10 +276,11 @@ final class ProductDetailViewModel {
             "payment_pending", "payment_held", "in_transit", "pending",
             "cash_meetup_open", "fulfillment_pending",
         ]
-        guard let match = orders.first(where: {
-            $0.listingId.caseInsensitiveCompare(listingId) == .orderedSame
-                && activeStatuses.contains($0.status.lowercased())
-        }) else { return nil }
+        let match = orders.first(where: { order in
+            order.listingId.caseInsensitiveCompare(listingId) == .orderedSame
+                && activeStatuses.contains(order.status.lowercased())
+        })
+        guard let match else { return nil }
         return BuyerActiveOrder(orderId: match.orderId, amountVnd: match.priceVnd, status: match.status)
     }
 
