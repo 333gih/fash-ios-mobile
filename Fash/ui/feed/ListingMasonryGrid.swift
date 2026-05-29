@@ -122,6 +122,11 @@ struct ListingMasonryLazyRows<Content: View>: View {
                 if let right = row.right {
                     content(right.item, right.index)
                         .frame(maxWidth: .infinity)
+                } else {
+                    // Keeps two-column row width stable when the last row has a single tile.
+                    Color.clear
+                        .frame(maxWidth: .infinity)
+                        .accessibilityHidden(true)
                 }
             }
             .padding(.leading, edgeStart)

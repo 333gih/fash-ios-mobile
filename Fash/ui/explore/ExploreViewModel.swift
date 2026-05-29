@@ -67,6 +67,7 @@ final class ExploreViewModel {
     private var listingsFetchGeneration = 0
     private var sellersBrowseGeneration = 0
     private var loadMoreCooldownUntil: Date?
+    private var loadMoreTask: Task<Void, Never>?
     private var lastSuccessfulExploreRefreshAt: Date?
     private var listingsReloadTask: Task<Void, Never>?
 
@@ -348,9 +349,34 @@ final class ExploreViewModel {
         await refresh(deps: deps, isGuestMode: isGuestMode)
     }
 
+    /// Coalesced entry point from the pagination sentinel — avoids duplicate loads from multiple `onAppear` calls.
+    func requestLoadMore(deps: AppDependencies, isGuestMode: Bool) {
+        guard canLoadMoreListings else { return }
+        guard loadMoreTask == nil else { return }
+        loadMoreTask = Task { @MainActor in
+            defer { loadMoreTask = nil }
+            await loadMore(deps: deps, isGuestMode: isGuestMode)
+        }
+    }
+
+    func cancelLoadMore() {
+        loadMoreTask?.cancel()
+        loadMoreTask = nil
+        isLoadingMore = false
+    }
+
+    private var canLoadMoreListings: Bool {
+        primarySection == .listings
+            && hasMore
+            && !isLoadingMore
+            && !isLoading
+            && !isReloadingListings
+            && !isRefreshing
+            && !(loadError && items.isEmpty)
+    }
+
     func loadMore(deps: AppDependencies, isGuestMode: Bool) async {
-        guard primarySection == .listings, hasMore, !isLoadingMore, !isLoading, !isReloadingListings, !isRefreshing else { return }
-        guard !(loadError && items.isEmpty) else { return }
+        guard canLoadMoreListings else { return }
         let now = Date()
         if let until = loadMoreCooldownUntil, now < until { return }
         loadMoreCooldownUntil = now.addingTimeInterval(0.4)
@@ -456,6 +482,7 @@ final class ExploreViewModel {
         primarySection = .listings
         listingsReloadTask?.cancel()
         listingsReloadTask = nil
+        cancelLoadMore()
         listingsFetchGeneration += 1
         sellersBrowseGeneration += 1
         items = []
@@ -464,7 +491,6 @@ final class ExploreViewModel {
         isLoading = false
         isReloadingListings = false
         isRefreshing = false
-        isLoadingMore = false
         lastSuccessfulExploreRefreshAt = nil
         hasMore = true
         loadError = false
@@ -553,6 +579,7 @@ final class ExploreViewModel {
     private func clearExploreConstraints(deps: AppDependencies, isGuestMode: Bool) async {
         listingsReloadTask?.cancel()
         listingsReloadTask = nil
+        cancelLoadMore()
         listingsFetchGeneration += 1
         items = []
         hasMore = true
@@ -564,6 +591,7 @@ final class ExploreViewModel {
 
     /// Replaces the first page in place — does not clear [items] first (smooth filter/search UX).
     private func fetchListingsFirstPage(deps: AppDependencies, isGuestMode: Bool) async {
+        cancelLoadMore()
         listingsFetchGeneration += 1
         let generation = listingsFetchGeneration
         let hadItems = !items.isEmpty

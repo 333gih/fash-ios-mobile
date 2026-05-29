@@ -239,7 +239,7 @@ struct ExploreScreen: View {
 
     private var listingsGrid: some View {
         ScrollView {
-            LazyVStack(spacing: 0) {
+            LazyVStack(spacing: gridSpacing) {
                 Color.clear
                     .frame(height: 1)
                     .exploreExpandedHeaderScrollReporting()
@@ -255,6 +255,16 @@ struct ExploreScreen: View {
             if !hostManagesStickyChrome, showsStickyChromeOverlay {
                 exploreStickyChromeHeader
                     .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .overlay {
+            if viewModel.isReloadingListings, !viewModel.items.isEmpty {
+                ProgressView()
+                    .tint(FashColors.brandPrimary)
+                    .scaleEffect(1.05)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    .padding(.top, spacing.spacing8)
+                    .allowsHitTesting(false)
             }
         }
         .animation(.easeInOut(duration: 0.22), value: showsStickyChromeOverlay)
@@ -278,38 +288,24 @@ struct ExploreScreen: View {
                 subtitle: L10n.feedEmptySubtitle
             )
         } else {
-            ZStack(alignment: .top) {
-                VStack(spacing: spacing.spacing4) {
-                    ListingMasonryGridView(items: viewModel.items, columnSpacing: gridSpacing) { item, index in
-                        ExploreListingCell(
-                            item: item,
-                            index: index,
-                            isGuestMode: isGuestMode,
-                            openListingAsFullScreen: openListingAsFullScreen,
-                            viewModel: viewModel,
-                            router: router,
-                            deps: deps
-                        )
-                    }
-                }
-                .padding(.top, spacing.spacing2)
-                .opacity(viewModel.isReloadingListings ? 0.72 : 1)
-                .animation(.easeInOut(duration: 0.2), value: viewModel.isReloadingListings)
-                .allowsHitTesting(!viewModel.isReloadingListings)
-
-                if viewModel.isReloadingListings {
-                    ProgressView()
-                        .tint(FashColors.brandPrimary)
-                        .scaleEffect(1.05)
-                        .padding(.top, spacing.spacing6)
-                }
+            // Each masonry row is a direct LazyVStack child (stable heights, reliable pagination).
+            ListingMasonryLazyRows(items: viewModel.items, columnSpacing: gridSpacing) { item, index in
+                ExploreListingCell(
+                    item: item,
+                    index: index,
+                    isGuestMode: isGuestMode,
+                    openListingAsFullScreen: openListingAsFullScreen,
+                    viewModel: viewModel,
+                    router: router,
+                    deps: deps
+                )
             }
 
-            if viewModel.isLoadingMore {
-                ProgressView()
-                    .tint(FashColors.brandPrimary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, spacing.spacing3)
+            ExploreListingsPaginationSentinel(
+                hasMore: viewModel.hasMore,
+                isLoadingMore: viewModel.isLoadingMore
+            ) {
+                viewModel.requestLoadMore(deps: deps, isGuestMode: isGuestMode)
             }
 
             HomeBrandFooterStrip()
@@ -398,6 +394,32 @@ struct ExploreScreen: View {
     }
 }
 
+/// Single prefetch trigger at the feed bottom — avoids duplicate `loadMore` from per-cell `onAppear`.
+private struct ExploreListingsPaginationSentinel: View {
+    let hasMore: Bool
+    let isLoadingMore: Bool
+    let onPrefetch: () -> Void
+
+    private let triggerHeight: CGFloat = 96
+
+    var body: some View {
+        ZStack {
+            Color.clear
+                .frame(height: triggerHeight)
+                .onAppear {
+                    guard hasMore, !isLoadingMore else { return }
+                    onPrefetch()
+                }
+            if isLoadingMore {
+                ProgressView()
+                    .tint(FashColors.brandPrimary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+            }
+        }
+    }
+}
+
 private struct ExploreListingCell: View {
     let item: ListingFeedItem
     let index: Int
@@ -442,10 +464,6 @@ private struct ExploreListingCell: View {
         .onAppear {
             appearedAt = Date()
             viewModel.recordView(item: item, position: index, deps: deps)
-            let total = viewModel.items.count
-            if total > 3, index >= total - 3 {
-                Task { await viewModel.loadMore(deps: deps, isGuestMode: isGuestMode) }
-            }
         }
         .onDisappear {
             if let appearedAt {
