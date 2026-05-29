@@ -140,9 +140,11 @@ final class ChatRepository {
             do {
                 let (data, http) = try await client.data(for: req)
                 guard (200..<300).contains(http.statusCode) else {
+                    let parsed = CoreServiceErrors.parse(data: data, statusCode: http.statusCode)
                     throw CoreServiceHttpException(
-                        statusCode: http.statusCode,
-                        message: CoreServiceErrors.parseMessage(data: data, statusCode: http.statusCode)
+                        statusCode: parsed.httpCode,
+                        message: parsed.message,
+                        serviceError: parsed
                     )
                 }
                 return data

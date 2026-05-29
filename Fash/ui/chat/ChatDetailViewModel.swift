@@ -21,6 +21,8 @@ final class ChatDetailViewModel {
     var isCreatingCounterOffer = false
     var showOfferSheet = false
     var counterOfferSheet: CounterOfferSheetArgs?
+    var offerFormError: String?
+    var counterFormError: String?
 
     var orderId: String?
     var orderStatus: String?
@@ -100,7 +102,9 @@ final class ChatDetailViewModel {
         defer { isLoading = false }
 
         await refreshAll(conversationId: conversationId, deps: deps)
-        _ = await deps.chatRepository.markConversationRead(conversationId: conversationId)
+        if case .success = await deps.chatRepository.markConversationRead(conversationId: conversationId) {
+            ChatUnreadRefreshHub.notifyMarkedRead()
+        }
         startPolling(conversationId: conversationId, deps: deps)
         bindRealtime(conversationId: conversationId, deps: deps)
         deps.realtimeManager.subscribeToConversation(conversationId)
@@ -163,7 +167,7 @@ final class ChatDetailViewModel {
                 )
             }
             inputText = text
-            eventMessage = FashErrorPresentation.userMessage(for: error)
+            eventMessage = ChatErrorPresentation.mapSendMessageError(error)
         }
     }
 
@@ -180,6 +184,7 @@ final class ChatDetailViewModel {
 
     func createOffer(amountVnd: Int64, deps: AppDependencies) async {
         guard let d = detail else { return }
+        offerFormError = nil
         if d.pendingOffer != nil {
             eventMessage = L10n.chatErrorPendingOffer
             return
@@ -188,16 +193,32 @@ final class ChatDetailViewModel {
             eventMessage = L10n.chatErrorOrderExists
             return
         }
+        if ChatMeetupSchedulingPolicy.shouldBlockBuyerNewPriceOffer(
+            messages: messages,
+            viewerIsBuyer: d.isBuyer,
+            orderStatus: orderStatus,
+            orderApptStatus: orderMeetingAppointmentStatus,
+            orderApptScheduledAt: orderMeetingScheduledAt
+        ) {
+            eventMessage = L10n.chatOfferBlockedActiveMeetup
+            return
+        }
         if d.offerCount >= maxOffers {
             eventMessage = L10n.chatErrorOfferLimit(maxOffers)
             return
         }
-        showOfferSheet = false
+        let listed = d.product?.priceVnd ?? 0
+        if let validation = ChatErrorPresentation.validateBuyerOffer(amountVnd: amountVnd, listedPriceVnd: listed) {
+            offerFormError = validation
+            return
+        }
         isCreatingOffer = true
         defer { isCreatingOffer = false }
         let result = await deps.chatRepository.createOffer(conversationId: d.conversationId, amountVnd: amountVnd)
         switch result {
         case .success(let offer):
+            showOfferSheet = false
+            offerFormError = nil
             detail = ConversationDetail(
                 conversationId: d.conversationId,
                 otherUser: d.otherUser,
@@ -216,14 +237,34 @@ final class ChatDetailViewModel {
             )
             await refreshMessages(conversationId: d.conversationId, deps: deps)
         case .failure(let error):
-            eventMessage = FashErrorPresentation.userMessage(for: error)
+            let msg = ChatErrorPresentation.mapOfferError(error, listedPriceVnd: listed)
+            offerFormError = msg
+            eventMessage = msg
         }
     }
 
     func submitCounterOffer(amountVnd: Int64, deps: AppDependencies) async {
         guard let args = counterOfferSheet, let d = detail else { return }
-        guard amountVnd >= 1000 else {
-            eventMessage = L10n.chatCounterOfferMin
+        counterFormError = nil
+        if d.isBuyer {
+            eventMessage = L10n.chatOfferError
+            return
+        }
+        if hasOrder {
+            eventMessage = L10n.chatErrorOrderExists
+            return
+        }
+        if d.offerCount >= maxOffers {
+            eventMessage = L10n.chatErrorOfferLimit(maxOffers)
+            return
+        }
+        let listed = d.product?.priceVnd ?? 0
+        if let validation = ChatErrorPresentation.validateCounterOffer(
+            amountVnd: amountVnd,
+            buyerOfferVnd: args.buyerOfferAmountVnd,
+            listedPriceVnd: listed
+        ) {
+            counterFormError = validation
             return
         }
         isCreatingCounterOffer = true
@@ -236,6 +277,7 @@ final class ChatDetailViewModel {
         switch result {
         case .success(let msg):
             counterOfferSheet = nil
+            counterFormError = nil
             detail = ConversationDetail(
                 conversationId: d.conversationId,
                 otherUser: d.otherUser,
@@ -257,7 +299,9 @@ final class ChatDetailViewModel {
                 detail = detail.map { $0.withOfferCount(fresh.offerCount) }
             }
         case .failure(let error):
-            eventMessage = FashErrorPresentation.userMessage(for: error)
+            let msg = ChatErrorPresentation.mapOfferError(error, listedPriceVnd: listed)
+            counterFormError = msg
+            eventMessage = msg
         }
     }
 
@@ -280,7 +324,7 @@ final class ChatDetailViewModel {
                 await fetchOrder(orderId: oid, deps: deps)
             }
         case .failure(let error):
-            eventMessage = FashErrorPresentation.userMessage(for: error)
+            eventMessage = ChatErrorPresentation.mapOfferActionError(error)
         }
     }
 
@@ -298,7 +342,7 @@ final class ChatDetailViewModel {
             detail = d.withPendingOffer(nil)
             await refreshMessages(conversationId: d.conversationId, deps: deps)
         case .failure(let error):
-            eventMessage = FashErrorPresentation.userMessage(for: error)
+            eventMessage = ChatErrorPresentation.mapOfferActionError(error)
         }
     }
 
@@ -440,7 +484,7 @@ final class ChatDetailViewModel {
             await refreshMessages(conversationId: convId, deps: deps)
             if let oid = orderId, !oid.isEmpty { await fetchOrder(orderId: oid, deps: deps) }
         case .failure(let err):
-            eventMessage = FashErrorPresentation.userMessage(for: err)
+            eventMessage = ChatErrorPresentation.mapMeetingCheckInError(err)
         }
     }
 
@@ -567,44 +611,172 @@ final class ChatDetailViewModel {
             case .connected:
                 deps.realtimeManager.subscribeToConversation(conversationId)
             case .typingStart(let cid, let userId):
-                guard cid == conversationId || cid.isEmpty else { return }
+                guard sameConversation(eventConvId: cid, openConvId: conversationId) else { return }
                 let myId = deps.authSessionStore.read()?.userId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
                 let other = userId.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !other.isEmpty, other.compare(myId, options: .caseInsensitive) != .orderedSame else { return }
                 isOtherTyping = true
                 scheduleTypingTimeout()
             case .typingStop(let cid, let userId):
-                guard cid == conversationId || cid.isEmpty else { return }
+                guard sameConversation(eventConvId: cid, openConvId: conversationId) else { return }
                 let myId = deps.authSessionStore.read()?.userId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
                 let uid = userId.trimmingCharacters(in: .whitespacesAndNewlines)
                 if uid.isEmpty || uid.compare(myId, options: .caseInsensitive) == .orderedSame { return }
                 isOtherTyping = false
                 typingTimeoutTask?.cancel()
-            case .messageNew(let cid, _, _, _, _, _, _),
-                 .readReceipts(let cid, _, _),
-                 .offerLimitReset(_, let cid, _),
-                 .conversationClosed(let cid),
-                 .conversationReopened(let cid):
-                guard cid == conversationId || cid.isEmpty else { return }
+            case .messageNew(
+                let cid,
+                _,
+                let senderId,
+                let recipientId,
+                _,
+                _,
+                let systemSubtype
+            ):
+                if sameConversation(eventConvId: cid, openConvId: conversationId) {
+                    if systemSubtype?.compare("conversation.closed", options: .caseInsensitive) == .orderedSame {
+                        applyConversationClosedFromRealtime(conversationId: conversationId, deps: deps)
+                    } else if systemSubtype?.compare("conversation.reopened", options: .caseInsensitive) == .orderedSame {
+                        applyConversationReopenedFromRealtime(conversationId: conversationId)
+                    } else {
+                        scheduleSilentRefresh(conversationId: conversationId, deps: deps)
+                    }
+                } else if messageNewShouldRefreshChat(
+                    eventConversationId: cid,
+                    senderId: senderId,
+                    recipientId: recipientId,
+                    openConversationId: conversationId,
+                    deps: deps
+                ) {
+                    scheduleSilentRefresh(conversationId: conversationId, deps: deps)
+                }
+            case .readReceipts(let cid, _, _):
+                guard sameConversation(eventConvId: cid, openConvId: conversationId) else { return }
                 scheduleSilentRefresh(conversationId: conversationId, deps: deps)
+            case .offerLimitReset(_, let cid, let newPriceVnd):
+                guard sameConversation(eventConvId: cid, openConvId: conversationId), let d = detail else { return }
+                detail = ConversationDetail(
+                    conversationId: d.conversationId,
+                    otherUser: d.otherUser,
+                    product: d.product.map { p in
+                        ChatProductCard(
+                            listingId: p.listingId,
+                            title: p.title,
+                            priceVnd: newPriceVnd > 0 ? newPriceVnd : p.priceVnd,
+                            imageUrl: p.imageUrl,
+                            listingStatus: p.listingStatus
+                        )
+                    },
+                    isBuyer: d.isBuyer,
+                    orderId: d.orderId,
+                    offerCount: 0,
+                    isClosed: d.isClosed,
+                    pendingOffer: d.pendingOffer,
+                    myReport: d.myReport
+                )
+                eventMessage = L10n.chatOfferLimitResetBanner(FeedPriceFormat.format(newPriceVnd))
+            case .conversationClosed(let cid):
+                guard sameConversation(eventConvId: cid, openConvId: conversationId) else { return }
+                applyConversationClosedFromRealtime(conversationId: conversationId, deps: deps)
+            case .conversationReopened(let cid):
+                guard sameConversation(eventConvId: cid, openConvId: conversationId) else { return }
+                applyConversationReopenedFromRealtime(conversationId: conversationId)
             case .orderStatusChanged(let oid, let cid, let status):
-                if cid == conversationId || cid.isEmpty {
+                if sameConversation(eventConvId: cid, openConvId: conversationId) {
                     scheduleSilentRefresh(conversationId: conversationId, deps: deps)
                 }
                 if oid == self.orderId || (!oid.isEmpty && self.orderId == nil) {
                     self.orderStatus = status
                     Task { await self.fetchOrder(orderId: oid.isEmpty ? (self.orderId ?? "") : oid, deps: deps) }
                 }
-            case .listingSold, .listingReserved:
+            case .listingSold(let listingId), .listingReserved(let listingId):
+                guard listingIdMatches(listingId) else { return }
                 scheduleSilentRefresh(conversationId: conversationId, deps: deps)
                 isOtherTyping = false
                 deps.realtimeManager.sendTypingStop(conversationId: conversationId)
-            case .listingAvailable:
-                scheduleSilentRefresh(conversationId: conversationId, deps: deps)
+            case .listingAvailable(let listingId):
+                guard listingIdMatches(listingId) else { return }
+                if let d = detail, let product = d.product {
+                    detail = ConversationDetail(
+                        conversationId: d.conversationId,
+                        otherUser: d.otherUser,
+                        product: ChatProductCard(
+                            listingId: product.listingId,
+                            title: product.title,
+                            priceVnd: product.priceVnd,
+                            imageUrl: product.imageUrl,
+                            listingStatus: "active"
+                        ),
+                        isBuyer: d.isBuyer,
+                        orderId: d.orderId,
+                        offerCount: 0,
+                        isClosed: false,
+                        pendingOffer: d.pendingOffer,
+                        myReport: d.myReport
+                    )
+                    eventMessage = L10n.chatReopenedSnackbar
+                } else {
+                    scheduleSilentRefresh(conversationId: conversationId, deps: deps)
+                }
             default:
                 break
             }
         }
+    }
+
+    private func sameConversation(eventConvId: String, openConvId: String) -> Bool {
+        let event = eventConvId.trimmingCharacters(in: .whitespacesAndNewlines)
+        let open = openConvId.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !event.isEmpty && event.compare(open, options: .caseInsensitive) == .orderedSame
+    }
+
+    private func messageNewShouldRefreshChat(
+        eventConversationId: String,
+        senderId: String,
+        recipientId: String,
+        openConversationId: String,
+        deps: AppDependencies
+    ) -> Bool {
+        if sameConversation(eventConvId: eventConversationId, openConvId: openConversationId) { return true }
+        let eventConv = eventConversationId.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !eventConv.isEmpty,
+           eventConv.compare(openConversationId, options: .caseInsensitive) != .orderedSame {
+            return false
+        }
+        let myId = deps.authSessionStore.read()?.userId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let otherId = detail?.otherUser.userId.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !myId.isEmpty, !otherId.isEmpty else { return false }
+        let sender = senderId.trimmingCharacters(in: .whitespacesAndNewlines)
+        let fromOther = !sender.isEmpty
+            && sender.compare(otherId, options: .caseInsensitive) == .orderedSame
+            && sender.compare(myId, options: .caseInsensitive) != .orderedSame
+        let recipient = recipientId.trimmingCharacters(in: .whitespacesAndNewlines)
+        let forMe = recipient.isEmpty || recipient.compare(myId, options: .caseInsensitive) == .orderedSame
+        return fromOther && forMe
+    }
+
+    private func listingIdMatches(_ listingId: String) -> Bool {
+        let lid = detail?.product?.listingId.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let eventId = listingId.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !lid.isEmpty && lid.compare(eventId, options: .caseInsensitive) == .orderedSame
+    }
+
+    private func applyConversationClosedFromRealtime(conversationId: String, deps: AppDependencies) {
+        if let d = detail {
+            detail = d.withClosed(true)
+        }
+        inputText = ""
+        showOfferSheet = false
+        counterOfferSheet = nil
+        isOtherTyping = false
+        deps.realtimeManager.sendTypingStop(conversationId: conversationId)
+    }
+
+    private func applyConversationReopenedFromRealtime(conversationId: String) {
+        if let d = detail {
+            detail = d.withClosed(false).withOfferCount(0)
+        }
+        eventMessage = L10n.chatReopenedSnackbar
     }
 
     func formatTime(_ timestamp: String) -> String {
@@ -650,6 +822,20 @@ private extension ConversationDetail {
             orderId: orderId,
             offerCount: count,
             isClosed: isClosed,
+            pendingOffer: pendingOffer,
+            myReport: myReport
+        )
+    }
+
+    func withClosed(_ closed: Bool) -> ConversationDetail {
+        ConversationDetail(
+            conversationId: conversationId,
+            otherUser: otherUser,
+            product: product,
+            isBuyer: isBuyer,
+            orderId: orderId,
+            offerCount: offerCount,
+            isClosed: closed,
             pendingOffer: pendingOffer,
             myReport: myReport
         )

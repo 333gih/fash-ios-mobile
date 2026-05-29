@@ -20,7 +20,7 @@ extension AppRouter {
         case "in_app_chat":
             selectedTab = .chat
         case "in_app_product_packages":
-            sellerPackageCheckoutId = nil
+            sellerPackageCheckout = nil
             showSellerPackagesScreen = true
         case "in_app_invite_friends":
             showInviteFriendsScreen = true

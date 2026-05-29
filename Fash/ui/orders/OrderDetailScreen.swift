@@ -25,8 +25,10 @@ struct OrderDetailScreen: View {
     @State private var selectedCarrierId = ""
     @State private var reviewRating = 5
     @State private var reviewComment = ""
-    @State private var disputeDescription = ""
-    @State private var disputePhotos: [String] = []
+    @State private var openDisputeDescription = ""
+    @State private var openDisputePhotos: [String] = []
+    @State private var evidenceDescription = ""
+    @State private var evidencePhotos: [String] = []
     @State private var noShowReason = "other_absent"
     @State private var noShowNote = ""
 
@@ -66,13 +68,10 @@ struct OrderDetailScreen: View {
             }
         }
         .task(id: orderId) { await viewModel.load(orderId: orderId, deps: deps) }
-        .alert(L10n.dialogTitleInfo, isPresented: Binding(
-            get: { viewModel.toastMessage != nil },
-            set: { if !$0 { viewModel.toastMessage = nil } }
-        )) {
-            Button(L10n.dialogOk) { viewModel.toastMessage = nil }
-        } message: {
-            Text(viewModel.toastMessage ?? "")
+        .onChange(of: viewModel.toastMessage) { _, message in
+            guard let message, !message.isEmpty else { return }
+            deps.showSnackbar(message)
+            viewModel.toastMessage = nil
         }
         .alert(L10n.orderDetailHelpCd, isPresented: $showHelp) {
             Button(L10n.orderDetailHelpClose) {}
@@ -81,8 +80,56 @@ struct OrderDetailScreen: View {
         }
         .sheet(isPresented: $showShip) { shipSheet }
         .sheet(isPresented: $showReview) { reviewSheet }
-        .sheet(isPresented: $showOpenDispute) { disputeSheet(isEvidence: false) }
-        .sheet(isPresented: $showDisputeEvidence) { disputeSheet(isEvidence: true) }
+        .sheet(isPresented: $showOpenDispute) {
+            OrderDetailDisputeSheet(
+                isEvidence: false,
+                description: $openDisputeDescription,
+                photoUrls: $openDisputePhotos,
+                busy: viewModel.busyAction,
+                onDismiss: { showOpenDispute = false },
+                onSubmit: {
+                    await viewModel.openDispute(
+                        description: openDisputeDescription,
+                        photoUrls: openDisputePhotos,
+                        deps: deps
+                    )
+                }
+            )
+        }
+        .sheet(isPresented: $showDisputeEvidence) {
+            OrderDetailDisputeSheet(
+                isEvidence: true,
+                description: $evidenceDescription,
+                photoUrls: $evidencePhotos,
+                busy: viewModel.busyAction,
+                onDismiss: { showDisputeEvidence = false },
+                onSubmit: {
+                    await viewModel.submitDisputeEvidence(
+                        description: evidenceDescription,
+                        photoUrls: evidencePhotos,
+                        deps: deps
+                    )
+                }
+            )
+        }
+        .onChange(of: showOpenDispute) { _, open in
+            if open {
+                openDisputeDescription = ""
+                openDisputePhotos = []
+            }
+        }
+        .onChange(of: showDisputeEvidence) { _, open in
+            if open {
+                evidenceDescription = ""
+                evidencePhotos = []
+            }
+        }
+        .onChange(of: viewModel.detail?.status) { _, _ in
+            if showOpenDispute,
+               OrderFormatting.normalizeStatus(viewModel.detail?.status ?? "") == "disputed" {
+                showOpenDispute = false
+            }
+        }
         .sheet(isPresented: $showCancel) {
             OrderCancelFlowSheet(orderId: orderId, onDismiss: { showCancel = false }) {
                 Task { await viewModel.load(orderId: orderId, deps: deps) }
@@ -229,71 +276,98 @@ struct OrderDetailScreen: View {
         let role = viewModel.viewerRole(deps: deps)
         let st = OrderFormatting.normalizeStatus(detail.status)
         let idle = viewModel.busyAction == .none
-        VStack(spacing: 8) {
-            if role == .buyer, st == "payment_pending", !detail.listingId.isEmpty {
-                FashPrimaryButton(title: L10n.orderDetailPay) {
-                    onNavigateToPayment(detail.listingId, detail.effectiveBuyerTotal, detail.orderId)
-                }
-            }
-            if role == .buyer, st == "fulfillment_pending" || st == "cash_meetup_open", !detail.conversationId.isEmpty {
-                Button(L10n.orderDetailContinueInChat) { onNavigateToChat(detail.conversationId) }
-                    .font(FashTypography.labelLarge.weight(.semibold))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(FashColors.brandPrimary)
-                    .foregroundStyle(FashColors.onBrandPrimary)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            }
-            if role == .seller, OrderDetailLogic.sellerShowsConfirmHandoffCta(detail) {
-                FashPrimaryButton(title: L10n.orderDetailConfirmHandoff, enabled: idle) {
-                    Task { await viewModel.confirmHandoff(deps: deps) }
-                }
-            } else if role == .seller, st == "payment_held", detail.canShip {
-                FashPrimaryButton(title: L10n.orderDetailActionShip, enabled: idle) {
-                    Task { await viewModel.loadShipmentCarriers(deps: deps) }
-                    showShip = true
-                }
-            }
-            if detail.canConfirmReceipt, role == .buyer {
-                Button {
-                    Task { await viewModel.confirmReceipt(deps: deps) }
-                } label: {
-                    HStack {
-                        if viewModel.busyAction == .confirmReceipt { ProgressView().scaleEffect(0.85) }
-                        Text(L10n.ordersConfirmReceived)
+        let showOpenDisputeCta = role != .viewer && (st == "in_transit" || st == "delivered_confirmed")
+        let showDisputeEvidenceCta = role != .viewer && st == "disputed"
+        let showReviewCta = detail.canReview && role == .buyer && detail.buyerReview == nil
+        let showCancelCta = role == .buyer && OrderBuyerCancelPolicy.buyerCanCancel(status: st)
+        let showChatCta = !detail.conversationId.isEmpty
+            && (role == .buyer || role == .seller)
+            && st != "cancelled"
+        let hasPrimary = (role == .buyer && st == "payment_pending" && !detail.listingId.isEmpty)
+            || (role == .buyer && (st == "fulfillment_pending" || st == "cash_meetup_open") && !detail.conversationId.isEmpty)
+            || (role == .seller && OrderDetailLogic.sellerShowsConfirmHandoffCta(detail))
+            || (role == .seller && st == "payment_held" && detail.canShip)
+            || (detail.canConfirmReceipt && role == .buyer)
+            || showCancelCta
+        let hasSecondary = showReviewCta || showOpenDisputeCta || showDisputeEvidenceCta || showChatCta
+        if !hasPrimary && !hasSecondary { EmptyView() }
+        else {
+            VStack(spacing: 8) {
+                Divider().opacity(0.35)
+                if role == .buyer, st == "payment_pending", !detail.listingId.isEmpty {
+                    FashPrimaryButton(title: L10n.orderDetailPay) {
+                        onNavigateToPayment(detail.listingId, detail.effectiveBuyerTotal, detail.orderId)
                     }
-                    .font(FashTypography.labelLarge.weight(.semibold))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(FashColors.brandPrimary, lineWidth: 1))
                 }
-                .foregroundStyle(FashColors.brandPrimary)
-                .disabled(!idle)
-            }
-            if detail.canReview, role == .buyer, detail.buyerReview == nil {
-                Button(L10n.orderDetailReviewTitle) { showReview = true }
-                    .font(FashTypography.labelLarge)
-                    .foregroundStyle(FashColors.brandPrimary)
-            }
-            HStack(spacing: 12) {
-                if role != .viewer, (st == "in_transit" || st == "delivered_confirmed") {
-                    Button(L10n.orderDetailDisputeOpen) { showOpenDispute = true }
-                        .font(FashTypography.labelMedium)
+                if role == .buyer, st == "fulfillment_pending" || st == "cash_meetup_open", !detail.conversationId.isEmpty {
+                    Button(L10n.orderDetailContinueInChat) { onNavigateToChat(detail.conversationId) }
+                        .font(FashTypography.labelLarge.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(FashColors.brandPrimary)
+                        .foregroundStyle(FashColors.onBrandPrimary)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
-                if st == "disputed" {
-                    Button(L10n.orderDetailDisputeEvidence) { showDisputeEvidence = true }
-                        .font(FashTypography.labelMedium)
+                if role == .seller, OrderDetailLogic.sellerShowsConfirmHandoffCta(detail) {
+                    FashPrimaryButton(title: L10n.orderDetailConfirmHandoff, enabled: idle) {
+                        Task { await viewModel.confirmHandoff(deps: deps) }
+                    }
+                } else if role == .seller, st == "payment_held", detail.canShip {
+                    FashPrimaryButton(title: L10n.orderDetailActionShip, enabled: idle) {
+                        Task { await viewModel.loadShipmentCarriers(deps: deps) }
+                        showShip = true
+                    }
                 }
-                if role == .buyer, OrderBuyerCancelPolicy.buyerCanCancel(status: st) {
+                if showCancelCta {
                     Button(L10n.orderCancelConfirmAction) { showCancel = true }
-                        .font(FashTypography.labelMedium)
+                        .font(FashTypography.labelLarge.weight(.medium))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(FashColors.error.opacity(0.4), lineWidth: 1)
+                        )
+                        .foregroundStyle(FashColors.error)
+                        .disabled(!idle)
+                }
+                if detail.canConfirmReceipt, role == .buyer {
+                    FashPrimaryButton(title: L10n.ordersConfirmReceived, enabled: idle) {
+                        Task { await viewModel.confirmReceipt(deps: deps) }
+                    }
+                }
+                if hasPrimary && hasSecondary {
+                    Divider().opacity(0.22).padding(.vertical, 4)
+                }
+                if showReviewCta {
+                    FashPrimaryButton(title: L10n.ordersReview, enabled: idle) { showReview = true }
+                }
+                if showOpenDisputeCta {
+                    OrderDetailComponents.stickyOutlineButton(
+                        title: L10n.orderDetailDisputeOpen,
+                        isBusy: viewModel.busyAction == .openDispute,
+                        enabled: idle
+                    ) { showOpenDispute = true }
+                }
+                if showDisputeEvidenceCta {
+                    OrderDetailComponents.stickyOutlineButton(
+                        title: L10n.orderDetailDisputeEvidence,
+                        isBusy: viewModel.busyAction == .submitEvidence,
+                        enabled: idle
+                    ) { showDisputeEvidence = true }
+                }
+                if showChatCta {
+                    OrderDetailComponents.stickyOutlineButton(
+                        title: role == .seller ? L10n.orderDetailChatBuyer : L10n.orderDetailChatSeller,
+                        isBusy: false,
+                        enabled: idle
+                    ) { onNavigateToChat(detail.conversationId) }
                 }
             }
-            .foregroundStyle(FashColors.textPrimary)
+            .padding(.horizontal, spacing.editorialStart)
+            .padding(.top, 12)
+            .padding(.bottom, 8)
+            .background(FashColors.surfaceContainerLow)
         }
-        .padding(.horizontal, spacing.editorialStart)
-        .padding(.vertical, 12)
-        .background(FashColors.surfaceContainerHighest)
     }
 
     private var shipSheet: some View {
@@ -359,45 +433,6 @@ struct OrderDetailScreen: View {
                                 deps: deps
                             )
                             showReview = false
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private func disputeSheet(isEvidence: Bool) -> some View {
-        NavigationStack {
-            Form {
-                TextField(L10n.orderDetailDisputeDescriptionLabel, text: $disputeDescription, axis: .vertical)
-                    .lineLimit(4...10)
-            }
-            .navigationTitle(isEvidence ? L10n.orderDetailDisputeDialogTitleEvidence : L10n.orderDetailDisputeDialogTitleOpen)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(L10n.orderCancelConfirmDismiss) {
-                        showOpenDispute = false
-                        showDisputeEvidence = false
-                    }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(L10n.orderDetailDisputeSubmit) {
-                        Task {
-                            if isEvidence {
-                                await viewModel.submitDisputeEvidence(
-                                    description: disputeDescription,
-                                    photoUrls: disputePhotos,
-                                    deps: deps
-                                )
-                            } else {
-                                await viewModel.openDispute(
-                                    description: disputeDescription,
-                                    photoUrls: disputePhotos,
-                                    deps: deps
-                                )
-                            }
-                            showOpenDispute = false
-                            showDisputeEvidence = false
                         }
                     }
                 }

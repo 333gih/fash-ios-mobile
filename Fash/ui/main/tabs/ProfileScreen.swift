@@ -49,15 +49,13 @@ struct ProfileScreen: View {
         }
         .background(FashColors.screen)
         .task { await viewModel.refresh(deps: deps) }
-        .onChange(of: viewModel.profileTabOpenGeneration) { _, gen in
-            guard gen != 0, viewModel.profile != nil else { return }
-            if let req = viewModel.consumeProfileTabOpenRequest() {
-                selectedTab = req.tab.rawValue
-                viewModel.onProfileTabSelected(req.tab.rawValue, deps: deps)
-            }
+        .onChange(of: viewModel.profileTabOpenGeneration) { _, _ in
+            applyProfileTabOpenRequestIfNeeded()
         }
         .onChange(of: viewModel.profile?.userId) { _, _ in
-            if let tab = viewModel.consumePendingDefaultProfileTab() {
+            applyProfileTabOpenRequestIfNeeded()
+            if viewModel.profileTabOpenGeneration == 0,
+               let tab = viewModel.consumePendingDefaultProfileTab() {
                 selectedTab = tab
                 viewModel.onProfileTabSelected(tab, deps: deps)
             }
@@ -69,6 +67,13 @@ struct ProfileScreen: View {
 
     private var currentItems: [ListingFeedItem] {
         viewModel.listings(for: ProfileListingTab(rawValue: selectedTab) ?? .active)
+    }
+
+    private func applyProfileTabOpenRequestIfNeeded() {
+        guard viewModel.profileTabOpenGeneration != 0, viewModel.profile != nil else { return }
+        guard let req = viewModel.consumeProfileTabOpenRequest() else { return }
+        selectedTab = req.tab.rawValue
+        viewModel.onProfileTabSelected(req.tab.rawValue, deps: deps)
     }
 
     @ViewBuilder

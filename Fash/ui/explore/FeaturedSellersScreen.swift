@@ -24,6 +24,13 @@ struct FeaturedSellersScreen: View {
                     }
                     .padding(.horizontal, spacing.editorialStart)
                     .padding(.vertical, spacing.spacing4)
+                } else if viewModel.items.isEmpty {
+                    FashEmptyStateView(
+                        title: L10n.feedEmptyTitle,
+                        subtitle: L10n.feedEmptySubtitle
+                    )
+                    .padding(.horizontal, spacing.editorialStart)
+                    .padding(.vertical, spacing.spacing4)
                 } else {
                     LazyVStack(alignment: .leading, spacing: 12) {
                         Text(L10n.featuredSellersAllSubtitle)

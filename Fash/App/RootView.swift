@@ -15,6 +15,22 @@ struct RootView: View {
             ZStack {
                 rootContent
                 FashGlobalDialogHost()
+                if let banner = deps.inAppNotification {
+                    VStack {
+                        FashInAppNotificationBanner(
+                            session: banner,
+                            onTap: {
+                                RealtimeNotificationRouter.handleInAppBannerTap(
+                                    session: banner,
+                                    deps: deps,
+                                    router: router
+                                )
+                            },
+                            onDismiss: { deps.dismissInAppNotification() }
+                        )
+                        Spacer()
+                    }
+                }
                 if let message = deps.snackbarMessage {
                     VStack {
                         Spacer()
@@ -142,9 +158,10 @@ struct RootView: View {
         case .chat(let id):
             ChatDetailScreen(
                 conversationId: id,
-                onDismiss: { router.selectedConversationId = nil },
+                onDismiss: dismissChat,
                 onProductClick: { listingId in
                     router.selectedConversationId = nil
+                    deps.requestChatInboxRefresh()
                     deps.presentListingDetail(listingId: listingId, router: router)
                 }
             )
@@ -191,7 +208,7 @@ struct RootView: View {
         case .sellerPackages:
             SellerProductPackagesScreen(
                 onDismiss: { router.showSellerPackagesScreen = false },
-                onBuyPackage: { pkg in router.sellerPackageCheckoutId = pkg.code }
+                onBuyPackage: { pkg in router.sellerPackageCheckout = pkg }
             )
         case .followConnections:
             FollowConnectionsScreen(
@@ -239,8 +256,11 @@ struct RootView: View {
             )
         case .uxSurvey(let key):
             UserExperienceSurveyScreen(surveyKey: key, onDismiss: { router.uxSurveyKey = nil })
-        case .sellerPackageCheckout(let id):
-            SellerPackageCheckoutScreen(packageId: id, onDismiss: { router.sellerPackageCheckoutId = nil })
+        case .sellerPackageCheckout(let pkg):
+            SellerPackageCheckoutScreen(
+                pkg: pkg,
+                onDismiss: { router.sellerPackageCheckout = nil }
+            )
         case .chatOrderDetail(let id):
             OrderDetailScreen(
                 orderId: id,
@@ -313,6 +333,11 @@ struct RootView: View {
             FashWaitingScreen()
                 .task { router.onboardingStep = nil }
         }
+    }
+
+    private func dismissChat() {
+        router.selectedConversationId = nil
+        deps.requestChatInboxRefresh()
     }
 
     private func bootstrapSession() async {

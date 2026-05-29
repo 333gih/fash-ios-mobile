@@ -122,21 +122,6 @@ struct MainNavScreen: View {
             )
             .environment(\.locale, AppLocale.locale)
         }
-        .overlay(alignment: .top) {
-            if let banner = deps.inAppNotification {
-                FashInAppNotificationBanner(
-                    session: banner,
-                    onTap: {
-                        RealtimeNotificationRouter.handleInAppBannerTap(
-                            session: banner,
-                            deps: deps,
-                            router: router
-                        )
-                    },
-                    onDismiss: { deps.dismissInAppNotification() }
-                )
-            }
-        }
         .overlay(alignment: .bottom) {
             if let message = deps.snackbarMessage {
                 FashSnackbarHost(message: message) {
@@ -192,6 +177,18 @@ struct MainNavScreen: View {
                     isGuestMode: isGuestMode,
                     selectedConversationId: nil
                 )
+                guard !isGuestMode else { return }
+                Task {
+                    await chatVM.loadConversationsWhenNeeded(deps: deps, staleAfterMs: 0)
+                    await chatVM.refreshUnreadCount(deps: deps)
+                }
+            }
+        }
+        .onChange(of: deps.chatInboxRefreshGeneration) { _, _ in
+            guard !isGuestMode else { return }
+            Task {
+                await chatVM.silentRefresh(deps: deps)
+                await chatVM.refreshUnreadCount(deps: deps)
             }
         }
         .onChange(of: deps.pendingAccountSwitchPrompt) { _, prompt in
@@ -231,6 +228,13 @@ struct MainNavScreen: View {
             } else {
                 stopRealtimeServices()
                 homeVM.onGuestBrowseEntered(deps: deps)
+            }
+        }
+        .task(id: "chat-unread-hub-\(isGuestMode)") {
+            guard !isGuestMode else { return }
+            for await _ in ChatUnreadRefreshHub.signals {
+                await chatVM.silentRefresh(deps: deps)
+                await chatVM.refreshUnreadCount(deps: deps)
             }
         }
         .onChange(of: isGuestMode) { _, guest in
@@ -358,13 +362,18 @@ struct MainNavScreen: View {
                 },
                 onRequestSignIn: { reason in onRequestSignIn?(reason) },
                 onOpenSizingSetup: isGuestMode ? nil : { router.showEditProfile = true },
-                onDeliveringJourneyClick: { selectTab(.orders) },
+                onDeliveringJourneyClick: {
+                    Task {
+                        await ordersVM.openBuyingInTransit(deps: deps)
+                        selectTab(.orders)
+                    }
+                },
                 onSavedJourneyClick: {
-                    profileVM.requestWishlistTabFromHome()
+                    profileVM.requestWishlistTabFromHome(deps: deps)
                     selectTab(.profile)
                 },
                 onInReviewJourneyClick: {
-                    profileVM.requestInReviewTabFromHome()
+                    profileVM.requestInReviewTabFromHome(deps: deps)
                     selectTab(.profile)
                 },
                 onExploreShortcutClick: { shortcut in

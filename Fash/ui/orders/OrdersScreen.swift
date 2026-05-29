@@ -76,7 +76,7 @@ struct OrdersScreen: View {
                             subtitle: L10n.ordersEmptyFilteredSub,
                             actionTitle: L10n.ordersFilterClear
                         ) {
-                            activeVM.selectStatusFilter(.all)
+                            Task { await activeVM.selectStatusFilter(.all, deps: deps) }
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else {
@@ -117,7 +117,7 @@ struct OrdersScreen: View {
                     let selected = activeVM.activeStatusFilter == filter
                     let count = activeVM.sourceOrders.filter { filter.matches($0) }.count
                     Button {
-                        activeVM.selectStatusFilter(filter)
+                        Task { await activeVM.selectStatusFilter(filter, deps: deps) }
                     } label: {
                         Text(count > 0 && filter != .all ? "\(filter.label) (\(count))" : filter.label)
                             .font(FashTypography.labelMedium.weight(selected ? .semibold : .regular))

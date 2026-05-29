@@ -20,7 +20,7 @@ enum FullScreenRoute: Identifiable {
     case changePassword
     case editorialList
     case uxSurvey(String)
-    case sellerPackageCheckout(String)
+    case sellerPackageCheckout(SellerProductPackage)
     case chatOrderDetail(String)
 
     var id: String {
@@ -44,7 +44,7 @@ enum FullScreenRoute: Identifiable {
         case .changePassword: return "changePassword"
         case .editorialList: return "editorialList"
         case .uxSurvey(let key): return "uxSurvey-\(key)"
-        case .sellerPackageCheckout(let id): return "pkgCheckout-\(id)"
+        case .sellerPackageCheckout(let pkg): return "pkgCheckout-\(pkg.code)"
         case .chatOrderDetail(let id): return "chatOrder-\(id)"
         }
     }
@@ -66,12 +66,12 @@ extension AppRouter {
         if showShippingAddressList { return .shippingAddresses }
         if let slug = homeEditorialSlug { return .homeEditorial(slug) }
         if showHomeDeliveringScreen { return .homeDelivering }
+        if sellerPackageCheckout != nil { return .sellerPackageCheckout(sellerPackageCheckout!) }
         if showSellerPackagesScreen { return .sellerPackages }
         if showFollowConnections { return .followConnections }
         if showFeaturedSellersAll { return .featuredSellers }
         if showInviteFriendsScreen { return .inviteFriends }
         if chatOrderDetailOverlayId != nil { return .chatOrderDetail(chatOrderDetailOverlayId!) }
-        if sellerPackageCheckoutId != nil { return .sellerPackageCheckout(sellerPackageCheckoutId!) }
         if uxSurveyKey != nil { return .uxSurvey(uxSurveyKey!) }
         if showEditorialListScreen, homeEditorialSlug == nil { return .editorialList }
         return nil

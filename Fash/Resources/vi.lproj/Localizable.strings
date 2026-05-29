@@ -133,6 +133,8 @@
 "chat_counter_sheet_submit" = "Gửi phản giá";
 "chat_counter_sheet_title" = "Phản giá người mua";
 "chat_counter_waiting_buyer" = "Chờ phản hồi từ người mua…";
+"chat_offer_must_be_below_listed" = "Giá đề xuất phải thấp hơn giá niêm yết (%@).";
+"chat_counter_must_be_above_buyer" = "Phản giá phải cao hơn đề xuất của người mua (%@).";
 "chat_day_fri" = "Thứ 6";
 "chat_day_mon" = "Thứ 2";
 "chat_day_sat" = "Thứ 7";
@@ -1916,6 +1918,9 @@
 "share_listing_text" = "%1$@\n\nMở trên web:\n%2$@\n\nMở trong ứng dụng:\n%3$@";
 "share_profile_subject" = "Xem shop %1$@ trên Fash";
 "share_profile_text" = "Shop %1$@ trên Fash — khám phá tủ đồ second-hand.\n\nMở trên web:\n%2$@\n\nMở trong ứng dụng:\n%3$@";
+"share_invite_success" = "Đã chia sẻ lời mời.";
+"share_listing_success" = "Đã chia sẻ sản phẩm.";
+"share_profile_success" = "Đã chia sẻ shop.";
 "shipping_address_row_untitled" = "Địa chỉ đã lưu";
 "splash_footer_gen_z" = "THẾ HỆ GEN Z";
 "splash_logo_cd" = "Logo Fash";

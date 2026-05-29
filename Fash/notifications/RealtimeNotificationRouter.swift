@@ -39,8 +39,8 @@ enum RealtimeNotificationRouter {
                 dataMap: pushData
             ))
             deps.requestInboxUnreadRefresh()
-            if isChatPushData(data) {
-                Task { await chatVM.silentRefresh(deps: deps) }
+            if isChatPushData(pushData) {
+                refreshChatInbox(chatVM: chatVM, deps: deps)
             }
         case .appPromoShow(let campaignJson):
             if let campaign = AppPromoPushParsing.parseRealtimeCampaignJson(campaignJson) {
@@ -52,8 +52,41 @@ enum RealtimeNotificationRouter {
                 await homeVM.handleFeedRefresh(deps: deps, isGuestMode: isGuestMode)
                 await exploreVM.handleFeedRefresh(deps: deps, isGuestMode: isGuestMode)
             }
-        case .messageNew, .readReceipts, .conversationClosed, .conversationReopened:
-            Task { await chatVM.silentRefresh(deps: deps) }
+        case .messageNew(
+            let conversationId,
+            _,
+            let senderId,
+            let recipientId,
+            let preview,
+            let messageType,
+            let systemSubtype
+        ):
+            refreshChatInbox(chatVM: chatVM, deps: deps)
+            guard !isGuestMode else { return }
+            let myId = deps.authSessionStore.read()?.userId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            guard shouldShowChatMessageInApp(
+                conversationId: conversationId,
+                senderId: senderId,
+                recipientId: recipientId,
+                messageType: messageType,
+                systemSubtype: systemSubtype,
+                myUserId: myId,
+                openConversationId: router.selectedConversationId
+            ) else { return }
+            let trimmedPreview = preview.trimmingCharacters(in: .whitespacesAndNewlines)
+            var dataMap: [String: String] = [:]
+            let cid = conversationId.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !cid.isEmpty { dataMap["conversation_id"] = cid }
+            deps.showInAppNotification(FashInAppNotificationSession(
+                title: L10n.notificationPtMarketplaceChatMessage,
+                body: trimmedPreview.isEmpty ? L10n.notificationPtMarketplaceChatMessage : trimmedPreview,
+                userNotificationId: nil,
+                dataMap: dataMap
+            ))
+        case .readReceipts, .conversationClosed, .conversationReopened:
+            refreshChatInbox(chatVM: chatVM, deps: deps)
+        case .offerLimitReset, .listingReserved, .listingAvailable, .listingSold:
+            refreshChatInbox(chatVM: chatVM, deps: deps)
         case .connected:
             Task {
                 await chatVM.resyncConversationSubscriptions(deps: deps)
@@ -96,8 +129,56 @@ enum RealtimeNotificationRouter {
         router.showNotificationScreen = true
     }
 
+    private static func refreshChatInbox(chatVM: ChatViewModel, deps: AppDependencies) {
+        Task {
+            await chatVM.silentRefresh(deps: deps)
+            await chatVM.refreshUnreadCount(deps: deps)
+        }
+    }
+
+    private static func shouldShowChatMessageInApp(
+        conversationId: String,
+        senderId: String,
+        recipientId: String,
+        messageType: String,
+        systemSubtype: String?,
+        myUserId: String,
+        openConversationId: String?
+    ) -> Bool {
+        let myId = myUserId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !myId.isEmpty else { return false }
+
+        let sender = senderId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !sender.isEmpty,
+              sender.compare(myId, options: .caseInsensitive) != .orderedSame else { return false }
+
+        let recipient = recipientId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard recipient.isEmpty || recipient.compare(myId, options: .caseInsensitive) == .orderedSame else {
+            return false
+        }
+
+        let open = openConversationId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let cid = conversationId.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !open.isEmpty, !cid.isEmpty, open.compare(cid, options: .caseInsensitive) == .orderedSame {
+            return false
+        }
+        guard !cid.isEmpty else { return false }
+
+        if messageType.lowercased() == "system" {
+            let sub = systemSubtype?.lowercased() ?? ""
+            if sub.hasPrefix("conversation.") { return false }
+        }
+        return true
+    }
+
     private static func isChatPushData(_ data: [String: String]?) -> Bool {
-        guard let type = data?["type"]?.lowercased() else { return false }
-        return type.contains("chat") || type.contains("message")
+        guard let type = data?["type"]?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+              !type.isEmpty else { return false }
+        return type.contains("chat")
+            || type.contains("message")
+            || type == "marketplace.chat.message"
+            || type == "marketplace.chat.offer_received"
+            || type == "marketplace.chat.offer_accepted"
+            || type == "marketplace.chat.offer_declined"
     }
 }

@@ -87,7 +87,10 @@ enum RealtimeEvent: Equatable {
             )
         case "offer.limit_reset":
             let price = (payload["new_price_vnd"] as? NSNumber)?.int64Value
-                ?? (root["new_price_vnd"] as? NSNumber)?.int64Value ?? 0
+                ?? (root["new_price_vnd"] as? NSNumber)?.int64Value
+                ?? (payload["new_price"] as? NSNumber)?.int64Value
+                ?? (root["new_price"] as? NSNumber)?.int64Value
+                ?? 0
             return .offerLimitReset(
                 listingId: field("listing_id", "ListingID", "listingId"),
                 conversationId: field("conversation_id", "ConversationID", "conversationId"),

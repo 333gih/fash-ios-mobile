@@ -171,7 +171,8 @@ enum OrderDetailLogic {
             let sub = d.cancelledAt.isEmpty ? L10n.orderHeroCancelledSubGeneric : L10n.orderHeroCancelledSub(formatDate(d.cancelledAt))
             return (L10n.orderStatusCancelled, sub, false)
         case "disputed":
-            return (L10n.orderStatusDisputed, L10n.orderHeroDisputedSub, false)
+            let sub = d.disputeSummary.trimmingCharacters(in: .whitespacesAndNewlines)
+            return (L10n.orderStatusDisputed, sub.isEmpty ? L10n.orderHeroDisputedSub : sub, false)
         default:
             return (OrderFormatting.statusLabel(d.status), "", true)
         }

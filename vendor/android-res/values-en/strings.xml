@@ -1364,6 +1364,8 @@
     <string name="chat_counter_sheet_submit">Send counter</string>
     <string name="chat_counter_offer_min">Enter at least ₫1,000</string>
     <string name="chat_counter_waiting_buyer">Waiting for buyer response…</string>
+    <string name="chat_offer_must_be_below_listed">Your offer must be below the listed price (%s).</string>
+    <string name="chat_counter_must_be_above_buyer">Counter must be higher than the buyer\'s offer (%s).</string>
 
     <string name="chat_offline_deal_sheet_title">Record in-person deal</string>
     <string name="chat_offline_deal_sheet_subtitle">Uses the confirmed meetup time and map link. You can add an agreed price below.</string>

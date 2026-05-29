@@ -17,8 +17,7 @@ struct HomeBrandFooterStrip: View {
                 .multilineTextAlignment(.center)
             FashBrandMarkText(
                 text: L10n.homeBrandMarketplace,
-                style: FashBrandTypography.markBoldItalicSmall,
-                color: FashColors.textSecondary.opacity(0.85)
+                style: FashBrandTypography.markBoldItalicSmall
             )
         }
         .frame(maxWidth: .infinity)

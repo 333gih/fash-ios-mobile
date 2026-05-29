@@ -185,29 +185,43 @@ final class OrderDetailViewModel {
         }
     }
 
-    func openDispute(description: String, photoUrls: [String], deps: AppDependencies) async {
-        guard let id = detail?.orderId, !id.isEmpty else { return }
+    @discardableResult
+    func openDispute(description: String, photoUrls: [String], deps: AppDependencies) async -> Bool {
+        guard let id = detail?.orderId, !id.isEmpty else { return false }
+        guard !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            toastMessage = L10n.orderDetailDisputeDescriptionRequired
+            return false
+        }
         busyAction = .openDispute
         defer { busyAction = .none }
         switch await deps.orderRepository.openDispute(orderId: id, description: description, photoUrls: photoUrls) {
         case .success:
             toastMessage = L10n.orderDetailDisputeOpenSuccess
             await load(orderId: id, deps: deps)
-        case .failure:
-            toastMessage = L10n.orderDetailDisputeError
+            return true
+        case .failure(let error):
+            toastMessage = FashErrorPresentation.userMessage(for: error).nilIfEmpty ?? L10n.orderDetailDisputeError
+            return false
         }
     }
 
-    func submitDisputeEvidence(description: String, photoUrls: [String], deps: AppDependencies) async {
-        guard let id = detail?.orderId, !id.isEmpty else { return }
+    @discardableResult
+    func submitDisputeEvidence(description: String, photoUrls: [String], deps: AppDependencies) async -> Bool {
+        guard let id = detail?.orderId, !id.isEmpty else { return false }
+        guard !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            toastMessage = L10n.orderDetailDisputeDescriptionRequired
+            return false
+        }
         busyAction = .submitEvidence
         defer { busyAction = .none }
         switch await deps.orderRepository.submitDisputeEvidence(orderId: id, description: description, photoUrls: photoUrls) {
         case .success:
             toastMessage = L10n.orderDetailDisputeEvidenceSuccess
             await load(orderId: id, deps: deps)
-        case .failure:
-            toastMessage = L10n.orderDetailDisputeError
+            return true
+        case .failure(let error):
+            toastMessage = FashErrorPresentation.userMessage(for: error).nilIfEmpty ?? L10n.orderDetailDisputeError
+            return false
         }
     }
 
@@ -221,13 +235,6 @@ final class OrderDetailViewModel {
             await load(orderId: id, deps: deps)
         case .failure(let error):
             toastMessage = FashErrorPresentation.userMessage(for: error)
-        }
-    }
-
-    func uploadDisputePhoto(data: Data, deps: AppDependencies) async -> String? {
-        switch await deps.listingRepository.uploadListingImage(bytes: data) {
-        case .success(let url): return url
-        case .failure: return nil
         }
     }
 
@@ -262,5 +269,12 @@ final class OrderDetailViewModel {
         let m = (error as? CoreServiceHttpException)?.message ?? error.localizedDescription
         if m.localizedCaseInsensitiveContains("MEETING_CHECK_IN_WINDOW") { return L10n.chatMeetingCheckInWindowError }
         return m.isEmpty ? L10n.orderDetailLoadError : m
+    }
+}
+
+private extension String {
+    var nilIfEmpty: String? {
+        let t = trimmingCharacters(in: .whitespacesAndNewlines)
+        return t.isEmpty ? nil : t
     }
 }

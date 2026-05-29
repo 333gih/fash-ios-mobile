@@ -148,19 +148,9 @@ struct InviteFriendsScreen: View {
     }
 
     private func shareInvite() {
-        let activity = UIActivityViewController(
-            activityItems: [L10n.inviteShareSubject, shareBody],
-            applicationActivities: nil
-        )
-        guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-              let root = scene.windows.first?.rootViewController else { return }
-        var presenter = root
-        while let presented = presenter.presentedViewController { presenter = presented }
-        if let popover = activity.popoverPresentationController {
-            popover.sourceView = presenter.view
-            popover.sourceRect = CGRect(x: presenter.view.bounds.midX, y: presenter.view.bounds.midY, width: 0, height: 0)
+        FashActivityShare.present(activityItems: [L10n.inviteShareSubject, shareBody]) { completed in
+            if completed { deps.showSnackbar(L10n.shareInviteSuccess) }
         }
-        presenter.present(activity, animated: true)
     }
 
     private static var appStoreURL: String {

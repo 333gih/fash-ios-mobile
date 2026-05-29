@@ -106,7 +106,9 @@ struct SellerProfileScreen: View {
                     ProfileShare.launch(
                         username: handle,
                         displayName: viewModel.profile?.displayName
-                    )
+                    ) { completed in
+                        if completed { deps.showSnackbar(L10n.shareProfileSuccess) }
+                    }
                 } label: {
                     Image(systemName: "square.and.arrow.up")
                         .font(.system(size: 18, weight: .semibold))

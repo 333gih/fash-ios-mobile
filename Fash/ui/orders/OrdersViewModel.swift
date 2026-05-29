@@ -31,12 +31,24 @@ final class OrdersViewModel {
         sourceOrders.filter { activeStatusFilter.matches($0) }
     }
 
-    func selectStatusFilter(_ filter: OrderStatusFilter) {
+    func selectStatusFilter(_ filter: OrderStatusFilter, deps: AppDependencies) async {
         if selectedRole == .buying {
             buyingStatusFilter = filter
         } else {
             sellingStatusFilter = filter
         }
+        isRefreshing = true
+        defer { isRefreshing = false }
+        await fetchOrders(deps: deps)
+    }
+
+    /// Home journey “Đang giao” — Orders tab, buying list, in-transit filter.
+    func openBuyingInTransit(deps: AppDependencies) async {
+        selectedRole = .buying
+        buyingStatusFilter = .inTransit
+        isRefreshing = true
+        defer { isRefreshing = false }
+        await fetchOrders(deps: deps)
     }
 
     func refresh(deps: AppDependencies) async {
@@ -64,8 +76,8 @@ final class OrdersViewModel {
     }
 
     private func fetchOrders(deps: AppDependencies) async {
-        async let buying = deps.orderRepository.getBuyingOrders()
-        async let selling = deps.orderRepository.getSellingOrders()
+        async let buying = deps.orderRepository.getBuyingOrders(status: buyingStatusFilter.apiQuery)
+        async let selling = deps.orderRepository.getSellingOrders(status: sellingStatusFilter.apiQuery)
         let buyingResult = await buying
         let sellingResult = await selling
         switch buyingResult {

@@ -14,7 +14,8 @@ final class FeaturedSellersViewModel {
     var previewCoverUrlsBySellerKey: [String: [String?]] = [:]
 
     func ensureLoaded(deps: AppDependencies, isGuestMode: Bool) async {
-        if isLoading || isRefreshing || !items.isEmpty { return }
+        guard items.isEmpty else { return }
+        guard !isRefreshing else { return }
         await load(deps: deps, isGuestMode: isGuestMode)
     }
 
@@ -78,7 +79,8 @@ final class FeaturedSellersViewModel {
             switch await deps.listingRepository.getListingDetail(listingId: trimmed, publicBrowse: isGuestMode) {
             case .success(let item):
                 let url = item.coverImageUrl.trimmingCharacters(in: .whitespaces)
-                cover = url.isEmpty ? item.imageUrls.first : url
+                let firstImage = item.imageUrls.first?.trimmingCharacters(in: .whitespaces) ?? ""
+                cover = url.isEmpty ? (firstImage.isEmpty ? nil : firstImage) : url
             case .failure:
                 cover = nil
             }
@@ -107,11 +109,14 @@ final class FeaturedSellersViewModel {
                 return .failure(error)
             case .success(let page):
                 total = page.total
+                if page.items.isEmpty { break }
+                let before = accumulated.count
                 for seller in page.items {
                     let key = seller.sellerKey
                     guard !key.isEmpty, seen.insert(key).inserted else { continue }
                     accumulated.append(seller)
                 }
+                if accumulated.count == before { break }
                 if page.items.count < pageSize { break }
                 if total > 0, accumulated.count >= total { break }
                 offset += page.items.count

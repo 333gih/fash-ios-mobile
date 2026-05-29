@@ -128,38 +128,57 @@ private struct ChatDetailScreenBody: View {
         .onDisappear { viewModel.stopPolling() }
         .onChange(of: viewModel.eventMessage) { _, msg in
             guard let msg, !msg.isEmpty else { return }
-            deps.uiDialog.showError(msg)
+            deps.showSnackbar(msg)
             viewModel.eventMessage = nil
         }
         .sheet(isPresented: $viewModel.showOfferSheet) {
             ChatOfferPriceSheet(
                 amountText: $offerAmountText,
                 listedPriceVnd: viewModel.detail?.product?.priceVnd ?? 0,
+                validationError: viewModel.offerFormError,
                 isSubmitting: viewModel.isCreatingOffer,
                 onSubmit: {
                     let digits = offerAmountText.filter(\.isNumber)
-                    if let v = Int64(digits), v >= 1000 {
-                        Task { await viewModel.createOffer(amountVnd: v, deps: deps) }
+                    guard let v = Int64(digits) else {
+                        viewModel.offerFormError = L10n.chatCounterOfferMin
+                        return
                     }
+                    Task { await viewModel.createOffer(amountVnd: v, deps: deps) }
                 },
-                onDismiss: { viewModel.showOfferSheet = false }
+                onDismiss: {
+                    viewModel.offerFormError = nil
+                    viewModel.showOfferSheet = false
+                }
             )
             .presentationDetents([.medium])
+            .onChange(of: offerAmountText) { _, _ in
+                viewModel.offerFormError = nil
+            }
         }
         .sheet(item: $viewModel.counterOfferSheet) { args in
             ChatCounterOfferSheet(
                 buyerAmountVnd: args.buyerOfferAmountVnd,
                 amountText: $counterAmountText,
+                listedPriceVnd: viewModel.detail?.product?.priceVnd ?? 0,
+                validationError: viewModel.counterFormError,
                 isSubmitting: viewModel.isCreatingCounterOffer,
                 onSubmit: {
                     let digits = counterAmountText.filter(\.isNumber)
-                    if let v = Int64(digits), v >= 1000 {
-                        Task { await viewModel.submitCounterOffer(amountVnd: v, deps: deps) }
+                    guard let v = Int64(digits) else {
+                        viewModel.counterFormError = L10n.chatCounterOfferMin
+                        return
                     }
+                    Task { await viewModel.submitCounterOffer(amountVnd: v, deps: deps) }
                 },
-                onDismiss: { viewModel.counterOfferSheet = nil }
+                onDismiss: {
+                    viewModel.counterFormError = nil
+                    viewModel.counterOfferSheet = nil
+                }
             )
             .presentationDetents([.medium])
+            .onChange(of: counterAmountText) { _, _ in
+                viewModel.counterFormError = nil
+            }
         }
         .sheet(isPresented: $showFulfillmentChoiceSheet) {
             FulfillmentChoiceBottomSheet(
@@ -216,13 +235,32 @@ private struct ChatDetailScreenBody: View {
     }
 
     private var headerBar: some View {
-        HStack(spacing: 12) {
+        let _ = deps.chatUnreadSnapshotGeneration
+        let otherInboxUnreadCount = deps.chatUnreadExcludingConversation(conversationId)
+        return HStack(spacing: 12) {
             Button(action: onDismiss) {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(FashColors.textPrimary)
-                    .frame(width: 44, height: 44)
+                ZStack(alignment: .topTrailing) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(FashColors.textPrimary)
+                        .frame(width: 44, height: 44)
+                    if otherInboxUnreadCount > 0 {
+                        Text(otherInboxUnreadCount > 99 ? "99+" : "\(otherInboxUnreadCount)")
+                            .font(FashTypography.labelSmall.weight(.bold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(FashColors.brandPrimary)
+                            .clipShape(Capsule())
+                            .offset(x: 6, y: -2)
+                    }
+                }
             }
+            .accessibilityLabel(
+                otherInboxUnreadCount > 0
+                    ? L10n.chatDetailBackInboxUnreadCd(otherInboxUnreadCount)
+                    : L10n.chatDetailBackCd
+            )
             if let other = viewModel.detail?.otherUser {
                 FashAvatarCircle(url: other.avatarUrl, size: 40)
                 VStack(alignment: .leading, spacing: 2) {
@@ -230,7 +268,12 @@ private struct ChatDetailScreenBody: View {
                         .font(FashTypography.titleSmall)
                         .foregroundStyle(FashColors.textPrimary)
                         .lineLimit(1)
-                    if !other.username.isEmpty {
+                    if otherInboxUnreadCount > 0 {
+                        Text(L10n.chatDetailOtherInboxUnread(otherInboxUnreadCount))
+                            .font(FashTypography.bodySmall)
+                            .foregroundStyle(FashColors.textSecondary)
+                            .lineLimit(1)
+                    } else if !other.username.isEmpty {
                         Text("@\(other.username)")
                             .font(FashTypography.bodySmall)
                             .foregroundStyle(FashColors.textSecondary)
@@ -330,6 +373,8 @@ private struct ChatDetailScreenBody: View {
                 onDecline: { Task { await viewModel.declineOffer(message, deps: deps) } },
                 onCounter: (!isBuyer && !viewModel.hasOrder && message.messageType == "offer" && !message.isFromMe)
                     ? {
+                        counterAmountText = ""
+                        viewModel.counterFormError = nil
                         viewModel.counterOfferSheet = CounterOfferSheetArgs(
                             buyerOfferMessageId: message.messageId,
                             buyerOfferAmountVnd: message.offerAmountVnd
@@ -431,6 +476,7 @@ private struct ChatDetailScreenBody: View {
             if viewModel.canShowOfferButton(deps: deps) {
                 Button {
                     offerAmountText = ""
+                    viewModel.offerFormError = nil
                     viewModel.showOfferSheet = true
                 } label: {
                     Image(systemName: "tag.fill")

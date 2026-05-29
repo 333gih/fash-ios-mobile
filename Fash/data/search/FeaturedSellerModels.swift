@@ -47,33 +47,61 @@ enum FeaturedSellerParser {
     }
 
     static func parsePage(_ data: Data) -> FeaturedSellersPage {
-        let items = parse(data)
-        guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+        let trimmed = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !trimmed.isEmpty, let json = trimmed.data(using: .utf8) else {
+            return FeaturedSellersPage(items: [], total: 0)
+        }
+        if trimmed.hasPrefix("[") {
+            let items = parse(trimmed)
             return FeaturedSellersPage(items: items, total: items.count)
         }
-        let total = (obj["total"] as? NSNumber)?.intValue ?? items.count
+        guard let obj = try? JSONSerialization.jsonObject(with: json) as? [String: Any] else {
+            return FeaturedSellersPage(items: [], total: 0)
+        }
+        let items = parseRows(from: obj)
+        let total = pageTotal(from: obj, itemCount: items.count)
         return FeaturedSellersPage(items: items, total: max(total, items.count))
     }
 
     static func parse(_ raw: String) -> [FeaturedSellerItem] {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, let data = trimmed.data(using: .utf8) else { return [] }
-        let arr: [[String: Any]]
+        guard !trimmed.isEmpty, let json = trimmed.data(using: .utf8) else { return [] }
         if trimmed.hasPrefix("[") {
-            arr = (try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]) ?? []
-        } else {
-            guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return [] }
-            let keys = ["data", "items", "featured_sellers", "featuredSellers", "sellers", "results", "users"]
-            var found: [[String: Any]]?
-            for key in keys {
-                if let a = obj[key] as? [[String: Any]] {
-                    found = a
-                    break
-                }
-            }
-            arr = found ?? []
+            let arr = (try? JSONSerialization.jsonObject(with: json) as? [[String: Any]]) ?? []
+            return arr.compactMap(parseRow)
         }
-        return arr.compactMap(parseRow)
+        guard let obj = try? JSONSerialization.jsonObject(with: json) as? [String: Any] else { return [] }
+        return parseRows(from: obj)
+    }
+
+    private static let itemArrayKeys = [
+        "items", "Items", "data", "featured_sellers", "featuredSellers", "sellers", "results", "users",
+    ]
+
+    private static func parseRows(from obj: [String: Any]) -> [FeaturedSellerItem] {
+        resolveItemRows(in: obj).compactMap(parseRow)
+    }
+
+    private static func resolveItemRows(in obj: [String: Any]) -> [[String: Any]] {
+        for key in itemArrayKeys {
+            if let rows = obj[key] as? [[String: Any]] { return rows }
+        }
+        if let envelope = obj["data"] as? [String: Any] {
+            for key in itemArrayKeys where key != "data" {
+                if let rows = envelope[key] as? [[String: Any]] { return rows }
+            }
+        }
+        return []
+    }
+
+    private static func pageTotal(from obj: [String: Any], itemCount: Int) -> Int {
+        if let n = obj["total"] as? NSNumber { return n.intValue }
+        if let n = obj["Total"] as? NSNumber { return n.intValue }
+        if let envelope = obj["data"] as? [String: Any] {
+            if let n = envelope["total"] as? NSNumber { return n.intValue }
+            if let n = envelope["Total"] as? NSNumber { return n.intValue }
+        }
+        return itemCount
     }
 
     private static func parseRow(_ o: [String: Any]) -> FeaturedSellerItem? {

@@ -40,10 +40,10 @@ struct MainNavBottomBar: View {
                 .padding(.top, 6)
                 .padding(.bottom, 4)
             }
-            .background(
-                FashColors.surfaceContainerLow
-                    .shadow(color: Color.black.opacity(FashThemeState.shared.isDark ? 0.35 : 0.06), radius: 6, y: -2)
-            )
+            .background {
+                FashColors.screen
+                    .ignoresSafeArea(edges: .bottom)
+            }
         }
     }
 
@@ -101,7 +101,6 @@ struct MainNavBottomBar: View {
 
     private var postFab: some View {
         let selected = selectedTab == .post
-        let labelTint = selected ? FashColors.brandPrimary : FashColors.textSecondary.opacity(0.88)
 
         return Button {
             if selected {
@@ -110,32 +109,25 @@ struct MainNavBottomBar: View {
                 onTabChange(.post)
             }
         } label: {
-            VStack(spacing: iconLabelGap) {
-                ZStack {
-                    Circle()
-                        .fill(FashColors.brandPrimary)
-                        .frame(width: fabSize, height: fabSize)
-                        .shadow(
-                            color: FashColors.brandPrimary.opacity(selected ? 0.22 : 0.14),
-                            radius: selected ? 6 : 4,
-                            y: 2
-                        )
-                    Image(systemName: "plus")
-                        .font(.system(size: fabIconSize, weight: .semibold))
-                        .foregroundStyle(FashColors.readableOnBrandPrimary)
-                }
-                .frame(height: iconSlotHeight)
-
-                Text(L10n.navPostFabLabel)
-                    .font(.system(size: labelSize, weight: selected ? .bold : .semibold))
-                    .foregroundStyle(labelTint)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.85)
+            ZStack {
+                Circle()
+                    .fill(FashColors.brandPrimary)
+                    .frame(width: fabSize, height: fabSize)
+                    .shadow(
+                        color: FashColors.brandPrimary.opacity(selected ? 0.22 : 0.14),
+                        radius: selected ? 6 : 4,
+                        y: 2
+                    )
+                Image(systemName: "plus")
+                    .font(.system(size: fabIconSize, weight: .semibold))
+                    .foregroundStyle(FashColors.readableOnBrandPrimary)
             }
             .frame(maxWidth: .infinity)
+            .frame(minHeight: rowMinHeight)
             .contentShape(Rectangle())
         }
         .buttonStyle(MainNavTabButtonStyle())
+        .accessibilityLabel(L10n.navPostFabCd)
     }
 
     private func icon(for tab: MainTab, selected: Bool) -> String {

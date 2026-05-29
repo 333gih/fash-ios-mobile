@@ -1,5 +1,7 @@
 # CI: GitLab → GitHub → Build iOS
 
+> **Trước khi push:** xem [BUILD_CHECKLIST.md](./BUILD_CHECKLIST.md) — checklist tránh lỗi compile / archive / TestFlight.
+
 Project **Fash iOS** không build trên GitLab Free (runner Linux). Luồng khuyến nghị:
 
 ```text

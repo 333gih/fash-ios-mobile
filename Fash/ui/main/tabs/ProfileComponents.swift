@@ -656,6 +656,7 @@ struct ProfileSizingReferenceCard: View {
 
 struct ProfileQuickActionsCard: View {
     @Environment(\.fashSpacing) private var spacing
+    @Environment(AppDependencies.self) private var deps
     let username: String
     let displayName: String
     var onShipping: () -> Void
@@ -670,7 +671,9 @@ struct ProfileQuickActionsCard: View {
             VStack(spacing: 0) {
                 if !username.isEmpty {
                     quickRow(icon: "square.and.arrow.up", title: L10n.profileShareShopTitle, subtitle: L10n.profileShareShopSubtitle) {
-                        ProfileShare.launch(username: username, displayName: displayName)
+                        ProfileShare.launch(username: username, displayName: displayName) { completed in
+                            if completed { deps.showSnackbar(L10n.shareProfileSuccess) }
+                        }
                     }
                     Divider().padding(.horizontal, 14).opacity(0.35)
                 }

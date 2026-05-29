@@ -574,6 +574,7 @@ struct ChatMeetingProposalCard: View {
 struct ChatOfferPriceSheet: View {
     @Binding var amountText: String
     let listedPriceVnd: Int64
+    var validationError: String?
     let isSubmitting: Bool
     let onSubmit: () -> Void
     let onDismiss: () -> Void
@@ -596,6 +597,11 @@ struct ChatOfferPriceSheet: View {
                     .padding(12)
                     .background(FashColors.surfaceContainer)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
+                if let validationError, !validationError.isEmpty {
+                    Text(validationError)
+                        .font(FashTypography.bodySmall)
+                        .foregroundStyle(FashColors.error)
+                }
                 FashPrimaryButton(
                     title: L10n.chatOfferDialogSubmit,
                     isLoading: isSubmitting,
@@ -615,6 +621,7 @@ struct ChatOfferPriceSheet: View {
     var parsedAmount: Int64? {
         let digits = amountText.filter(\.isNumber)
         guard let v = Int64(digits), v >= 1000 else { return nil }
+        if listedPriceVnd > 0, v >= listedPriceVnd { return nil }
         return v
     }
 }
@@ -622,6 +629,8 @@ struct ChatOfferPriceSheet: View {
 struct ChatCounterOfferSheet: View {
     let buyerAmountVnd: Int64
     @Binding var amountText: String
+    let listedPriceVnd: Int64
+    var validationError: String?
     let isSubmitting: Bool
     let onSubmit: () -> Void
     let onDismiss: () -> Void
@@ -634,11 +643,21 @@ struct ChatCounterOfferSheet: View {
                 Text(L10n.chatCounterSheetBuyerOffer(FeedPriceFormat.format(buyerAmountVnd)))
                     .font(FashTypography.bodySmall)
                     .foregroundStyle(FashColors.textSecondary)
+                if listedPriceVnd > 0 {
+                    Text(L10n.chatOfferDialogListedPrice(FeedPriceFormat.format(listedPriceVnd)))
+                        .font(FashTypography.bodySmall)
+                        .foregroundStyle(FashColors.textSecondary)
+                }
                 TextField(L10n.chatOfferDialogPlaceholder, text: $amountText)
                     .keyboardType(.numberPad)
                     .padding(12)
                     .background(FashColors.surfaceContainer)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
+                if let validationError, !validationError.isEmpty {
+                    Text(validationError)
+                        .font(FashTypography.bodySmall)
+                        .foregroundStyle(FashColors.error)
+                }
                 FashPrimaryButton(
                     title: L10n.chatCounterSheetSubmit,
                     isLoading: isSubmitting,
@@ -658,6 +677,8 @@ struct ChatCounterOfferSheet: View {
     var parsedAmount: Int64? {
         let digits = amountText.filter(\.isNumber)
         guard let v = Int64(digits), v >= 1000 else { return nil }
+        if buyerAmountVnd > 0, v <= buyerAmountVnd { return nil }
+        if listedPriceVnd > 0, v >= listedPriceVnd { return nil }
         return v
     }
 }

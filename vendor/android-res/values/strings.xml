@@ -1420,6 +1420,8 @@
     <string name="chat_counter_sheet_submit">Gửi phản giá</string>
     <string name="chat_counter_offer_min">Nhập tối thiểu 1.000 ₫</string>
     <string name="chat_counter_waiting_buyer">Chờ phản hồi từ người mua…</string>
+    <string name="chat_offer_must_be_below_listed">Giá đề xuất phải thấp hơn giá niêm yết (%s).</string>
+    <string name="chat_counter_must_be_above_buyer">Phản giá phải cao hơn đề xuất của người mua (%s).</string>
 
     <string name="chat_offline_deal_sheet_title">Ghi nhận giao dịch trực tiếp</string>
     <string name="chat_offline_deal_sheet_subtitle">Dùng địa điểm và giờ từ lịch hẹn đã xác nhận. Có thể chỉnh giá thống nhất bên dưới.</string>

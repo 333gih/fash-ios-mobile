@@ -90,12 +90,14 @@ final class ProfileViewModel {
         deps.uxTabTracker.onTabOpened(scope: "profile", tabKey: UxPersonalizationMapping.profileTabKey(from: tabIndex))
     }
 
-    func requestWishlistTabFromHome() {
+    func requestWishlistTabFromHome(deps: AppDependencies) {
         requestOpenProfileTab(.wishlist, scrollToGrid: true)
+        Task { await refresh(deps: deps, force: true) }
     }
 
-    func requestInReviewTabFromHome() {
+    func requestInReviewTabFromHome(deps: AppDependencies) {
         requestOpenProfileTab(.inReview, scrollToGrid: true)
+        Task { await refresh(deps: deps, force: true) }
     }
 
     func consumeProfileTabOpenRequest() -> ProfileTabOpenRequest? {

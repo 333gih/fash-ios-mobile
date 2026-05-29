@@ -164,6 +164,20 @@ final class ChatViewModel {
         if case .success(let count) = await deps.chatRepository.getUnreadCount() {
             unreadTotal = count
         }
+        publishUnreadSnapshot(to: deps)
+    }
+
+    func publishUnreadSnapshot(to deps: AppDependencies) {
+        var map: [String: Int] = [:]
+        for item in allConversations where !item.conversationId.isEmpty {
+            map[item.conversationId] = item.unreadCount
+        }
+        for group in conversationGroups {
+            for item in group.conversations where !item.conversationId.isEmpty {
+                map[item.conversationId] = item.unreadCount
+            }
+        }
+        deps.updateChatUnreadSnapshot(total: unreadTotal, perConversation: map)
     }
 
     func setFilter(_ filter: ChatFilter) {
@@ -202,6 +216,7 @@ final class ChatViewModel {
         sellerHasActiveListings = false
         sellerInboxGroupMode = .allConversations
         selectedFilter = .all
+        AppDependencies.shared.updateChatUnreadSnapshot(total: 0, perConversation: [:])
     }
 
     private func applyCurrentViewFilter() {

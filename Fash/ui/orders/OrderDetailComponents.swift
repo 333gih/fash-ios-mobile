@@ -21,6 +21,31 @@ enum OrderDetailComponents {
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
+    static func stickyOutlineButton(
+        title: String,
+        isBusy: Bool,
+        enabled: Bool = true,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                if isBusy {
+                    ProgressView().scaleEffect(0.85)
+                }
+                Text(title)
+                    .font(FashTypography.labelLarge.weight(.medium))
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(FashColors.outlineMuted.opacity(0.45), lineWidth: 1)
+            )
+        }
+        .foregroundStyle(FashColors.textPrimary)
+        .disabled(!enabled || isBusy)
+    }
+
     static func infoRow(_ label: String, _ value: String) -> some View {
         HStack(alignment: .top) {
             Text(label)

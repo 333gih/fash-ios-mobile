@@ -33,7 +33,7 @@ enum AppPromoNavigation {
         case "in_app_invite_friends":
             router.showInviteFriendsScreen = true
         case "in_app_product_packages":
-            router.sellerPackageCheckoutId = nil
+            router.sellerPackageCheckout = nil
             router.showSellerPackagesScreen = true
         case "in_app_editorial_guides":
             if !payload.isEmpty {

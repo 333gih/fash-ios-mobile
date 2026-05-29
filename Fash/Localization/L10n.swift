@@ -151,6 +151,12 @@ enum L10n {
     static var chatCounterSheetSubmit: String { t("chat_counter_sheet_submit") }
     static var chatCounterSheetTitle: String { t("chat_counter_sheet_title") }
     static var chatCounterWaitingBuyer: String { t("chat_counter_waiting_buyer") }
+    static func chatOfferMustBeBelowListed(_ a1: CVarArg) -> String {
+        String(format: t("chat_offer_must_be_below_listed"), a1)
+    }
+    static func chatCounterMustBeAboveBuyer(_ a1: CVarArg) -> String {
+        String(format: t("chat_counter_must_be_above_buyer"), a1)
+    }
     static var chatDayFri: String { t("chat_day_fri") }
     static var chatDayMon: String { t("chat_day_mon") }
     static var chatDaySat: String { t("chat_day_sat") }
@@ -2276,6 +2282,9 @@ enum L10n {
     static func shareProfileText(_ a1: CVarArg, _ a2: CVarArg, _ a3: CVarArg) -> String {
         String(format: t("share_profile_text"), a1, a2, a3)
     }
+    static var shareInviteSuccess: String { t("share_invite_success") }
+    static var shareListingSuccess: String { t("share_listing_success") }
+    static var shareProfileSuccess: String { t("share_profile_success") }
     static var shippingAddressRowUntitled: String { t("shipping_address_row_untitled") }
     static var splashFooterGenZ: String { t("splash_footer_gen_z") }
     static var splashLogoCd: String { t("splash_logo_cd") }

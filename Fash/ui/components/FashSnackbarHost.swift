@@ -17,7 +17,7 @@ func inferFashSnackbarKind(message: String) -> FashSnackbarKind {
     ]
     if errorHints.contains(where: { m.contains($0) }) { return .error }
     let successHints = [
-        "success", "thành công", "đã lưu", "đã thêm", "đã gỡ", "đã gửi", "đã cập nhật",
+        "success", "thành công", "đã lưu", "đã thêm", "đã gỡ", "đã gửi", "đã cập nhật", "đã chia sẻ",
         "đã theo dõi", "saved", "sent", "added", "removed", "following", "available again",
         "có thể mua lại", "yêu thích", "mong muốn", "wishlist",
     ]

@@ -63,7 +63,11 @@ final class AppDependencies {
     var pendingOpenInviteFriends = false
     var inboxOpenRequestGeneration: Int = 0
     var inboxUnreadRefreshGeneration: Int = 0
+    var chatInboxRefreshGeneration: Int = 0
     var inboxUnreadCount: Int = 0
+    private(set) var chatUnreadTotal: Int = 0
+    private(set) var chatUnreadSnapshotGeneration: Int = 0
+    private var chatUnreadByConversationId: [String: Int] = [:]
     var inAppNotification: FashInAppNotificationSession?
     var snackbarMessage: String?
     var pendingAccountSwitchPrompt: AccountSwitchPrompt?
@@ -76,6 +80,7 @@ final class AppDependencies {
     let appPromoShowSignals: AsyncStream<AppPromoCampaign>
     private var proactiveTokenRefreshTask: Task<Void, Never>?
     private var inboxRefreshDebounceTask: Task<Void, Never>?
+    private var chatInboxRefreshDebounceTask: Task<Void, Never>?
     private var snackbarDismissTask: Task<Void, Never>?
 
     private init() {
@@ -210,7 +215,9 @@ final class AppDependencies {
         uxTabTracker.flush()
         feedEventReporter.clearPending()
         inboxRefreshDebounceTask?.cancel()
+        chatInboxRefreshDebounceTask?.cancel()
         inboxUnreadCount = 0
+        updateChatUnreadSnapshot(total: 0, perConversation: [:])
         inAppNotification = nil
         pendingAccountSwitchPrompt = nil
         AppPromoPendingQueue.clear()
@@ -255,6 +262,28 @@ final class AppDependencies {
             guard !Task.isCancelled else { return }
             inboxUnreadRefreshGeneration += 1
         }
+    }
+
+    /// Debounced chat inbox + nav badge refresh — Android `loadConversations` on chat back.
+    func requestChatInboxRefresh() {
+        chatInboxRefreshDebounceTask?.cancel()
+        chatInboxRefreshDebounceTask = Task {
+            try? await Task.sleep(for: .milliseconds(300))
+            guard !Task.isCancelled else { return }
+            chatInboxRefreshGeneration += 1
+        }
+    }
+
+    func updateChatUnreadSnapshot(total: Int, perConversation: [String: Int]) {
+        chatUnreadTotal = total
+        chatUnreadByConversationId = perConversation
+        chatUnreadSnapshotGeneration += 1
+    }
+
+    func chatUnreadExcludingConversation(_ conversationId: String) -> Int {
+        let cid = conversationId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cid.isEmpty else { return chatUnreadTotal }
+        return max(0, chatUnreadTotal - (chatUnreadByConversationId[cid] ?? 0))
     }
 
     func showInAppNotification(_ session: FashInAppNotificationSession) {
