@@ -172,7 +172,7 @@ struct HomeFeedContent: View {
             }
         } else {
             VStack(spacing: 0) {
-                ListingMasonryLazyRows(items: viewModel.items) { item, index in
+                ListingMasonryLazyColumns(layout: viewModel.feedMasonryLayout) { item, index in
                     HomeFeedListingCell(
                         item: item,
                         index: index,

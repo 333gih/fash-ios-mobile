@@ -120,11 +120,12 @@ struct ListingMasonryGridView<Content: View>: View {
     private var edgeEnd: CGFloat { trailingPadding ?? spacing.editorialEnd }
 
     /// Shortest-column masonry — balances column heights using stagger aspect ratios (Android StaggeredGrid).
-    private var distributedColumns: (
-        left: [(index: Int, item: ListingFeedItem)],
-        right: [(index: Int, item: ListingFeedItem)]
-    ) {
-        ListingMasonryGrid.distributeShortestColumn(entries: entries)
+    private var distributedColumns: ListingMasonryColumnLayout {
+        var fresh: [String: Bool] = [:]
+        return ListingMasonryGrid.makeStableColumnLayout(
+            items: entries.sorted { $0.index < $1.index }.map(\.item),
+            assignedIsRightColumn: &fresh
+        )
     }
 
     var body: some View {
@@ -156,31 +157,101 @@ extension ListingMasonryGrid {
         left: [(index: Int, item: ListingFeedItem)],
         right: [(index: Int, item: ListingFeedItem)]
     ) {
-        let sorted = entries.sorted { $0.index < $1.index }
-        guard !sorted.isEmpty else { return ([], []) }
+        makeStableColumnLayout(
+            items: entries.sorted { $0.index < $1.index }.map(\.item),
+            assignedIsRightColumn: &([String: Bool]())
+        )
+    }
+
+    /// Masonry split with **stable** column per listing id — existing tiles do not move when appending pages.
+    static func makeStableColumnLayout(
+        items: [ListingFeedItem],
+        assignedIsRightColumn: inout [String: Bool]
+    ) -> ListingMasonryColumnLayout {
+        let liveIds = Set(items.map(\.id))
+        assignedIsRightColumn = assignedIsRightColumn.filter { liveIds.contains($0.key) }
+
+        guard !items.isEmpty else { return .empty }
+
         var left: [(index: Int, item: ListingFeedItem)] = []
         var right: [(index: Int, item: ListingFeedItem)] = []
         var leftHeight: CGFloat = 0
         var rightHeight: CGFloat = 0
-        left.reserveCapacity(sorted.count / 2 + 1)
-        right.reserveCapacity(sorted.count / 2 + 1)
-        for entry in sorted {
-            let unitHeight = 1 / staggerAspectRatio(for: entry.item.id)
-            if leftHeight <= rightHeight {
-                left.append(entry)
-                leftHeight += unitHeight
+        left.reserveCapacity(items.count / 2 + 1)
+        right.reserveCapacity(items.count / 2 + 1)
+
+        for (index, item) in items.enumerated() {
+            let unitHeight = 1 / staggerAspectRatio(for: item.id)
+            let placeRight: Bool
+            if let stored = assignedIsRightColumn[item.id] {
+                placeRight = stored
             } else {
-                right.append(entry)
+                placeRight = leftHeight > rightHeight
+                assignedIsRightColumn[item.id] = placeRight
+            }
+            if placeRight {
+                right.append((index, item))
                 rightHeight += unitHeight
+            } else {
+                left.append((index, item))
+                leftHeight += unitHeight
             }
         }
-        return (left, right)
+        return ListingMasonryColumnLayout(left: left, right: right)
+    }
+}
+
+/// Two-column masonry layout — left/right item lists with global indices.
+struct ListingMasonryColumnLayout: Equatable {
+    var left: [(index: Int, item: ListingFeedItem)]
+    var right: [(index: Int, item: ListingFeedItem)]
+
+    static let empty = ListingMasonryColumnLayout(left: [], right: [])
+
+    var isEmpty: Bool { left.isEmpty && right.isEmpty }
+}
+
+/// Virtualized **independent columns** inside `ScrollView` — Android `LazyVerticalStaggeredGrid` parity.
+///
+/// Equal column width, fixed vertical gap, tile height from image aspect ratio only.
+/// Use [ListingMasonryGrid.makeStableColumnLayout] so load-more does not reshuffle existing tiles.
+struct ListingMasonryLazyColumns<Content: View>: View {
+    @Environment(\.fashSpacing) private var spacing
+
+    let layout: ListingMasonryColumnLayout
+    var columnSpacing: CGFloat?
+    var leadingPadding: CGFloat?
+    var trailingPadding: CGFloat?
+    @ViewBuilder let content: (ListingFeedItem, Int) -> Content
+
+    private var gap: CGFloat { columnSpacing ?? spacing.spacing2 }
+    private var edgeStart: CGFloat { leadingPadding ?? spacing.editorialStart }
+    private var edgeEnd: CGFloat { trailingPadding ?? spacing.editorialEnd }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: gap) {
+            lazyColumn(layout.left)
+            lazyColumn(layout.right)
+        }
+        .padding(.leading, edgeStart)
+        .padding(.trailing, edgeEnd)
+    }
+
+    @ViewBuilder
+    private func lazyColumn(_ column: [(index: Int, item: ListingFeedItem)]) -> some View {
+        LazyVStack(spacing: gap) {
+            ForEach(column, id: \.item.id) { entry in
+                content(entry.item, entry.index)
+                    .frame(maxWidth: .infinity)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .top)
     }
 }
 
 /// Virtualized **row pairs** for long feeds (`ScrollView` + `LazyVStack`) — Android `listingMasonryFeedRows`.
 ///
-/// Each row is one lazy child: equal-width columns, fixed horizontal gap, tile height from image aspect ratio.
+/// Prefer [ListingMasonryLazyColumns] for equal-width staggered columns; row pairs leave gaps on the shorter side.
 struct ListingMasonryLazyRows<Content: View>: View {
     @Environment(\.fashSpacing) private var spacing
 

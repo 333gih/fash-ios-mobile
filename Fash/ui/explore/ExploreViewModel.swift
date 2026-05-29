@@ -15,6 +15,7 @@ private let exploreStaleThreshold: TimeInterval = 60
 final class ExploreViewModel {
     var query = ""
     var items: [ListingFeedItem] = []
+    private(set) var listingsMasonryLayout = ListingMasonryColumnLayout.empty
     var sellerResults: [UserSearchResult] = []
     var featuredSellers: [FeaturedSellerItem] = []
     var sellerPreviewPosts: [String: [ListingFeedItem]] = [:]
@@ -72,6 +73,8 @@ final class ExploreViewModel {
     private var loadMoreTask: Task<Void, Never>?
     private var lastSuccessfulExploreRefreshAt: Date?
     private var listingsReloadTask: Task<Void, Never>?
+    /// Stable left/right assignment per listing id — prevents layout jumps when loading more.
+    private var listingsMasonryIsRightColumn: [String: Bool] = [:]
 
     private static func initialSizingModeFilter() -> String? {
         let mode = ExploreSizingPreference.read()
@@ -493,6 +496,8 @@ final class ExploreViewModel {
         listingsFetchGeneration += 1
         sellersBrowseGeneration += 1
         items = []
+        listingsMasonryLayout = .empty
+        listingsMasonryIsRightColumn.removeAll()
         sellerResults = []
         sellerPreviewPosts = [:]
         isLoading = false
@@ -504,6 +509,8 @@ final class ExploreViewModel {
         sellersLoading = false
         sellersLoadError = false
         loadMoreCooldownUntil = nil
+        listingsMasonryIsRightColumn.removeAll()
+        listingsMasonryLayout = .empty
     }
 
     func clearAllFilters(deps: AppDependencies, isGuestMode: Bool) async {
@@ -590,6 +597,8 @@ final class ExploreViewModel {
         cancelLoadMore()
         listingsFetchGeneration += 1
         items = []
+        listingsMasonryLayout = .empty
+        listingsMasonryIsRightColumn.removeAll()
         hasMore = true
         loadError = false
         isLoading = true
@@ -622,12 +631,15 @@ final class ExploreViewModel {
         switch result {
         case .success(let feed):
             items = feed
+            rebuildListingsMasonryLayout(clearAssignments: true)
             hasMore = feed.count >= exploreFeedPageSize
             loadError = false
             lastSuccessfulExploreRefreshAt = Date()
         case .failure:
             if !hadItems {
                 items = []
+                listingsMasonryLayout = .empty
+                listingsMasonryIsRightColumn.removeAll()
                 loadError = true
             }
             hasMore = false
@@ -722,8 +734,10 @@ final class ExploreViewModel {
                 var seen = Set(items.map(\.id))
                 let merged = items + feed.filter { seen.insert($0.id).inserted }
                 items = merged
+                rebuildListingsMasonryLayout(clearAssignments: false)
             } else {
                 items = feed
+                rebuildListingsMasonryLayout(clearAssignments: true)
             }
             hasMore = feed.count >= exploreFeedPageSize
             loadError = false
@@ -733,10 +747,22 @@ final class ExploreViewModel {
         case .failure:
             if !append {
                 items = []
+                listingsMasonryLayout = .empty
+                listingsMasonryIsRightColumn.removeAll()
                 loadError = true
             }
             hasMore = false
         }
+    }
+
+    private func rebuildListingsMasonryLayout(clearAssignments: Bool) {
+        if clearAssignments {
+            listingsMasonryIsRightColumn.removeAll()
+        }
+        listingsMasonryLayout = ListingMasonryGrid.makeStableColumnLayout(
+            items: items,
+            assignedIsRightColumn: &listingsMasonryIsRightColumn
+        )
     }
 
     private func refreshSellerBrowse(deps: AppDependencies, isGuestMode: Bool) async {

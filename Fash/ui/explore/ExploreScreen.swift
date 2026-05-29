@@ -256,54 +256,21 @@ struct ExploreScreen: View {
     private var listingsGrid: some View {
         ScrollViewReader { scrollProxy in
             ScrollView {
-                LazyVStack(spacing: 0) {
+                VStack(spacing: 0) {
                     ExploreFeedScrollOffsetAnchor()
                         .id(ExploreFeedScrollIds.top)
 
                     listingsExpandedHeader
 
-                    if viewModel.isLoading, viewModel.items.isEmpty {
-                        FashSkeleton.listingGrid()
-                            .padding(.top, spacing.spacing2)
-                    } else if viewModel.loadError && viewModel.items.isEmpty {
-                        FashEmptyStateView(title: L10n.feedLoadError, actionTitle: L10n.feedRetry) {
-                            Task { await viewModel.refresh(deps: deps, isGuestMode: isGuestMode) }
-                        }
-                    } else if viewModel.items.isEmpty {
-                        FashEmptyStateView(
-                            title: viewModel.hasActiveFilters || viewModel.isSearchModeActive
-                                ? L10n.exploreEmptyFilteredTitle
-                                : L10n.feedEmptyTitle,
-                            subtitle: L10n.feedEmptySubtitle
-                        )
-                    } else {
-                        ListingMasonryLazyRows(items: viewModel.items) { item, index in
-                            ExploreListingCell(
-                                item: item,
-                                index: index,
-                                totalCount: viewModel.items.count,
-                                isGuestMode: isGuestMode,
-                                openListingAsFullScreen: openListingAsFullScreen,
-                                viewModel: viewModel,
-                                router: router,
-                                deps: deps
-                            )
-                        }
-                        .padding(.top, spacing.spacing2)
-                        ExploreListingsPaginationSentinel(
-                            hasMore: viewModel.hasMore,
-                            isLoadingMore: viewModel.isLoadingMore
-                        ) {
-                            viewModel.requestLoadMore(deps: deps, isGuestMode: isGuestMode)
-                        }
-                        HomeBrandFooterStrip()
-                            .padding(.top, spacing.spacing4)
-                    }
+                    listingsFeedContent
                 }
                 .padding(.bottom, promoDockInset + spacing.spacing4)
             }
+            .scrollBounceBehavior(.basedOnSize, axes: .vertical)
             .onChange(of: viewModel.listingsScrollToTopToken) { _, _ in
-                withAnimation(.easeOut(duration: 0.22)) {
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction) {
                     scrollProxy.scrollTo(ExploreFeedScrollIds.top, anchor: .top)
                 }
             }
@@ -317,7 +284,7 @@ struct ExploreScreen: View {
             }
         }
         .overlay {
-            if viewModel.isReloadingListings, !viewModel.items.isEmpty {
+            if viewModel.isReloadingListings, !viewModel.items.isEmpty, !viewModel.isRefreshing {
                 ProgressView()
                     .tint(FashColors.brandPrimary)
                     .scaleEffect(1.05)
@@ -328,6 +295,47 @@ struct ExploreScreen: View {
         }
         .animation(.easeInOut(duration: 0.22), value: showsStickyChromeOverlay)
         .refreshable { await viewModel.pullToRefresh(deps: deps, isGuestMode: isGuestMode) }
+    }
+
+    @ViewBuilder
+    private var listingsFeedContent: some View {
+        if viewModel.isLoading, viewModel.items.isEmpty {
+            FashSkeleton.listingGrid()
+                .padding(.top, spacing.spacing2)
+        } else if viewModel.loadError && viewModel.items.isEmpty {
+            FashEmptyStateView(title: L10n.feedLoadError, actionTitle: L10n.feedRetry) {
+                Task { await viewModel.refresh(deps: deps, isGuestMode: isGuestMode) }
+            }
+        } else if viewModel.items.isEmpty {
+            FashEmptyStateView(
+                title: viewModel.hasActiveFilters || viewModel.isSearchModeActive
+                    ? L10n.exploreEmptyFilteredTitle
+                    : L10n.feedEmptyTitle,
+                subtitle: L10n.feedEmptySubtitle
+            )
+        } else {
+            ListingMasonryLazyColumns(layout: viewModel.listingsMasonryLayout) { item, index in
+                ExploreListingCell(
+                    item: item,
+                    index: index,
+                    totalCount: viewModel.items.count,
+                    isGuestMode: isGuestMode,
+                    openListingAsFullScreen: openListingAsFullScreen,
+                    viewModel: viewModel,
+                    router: router,
+                    deps: deps
+                )
+            }
+            .padding(.top, spacing.spacing2)
+            ExploreListingsPaginationSentinel(
+                hasMore: viewModel.hasMore,
+                isLoadingMore: viewModel.isLoadingMore
+            ) {
+                viewModel.requestLoadMore(deps: deps, isGuestMode: isGuestMode)
+            }
+            HomeBrandFooterStrip()
+                .padding(.top, spacing.spacing4)
+        }
     }
 
     // MARK: - Sellers feed

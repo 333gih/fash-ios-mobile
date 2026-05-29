@@ -13,6 +13,7 @@ final class HomeViewModel {
     var isShellLoading = false
     var isRefreshing = false
     var items: [ListingFeedItem] = []
+    private(set) var feedMasonryLayout = ListingMasonryColumnLayout.empty
     var errorMessage: String?
     var selectedFeedTabKey = HomeFeedTabKeys.huntToday
     var featuredSellers: [FeaturedSellerItem] = []
@@ -33,6 +34,7 @@ final class HomeViewModel {
     private var homeUxApplied = false
     private var lastSuccessfulRefreshAt: Date?
     private var lastFollowFeedLoadMoreAt: Date?
+    private var feedMasonryIsRightColumn: [String: Bool] = [:]
 
     var selectedFeedTab: HomeFeedTab {
         HomeFeedTab(rawValue: selectedFeedTabKey) ?? .huntToday
@@ -61,6 +63,8 @@ final class HomeViewModel {
         invalidateAllTabFeeds()
         selectedFeedTabKey = HomeFeedTabKeys.huntToday
         items = []
+        feedMasonryLayout = .empty
+        feedMasonryIsRightColumn.removeAll()
         errorMessage = nil
         featuredSellers = []
         followingItems = []
@@ -196,7 +200,7 @@ final class HomeViewModel {
                 followingItems.append(contentsOf: page.filter { existing.contains($0.id) == false })
                 followingHasMore = page.count >= HomeFeedConstants.followPageSize
                 if selectedFeedTab == .following {
-                    syncItemsForSelectedTab()
+                    syncItemsForSelectedTab(preserveMasonryAssignments: true)
                 }
             }
         }
@@ -481,9 +485,20 @@ final class HomeViewModel {
         return result
     }
 
-    private func syncItemsForSelectedTab() {
+    private func syncItemsForSelectedTab(preserveMasonryAssignments: Bool = false) {
         items = itemsForTab(selectedFeedTab)
+        rebuildFeedMasonryLayout(clearAssignments: !preserveMasonryAssignments)
         if !items.isEmpty { errorMessage = nil }
+    }
+
+    private func rebuildFeedMasonryLayout(clearAssignments: Bool) {
+        if clearAssignments {
+            feedMasonryIsRightColumn.removeAll()
+        }
+        feedMasonryLayout = ListingMasonryGrid.makeStableColumnLayout(
+            items: items,
+            assignedIsRightColumn: &feedMasonryIsRightColumn
+        )
     }
 
     private func itemsForTab(_ tab: HomeFeedTab) -> [ListingFeedItem] {
