@@ -213,6 +213,7 @@ final class AppDependencies {
     func handleSessionCleared(reason: String?) {
         uxTabTracker.closeActiveTab()
         uxTabTracker.flush()
+        feedEventReporter.flush()
         feedEventReporter.clearPending()
         inboxRefreshDebounceTask?.cancel()
         chatInboxRefreshDebounceTask?.cancel()

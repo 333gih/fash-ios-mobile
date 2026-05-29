@@ -57,6 +57,7 @@ final class HomeViewModel {
 
     func onGuestBrowseEntered(deps: AppDependencies) {
         deps.uxTabTracker.closeActiveTab()
+        deps.feedEventReporter.flush()
         deps.feedEventReporter.clearPending()
         homeUxApplied = false
         homeUxPersonalization = HomeUxPersonalization()
@@ -76,6 +77,7 @@ final class HomeViewModel {
     func clearCachesForSignedOutUser(deps: AppDependencies) {
         deps.uxTabTracker.closeActiveTab()
         deps.uxTabTracker.flush()
+        deps.feedEventReporter.flush()
         deps.feedEventReporter.clearPending()
         onGuestBrowseEntered(deps: deps)
         isShellLoading = false
@@ -123,10 +125,11 @@ final class HomeViewModel {
 
         normalizeSelectedFeedTab(isGuestMode: isGuestMode, deps: deps)
         if !isGuestMode {
-            await loadUxPersonalization(deps: deps, isGuestMode: isGuestMode)
+            async let ux: Void = loadUxPersonalization(deps: deps, isGuestMode: isGuestMode)
+            async let sections: Bool = prefetchRecommendationSections(deps: deps, isGuestMode: isGuestMode)
             async let stats = loadBuyerHomeStats(deps: deps, isGuestMode: isGuestMode)
             async let sizing = refreshSizingBannerState(deps: deps, isGuestMode: isGuestMode)
-            _ = await (stats, sizing)
+            _ = await (ux, sections, stats, sizing)
         }
 
         async let sellersResult = deps.searchRepository.getFeaturedSellers(limit: 12, publicBrowse: isGuestMode)
@@ -149,10 +152,11 @@ final class HomeViewModel {
         defer { isRefreshing = false }
         invalidateAllTabFeeds()
         if !isGuestMode {
-            await loadUxPersonalization(deps: deps, isGuestMode: isGuestMode)
+            async let ux: Void = loadUxPersonalization(deps: deps, isGuestMode: isGuestMode)
+            async let sections: Bool = prefetchRecommendationSections(deps: deps, isGuestMode: isGuestMode)
             async let stats = loadBuyerHomeStats(deps: deps, isGuestMode: isGuestMode)
             async let sizing = refreshSizingBannerState(deps: deps, isGuestMode: isGuestMode)
-            _ = await (stats, sizing)
+            _ = await (ux, sections, stats, sizing)
         }
         async let sellersResult = deps.searchRepository.getFeaturedSellers(limit: 12, publicBrowse: isGuestMode)
         async let slidesResult = deps.advertisingRepository.getSlides(publicBrowse: isGuestMode)
@@ -324,6 +328,11 @@ final class HomeViewModel {
         if isGuestMode && tab.requiresAuth { return }
         if !force && loadedTabs.contains(tab.rawValue) { return }
         if tabsLoading.contains(tab.rawValue) { return }
+        if !force && tab == .huntToday && recommendationSectionsFetched && !sections.huntToday.isEmpty {
+            loadedTabs.insert(tab.rawValue)
+            syncItemsForSelectedTab()
+            return
+        }
         if !force && HomeFeedTab.recommendationSectionTabs.contains(tab) && recommendationSectionsFetched {
             loadedTabs.insert(tab.rawValue)
             syncItemsForSelectedTab()
@@ -420,8 +429,17 @@ final class HomeViewModel {
         ExploreSizingPreference.activeSizingModeForRecommendations()
     }
 
+    private func prefetchRecommendationSections(deps: AppDependencies, isGuestMode: Bool) async -> Bool {
+        guard !isGuestMode else { return false }
+        return await loadRecommendationSections(deps: deps, isGuestMode: isGuestMode, force: false)
+    }
+
     private func loadHuntTodayTab(deps: AppDependencies, isGuestMode: Bool, force: Bool) async -> Bool {
         if !force && loadedTabs.contains(HomeFeedTabKeys.huntToday) { return true }
+        if !isGuestMode && recommendationSectionsFetched && !sections.huntToday.isEmpty {
+            if selectedFeedTab == .huntToday { syncItemsForSelectedTab() }
+            return true
+        }
         let result = await deps.recommendationRepository.exploreListings(
             publicBrowse: isGuestMode,
             limit: sectionLimit(for: .huntToday, fallback: HomeFeedConstants.huntTodayLimit),

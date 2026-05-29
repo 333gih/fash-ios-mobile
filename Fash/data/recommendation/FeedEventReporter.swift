@@ -9,12 +9,19 @@ struct FeedEventPayload: Equatable {
 }
 
 /// Batches feed impressions/clicks — Android [FeedEventReporter].
+///
+/// Server accepts events asynchronously (`POST …/feed-events` returns quickly); we flush on a
+/// debounced timer so impressions are not held until 20 items, and high-intent events still flush immediately.
 final class FeedEventReporter: @unchecked Sendable {
     private let repository: RecommendationRepository
     private let sessionIdProvider: @Sendable () -> String
     private let publicBrowse: @Sendable () -> Bool
     private var pending: [FeedEventPayload] = []
     private let lock = NSLock()
+    private var debouncedFlushTask: Task<Void, Never>?
+
+    /// Impression/dwell batches flush on this interval (server ingest is async).
+    private static let debouncedFlushSeconds: UInt64 = 4
 
     init(
         repository: RecommendationRepository,
@@ -82,12 +89,14 @@ final class FeedEventReporter: @unchecked Sendable {
     }
 
     func clearPending() {
+        cancelDebouncedFlush()
         lock.lock()
         pending.removeAll()
         lock.unlock()
     }
 
     func flush() {
+        cancelDebouncedFlush()
         lock.lock()
         guard !pending.isEmpty else {
             lock.unlock()
@@ -109,6 +118,24 @@ final class FeedEventReporter: @unchecked Sendable {
         pending.append(event)
         let shouldFlush = pending.count >= 20
         lock.unlock()
-        if shouldFlush { flush() }
+        if shouldFlush {
+            flush()
+        } else {
+            scheduleDebouncedFlush()
+        }
+    }
+
+    private func scheduleDebouncedFlush() {
+        debouncedFlushTask?.cancel()
+        debouncedFlushTask = Task {
+            try? await Task.sleep(for: .seconds(Self.debouncedFlushSeconds))
+            guard !Task.isCancelled else { return }
+            flush()
+        }
+    }
+
+    private func cancelDebouncedFlush() {
+        debouncedFlushTask?.cancel()
+        debouncedFlushTask = nil
     }
 }
