@@ -104,6 +104,8 @@ enum RepositoryHttp {
     static func optInt(_ obj: [String: Any], _ keys: String..., default defaultValue: Int = 0) -> Int {
         for key in keys {
             if let n = obj[key] as? NSNumber { return n.intValue }
+            if let n = obj[key] as? Int { return n }
+            if let s = obj[key] as? String, let n = Int(s) { return n }
         }
         return defaultValue
     }

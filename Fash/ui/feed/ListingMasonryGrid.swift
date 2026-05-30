@@ -2,7 +2,9 @@ import SwiftUI
 
 /// Port of Android `ListingMasonryGrid` (ui.feed).
 enum ListingMasonryGrid {
-    private static let staggerRatios: [CGFloat] = [3.0 / 4.0, 4.0 / 5.0, 5.0 / 6.0]
+    private static let staggerRatios: [CGFloat] = [
+        2.0 / 3.0, 3.0 / 4.0, 4.0 / 5.0, 5.0 / 6.0, 1.0,
+    ]
     private static let minMasonryAspect: CGFloat = 3.0 / 5.0
     private static let maxMasonryAspect: CGFloat = 5.0 / 4.0
 

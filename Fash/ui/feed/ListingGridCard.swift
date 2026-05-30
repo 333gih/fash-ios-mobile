@@ -3,6 +3,7 @@ import SwiftUI
 /// Discovery grid cell — Android [ListingGridCard].
 struct ListingGridCard: View {
     @Environment(\.fashSpacing) private var spacing
+    @Environment(\.listingMasonryColumnWidth) private var masonryColumnWidth
     let item: ListingFeedItem
     var onTap: () -> Void
     var imageAspectRatio: CGFloat = 3 / 4
@@ -61,7 +62,7 @@ struct ListingGridCard: View {
     }
 
     var body: some View {
-        ZStack(alignment: .bottomLeading) {
+        let tile = ZStack(alignment: .bottomLeading) {
             Button(action: onTap) {
                 ZStack(alignment: .bottomLeading) {
                     imageLayer
@@ -77,8 +78,18 @@ struct ListingGridCard: View {
             topTrailingChrome
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
         }
-        .aspectRatio(imageAspectRatio, contentMode: .fit)
-        .frame(maxWidth: .infinity)
+
+        Group {
+            if masonryColumnWidth != nil {
+                // Parent masonry sets width + height from cover aspect ratio.
+                tile.frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                tile
+                    .aspectRatio(imageAspectRatio, contentMode: .fit)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity)
+            }
+        }
         .layoutPriority(1)
         .clipShape(shape)
         .contentShape(shape)
@@ -92,34 +103,53 @@ struct ListingGridCard: View {
         return item.imageUrls.first?.trimmingCharacters(in: .whitespaces) ?? ""
     }
 
+    private var layoutColumnWidth: CGFloat {
+        if let masonryColumnWidth, masonryColumnWidth > 0 {
+            return masonryColumnWidth
+        }
+        return Self.estimatedFeedColumnWidth(spacing: spacing)
+    }
+
+    /// Matches two-column masonry width when the parent does not inject [listingMasonryColumnWidth].
+    private static func estimatedFeedColumnWidth(spacing: FashSpacing) -> CGFloat {
+        let screen = UIScreen.main.bounds.width
+        let inset = max(spacing.editorialStart, spacing.editorialEnd)
+        let gap = spacing.spacing2
+        return ListingMasonryGrid.columnWidth(
+            containerWidth: screen,
+            leadingInset: inset,
+            trailingInset: inset,
+            columnGap: gap
+        )
+    }
+
     @ViewBuilder
     private var imageLayer: some View {
-        GeometryReader { geo in
-            Group {
-                if displayImageUrl.isEmpty {
-                    Rectangle()
-                        .fill(FashColors.surfaceContainerHigh)
-                        .overlay {
-                            Text(L10n.noImage)
-                                .font(FashTypography.bodySmall)
-                                .foregroundStyle(FashColors.textSecondary)
-                        }
-                } else {
-                    let px = FeedListingImageSizer.pixelSize(
-                        columnWidthPoints: geo.size.width,
-                        aspectRatio: imageAspectRatio
-                    )
-                    let feedUrl = FeedListingImageSizer.urlForFeedGrid(
-                        displayImageUrl,
-                        columnWidthPoints: geo.size.width,
-                        aspectRatio: imageAspectRatio
-                    )
-                    FashAsyncImage(
-                        url: feedUrl,
-                        contentMode: .fill,
-                        targetPixelSize: px
-                    )
-                }
+        let columnW = layoutColumnWidth
+        Group {
+            if displayImageUrl.isEmpty {
+                Rectangle()
+                    .fill(FashColors.surfaceContainerHigh)
+                    .overlay {
+                        Text(L10n.noImage)
+                            .font(FashTypography.bodySmall)
+                            .foregroundStyle(FashColors.textSecondary)
+                    }
+            } else {
+                let px = FeedListingImageSizer.pixelSize(
+                    columnWidthPoints: columnW,
+                    aspectRatio: imageAspectRatio
+                )
+                let feedUrl = FeedListingImageSizer.urlForFeedGrid(
+                    displayImageUrl,
+                    columnWidthPoints: columnW,
+                    aspectRatio: imageAspectRatio
+                )
+                FashAsyncImage(
+                    url: feedUrl,
+                    contentMode: .fill,
+                    targetPixelSize: px
+                )
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

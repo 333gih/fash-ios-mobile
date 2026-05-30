@@ -104,12 +104,28 @@ struct ListingStaggeredMasonryView<Cell: View>: View {
     private func masonryColumn(_ column: [(index: Int, item: ListingFeedItem)]) -> some View {
         VStack(spacing: gap) {
             ForEach(column, id: \.item.id) { entry in
+                let tileHeight = ListingMasonryGrid.estimatedTileHeight(
+                    columnWidth: columnWidth,
+                    item: entry.item
+                )
                 cellContent(entry.item, entry.index)
-                    .frame(width: columnWidth, alignment: .top)
+                    .environment(\.listingMasonryColumnWidth, columnWidth)
+                    .frame(width: columnWidth, height: tileHeight, alignment: .top)
                     .frame(maxWidth: columnWidth)
                     .clipped()
             }
         }
         .frame(width: columnWidth, alignment: .top)
+    }
+}
+
+private struct ListingMasonryColumnWidthKey: EnvironmentKey {
+    static let defaultValue: CGFloat? = nil
+}
+
+extension EnvironmentValues {
+    var listingMasonryColumnWidth: CGFloat? {
+        get { self[ListingMasonryColumnWidthKey.self] }
+        set { self[ListingMasonryColumnWidthKey.self] = newValue }
     }
 }
