@@ -43,7 +43,6 @@ struct ProfileScreen: View {
                     scrollToGridToken: scrollToGridToken,
                     onListingClick: { item in onListingClick(item.id, item.sellerId) },
                     onLike: { item in Task { await viewModel.toggleLike(item, deps: deps) } },
-                    onSave: { item in Task { await viewModel.toggleSave(item, deps: deps) } },
                     expandedHeader: { expandedHeader },
                     compactHeader: { compactHeader }
                 )

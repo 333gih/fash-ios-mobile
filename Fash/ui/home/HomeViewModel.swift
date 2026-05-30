@@ -259,15 +259,6 @@ final class HomeViewModel {
         Task {
             switch await deps.listingRepository.toggleLike(listingId: item.id) {
             case .success(let liked):
-                patchListingInFeeds(item.id) { cur in
-                    let delta = (liked && !cur.isLiked) ? 1 : ((!liked && cur.isLiked) ? -1 : 0)
-                    return cur.withEngagement(
-                        likeCount: max(0, cur.likeCount + delta),
-                        isLiked: liked,
-                        saveCount: cur.saveCount,
-                        isSaved: cur.isSaved
-                    )
-                }
                 if liked {
                     deps.feedEventReporter.like(listingId: item.id, surface: surface, position: position)
                 }

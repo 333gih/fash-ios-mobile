@@ -873,19 +873,6 @@ final class ExploreViewModel {
                 deps.feedEventReporter.like(listingId: item.id, surface: "explore", position: position)
             }
             deps.showSnackbar(FeedEngagementFeedback.likeMessage(liked: liked))
-            patchListing(item.id) { cur in
-                let delta = (liked && !cur.isLiked) ? 1 : ((!liked && cur.isLiked) ? -1 : 0)
-                return ListingFeedItem(
-                    id: cur.id, title: cur.title, coverImageUrl: cur.coverImageUrl, imageUrls: cur.imageUrls,
-                    priceVnd: cur.priceVnd, brand: cur.brand, size: cur.size, categoryName: cur.categoryName,
-                    listingAestheticTag: cur.listingAestheticTag, condition: cur.condition,
-                    likeCount: max(0, cur.likeCount + delta), saveCount: cur.saveCount,
-                    sellerId: cur.sellerId, sellerUsername: cur.sellerUsername, sellerStyleTag: cur.sellerStyleTag,
-                    createdAt: cur.createdAt, isLiked: liked, isSaved: cur.isSaved,
-                    onsiteInspectionCommitment: cur.onsiteInspectionCommitment,
-                    listingStatus: cur.listingStatus, descriptionText: cur.descriptionText
-                )
-            }
         }
     }
 

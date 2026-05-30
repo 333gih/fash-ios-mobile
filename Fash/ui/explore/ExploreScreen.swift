@@ -467,11 +467,6 @@ private struct ExploreListingCell: View {
                 if !isGuestMode {
                     Task { await viewModel.toggleLike(item, position: index, deps: deps) }
                 }
-            },
-            onSave: {
-                if !isGuestMode {
-                    Task { await viewModel.toggleSave(item, position: index, deps: deps) }
-                }
             }
         )
         .onAppear {

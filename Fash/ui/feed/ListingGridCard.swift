@@ -10,7 +10,6 @@ struct ListingGridCard: View {
     var showQuickActions: Bool = false
     var statusOverlayLabel: String? = nil
     var onLike: (() -> Void)? = nil
-    var onSave: (() -> Void)? = nil
 
     private enum FooterMetrics {
         static let rowSpacing: CGFloat = 2
@@ -246,25 +245,15 @@ struct ListingGridCard: View {
 
     @ViewBuilder
     private var quickActions: some View {
-        HStack(spacing: 0) {
-            if let onLike {
-                quickActionButton(
-                    systemName: item.isLiked ? "heart.fill" : "heart",
-                    label: L10n.like,
-                    active: item.isLiked,
-                    action: onLike
-                )
-            }
-            if let onSave {
-                quickActionButton(
-                    systemName: item.isSaved ? "bookmark.fill" : "bookmark",
-                    label: L10n.save,
-                    active: item.isSaved,
-                    action: onSave
-                )
-            }
+        if let onLike {
+            quickActionButton(
+                systemName: "heart",
+                label: L10n.like,
+                active: false,
+                action: onLike
+            )
+            .padding(4)
         }
-        .padding(4)
     }
 
     private func quickActionButton(

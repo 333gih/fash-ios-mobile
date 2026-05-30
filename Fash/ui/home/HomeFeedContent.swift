@@ -256,15 +256,6 @@ struct HomeFeedContent: View {
                         onLike: {
                             viewModel.toggleLike(item, surface: analyticsSurface, position: index, deps: deps)
                         },
-                        onSave: {
-                            viewModel.toggleSave(
-                                item,
-                                surface: analyticsSurface,
-                                position: index,
-                                deps: deps,
-                                isGuestMode: isGuestMode
-                            )
-                        },
                         onRecordView: {
                             viewModel.recordView(
                                 item: item,
@@ -336,7 +327,6 @@ private struct HomeFeedListingCell: View {
     let imageAspectRatio: CGFloat
     let onTap: () -> Void
     let onLike: () -> Void
-    let onSave: () -> Void
     let onRecordView: () -> Void
     let onDwell: (Int) -> Void
 
@@ -349,8 +339,7 @@ private struct HomeFeedListingCell: View {
             onTap: onTap,
             imageAspectRatio: imageAspectRatio,
             showQuickActions: true,
-            onLike: onLike,
-            onSave: onSave
+            onLike: onLike
         )
         .onAppear {
             appearedAt = Date()

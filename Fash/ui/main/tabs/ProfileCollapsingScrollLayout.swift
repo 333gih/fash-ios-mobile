@@ -105,7 +105,6 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     var onTabsPinnedAtTopChange: ((Bool) -> Void)? = nil
     var onListingClick: (ListingFeedItem) -> Void
     var onLike: ((ListingFeedItem) -> Void)?
-    var onSave: ((ListingFeedItem) -> Void)?
     @ViewBuilder var expandedHeader: () -> ExpandedHeader
     @ViewBuilder var compactHeader: () -> CompactHeader
 
@@ -167,8 +166,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                                         statusOverlayLabel: showStatusOverlay
                                             ? ListingStatusUi.overlayLabel(for: item.listingStatus)
                                             : nil,
-                                        onLike: onLike.map { h in { h(item) } },
-                                        onSave: onSave.map { h in { h(item) } }
+                                        onLike: onLike.map { h in { h(item) } }
                                     )
                                 }
                                 .padding(.top, 4)

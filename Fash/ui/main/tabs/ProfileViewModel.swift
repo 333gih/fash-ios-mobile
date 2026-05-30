@@ -198,15 +198,6 @@ final class ProfileViewModel {
     func toggleLike(_ item: ListingFeedItem, deps: AppDependencies) async {
         switch await deps.listingRepository.toggleLike(listingId: item.id) {
         case .success(let liked):
-            patchListing(item.id) { cur in
-                let delta = (liked && !cur.isLiked) ? 1 : ((!liked && cur.isLiked) ? -1 : 0)
-                return cur.withEngagement(
-                    likeCount: max(0, cur.likeCount + delta),
-                    isLiked: liked,
-                    saveCount: cur.saveCount,
-                    isSaved: cur.isSaved
-                )
-            }
             deps.showSnackbar(FeedEngagementFeedback.likeMessage(liked: liked))
         case .failure(let error):
             deps.showSnackbar(FeedEngagementFeedback.actionErrorMessage(for: error))
