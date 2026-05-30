@@ -444,12 +444,12 @@ struct MainNavScreen: View {
                     },
                     onShippingAddressesClick: { router.showShippingAddressList = true },
                     onInviteFriendsClick: { router.showInviteFriendsScreen = true },
+                    onListingClick: { id, _ in deps.presentListingDetail(listingId: id, router: router) },
                     onEditListingClick: { id in
                         router.selectedListingId = nil
                         deps.listingPreview.close(deps: deps)
                         router.editListingId = id
                     },
-                    onListingClick: { id, _ in deps.presentListingDetail(listingId: id, router: router) },
                     onNavigateToExploreFromProfile: scheduleExploreFromProfile
                 )
             }
