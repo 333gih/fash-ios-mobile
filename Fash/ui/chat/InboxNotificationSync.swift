@@ -16,17 +16,27 @@ enum InboxNotificationSync {
                 continue
             }
             for item in page.items where item.isUnread {
-                guard let itemConv = conversationId(from: item.dataMap) else { continue }
+                guard let itemConv = parseConversationId(from: item.dataMap) else { continue }
                 guard itemConv.compare(cid, options: .caseInsensitive) == .orderedSame else { continue }
                 _ = await userRepository.markNotificationRead(notificationId: item.id)
             }
         }
     }
 
-    private static func conversationId(from data: [String: String]) -> String? {
+    private static func parseConversationId(from data: [String: Any]?) -> String? {
+        guard let data else { return nil }
         for key in ["conversation_id", "conversationId", "ConversationID"] {
-            let value = data[key]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            if !value.isEmpty { return value }
+            let raw = data[key]
+            let value: String
+            if let s = raw as? String {
+                value = s
+            } else if let n = raw {
+                value = String(describing: n)
+            } else {
+                continue
+            }
+            let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty { return trimmed }
         }
         return nil
     }

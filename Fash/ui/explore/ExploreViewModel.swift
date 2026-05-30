@@ -275,19 +275,19 @@ final class ExploreViewModel {
     ) async {
         async let overlay: Void = {
             await loadSearchOverlayData(deps: deps)
-            launchProgress?.completeExploreStep()
+            await MainActor.run { launchProgress?.completeExploreStep() }
         }()
         async let catalog: Void = {
             await loadFilterCatalogIfNeeded(deps: deps)
-            launchProgress?.completeExploreStep()
+            await MainActor.run { launchProgress?.completeExploreStep() }
         }()
         async let chips: Void = {
             await loadQuickInterestChips(deps: deps)
-            launchProgress?.completeExploreStep()
+            await MainActor.run { launchProgress?.completeExploreStep() }
         }()
         async let sellers: Void = {
             await loadFeaturedSellers(deps: deps, isGuestMode: isGuestMode)
-            launchProgress?.completeExploreStep()
+            await MainActor.run { launchProgress?.completeExploreStep() }
         }()
         _ = await (overlay, catalog, chips, sellers)
         if items.isEmpty {

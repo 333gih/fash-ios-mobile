@@ -123,19 +123,19 @@ final class HomeViewModel {
         if !isGuestMode {
             async let ux: Void = {
                 await loadUxPersonalization(deps: deps, isGuestMode: isGuestMode)
-                launchProgress?.completeHomeStep()
+                await MainActor.run { launchProgress?.completeHomeStep() }
             }()
             async let sections: Void = {
                 _ = await prefetchRecommendationSections(deps: deps, isGuestMode: isGuestMode)
-                launchProgress?.completeHomeStep()
+                await MainActor.run { launchProgress?.completeHomeStep() }
             }()
             async let stats: Void = {
                 _ = await loadBuyerHomeStats(deps: deps, isGuestMode: isGuestMode)
-                launchProgress?.completeHomeStep()
+                await MainActor.run { launchProgress?.completeHomeStep() }
             }()
             async let sizing: Void = {
                 await refreshSizingBannerState(deps: deps, isGuestMode: isGuestMode)
-                launchProgress?.completeHomeStep()
+                await MainActor.run { launchProgress?.completeHomeStep() }
             }()
             _ = await (ux, sections, stats, sizing)
         }
