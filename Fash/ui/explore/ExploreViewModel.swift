@@ -7,6 +7,8 @@ enum ExplorePrimarySection: String, CaseIterable {
 }
 
 private let exploreFeedPageSize = 20
+/// Pinterest / Android Explore — prefetch when this many tiles from the end appear.
+private let exploreFeedPrefetchThreshold = 3
 /// Matches Android `ExploreStaleThresholdMs` — skip redundant reload when reopening Explore.
 private let exploreStaleThreshold: TimeInterval = 60
 
@@ -67,6 +69,7 @@ final class ExploreViewModel {
     var filterCatalogLoading = false
 
     private var listingsFetchGeneration = 0
+    private(set) var listingsFeedEpoch = 0
     private var sellersBrowseGeneration = 0
     private var loadMoreCooldownUntil: Date?
     private var loadMoreTask: Task<Void, Never>?
@@ -365,6 +368,14 @@ final class ExploreViewModel {
         }
     }
 
+    /// Android Explore grid — prefetch when [position] is within [exploreFeedPrefetchThreshold] of the end.
+    func requestLoadMoreIfNearEnd(position: Int, deps: AppDependencies, isGuestMode: Bool) {
+        guard canLoadMoreListings else { return }
+        let threshold = max(0, items.count - exploreFeedPrefetchThreshold)
+        guard position >= threshold else { return }
+        requestLoadMore(deps: deps, isGuestMode: isGuestMode)
+    }
+
     func cancelLoadMore() {
         loadMoreTask?.cancel()
         loadMoreTask = nil
@@ -386,9 +397,18 @@ final class ExploreViewModel {
         let now = Date()
         if let until = loadMoreCooldownUntil, now < until { return }
         loadMoreCooldownUntil = now.addingTimeInterval(0.4)
+        let fetchGen = listingsFetchGeneration
+        let offset = items.count
+        guard offset > 0 else { return }
         isLoadingMore = true
         defer { isLoadingMore = false }
-        await loadListings(deps: deps, isGuestMode: isGuestMode, offset: items.count, append: true)
+        await loadListings(
+            deps: deps,
+            isGuestMode: isGuestMode,
+            offset: offset,
+            append: true,
+            expectedFetchGeneration: fetchGen
+        )
     }
 
     func submitSearch(deps: AppDependencies, isGuestMode: Bool) async {
@@ -589,6 +609,7 @@ final class ExploreViewModel {
         listingsReloadTask = nil
         cancelLoadMore()
         listingsFetchGeneration += 1
+        listingsFeedEpoch += 1
         items = []
         hasMore = true
         loadError = false
@@ -619,6 +640,7 @@ final class ExploreViewModel {
             offset: 0
         )
         guard generation == listingsFetchGeneration else { return }
+        listingsFeedEpoch += 1
         switch result {
         case .success(let feed):
             items = feed
@@ -711,16 +733,22 @@ final class ExploreViewModel {
         deps: AppDependencies,
         isGuestMode: Bool,
         offset: Int,
-        append: Bool
+        append: Bool,
+        expectedFetchGeneration gen: Int? = nil
     ) async {
-        let gen = listingsFetchGeneration
+        let fetchGen = gen ?? listingsFetchGeneration
         let result = await requestListingsPage(deps: deps, isGuestMode: isGuestMode, offset: offset)
-        guard gen == listingsFetchGeneration else { return }
+        guard fetchGen == listingsFetchGeneration else { return }
         switch result {
         case .success(let feed):
             if append {
                 var seen = Set(items.map(\.id))
-                items = items + feed.filter { seen.insert($0.id).inserted }
+                let fresh = feed.filter { seen.insert($0.id).inserted }
+                guard !fresh.isEmpty || feed.isEmpty else {
+                    hasMore = feed.count >= exploreFeedPageSize
+                    return
+                }
+                items = items + fresh
             } else {
                 items = feed
             }
@@ -733,8 +761,8 @@ final class ExploreViewModel {
             if !append {
                 items = []
                 loadError = true
+                hasMore = false
             }
-            hasMore = false
         }
     }
 

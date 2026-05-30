@@ -259,7 +259,7 @@ struct ExploreScreen: View {
     private var listingsGrid: some View {
         ScrollViewReader { scrollProxy in
             ScrollView {
-                VStack(spacing: 0) {
+                LazyVStack(spacing: 0, pinnedViews: []) {
                     ExploreFeedScrollOffsetAnchor()
                         .id(ExploreFeedScrollIds.top)
 
@@ -300,6 +300,9 @@ struct ExploreScreen: View {
         .refreshable { await viewModel.pullToRefresh(deps: deps, isGuestMode: isGuestMode) }
         .onChange(of: viewModel.isRefreshing) { _, refreshing in
             if refreshing { masonryColumnAssignments = [:] }
+        }
+        .onChange(of: viewModel.listingsFeedEpoch) { _, _ in
+            masonryColumnAssignments = [:]
         }
     }
 
@@ -486,6 +489,11 @@ private struct ExploreListingCell: View {
         .onAppear {
             appearedAt = Date()
             viewModel.recordView(item: item, position: index, deps: deps)
+            viewModel.requestLoadMoreIfNearEnd(
+                position: index,
+                deps: deps,
+                isGuestMode: isGuestMode
+            )
         }
         .onDisappear {
             if let appearedAt {
