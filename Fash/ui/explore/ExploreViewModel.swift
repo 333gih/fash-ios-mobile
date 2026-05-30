@@ -868,12 +868,14 @@ final class ExploreViewModel {
     }
 
     func toggleLike(_ item: ListingFeedItem, position: Int = 0, deps: AppDependencies) async {
+        let snapshot = item
+        patchListing(item.id) { _ in snapshot.toggledLike }
         switch await deps.listingRepository.toggleLike(listingId: item.id) {
         case .failure(let error):
+            patchListing(item.id) { _ in snapshot }
             deps.showSnackbar(FeedEngagementFeedback.actionErrorMessage(for: error))
-            return
         case .success(let liked):
-            patchListing(item.id) { $0.applyingLikeToggle(liked) }
+            patchListing(item.id) { _ in snapshot.applyingLikeToggle(liked) }
             if liked {
                 deps.feedEventReporter.like(listingId: item.id, surface: "explore", position: position)
             }
@@ -882,11 +884,14 @@ final class ExploreViewModel {
     }
 
     func toggleSave(_ item: ListingFeedItem, position: Int = 0, deps: AppDependencies) async {
-        switch await deps.listingRepository.toggleSave(listingId: item.id, currentlySaved: item.isSaved) {
+        let snapshot = item
+        patchListing(item.id) { _ in snapshot.toggledSave }
+        switch await deps.listingRepository.toggleSave(listingId: item.id, currentlySaved: snapshot.isSaved) {
         case .failure(let error):
+            patchListing(item.id) { _ in snapshot }
             deps.showSnackbar(FeedEngagementFeedback.actionErrorMessage(for: error))
         case .success(let saved):
-            patchListing(item.id) { $0.applyingSaveToggle(saved) }
+            patchListing(item.id) { _ in snapshot.applyingSaveToggle(saved) }
             if saved {
                 deps.feedEventReporter.save(listingId: item.id, surface: "explore", position: position)
             }

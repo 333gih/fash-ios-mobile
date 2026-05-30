@@ -61,6 +61,7 @@ struct ListingStaggeredMasonryView<Cell: View, Footer: View>: View {
         }
         .onAppear { refreshLayout() }
         .onChange(of: itemIdsSignature) { _, _ in refreshLayout() }
+        .onChange(of: engagementLayoutSignature) { _, _ in refreshLayout() }
     }
 
     private var widthProbe: some View {
@@ -78,6 +79,21 @@ struct ListingStaggeredMasonryView<Cell: View, Footer: View>: View {
 
     private var itemIdsSignature: [String] {
         items.map(\.id)
+    }
+
+    /// Like/save updates keep the same ids — refresh cached column entries.
+    private var engagementLayoutSignature: Int {
+        var hasher = Hasher()
+        for item in items {
+            hasher.combine(item.id)
+            hasher.combine(item.isLiked)
+            hasher.combine(item.isSaved)
+        }
+        return hasher.finalize()
+    }
+
+    private var itemsById: [String: ListingFeedItem] {
+        Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0) })
     }
 
     private func refreshLayout() {
@@ -99,7 +115,7 @@ struct ListingStaggeredMasonryView<Cell: View, Footer: View>: View {
     @ViewBuilder
     private func pinterestColumn(_ entries: [(index: Int, item: ListingFeedItem)]) -> some View {
         LazyVStack(spacing: gap) {
-            ForEach(entries, id: \.item.id) { entry in
+            ForEach(entries, id: \.item.masonryCellId) { entry in
                 masonryTile(entry)
             }
         }
@@ -108,11 +124,12 @@ struct ListingStaggeredMasonryView<Cell: View, Footer: View>: View {
 
     @ViewBuilder
     private func masonryTile(_ entry: (index: Int, item: ListingFeedItem)) -> some View {
+        let liveItem = itemsById[entry.item.id] ?? entry.item
         let tileHeight = ListingMasonryGrid.tileHeight(
             columnWidth: columnWidth,
-            item: entry.item
+            item: liveItem
         )
-        cellContent(entry.item, entry.index)
+        cellContent(liveItem, entry.index)
             .environment(\.listingMasonryColumnWidth, columnWidth)
             .frame(width: columnWidth, height: max(1, tileHeight), alignment: .top)
             .clipped()

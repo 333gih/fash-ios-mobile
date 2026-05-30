@@ -93,6 +93,15 @@ struct ListingFeedItem: Identifiable, Hashable {
 }
 
 extension ListingFeedItem {
+    /// Optimistic UI before the API returns.
+    var toggledLike: ListingFeedItem { applyingLikeToggle(!isLiked) }
+
+    /// Optimistic UI before the API returns.
+    var toggledSave: ListingFeedItem { applyingSaveToggle(!isSaved) }
+
+    /// Stable masonry column assignment; changes when like/save toggles so cells refresh.
+    var masonryCellId: String { "\(id)#\(isLiked)#\(isSaved)" }
+
     func applyingLikeToggle(_ liked: Bool) -> ListingFeedItem {
         let delta = (liked && !isLiked) ? 1 : ((!liked && isLiked) ? -1 : 0)
         return withEngagement(

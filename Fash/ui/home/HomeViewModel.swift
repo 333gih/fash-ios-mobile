@@ -256,36 +256,42 @@ final class HomeViewModel {
     }
 
     func toggleLike(_ item: ListingFeedItem, surface: String, position: Int, deps: AppDependencies) {
+        let snapshot = item
+        patchListingInFeeds(item.id) { _ in snapshot.toggledLike }
         Task {
             switch await deps.listingRepository.toggleLike(listingId: item.id) {
             case .success(let liked):
-                patchListingInFeeds(item.id) { $0.applyingLikeToggle(liked) }
+                patchListingInFeeds(item.id) { _ in snapshot.applyingLikeToggle(liked) }
                 if liked {
                     deps.feedEventReporter.like(listingId: item.id, surface: surface, position: position)
                 }
                 deps.showSnackbar(FeedEngagementFeedback.likeMessage(liked: liked))
             case .failure(let error):
+                patchListingInFeeds(item.id) { _ in snapshot }
                 deps.showSnackbar(FeedEngagementFeedback.actionErrorMessage(for: error))
             }
         }
     }
 
     func toggleSave(_ item: ListingFeedItem, surface: String, position: Int, deps: AppDependencies, isGuestMode: Bool) {
+        let snapshot = item
+        patchListingInFeeds(item.id) { _ in snapshot.toggledSave }
         Task {
             switch await deps.listingRepository.toggleSave(
                 listingId: item.id,
-                currentlySaved: item.isSaved
+                currentlySaved: snapshot.isSaved
             ) {
             case .success(let saved):
-                patchListingInFeeds(item.id) { $0.applyingSaveToggle(saved) }
+                patchListingInFeeds(item.id) { _ in snapshot.applyingSaveToggle(saved) }
                 if saved {
                     deps.feedEventReporter.save(listingId: item.id, surface: surface, position: position)
                 }
                 deps.showSnackbar(FeedEngagementFeedback.saveMessage(saved: saved))
                 if !isGuestMode {
-                    await loadBuyerHomeStats(deps: deps, isGuestMode: false)
+                    Task { await loadBuyerHomeStats(deps: deps, isGuestMode: false) }
                 }
             case .failure(let error):
+                patchListingInFeeds(item.id) { _ in snapshot }
                 deps.showSnackbar(FeedEngagementFeedback.actionErrorMessage(for: error))
             }
         }

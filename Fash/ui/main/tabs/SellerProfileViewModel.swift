@@ -156,27 +156,33 @@ final class SellerProfileViewModel {
     }
 
     func toggleLike(_ item: ListingFeedItem, deps: AppDependencies) async {
+        let snapshot = item
+        patch(item.id) { _ in snapshot.toggledLike }
         switch await deps.listingRepository.toggleLike(listingId: item.id) {
         case .success(let liked):
-            patch(item.id, liked: liked, saved: nil)
+            patch(item.id) { _ in snapshot.applyingLikeToggle(liked) }
             if liked {
                 deps.feedEventReporter.like(listingId: item.id, surface: "seller_profile")
             }
             deps.showSnackbar(FeedEngagementFeedback.likeMessage(liked: liked))
         case .failure(let error):
+            patch(item.id) { _ in snapshot }
             deps.showSnackbar(FeedEngagementFeedback.actionErrorMessage(for: error))
         }
     }
 
     func toggleSave(_ item: ListingFeedItem, deps: AppDependencies) async {
-        switch await deps.listingRepository.toggleSave(listingId: item.id, currentlySaved: item.isSaved) {
+        let snapshot = item
+        patch(item.id) { _ in snapshot.toggledSave }
+        switch await deps.listingRepository.toggleSave(listingId: item.id, currentlySaved: snapshot.isSaved) {
         case .success(let saved):
-            patch(item.id, liked: nil, saved: saved)
+            patch(item.id) { _ in snapshot.applyingSaveToggle(saved) }
             if saved {
                 deps.feedEventReporter.save(listingId: item.id, surface: "seller_profile")
             }
             deps.showSnackbar(FeedEngagementFeedback.saveMessage(saved: saved))
         case .failure(let error):
+            patch(item.id) { _ in snapshot }
             deps.showSnackbar(FeedEngagementFeedback.actionErrorMessage(for: error))
         }
     }
@@ -254,41 +260,10 @@ final class SellerProfileViewModel {
         return result
     }
 
-    private func patch(_ id: String, liked: Bool?, saved: Bool?) {
+    private func patch(_ id: String, transform: (ListingFeedItem) -> ListingFeedItem) {
         func map(_ items: [ListingFeedItem]) -> [ListingFeedItem] {
             items.map { cur in
-                guard cur.id == id else { return cur }
-                if let liked {
-                    let delta = (liked && !cur.isLiked) ? 1 : ((!liked && cur.isLiked) ? -1 : 0)
-                    return ListingFeedItem(
-                        id: cur.id, title: cur.title, coverImageUrl: cur.coverImageUrl,
-                        coverImageWidth: cur.coverImageWidth, coverImageHeight: cur.coverImageHeight,
-                        imageUrls: cur.imageUrls,
-                        priceVnd: cur.priceVnd, brand: cur.brand, size: cur.size, categoryName: cur.categoryName,
-                        listingAestheticTag: cur.listingAestheticTag, condition: cur.condition,
-                        likeCount: max(0, cur.likeCount + delta), saveCount: cur.saveCount,
-                        sellerId: cur.sellerId, sellerUsername: cur.sellerUsername, sellerStyleTag: cur.sellerStyleTag,
-                        createdAt: cur.createdAt, isLiked: liked, isSaved: cur.isSaved,
-                        onsiteInspectionCommitment: cur.onsiteInspectionCommitment,
-                        listingStatus: cur.listingStatus, descriptionText: cur.descriptionText
-                    )
-                }
-                if let saved {
-                    let delta = (saved && !cur.isSaved) ? 1 : ((!saved && cur.isSaved) ? -1 : 0)
-                    return ListingFeedItem(
-                        id: cur.id, title: cur.title, coverImageUrl: cur.coverImageUrl,
-                        coverImageWidth: cur.coverImageWidth, coverImageHeight: cur.coverImageHeight,
-                        imageUrls: cur.imageUrls,
-                        priceVnd: cur.priceVnd, brand: cur.brand, size: cur.size, categoryName: cur.categoryName,
-                        listingAestheticTag: cur.listingAestheticTag, condition: cur.condition,
-                        likeCount: cur.likeCount, saveCount: max(0, cur.saveCount + delta),
-                        sellerId: cur.sellerId, sellerUsername: cur.sellerUsername, sellerStyleTag: cur.sellerStyleTag,
-                        createdAt: cur.createdAt, isLiked: cur.isLiked, isSaved: saved,
-                        onsiteInspectionCommitment: cur.onsiteInspectionCommitment,
-                        listingStatus: cur.listingStatus, descriptionText: cur.descriptionText
-                    )
-                }
-                return cur
+                cur.id == id ? transform(cur) : cur
             }
         }
         sellingListings = map(sellingListings)

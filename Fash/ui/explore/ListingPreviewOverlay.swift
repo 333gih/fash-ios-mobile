@@ -75,25 +75,31 @@ struct ListingPreviewOverlay: View {
 
     private func toggleLike(_ preview: ExploreListingPreviewState) async {
         guard !isGuestMode else { onRequestLogin?(); return }
-        switch await deps.listingRepository.toggleLike(listingId: preview.feedItem.id) {
+        let snapshot = preview.feedItem
+        applyEngagementPatch(listingId: snapshot.id) { _ in snapshot.toggledLike }
+        switch await deps.listingRepository.toggleLike(listingId: snapshot.id) {
         case .failure(let error):
+            applyEngagementPatch(listingId: snapshot.id) { _ in snapshot }
             deps.showSnackbar(FeedEngagementFeedback.actionErrorMessage(for: error))
         case .success(let liked):
-            applyEngagementPatch(listingId: preview.feedItem.id) { $0.applyingLikeToggle(liked) }
+            applyEngagementPatch(listingId: snapshot.id) { _ in snapshot.applyingLikeToggle(liked) }
             deps.showSnackbar(FeedEngagementFeedback.likeMessage(liked: liked))
         }
     }
 
     private func toggleSave(_ preview: ExploreListingPreviewState) async {
         guard !isGuestMode else { onRequestLogin?(); return }
+        let snapshot = preview.feedItem
+        applyEngagementPatch(listingId: snapshot.id) { _ in snapshot.toggledSave }
         switch await deps.listingRepository.toggleSave(
-            listingId: preview.feedItem.id,
-            currentlySaved: preview.feedItem.isSaved
+            listingId: snapshot.id,
+            currentlySaved: snapshot.isSaved
         ) {
         case .failure(let error):
+            applyEngagementPatch(listingId: snapshot.id) { _ in snapshot }
             deps.showSnackbar(FeedEngagementFeedback.actionErrorMessage(for: error))
         case .success(let saved):
-            applyEngagementPatch(listingId: preview.feedItem.id) { $0.applyingSaveToggle(saved) }
+            applyEngagementPatch(listingId: snapshot.id) { _ in snapshot.applyingSaveToggle(saved) }
             deps.showSnackbar(FeedEngagementFeedback.saveMessage(saved: saved))
         }
     }

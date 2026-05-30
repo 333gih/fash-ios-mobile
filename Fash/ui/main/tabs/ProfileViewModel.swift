@@ -196,20 +196,25 @@ final class ProfileViewModel {
     }
 
     func toggleLike(_ item: ListingFeedItem, deps: AppDependencies) async {
+        let snapshot = item
+        patchListing(item.id) { _ in snapshot.toggledLike }
         switch await deps.listingRepository.toggleLike(listingId: item.id) {
         case .success(let liked):
-            patchListing(item.id) { $0.applyingLikeToggle(liked) }
+            patchListing(item.id) { _ in snapshot.applyingLikeToggle(liked) }
             deps.showSnackbar(FeedEngagementFeedback.likeMessage(liked: liked))
         case .failure(let error):
+            patchListing(item.id) { _ in snapshot }
             deps.showSnackbar(FeedEngagementFeedback.actionErrorMessage(for: error))
         }
     }
 
     func toggleSave(_ item: ListingFeedItem, deps: AppDependencies) async {
-        switch await deps.listingRepository.toggleSave(listingId: item.id, currentlySaved: item.isSaved) {
+        let snapshot = item
+        patchListing(item.id) { _ in snapshot.toggledSave }
+        switch await deps.listingRepository.toggleSave(listingId: item.id, currentlySaved: snapshot.isSaved) {
         case .success(let saved):
-            patchListing(item.id) { $0.applyingSaveToggle(saved) }
-            if !saved && item.isSaved {
+            patchListing(item.id) { _ in snapshot.applyingSaveToggle(saved) }
+            if !saved && snapshot.isSaved {
                 wishlistListings.removeAll { $0.id == item.id }
             } else if saved {
                 if let updated = sellingListings.first(where: { $0.id == item.id })
@@ -223,6 +228,7 @@ final class ProfileViewModel {
             }
             deps.showSnackbar(FeedEngagementFeedback.saveMessage(saved: saved))
         case .failure(let error):
+            patchListing(item.id) { _ in snapshot }
             deps.showSnackbar(FeedEngagementFeedback.actionErrorMessage(for: error))
         }
     }
