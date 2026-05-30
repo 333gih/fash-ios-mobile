@@ -159,7 +159,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                                     ListingGridCard(
                                         item: item,
                                         onTap: { onListingClick(item) },
-                                        imageAspectRatio: ListingMasonryGrid.staggerAspectRatio(for: item.id),
+                                        imageAspectRatio: ListingMasonryGrid.masonryAspectRatio(for: item),
                                         showQuickActions: showQuickActions,
                                         statusOverlayLabel: showStatusOverlay
                                             ? ListingStatusUi.overlayLabel(for: item.listingStatus)

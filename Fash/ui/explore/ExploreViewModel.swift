@@ -888,7 +888,9 @@ final class ExploreViewModel {
             patchListing(item.id) { cur in
                 let delta = (saved && !cur.isSaved) ? 1 : ((!saved && cur.isSaved) ? -1 : 0)
                 return ListingFeedItem(
-                    id: cur.id, title: cur.title, coverImageUrl: cur.coverImageUrl, imageUrls: cur.imageUrls,
+                    id: cur.id, title: cur.title, coverImageUrl: cur.coverImageUrl,
+                    coverImageWidth: cur.coverImageWidth, coverImageHeight: cur.coverImageHeight,
+                    imageUrls: cur.imageUrls,
                     priceVnd: cur.priceVnd, brand: cur.brand, size: cur.size, categoryName: cur.categoryName,
                     listingAestheticTag: cur.listingAestheticTag, condition: cur.condition,
                     likeCount: cur.likeCount, saveCount: max(0, cur.saveCount + delta),

@@ -3,11 +3,25 @@ import SwiftUI
 /// Port of Android `ListingMasonryGrid` (ui.feed).
 enum ListingMasonryGrid {
     private static let staggerRatios: [CGFloat] = [3.0 / 4.0, 4.0 / 5.0, 5.0 / 6.0]
+    private static let minMasonryAspect: CGFloat = 3.0 / 5.0
+    private static let maxMasonryAspect: CGFloat = 5.0 / 4.0
 
     /// Vary tile height by listing id hash — Android `listingMasonryStaggerAspectRatio`.
     static func staggerAspectRatio(for listingId: String) -> CGFloat {
         let bucket = abs(javaStringHashCode(listingId)) % staggerRatios.count
         return staggerRatios[bucket]
+    }
+
+    /// Pinterest-style width/height from cover pixels, clamped; falls back to id-hash stagger.
+    static func masonryAspectRatio(for item: ListingFeedItem) -> CGFloat {
+        if let w = item.coverImageWidth, let h = item.coverImageHeight, w > 0, h > 0 {
+            return clampMasonryAspectRatio(CGFloat(w) / CGFloat(h))
+        }
+        return staggerAspectRatio(for: item.id)
+    }
+
+    static func clampMasonryAspectRatio(_ raw: CGFloat) -> CGFloat {
+        min(max(raw, minMasonryAspect), maxMasonryAspect)
     }
 
     /// JVM/Kotlin `String.hashCode()` — stable bucket parity with Android.
@@ -20,9 +34,9 @@ enum ListingMasonryGrid {
     }
 
     /// Tile height when the column width is known (image aspect ratio only).
-    static func estimatedTileHeight(columnWidth: CGFloat, listingId: String) -> CGFloat {
+    static func estimatedTileHeight(columnWidth: CGFloat, item: ListingFeedItem) -> CGFloat {
         guard columnWidth > 0 else { return 0 }
-        return columnWidth / staggerAspectRatio(for: listingId)
+        return columnWidth / masonryAspectRatio(for: item)
     }
 
     static func columnWidth(
@@ -42,7 +56,7 @@ enum ListingMasonryGrid {
     ) -> CGFloat {
         guard !entries.isEmpty, columnWidth > 0 else { return 0 }
         let tiles = entries.reduce(CGFloat(0)) { partial, entry in
-            partial + estimatedTileHeight(columnWidth: columnWidth, listingId: entry.item.id)
+            partial + estimatedTileHeight(columnWidth: columnWidth, item: entry.item)
         }
         return tiles + verticalGap * CGFloat(max(0, entries.count - 1))
     }
@@ -189,7 +203,7 @@ struct ListingMasonryGridView<Content: View>: View {
 }
 
 extension ListingMasonryGrid {
-    /// Assigns each tile to the shorter column using estimated height from [staggerAspectRatio].
+    /// Assigns each tile to the shorter column using estimated height from [masonryAspectRatio].
     static func distributeShortestColumn(
         entries: [(index: Int, item: ListingFeedItem)]
     ) -> (
@@ -222,7 +236,7 @@ extension ListingMasonryGrid {
         right.reserveCapacity(items.count / 2 + 1)
 
         for (index, item) in items.enumerated() {
-            let unitHeight = 1 / staggerAspectRatio(for: item.id)
+            let unitHeight = 1 / masonryAspectRatio(for: item)
             let placeRight: Bool
             if let stored = assignedIsRightColumn[item.id] {
                 placeRight = stored

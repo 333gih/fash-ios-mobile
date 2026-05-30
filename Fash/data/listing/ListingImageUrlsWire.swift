@@ -2,15 +2,45 @@ import Foundation
 
 /// Port of Android `ListingImageUrlsWire` — step objects in `image_urls` + cover derivation.
 enum ListingImageUrlsWire {
-    private struct Row {
+    private struct ImageStepRow {
         let sortOrder: Int
         let index: Int
         let url: String
+        let width: Int?
+        let height: Int?
+    }
+
+    struct CoverImageMeta {
+        let url: String
+        let width: Int?
+        let height: Int?
     }
 
     static func parseUrlStrings(from listing: [String: Any]) -> [String] {
+        parseImageSteps(from: listing).map(\.url)
+    }
+
+    static func resolveCoverUrl(coverFromRoot: String, listing: [String: Any]) -> String {
+        resolveCoverMeta(coverFromRoot: coverFromRoot, listing: listing).url
+    }
+
+    /// Cover URL plus pixel dimensions from the matching `image_urls` step when the API sends them.
+    static func resolveCoverMeta(coverFromRoot: String, listing: [String: Any]) -> CoverImageMeta {
+        let root = coverFromRoot.trimmingCharacters(in: .whitespaces)
+        let steps = parseImageSteps(from: listing)
+        if !root.isEmpty {
+            let match = steps.first { $0.url == root }
+            return CoverImageMeta(url: root, width: match?.width, height: match?.height)
+        }
+        if let first = steps.first {
+            return CoverImageMeta(url: first.url, width: first.width, height: first.height)
+        }
+        return CoverImageMeta(url: "", width: nil, height: nil)
+    }
+
+    private static func parseImageSteps(from listing: [String: Any]) -> [ImageStepRow] {
         guard let arr = imageUrlsNode(from: listing) else { return [] }
-        var rows: [Row] = []
+        var rows: [ImageStepRow] = []
         for (index, element) in arr.enumerated() {
             if let o = element as? [String: Any] {
                 let url = RepositoryHttp.optString(o, "image_url", "ImageURL").trimmingCharacters(in: .whitespaces)
@@ -19,27 +49,26 @@ enum ListingImageUrlsWire {
                 if o["sort_order"] != nil || o["SortOrder"] != nil {
                     order = RepositoryHttp.optInt(o, "sort_order", "SortOrder", default: index)
                 }
-                rows.append(Row(sortOrder: order, index: index, url: url))
+                let width = positiveDimension(o, "width", "Width")
+                let height = positiveDimension(o, "height", "Height")
+                rows.append(ImageStepRow(sortOrder: order, index: index, url: url, width: width, height: height))
             } else if let s = element as? String {
                 let trimmed = s.trimmingCharacters(in: .whitespaces)
                 let looksLikeJson = trimmed.first.map { $0 == Character(UnicodeScalar(0x7B)!) } ?? false
                 if !trimmed.isEmpty, !looksLikeJson {
-                    rows.append(Row(sortOrder: index, index: index, url: trimmed))
+                    rows.append(ImageStepRow(sortOrder: index, index: index, url: trimmed, width: nil, height: nil))
                 }
             }
         }
-        return rows
-            .sorted { lhs, rhs in
-                if lhs.sortOrder != rhs.sortOrder { return lhs.sortOrder < rhs.sortOrder }
-                return lhs.index < rhs.index
-            }
-            .map(\.url)
+        return rows.sorted { lhs, rhs in
+            if lhs.sortOrder != rhs.sortOrder { return lhs.sortOrder < rhs.sortOrder }
+            return lhs.index < rhs.index
+        }
     }
 
-    static func resolveCoverUrl(coverFromRoot: String, listing: [String: Any]) -> String {
-        let root = coverFromRoot.trimmingCharacters(in: .whitespaces)
-        if !root.isEmpty { return root }
-        return parseUrlStrings(from: listing).first ?? ""
+    private static func positiveDimension(_ o: [String: Any], _ snake: String, _ pascal: String) -> Int? {
+        let v = RepositoryHttp.optInt(o, snake, pascal, default: 0)
+        return v > 0 ? v : nil
     }
 
     private static func imageUrlsNode(from listing: [String: Any]) -> [Any]? {

@@ -230,7 +230,7 @@ struct HomeFeedContent: View {
                         item: item,
                         index: index,
                         surface: analyticsSurface,
-                        imageAspectRatio: ListingMasonryGrid.staggerAspectRatio(for: item.id),
+                        imageAspectRatio: ListingMasonryGrid.masonryAspectRatio(for: item),
                         onTap: {
                             viewModel.reportListingClick(
                                 item: item,

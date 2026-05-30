@@ -4,6 +4,8 @@ struct ListingFeedItem: Identifiable, Hashable {
     let id: String
     let title: String
     let coverImageUrl: String
+    let coverImageWidth: Int?
+    let coverImageHeight: Int?
     let imageUrls: [String]
     let priceVnd: Int64
     let brand: String?
@@ -31,6 +33,8 @@ struct ListingFeedItem: Identifiable, Hashable {
         id: String,
         title: String,
         coverImageUrl: String = "",
+        coverImageWidth: Int? = nil,
+        coverImageHeight: Int? = nil,
         imageUrls: [String] = [],
         priceVnd: Int64 = 0,
         brand: String? = nil,
@@ -53,6 +57,8 @@ struct ListingFeedItem: Identifiable, Hashable {
         self.id = id
         self.title = title
         self.coverImageUrl = coverImageUrl
+        self.coverImageWidth = coverImageWidth
+        self.coverImageHeight = coverImageHeight
         self.imageUrls = imageUrls
         self.priceVnd = priceVnd
         self.brand = brand
@@ -92,6 +98,8 @@ extension ListingFeedItem {
             id: id,
             title: title,
             coverImageUrl: coverImageUrl,
+            coverImageWidth: coverImageWidth,
+            coverImageHeight: coverImageHeight,
             imageUrls: imageUrls,
             priceVnd: priceVnd,
             brand: brand,
@@ -157,9 +165,9 @@ enum ListingFeedJsonParser {
         guard let id = (row["id"] as? String) ?? (row["ID"] as? String) ?? (row["listing_id"] as? String) else { return nil }
         let title = (row["title"] as? String) ?? (row["Title"] as? String) ?? (row["name"] as? String) ?? ""
         let priceVnd = (row["price"] as? NSNumber)?.int64Value ?? (row["Price"] as? NSNumber)?.int64Value ?? 0
-        let imageUrls = ListingImageUrlsWire.parseUrlStrings(from: row)
         let coverRoot = RepositoryHttp.optString(row, "cover_image_url", "CoverImageURL")
-        let cover = ListingImageUrlsWire.resolveCoverUrl(coverFromRoot: coverRoot, listing: row)
+        let coverMeta = ListingImageUrlsWire.resolveCoverMeta(coverFromRoot: coverRoot, listing: row)
+        let imageUrls = ListingImageUrlsWire.parseUrlStrings(from: row)
         let seller = (row["seller"] as? [String: Any]) ?? (row["Seller"] as? [String: Any])
         let sellerUsername = seller?["username"] as? String ?? seller?["Username"] as? String
         let sellerId = seller?["user_id"] as? String ?? seller?["UserID"] as? String ?? row["seller_id"] as? String
@@ -178,7 +186,9 @@ enum ListingFeedJsonParser {
         return ListingFeedItem(
             id: id,
             title: title,
-            coverImageUrl: cover,
+            coverImageUrl: coverMeta.url,
+            coverImageWidth: coverMeta.width,
+            coverImageHeight: coverMeta.height,
             imageUrls: imageUrls,
             priceVnd: priceVnd,
             brand: (row["brand"] as? String) ?? (row["Brand"] as? String) ?? ((row["brand"] as? [String: Any])?["name"] as? String),

@@ -462,7 +462,7 @@ private struct ExploreListingCell: View {
                     )
                 }
             },
-            imageAspectRatio: ListingMasonryGrid.staggerAspectRatio(for: item.id),
+            imageAspectRatio: ListingMasonryGrid.masonryAspectRatio(for: item),
             showQuickActions: true,
             onLike: {
                 if !isGuestMode {
