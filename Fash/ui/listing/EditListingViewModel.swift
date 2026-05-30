@@ -501,7 +501,7 @@ private func matchEditTagIds(listingTagStrings: [String], catalog: [CommonAesthe
         }
         for tag in catalog where !out.contains(tag.id) {
             if tag.name.caseInsensitiveCompare(t) == .orderedSame
-                || tag.displayName().caseInsensitiveCompare(t) == .orderedSame {
+                || tag.displayName.caseInsensitiveCompare(t) == .orderedSame {
                 out.insert(tag.id)
                 break
             }
