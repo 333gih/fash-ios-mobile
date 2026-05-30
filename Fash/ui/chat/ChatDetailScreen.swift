@@ -78,6 +78,12 @@ private struct ChatDetailScreenBody: View {
                 if viewModel.hasOrder {
                     let isBuyer = viewModel.detail?.isBuyer == true
                     let norm = ChatOrderStatusCopy.normalize(viewModel.orderStatus)
+                    let meetupPayBy: String? = {
+                        let raw = viewModel.orderMeetupDeadlineAt?
+                            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                        guard !raw.isEmpty else { return nil }
+                        return OrderFormatting.formatShortDate(raw)
+                    }()
                     ChatDealBanner(
                         isBuyer: isBuyer,
                         orderStatus: viewModel.orderStatus,
@@ -86,6 +92,10 @@ private struct ChatDetailScreenBody: View {
                             isBuyer: isBuyer,
                             orderStatus: viewModel.orderStatus
                         ),
+                        orderRemainingSeconds: viewModel.orderRemainingSeconds,
+                        orderExpiryKind: viewModel.orderExpiryKind,
+                        meetupPayByFormatted: meetupPayBy,
+                        meetingSosUnlocked: viewModel.orderMeetupBothPartiesCheckedIn,
                         onViewOrder: {
                             if let oid = viewModel.orderId ?? viewModel.detail?.orderId, !oid.isEmpty {
                                 presentedOrderId = oid
@@ -96,8 +106,35 @@ private struct ChatDetailScreenBody: View {
                             : nil,
                         onScheduleMeetup: isBuyer && norm == "cash_meetup_open" && !viewModel.shouldHideScheduleMeetup
                             ? { showMeetingSheet = true }
-                            : nil
+                            : nil,
+                        onConfirmHandoff: viewModel.sellerShowsConfirmHandoff
+                            ? { Task { await viewModel.confirmHandoff(deps: deps) } }
+                            : nil,
+                        confirmHandoffInProgress: viewModel.confirmHandoffInFlight
                     )
+                    if let stickyAppt = viewModel.activeMeetupForStickyBanner {
+                        ChatMeetupStickyBanner(
+                            appointment: stickyAppt,
+                            isBuyer: isBuyer,
+                            mutationInFlight: viewModel.meetingMutationInFlight,
+                            onOnMyWay: {
+                                Task {
+                                    await viewModel.onMyWayMeeting(
+                                        appointmentId: stickyAppt.appointmentId,
+                                        deps: deps
+                                    )
+                                }
+                            },
+                            onCheckIn: {
+                                Task {
+                                    await viewModel.checkInMeeting(
+                                        appointmentId: stickyAppt.appointmentId,
+                                        deps: deps
+                                    )
+                                }
+                            }
+                        )
+                    }
                     Divider().overlay(FashColors.outlineMuted.opacity(0.5))
                 }
                 if viewModel.detail?.isBuyer == true, !viewModel.hasOrder {
@@ -319,25 +356,49 @@ private struct ChatDetailScreenBody: View {
 
     private var messagesList: some View {
         ScrollViewReader { proxy in
-            ScrollView {
-                LazyVStack(spacing: 8) {
-                    if viewModel.isMessagesLoading && viewModel.messages.isEmpty {
-                        ProgressView().padding(.top, 24)
+            ZStack(alignment: .bottom) {
+                ScrollView {
+                    LazyVStack(spacing: 8) {
+                        if viewModel.isMessagesLoading && viewModel.messages.isEmpty {
+                            ProgressView().padding(.top, 24)
+                        }
+                        ForEach(viewModel.messages) { message in
+                            messageRow(message)
+                                .id(message.messageId)
+                        }
+                        Color.clear
+                            .frame(height: 1)
+                            .id("chat-bottom-anchor")
+                            .chatScrollBottomAnchor()
                     }
-                    ForEach(viewModel.messages) { message in
-                        messageRow(message)
-                            .id(message.messageId)
-                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-            }
-            .scrollDismissesKeyboard(.interactively)
-            .onTapGesture { composerFocused = false }
-            .onChange(of: viewModel.messages.count) { _, _ in
-                if let last = viewModel.messages.last {
+                .coordinateSpace(name: "chatScroll")
+                .chatScrollFollowTracking { following in
+                    viewModel.setFollowingBottom(following, conversationId: conversationId, deps: deps)
+                }
+                .scrollDismissesKeyboard(.interactively)
+                .onTapGesture { composerFocused = false }
+                .onChange(of: viewModel.messages.count) { _, _ in
+                    guard viewModel.isFollowingBottom, let last = viewModel.messages.last else { return }
                     withAnimation { proxy.scrollTo(last.messageId, anchor: .bottom) }
                 }
+                .onChange(of: viewModel.isFollowingBottom) { _, following in
+                    guard following, let last = viewModel.messages.last else { return }
+                    withAnimation { proxy.scrollTo(last.messageId, anchor: .bottom) }
+                }
+
+                ChatNewMessagesBelowChip(count: viewModel.newMessagesBelow) {
+                    viewModel.scrollToLatestMessages()
+                    viewModel.setFollowingBottom(true, conversationId: conversationId, deps: deps)
+                    if let last = viewModel.messages.last {
+                        withAnimation { proxy.scrollTo(last.messageId, anchor: .bottom) }
+                    } else {
+                        proxy.scrollTo("chat-bottom-anchor", anchor: .bottom)
+                    }
+                }
+                .padding(.bottom, 12)
             }
         }
     }

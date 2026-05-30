@@ -282,6 +282,7 @@
 "chat_meeting_state_desc_pending" = "Vừa được đề xuất — chờ bên kia xác nhận hoặc đề xuất giờ khác.";
 "chat_meeting_status_cancelled" = "Đã hủy";
 "chat_meeting_status_confirmed" = "Đã xác nhận";
+"chat_new_messages_below" = "%d tin nhắn mới";
 "chat_meeting_status_pending" = "Chờ xác nhận";
 "chat_meeting_time_from_now_hint" = "Hôm nay: chọn từ %1$@ trở đi";
 "chat_meeting_time_picker_title" = "Chọn giờ";

@@ -33,6 +33,13 @@ final class ChatDetailViewModel {
     var orderMeetingAppointmentStatus = ""
     var orderMeetingScheduledAt = ""
     var orderMeetupBothPartiesCheckedIn = false
+    var orderCanConfirmHandoff = false
+    var orderMeetingSosUnlocked = false
+    var confirmHandoffInFlight = false
+    var isFollowingBottom = true
+    var newMessagesBelow = 0
+
+    private var cachedOrderDetail: OrderDetailPayload?
 
     var meetingBrowseProvinceId: String?
     var meetingBrowseDistrictId: String?
@@ -62,6 +69,17 @@ final class ChatDetailViewModel {
         )
     }
 
+    var sellerShowsConfirmHandoff: Bool {
+        guard let cachedOrderDetail else { return false }
+        return OrderDetailLogic.sellerShowsConfirmHandoffCta(cachedOrderDetail)
+    }
+
+    var activeMeetupForStickyBanner: MeetingAppointmentPayload? {
+        messages
+            .compactMap(\.meetingAppointment)
+            .last { $0.status.lowercased() == "confirmed" }
+    }
+
     func stopPolling() {
         pollTask?.cancel()
         pollTask = nil
@@ -79,6 +97,45 @@ final class ChatDetailViewModel {
         if let id = loadedConversationId {
             AppDependencies.shared.realtimeManager.sendTypingStop(conversationId: id)
             AppDependencies.shared.realtimeManager.unsubscribeFromConversation(id)
+            if AppDependencies.shared.activeChatSession.conversationId == id {
+                AppDependencies.shared.activeChatSession = ActiveChatSession()
+            }
+        }
+    }
+
+    func syncActiveChatSession(conversationId: String, deps: AppDependencies) {
+        deps.activeChatSession.conversationId = conversationId
+        deps.activeChatSession.isFollowingBottom = isFollowingBottom
+        deps.activeChatSession.newMessagesBelow = newMessagesBelow
+    }
+
+    func setFollowingBottom(_ following: Bool, conversationId: String, deps: AppDependencies) {
+        let wasFollowing = isFollowingBottom
+        isFollowingBottom = following
+        deps.activeChatSession.isFollowingBottom = following
+        if following {
+            newMessagesBelow = 0
+            deps.activeChatSession.newMessagesBelow = 0
+            if !wasFollowing {
+                Task { await markConversationReadAndSyncInbox(conversationId: conversationId, deps: deps) }
+            }
+        } else {
+            deps.activeChatSession.newMessagesBelow = newMessagesBelow
+        }
+    }
+
+    func scrollToLatestMessages() {
+        newMessagesBelow = 0
+        isFollowingBottom = true
+    }
+
+    private func markConversationReadAndSyncInbox(conversationId: String, deps: AppDependencies) async {
+        if case .success = await deps.chatRepository.markConversationRead(conversationId: conversationId) {
+            ChatUnreadRefreshHub.notifyMarkedRead()
+            await InboxNotificationSync.markChatNotificationsRead(
+                forConversationId: conversationId,
+                userRepository: deps.userRepository
+            )
         }
     }
 
@@ -95,16 +152,18 @@ final class ChatDetailViewModel {
             orderId = nil
             orderStatus = nil
             isOtherTyping = false
+            isFollowingBottom = true
+            newMessagesBelow = 0
+            cachedOrderDetail = nil
         }
         loadedConversationId = conversationId
+        syncActiveChatSession(conversationId: conversationId, deps: deps)
         isLoading = detail == nil
         loadError = nil
         defer { isLoading = false }
 
         await refreshAll(conversationId: conversationId, deps: deps)
-        if case .success = await deps.chatRepository.markConversationRead(conversationId: conversationId) {
-            ChatUnreadRefreshHub.notifyMarkedRead()
-        }
+        await markConversationReadAndSyncInbox(conversationId: conversationId, deps: deps)
         startPolling(conversationId: conversationId, deps: deps)
         bindRealtime(conversationId: conversationId, deps: deps)
         deps.realtimeManager.subscribeToConversation(conversationId)
@@ -472,7 +531,12 @@ final class ChatDetailViewModel {
         guard let convId = detail?.conversationId else { return }
         meetingMutationInFlight = true
         defer { meetingMutationInFlight = false }
-        switch await deps.chatRepository.checkInMeeting(appointmentId: appointmentId) {
+        let coords = MeetupCheckInLocation.peekLastKnownLatLng()
+        switch await deps.chatRepository.checkInMeeting(
+            appointmentId: appointmentId,
+            lat: coords?.lat,
+            lng: coords?.lng
+        ) {
         case .success(let r):
             if !r.endpointAvailable {
                 eventMessage = L10n.chatMeetingCheckInRefreshOnly
@@ -552,11 +616,23 @@ final class ChatDetailViewModel {
     }
 
     private func refreshMessages(conversationId: String, deps: AppDependencies) async {
+        let priorCount = messages.count
+        let priorLastId = messages.last?.messageId
         if case .success(let msgs) = await deps.chatRepository.getMessages(conversationId: conversationId) {
             messages = mergeWithPendingLocal(msgs)
         }
         isCreatingOffer = false
         isCreatingCounterOffer = false
+
+        let gained = max(0, messages.count - priorCount)
+        let lastChanged = messages.last?.messageId != priorLastId
+        guard gained > 0 || lastChanged else { return }
+        if isFollowingBottom {
+            await markConversationReadAndSyncInbox(conversationId: conversationId, deps: deps)
+        } else if gained > 0 {
+            newMessagesBelow += gained
+            deps.activeChatSession.newMessagesBelow = newMessagesBelow
+        }
     }
 
     private func mergeWithPendingLocal(_ server: [ChatMessage]) -> [ChatMessage] {
@@ -571,6 +647,7 @@ final class ChatDetailViewModel {
 
     private func fetchOrder(orderId: String, deps: AppDependencies) async {
         guard case .success(let payload) = await deps.orderRepository.getOrderDetail(orderId: orderId) else { return }
+        cachedOrderDetail = payload
         orderStatus = payload.status
         orderAmountVnd = payload.amountVnd > 0 ? payload.amountVnd : payload.listingPriceVnd
         orderRemainingSeconds = payload.remainingSeconds
@@ -578,7 +655,31 @@ final class ChatDetailViewModel {
         orderMeetupDeadlineAt = payload.meetupDeadlineAt
         orderMeetingAppointmentStatus = payload.meetingAppointment?.status ?? ""
         orderMeetingScheduledAt = payload.meetingAppointment?.scheduledAt ?? ""
-        orderMeetupBothPartiesCheckedIn = payload.meetingGrace?.sosUnlocked == true
+        orderCanConfirmHandoff = payload.canConfirmHandoff
+        orderMeetingSosUnlocked = payload.meetingGrace?.sosUnlocked == true
+        if let grace = payload.meetingGrace {
+            orderMeetupBothPartiesCheckedIn = grace.sosUnlocked
+                || (!grace.buyerCheckedInAt.isEmpty && !grace.sellerCheckedInAt.isEmpty)
+        } else {
+            orderMeetupBothPartiesCheckedIn = false
+        }
+    }
+
+    func confirmHandoff(deps: AppDependencies) async {
+        guard let oid = orderId?.trimmingCharacters(in: .whitespacesAndNewlines), !oid.isEmpty else { return }
+        guard !confirmHandoffInFlight else { return }
+        confirmHandoffInFlight = true
+        defer { confirmHandoffInFlight = false }
+        switch await deps.orderRepository.confirmHandoff(orderId: oid) {
+        case .success:
+            eventMessage = L10n.orderDetailConfirmHandoffSuccess
+            await fetchOrder(orderId: oid, deps: deps)
+            if let convId = detail?.conversationId ?? loadedConversationId {
+                await refreshAll(conversationId: convId, deps: deps)
+            }
+        case .failure(let err):
+            eventMessage = FashErrorPresentation.userMessage(for: err)
+        }
     }
 
     private func scheduleSilentRefresh(conversationId: String, deps: AppDependencies) {

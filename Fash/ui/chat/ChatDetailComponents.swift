@@ -7,11 +7,44 @@ struct ChatDealBanner: View {
     let orderStatus: String?
     let agreedAmountVnd: Int64
     let statusSubtitle: String?
+    let orderRemainingSeconds: Int64
+    let orderExpiryKind: String
+    let meetupPayByFormatted: String?
+    let meetingSosUnlocked: Bool
     let onViewOrder: () -> Void
     var onOpenFulfillmentChoice: (() -> Void)?
     var onScheduleMeetup: (() -> Void)?
+    var onConfirmHandoff: (() -> Void)?
+    var confirmHandoffInProgress: Bool = false
 
     private var norm: String { ChatOrderStatusCopy.normalize(orderStatus) }
+
+    private var bannerTitle: String {
+        if isBuyer, norm == "payment_pending" { return L10n.chatDealBannerBuyerPending }
+        if !isBuyer, norm == "payment_pending" { return L10n.chatDealBannerSellerPending }
+        switch norm {
+        case "cancelled": return L10n.chatDealBannerCancelled
+        case "disputed": return L10n.chatDealBannerDisputed
+        case "delivered_confirmed": return L10n.chatDealBannerDelivered
+        case "fulfillment_pending": return L10n.chatDealBannerChooseFulfillment
+        case "cash_meetup_open": return L10n.chatDealBannerCashMeetup
+        case "payment_held", "in_transit": return L10n.chatDealBannerInProgress
+        case "": return L10n.chatDealBannerStatusPending
+        default: return L10n.chatDealBannerDone
+        }
+    }
+
+    private var bothCheckedInCopy: String? {
+        guard meetingSosUnlocked, norm != "cancelled" else { return nil }
+        if norm == "in_transit" {
+            return isBuyer
+                ? L10n.chatDealMeetupBothCheckedInBuyerInTransit
+                : L10n.chatDealMeetupBothCheckedInSellerInTransit
+        }
+        return isBuyer
+            ? L10n.chatDealMeetupBothCheckedInBuyer
+            : L10n.chatDealMeetupBothCheckedInSeller
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -19,7 +52,7 @@ struct ChatDealBanner: View {
                 HStack(spacing: 10) {
                     Image(systemName: "bag.fill")
                         .foregroundStyle(FashColors.brandPrimary)
-                    Text(ChatOrderStatusCopy.dealBannerTitle(isBuyer: isBuyer, orderStatus: orderStatus))
+                    Text(bannerTitle)
                         .font(FashTypography.bodySmall.weight(.semibold))
                         .foregroundStyle(FashColors.textPrimary)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -52,11 +85,64 @@ struct ChatDealBanner: View {
                     .padding(.bottom, 8)
             }
 
+            if let bothCheckedInCopy {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(Color(red: 0.18, green: 0.49, blue: 0.20))
+                    Text(bothCheckedInCopy)
+                        .font(FashTypography.bodySmall.weight(.medium))
+                        .foregroundStyle(Color(red: 0.11, green: 0.37, blue: 0.13))
+                }
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(red: 0.91, green: 0.96, blue: 0.91))
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .padding(.horizontal, 12)
+                .padding(.bottom, 8)
+            }
+
+            if let meetupPayByFormatted, !meetupPayByFormatted.isEmpty, norm == "payment_pending" {
+                HStack(spacing: 8) {
+                    Image(systemName: "clock")
+                        .foregroundStyle(Color(red: 0.18, green: 0.49, blue: 0.20))
+                    Text(L10n.chatDealMeetupPayDeadline(meetupPayByFormatted))
+                        .font(FashTypography.bodySmall.weight(.medium))
+                        .foregroundStyle(Color(red: 0.11, green: 0.37, blue: 0.13))
+                }
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(red: 0.91, green: 0.96, blue: 0.91))
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .padding(.horizontal, 12)
+                .padding(.bottom, 8)
+            }
+
             if isBuyer, norm == "fulfillment_pending", let onOpenFulfillmentChoice {
                 dealCtaButton(title: L10n.chatFulfillmentBannerCta, systemImage: "shippingbox", action: onOpenFulfillmentChoice)
             }
             if isBuyer, norm == "cash_meetup_open", let onScheduleMeetup {
                 dealCtaButton(title: L10n.chatDealScheduleMeetupCta, systemImage: "calendar", action: onScheduleMeetup)
+            }
+            if !isBuyer, let onConfirmHandoff {
+                Button(action: onConfirmHandoff) {
+                    Group {
+                        if confirmHandoffInProgress {
+                            ProgressView().tint(.white)
+                        } else {
+                            Text(L10n.orderDetailConfirmHandoff)
+                                .font(FashTypography.labelLarge.weight(.bold))
+                                .foregroundStyle(.white)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 46)
+                    .background(FashColors.brandPrimary)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .disabled(confirmHandoffInProgress)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 8)
             }
         }
         .background(FashColors.surfaceContainerHigh)
@@ -742,5 +828,87 @@ private struct ChatTypingDots: View {
         }
         .frame(height: 16)
         .onAppear { animating = true }
+    }
+}
+
+/// Compact meetup CTA pinned under the deal banner — on-my-way / check-in without scrolling up.
+struct ChatMeetupStickyBanner: View {
+    let appointment: MeetingAppointmentPayload
+    let isBuyer: Bool
+    let mutationInFlight: Bool
+    let onOnMyWay: () -> Void
+    let onCheckIn: () -> Void
+
+    private var myOnMyWayAt: String { isBuyer ? appointment.buyerOnMyWayAt : appointment.sellerOnMyWayAt }
+    private var myCheckInAt: String { isBuyer ? appointment.buyerCheckInAt : appointment.sellerCheckInAt }
+
+    private var showOnMyWay: Bool {
+        appointment.status.lowercased() == "confirmed"
+            && myOnMyWayAt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && myCheckInAt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var showCheckIn: Bool {
+        appointment.status.lowercased() == "confirmed"
+            && !myOnMyWayAt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && myCheckInAt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && MeetingUi.isWithinMeetingActionWindow(scheduledAtIso: appointment.scheduledAt)
+    }
+
+    var body: some View {
+        if showOnMyWay || showCheckIn {
+            HStack(spacing: 10) {
+                Image(systemName: "mappin.and.ellipse")
+                    .foregroundStyle(FashColors.brandPrimary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(L10n.chatMeetingStatusConfirmed)
+                        .font(FashTypography.labelLarge.weight(.semibold))
+                    if !appointment.scheduledAt.isEmpty {
+                        Text(MeetingUi.formatMeetingWhen(appointment.scheduledAt, preferVi: true))
+                            .font(FashTypography.bodySmall)
+                            .foregroundStyle(FashColors.textSecondary)
+                    }
+                }
+                Spacer(minLength: 8)
+                if showCheckIn {
+                    Button(L10n.chatMeetingCheckInCta, action: onCheckIn)
+                        .buttonStyle(.borderedProminent)
+                        .tint(FashColors.brandPrimary)
+                        .disabled(mutationInFlight)
+                } else if showOnMyWay {
+                    Button(L10n.meetingOnMyWay, action: onOnMyWay)
+                        .buttonStyle(.borderedProminent)
+                        .tint(FashColors.brandPrimary)
+                        .disabled(mutationInFlight)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(FashColors.surfaceContainerHigh)
+        }
+    }
+}
+
+struct ChatNewMessagesBelowChip: View {
+    let count: Int
+    let onTap: () -> Void
+
+    var body: some View {
+        if count > 0 {
+            Button(action: onTap) {
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.down")
+                    Text(L10n.chatNewMessagesBelow(count))
+                        .font(FashTypography.labelMedium.weight(.semibold))
+                }
+                .foregroundStyle(.white)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(FashColors.brandPrimary)
+                .clipShape(Capsule())
+                .shadow(color: .black.opacity(0.12), radius: 6, y: 2)
+            }
+            .buttonStyle(.plain)
+        }
     }
 }

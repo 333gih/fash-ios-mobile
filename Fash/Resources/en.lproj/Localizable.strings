@@ -282,6 +282,7 @@
 "chat_meeting_state_desc_pending" = "Proposed — waiting for the other person to confirm or suggest another time.";
 "chat_meeting_status_cancelled" = "Cancelled";
 "chat_meeting_status_confirmed" = "Confirmed";
+"chat_new_messages_below" = "%d new messages";
 "chat_meeting_status_pending" = "Awaiting response";
 "chat_meeting_time_from_now_hint" = "Today: choose from %1$@ onwards";
 "chat_meeting_time_picker_title" = "Select time";

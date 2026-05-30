@@ -69,6 +69,7 @@ final class AppDependencies {
     private(set) var chatUnreadSnapshotGeneration: Int = 0
     private var chatUnreadByConversationId: [String: Int] = [:]
     var inAppNotification: FashInAppNotificationSession?
+    var activeChatSession = ActiveChatSession()
     var snackbarMessage: String?
     var pendingAccountSwitchPrompt: AccountSwitchPrompt?
 
@@ -288,6 +289,10 @@ final class AppDependencies {
     }
 
     func showInAppNotification(_ session: FashInAppNotificationSession) {
+        let openId = navigationRouter?.selectedConversationId ?? activeChatSession.conversationId
+        if ChatInAppNotificationPolicy.shouldSuppressInApp(data: session.dataMap, openConversationId: openId) {
+            return
+        }
         inAppNotification = session
     }
 

@@ -330,6 +330,9 @@ enum L10n {
     static var chatMeetingStateDescPending: String { t("chat_meeting_state_desc_pending") }
     static var chatMeetingStatusCancelled: String { t("chat_meeting_status_cancelled") }
     static var chatMeetingStatusConfirmed: String { t("chat_meeting_status_confirmed") }
+    static func chatNewMessagesBelow(_ count: Int) -> String {
+        String(format: t("chat_new_messages_below"), count)
+    }
     static var chatMeetingStatusPending: String { t("chat_meeting_status_pending") }
     static func chatMeetingTimeFromNowHint(_ a1: CVarArg) -> String {
         String(format: t("chat_meeting_time_from_now_hint"), a1)

@@ -32,6 +32,14 @@ enum RealtimeNotificationRouter {
                 return
             }
             guard !title.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+            let openId = router.selectedConversationId ?? deps.activeChatSession.conversationId
+            if ChatInAppNotificationPolicy.shouldSuppressInApp(data: pushData, openConversationId: openId) {
+                if ChatInAppNotificationPolicy.isChatRelated(data: pushData) {
+                    refreshChatInbox(chatVM: chatVM, deps: deps)
+                }
+                deps.requestInboxUnreadRefresh()
+                return
+            }
             deps.showInAppNotification(FashInAppNotificationSession(
                 title: title,
                 body: body,
@@ -64,14 +72,15 @@ enum RealtimeNotificationRouter {
             refreshChatInbox(chatVM: chatVM, deps: deps)
             guard !isGuestMode else { return }
             let myId = deps.authSessionStore.read()?.userId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            guard shouldShowChatMessageInApp(
+            let openId = router.selectedConversationId ?? deps.activeChatSession.conversationId
+            guard ChatInAppNotificationPolicy.shouldShowMessageNewInApp(
                 conversationId: conversationId,
                 senderId: senderId,
                 recipientId: recipientId,
                 messageType: messageType,
                 systemSubtype: systemSubtype,
                 myUserId: myId,
-                openConversationId: router.selectedConversationId
+                openConversationId: openId
             ) else { return }
             let trimmedPreview = preview.trimmingCharacters(in: .whitespacesAndNewlines)
             var dataMap: [String: String] = [:]
@@ -134,41 +143,6 @@ enum RealtimeNotificationRouter {
             await chatVM.silentRefresh(deps: deps)
             await chatVM.refreshUnreadCount(deps: deps)
         }
-    }
-
-    private static func shouldShowChatMessageInApp(
-        conversationId: String,
-        senderId: String,
-        recipientId: String,
-        messageType: String,
-        systemSubtype: String?,
-        myUserId: String,
-        openConversationId: String?
-    ) -> Bool {
-        let myId = myUserId.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !myId.isEmpty else { return false }
-
-        let sender = senderId.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !sender.isEmpty,
-              sender.compare(myId, options: .caseInsensitive) != .orderedSame else { return false }
-
-        let recipient = recipientId.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard recipient.isEmpty || recipient.compare(myId, options: .caseInsensitive) == .orderedSame else {
-            return false
-        }
-
-        let open = openConversationId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let cid = conversationId.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !open.isEmpty, !cid.isEmpty, open.compare(cid, options: .caseInsensitive) == .orderedSame {
-            return false
-        }
-        guard !cid.isEmpty else { return false }
-
-        if messageType.lowercased() == "system" {
-            let sub = systemSubtype?.lowercased() ?? ""
-            if sub.hasPrefix("conversation.") { return false }
-        }
-        return true
     }
 
     private static func isChatPushData(_ data: [String: String]?) -> Bool {
