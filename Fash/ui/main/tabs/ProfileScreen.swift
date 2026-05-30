@@ -7,7 +7,10 @@ struct ProfileScreen: View {
     var onOpenFollowConnections: (Int) -> Void = { _ in }
     var onShippingAddressesClick: () -> Void = {}
     var onInviteFriendsClick: () -> Void = {}
+    /// Wishlist and other buyer-facing taps — product detail / preview.
     var onListingClick: (String, String?) -> Void = { _, _ in }
+    /// Own listings (selling, in review, rejected, sold) — Android `editListingId` from Profile.
+    var onEditListingClick: (String) -> Void = { _ in }
     var onNavigateToExploreFromProfile: (
         _ categoryId: String?,
         _ brandId: String?,
@@ -43,8 +46,9 @@ struct ProfileScreen: View {
                     items: currentItems,
                     showQuickActions: true,
                     scrollToGridToken: scrollToGridToken,
-                    onListingClick: { item in onListingClick(item.id, item.sellerId) },
+                    onListingClick: { item in handleListingTap(item) },
                     onLike: { item in Task { await viewModel.toggleLike(item, deps: deps) } },
+                    onSave: { item in Task { await viewModel.toggleSave(item, deps: deps) } },
                     expandedHeader: { expandedHeader },
                     compactHeader: { compactHeader }
                 )
@@ -82,6 +86,16 @@ struct ProfileScreen: View {
 
     private var currentItems: [ListingFeedItem] {
         viewModel.listings(for: ProfileListingTab(rawValue: selectedTab) ?? .active)
+    }
+
+    /// Selling / in-review / rejected / sold → edit listing; wishlist → PDP (Android Profile `onListingClick`).
+    private func handleListingTap(_ item: ListingFeedItem) {
+        switch ProfileListingTab(rawValue: selectedTab) ?? .active {
+        case .wishlist:
+            onListingClick(item.id, item.sellerId)
+        case .active, .inReview, .rejected, .sold:
+            onEditListingClick(item.id)
+        }
     }
 
     /// Applies Home journey → Profile tab navigation. Returns true when consumed (Android `LaunchedEffect(profileTabOpenGen)`).

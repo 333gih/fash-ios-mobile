@@ -7,6 +7,7 @@ struct ListingPreviewOverlay: View {
     @Bindable var router: AppRouter
     var isGuestMode: Bool
     var onRequestLogin: (() -> Void)?
+    var onFeedEngagementPatch: ((String, (ListingFeedItem) -> ListingFeedItem) -> Void)? = nil
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -74,14 +75,34 @@ struct ListingPreviewOverlay: View {
 
     private func toggleLike(_ preview: ExploreListingPreviewState) async {
         guard !isGuestMode else { onRequestLogin?(); return }
-        _ = await deps.listingRepository.toggleLike(listingId: preview.feedItem.id)
+        switch await deps.listingRepository.toggleLike(listingId: preview.feedItem.id) {
+        case .failure(let error):
+            deps.showSnackbar(FeedEngagementFeedback.actionErrorMessage(for: error))
+        case .success(let liked):
+            applyEngagementPatch(listingId: preview.feedItem.id) { $0.applyingLikeToggle(liked) }
+            deps.showSnackbar(FeedEngagementFeedback.likeMessage(liked: liked))
+        }
     }
 
     private func toggleSave(_ preview: ExploreListingPreviewState) async {
         guard !isGuestMode else { onRequestLogin?(); return }
-        _ = await deps.listingRepository.toggleSave(
+        switch await deps.listingRepository.toggleSave(
             listingId: preview.feedItem.id,
             currentlySaved: preview.feedItem.isSaved
-        )
+        ) {
+        case .failure(let error):
+            deps.showSnackbar(FeedEngagementFeedback.actionErrorMessage(for: error))
+        case .success(let saved):
+            applyEngagementPatch(listingId: preview.feedItem.id) { $0.applyingSaveToggle(saved) }
+            deps.showSnackbar(FeedEngagementFeedback.saveMessage(saved: saved))
+        }
+    }
+
+    private func applyEngagementPatch(
+        listingId: String,
+        transform: (ListingFeedItem) -> ListingFeedItem
+    ) {
+        listingPreview.patchFeedItem(listingId, transform: transform)
+        onFeedEngagementPatch?(listingId, transform)
     }
 }

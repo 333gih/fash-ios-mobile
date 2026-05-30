@@ -13,6 +13,7 @@ struct ExploreScreen: View {
     var onPromoSlideClick: (FashPromoSlideDef, Int) -> Void = { _, _ in }
     var onFeaturedSellerClick: (UserSearchResult) -> Void = { _ in }
     var onSeeAllFeaturedSellers: () -> Void = {}
+    var onRequestSignIn: ((String) -> Void)? = nil
 
     /// Host renders pinned chrome below [ExploreTopBar]; feed does not overlay it on the grid.
     var hostManagesStickyChrome: Bool = false
@@ -454,6 +455,7 @@ private struct ExploreListingCell: View {
     @Bindable var viewModel: ExploreViewModel
     @Bindable var router: AppRouter
     let deps: AppDependencies
+    var onRequestSignIn: ((String) -> Void)? = nil
 
     @State private var appearedAt: Date?
 
@@ -477,8 +479,17 @@ private struct ExploreListingCell: View {
             imageAspectRatio: ListingMasonryGrid.tileAspectWidthOverHeight(for: item),
             showQuickActions: true,
             onLike: {
-                if !isGuestMode {
+                if isGuestMode {
+                    onRequestSignIn?(L10n.guestLoginReasonLike)
+                } else {
                     Task { await viewModel.toggleLike(item, position: index, deps: deps) }
+                }
+            },
+            onSave: {
+                if isGuestMode {
+                    onRequestSignIn?(L10n.guestLoginReasonSaved)
+                } else {
+                    Task { await viewModel.toggleSave(item, position: index, deps: deps) }
                 }
             }
         )

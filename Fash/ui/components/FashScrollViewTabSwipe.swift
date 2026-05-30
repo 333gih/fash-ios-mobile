@@ -1,7 +1,7 @@
 import SwiftUI
 import UIKit
 
-/// Horizontal swipe between tabs inside a SwiftUI `ScrollView` — Android `detectHorizontalDragGestures`.
+/// Horizontal swipe between tabs inside a SwiftUI `ScrollView` — TikTok-style axis lock + tap guard.
 /// Attaches a native pan recognizer to the enclosing `UIScrollView` so vertical scroll still works.
 struct FashScrollViewTabSwipe: UIViewRepresentable {
     var isEnabled: Bool = true
@@ -9,13 +9,20 @@ struct FashScrollViewTabSwipe: UIViewRepresentable {
     var canGoNext: Bool
     var onPrevious: () -> Void
     var onNext: () -> Void
+    var onHorizontalSwipeActive: (Bool) -> Void = { _ in }
+    var onTabSwipeCommitted: () -> Void = {}
 
     static let swipeThreshold: CGFloat = 72
+    static let flingDistanceThreshold: CGFloat = 36
+    static let flingVelocityThreshold: CGFloat = 900
+    static let postCommitTapGuard: TimeInterval = 0.32
 
     func makeCoordinator() -> Coordinator {
         Coordinator(
             onPrevious: onPrevious,
-            onNext: onNext
+            onNext: onNext,
+            onHorizontalSwipeActive: onHorizontalSwipeActive,
+            onTabSwipeCommitted: onTabSwipeCommitted
         )
     }
 
@@ -32,6 +39,8 @@ struct FashScrollViewTabSwipe: UIViewRepresentable {
         context.coordinator.canGoPrevious = canGoPrevious
         context.coordinator.canGoNext = canGoNext
         context.coordinator.isEnabled = isEnabled
+        context.coordinator.onHorizontalSwipeActive = onHorizontalSwipeActive
+        context.coordinator.onTabSwipeCommitted = onTabSwipeCommitted
         uiView.coordinator = context.coordinator
         uiView.scheduleInstall()
     }
@@ -59,14 +68,25 @@ struct FashScrollViewTabSwipe: UIViewRepresentable {
         var canGoNext: Bool = false
         var onPrevious: () -> Void
         var onNext: () -> Void
+        var onHorizontalSwipeActive: (Bool) -> Void
+        var onTabSwipeCommitted: () -> Void
 
         private weak var scrollView: UIScrollView?
         private var panRecognizer: UIPanGestureRecognizer?
         private var accumulatedDrag: CGFloat = 0
+        private var horizontalLocked = false
+        private var scrollWasEnabled = true
 
-        init(onPrevious: @escaping () -> Void, onNext: @escaping () -> Void) {
+        init(
+            onPrevious: @escaping () -> Void,
+            onNext: @escaping () -> Void,
+            onHorizontalSwipeActive: @escaping (Bool) -> Void,
+            onTabSwipeCommitted: @escaping () -> Void
+        ) {
             self.onPrevious = onPrevious
             self.onNext = onNext
+            self.onHorizontalSwipeActive = onHorizontalSwipeActive
+            self.onTabSwipeCommitted = onTabSwipeCommitted
         }
 
         func installIfNeeded(from anchor: UIView) {
@@ -89,27 +109,70 @@ struct FashScrollViewTabSwipe: UIViewRepresentable {
             guard isEnabled, let view = recognizer.view else { return }
 
             switch recognizer.state {
+            case .began:
+                accumulatedDrag = 0
+                horizontalLocked = false
+                scrollWasEnabled = scrollView?.isScrollEnabled ?? true
+
             case .changed:
                 let translation = recognizer.translation(in: view)
-                if abs(translation.x) > abs(translation.y) {
+                if !horizontalLocked {
+                    if abs(translation.x) > 10, abs(translation.x) > abs(translation.y) * 1.15 {
+                        horizontalLocked = true
+                        recognizer.cancelsTouchesInView = true
+                        scrollView?.isScrollEnabled = false
+                        onHorizontalSwipeActive(true)
+                    }
+                }
+                if horizontalLocked {
                     accumulatedDrag = translation.x
                 }
+
             case .ended, .cancelled, .failed:
-                defer {
-                    accumulatedDrag = 0
-                    recognizer.setTranslation(.zero, in: view)
-                }
-                guard abs(accumulatedDrag) >= FashScrollViewTabSwipe.swipeThreshold else { return }
-                if accumulatedDrag <= -FashScrollViewTabSwipe.swipeThreshold, canGoNext {
+                let wasLocked = horizontalLocked
+                let velocity = recognizer.velocity(in: view).x
+                let flingNext = velocity <= -Self.flingVelocityThreshold
+                let flingPrev = velocity >= Self.flingVelocityThreshold
+
+                let commitNext =
+                    wasLocked
+                    && (accumulatedDrag <= -Self.swipeThreshold
+                        || (flingNext && abs(accumulatedDrag) > Self.flingDistanceThreshold))
+                    && canGoNext
+                let commitPrev =
+                    wasLocked
+                    && (accumulatedDrag >= Self.swipeThreshold
+                        || (flingPrev && abs(accumulatedDrag) > Self.flingDistanceThreshold))
+                    && canGoPrevious
+                let committed = commitNext || commitPrev
+
+                resetSwipeState(recognizer: recognizer, in: view)
+
+                guard wasLocked else { return }
+
+                if committed {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    onNext()
-                } else if accumulatedDrag >= FashScrollViewTabSwipe.swipeThreshold, canGoPrevious {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    onPrevious()
+                    onTabSwipeCommitted()
+                    if commitNext {
+                        onNext()
+                    } else {
+                        onPrevious()
+                    }
+                } else {
+                    onHorizontalSwipeActive(false)
                 }
+
             default:
                 break
             }
+        }
+
+        private func resetSwipeState(recognizer: UIPanGestureRecognizer, in view: UIView) {
+            horizontalLocked = false
+            accumulatedDrag = 0
+            recognizer.cancelsTouchesInView = false
+            scrollView?.isScrollEnabled = scrollWasEnabled
+            recognizer.setTranslation(.zero, in: view)
         }
 
         func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
@@ -130,11 +193,12 @@ struct FashScrollViewTabSwipe: UIViewRepresentable {
 }
 
 extension View {
-    /// Swipe horizontally on the enclosing scroll view to move between tabs.
+    /// Swipe horizontally on the enclosing scroll view to move between tabs (TikTok-style).
     func fashScrollViewTabSwipe(
         isEnabled: Bool = true,
         currentIndex: Int,
         tabCount: Int,
+        listingInteractionEnabled: Binding<Bool>? = nil,
         onIndexChanged: @escaping (Int) -> Void
     ) -> some View {
         background {
@@ -149,6 +213,15 @@ extension View {
                 onNext: {
                     guard currentIndex < tabCount - 1 else { return }
                     onIndexChanged(currentIndex + 1)
+                },
+                onHorizontalSwipeActive: { active in
+                    listingInteractionEnabled?.wrappedValue = !active
+                },
+                onTabSwipeCommitted: {
+                    listingInteractionEnabled?.wrappedValue = false
+                    DispatchQueue.main.asyncAfter(deadline: .now() + FashScrollViewTabSwipe.postCommitTapGuard) {
+                        listingInteractionEnabled?.wrappedValue = true
+                    }
                 }
             )
         }

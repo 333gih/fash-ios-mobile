@@ -28,6 +28,10 @@ struct MainNavScreen: View {
             isGuestMode: isGuestMode,
             isPostListingFlow: isPostListingFlow,
             onRequestSignIn: onRequestSignIn,
+            onFeedEngagementPatch: { id, transform in
+                homeVM.patchListingEngagement(id, transform: transform)
+                exploreVM.patchListingEngagement(id, transform: transform)
+            },
             topBar: { topBar },
             tabContent: { tabContent },
             bottomBar: { bottomBar }
@@ -440,6 +444,11 @@ struct MainNavScreen: View {
                     },
                     onShippingAddressesClick: { router.showShippingAddressList = true },
                     onInviteFriendsClick: { router.showInviteFriendsScreen = true },
+                    onEditListingClick: { id in
+                        router.selectedListingId = nil
+                        deps.listingPreview.close(deps: deps)
+                        router.editListingId = id
+                    },
                     onListingClick: { id, _ in deps.presentListingDetail(listingId: id, router: router) },
                     onNavigateToExploreFromProfile: scheduleExploreFromProfile
                 )
@@ -634,6 +643,7 @@ private struct MainNavScreenChrome<TopBar: View, TabContent: View, BottomBar: Vi
     var isGuestMode: Bool
     var isPostListingFlow: Bool
     var onRequestSignIn: ((String) -> Void)?
+    var onFeedEngagementPatch: ((String, (ListingFeedItem) -> ListingFeedItem) -> Void)? = nil
     @ViewBuilder var topBar: () -> TopBar
     @ViewBuilder var tabContent: () -> TabContent
     @ViewBuilder var bottomBar: () -> BottomBar
@@ -655,7 +665,8 @@ private struct MainNavScreenChrome<TopBar: View, TabContent: View, BottomBar: Vi
                     listingPreview: listingPreview,
                     router: router,
                     isGuestMode: isGuestMode,
-                    onRequestLogin: { onRequestSignIn?(L10n.guestLoginReasonBuy) }
+                    onRequestLogin: { onRequestSignIn?(L10n.guestLoginReasonBuy) },
+                    onFeedEngagementPatch: onFeedEngagementPatch
                 )
             }
         }

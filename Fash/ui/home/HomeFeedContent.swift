@@ -64,6 +64,8 @@ struct HomeFeedContent: View {
     @State private var homeHeaderHeight: CGFloat = 0
     @State private var pendingPinnedFeedScroll = false
     @State private var masonryColumnAssignmentsByTab: [String: [String: Bool]] = [:]
+    @State private var listingInteractionEnabled = true
+    @State private var tabSlideDirection: Int = 0
 
     private var masonryColumnAssignments: Binding<[String: Bool]> {
         Binding(
@@ -95,9 +97,13 @@ struct HomeFeedContent: View {
                     .padding(.bottom, promoDockInset + spacing.spacing2)
                     .fashScrollViewTabSwipe(
                         currentIndex: selectedTabIndex,
-                        tabCount: tabs.count
+                        tabCount: tabs.count,
+                        listingInteractionEnabled: $listingInteractionEnabled
                     ) { index in
-                        viewModel.selectFeedTab(tabs[index], deps: deps, isGuestMode: isGuestMode)
+                        tabSlideDirection = index > selectedTabIndex ? 1 : -1
+                        withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+                            viewModel.selectFeedTab(tabs[index], deps: deps, isGuestMode: isGuestMode)
+                        }
                     }
                 }
                 .coordinateSpace(name: "homeFeedScroll")
@@ -189,7 +195,13 @@ struct HomeFeedContent: View {
                 selectedTab: viewModel.selectedFeedTab,
                 isGuestBrowse: isGuestMode,
                 onSelect: { tab in
-                    viewModel.selectFeedTab(tab, deps: deps, isGuestMode: isGuestMode)
+                    if let oldIdx = tabs.firstIndex(of: viewModel.selectedFeedTab),
+                       let newIdx = tabs.firstIndex(of: tab), oldIdx != newIdx {
+                        tabSlideDirection = newIdx > oldIdx ? 1 : -1
+                    }
+                    withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+                        viewModel.selectFeedTab(tab, deps: deps, isGuestMode: isGuestMode)
+                    }
                 }
             )
             Divider()
@@ -201,6 +213,21 @@ struct HomeFeedContent: View {
 
     @ViewBuilder
     private var feedBody: some View {
+        Group {
+            feedBodyContent
+        }
+        .id(viewModel.selectedFeedTabKey)
+        .allowsHitTesting(listingInteractionEnabled)
+        .transition(
+            .asymmetric(
+                insertion: .opacity.combined(with: .offset(x: CGFloat(tabSlideDirection) * 28)),
+                removal: .opacity.combined(with: .offset(x: CGFloat(-tabSlideDirection) * 28))
+            )
+        )
+    }
+
+    @ViewBuilder
+    private var feedBodyContent: some View {
         if showGuestGate {
             HomeFeedTabGuestGate(tab: viewModel.selectedFeedTab) {
                 onRequestSignIn(guestLoginReason(for: viewModel.selectedFeedTab))
@@ -252,7 +279,29 @@ struct HomeFeedContent: View {
                             )
                         },
                         onLike: {
-                            viewModel.toggleLike(item, surface: analyticsSurface, position: index, deps: deps)
+                            if isGuestMode {
+                                onRequestSignIn(L10n.guestLoginReasonLike)
+                            } else {
+                                viewModel.toggleLike(
+                                    item,
+                                    surface: analyticsSurface,
+                                    position: index,
+                                    deps: deps
+                                )
+                            }
+                        },
+                        onSave: {
+                            if isGuestMode {
+                                onRequestSignIn(L10n.guestLoginReasonSaved)
+                            } else {
+                                viewModel.toggleSave(
+                                    item,
+                                    surface: analyticsSurface,
+                                    position: index,
+                                    deps: deps,
+                                    isGuestMode: isGuestMode
+                                )
+                            }
                         },
                         onRecordView: {
                             viewModel.recordView(
@@ -328,6 +377,7 @@ private struct HomeFeedListingCell: View {
     var onPrefetchLoadMore: () -> Void = {}
     let onTap: () -> Void
     let onLike: () -> Void
+    var onSave: (() -> Void)? = nil
     let onRecordView: () -> Void
     let onDwell: (Int) -> Void
 
@@ -340,7 +390,8 @@ private struct HomeFeedListingCell: View {
             onTap: onTap,
             imageAspectRatio: imageAspectRatio,
             showQuickActions: true,
-            onLike: onLike
+            onLike: onLike,
+            onSave: onSave
         )
         .onAppear {
             appearedAt = Date()

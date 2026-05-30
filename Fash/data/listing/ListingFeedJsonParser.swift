@@ -93,6 +93,26 @@ struct ListingFeedItem: Identifiable, Hashable {
 }
 
 extension ListingFeedItem {
+    func applyingLikeToggle(_ liked: Bool) -> ListingFeedItem {
+        let delta = (liked && !isLiked) ? 1 : ((!liked && isLiked) ? -1 : 0)
+        return withEngagement(
+            likeCount: max(0, likeCount + delta),
+            isLiked: liked,
+            saveCount: saveCount,
+            isSaved: isSaved
+        )
+    }
+
+    func applyingSaveToggle(_ saved: Bool) -> ListingFeedItem {
+        let delta = (saved && !isSaved) ? 1 : ((!saved && isSaved) ? -1 : 0)
+        return withEngagement(
+            likeCount: likeCount,
+            isLiked: isLiked,
+            saveCount: max(0, saveCount + delta),
+            isSaved: saved
+        )
+    }
+
     func withEngagement(likeCount: Int, isLiked: Bool, saveCount: Int, isSaved: Bool) -> ListingFeedItem {
         ListingFeedItem(
             id: id,

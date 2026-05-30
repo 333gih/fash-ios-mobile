@@ -105,6 +105,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     var onTabsPinnedAtTopChange: ((Bool) -> Void)? = nil
     var onListingClick: (ListingFeedItem) -> Void
     var onLike: ((ListingFeedItem) -> Void)?
+    var onSave: ((ListingFeedItem) -> Void)?
     @ViewBuilder var expandedHeader: () -> ExpandedHeader
     @ViewBuilder var compactHeader: () -> CompactHeader
 
@@ -117,6 +118,8 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     @State private var profileScrollResetToken = 0
     @State private var scrollClampRevision = 0
     @State private var masonryColumnAssignmentsByTab: [Int: [String: Bool]] = [:]
+    @State private var listingInteractionEnabled = true
+    @State private var tabSlideDirection: Int = 0
 
     /// Stable per tab — do not branch on empty/rows or SwiftUI recreates the grid and jumps scroll.
     private var listingGridScrollId: String {
@@ -149,28 +152,16 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                     }
                     Section {
                         Group {
-                            if items.isEmpty {
-                                emptyBlock
-                            } else {
-                                ListingStaggeredMasonryView(
-                                    items: items,
-                                    columnAssignments: masonryColumnAssignments
-                                ) { item, _ in
-                                    ListingGridCard(
-                                        item: item,
-                                        onTap: { onListingClick(item) },
-                                        imageAspectRatio: ListingMasonryGrid.masonryAspectRatio(for: item),
-                                        showQuickActions: showQuickActions,
-                                        statusOverlayLabel: showStatusOverlay
-                                            ? ListingStatusUi.overlayLabel(for: item.listingStatus)
-                                            : nil,
-                                        onLike: onLike.map { h in { h(item) } }
-                                    )
-                                }
-                                .padding(.top, 4)
-                            }
+                            profileListingGridBody
                         }
                         .id(listingGridScrollId)
+                        .allowsHitTesting(listingInteractionEnabled)
+                        .transition(
+                            .asymmetric(
+                                insertion: .opacity.combined(with: .offset(x: CGFloat(tabSlideDirection) * 28)),
+                                removal: .opacity.combined(with: .offset(x: CGFloat(-tabSlideDirection) * 28))
+                            )
+                        )
 
                         Color.clear.frame(height: max(120, additionalBottomInset + 80))
                     } header: {
@@ -179,12 +170,16 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                 }
                 .fashScrollViewTabSwipe(
                     currentIndex: visualTabIndex,
-                    tabCount: resolvedTabIndices.count
+                    tabCount: resolvedTabIndices.count,
+                    listingInteractionEnabled: $listingInteractionEnabled
                 ) { visualIndex in
                     guard visualIndex >= 0, visualIndex < resolvedTabIndices.count else { return }
                     let nextTab = resolvedTabIndices[visualIndex]
                     guard nextTab != selectedTab else { return }
-                    selectedTab = nextTab
+                    tabSlideDirection = visualIndex > visualTabIndex ? 1 : -1
+                    withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+                        selectedTab = nextTab
+                    }
                 }
                 .scrollTargetLayout()
             }
@@ -213,6 +208,12 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                 guard abs(nextHeight - headerHeight) > 0.5 else { return }
                 headerHeight = nextHeight
                 applyScrollOffset(frame.minY)
+            }
+            .onChange(of: selectedTab) { oldTab, newTab in
+                guard oldTab != newTab else { return }
+                let oldVisual = resolvedTabIndices.firstIndex(of: oldTab) ?? 0
+                let newVisual = resolvedTabIndices.firstIndex(of: newTab) ?? 0
+                tabSlideDirection = newVisual > oldVisual ? 1 : -1
             }
             .onChange(of: resolvedTabIndices) { _, indices in
                 guard !indices.contains(selectedTab) else { return }
@@ -364,6 +365,31 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         .animation(.easeInOut(duration: 0.2), value: showSectionTitle)
     }
 
+    @ViewBuilder
+    private var profileListingGridBody: some View {
+        if items.isEmpty {
+            emptyBlock
+        } else {
+            ListingStaggeredMasonryView(
+                items: items,
+                columnAssignments: masonryColumnAssignments
+            ) { item, _ in
+                ListingGridCard(
+                    item: item,
+                    onTap: { onListingClick(item) },
+                    imageAspectRatio: ListingMasonryGrid.masonryAspectRatio(for: item),
+                    showQuickActions: showQuickActions,
+                    statusOverlayLabel: showStatusOverlay
+                        ? ListingStatusUi.overlayLabel(for: item.listingStatus)
+                        : nil,
+                    onLike: onLike.map { h in { h(item) } },
+                    onSave: onSave.map { h in { h(item) } }
+                )
+            }
+            .padding(.top, 4)
+        }
+    }
+
     private var emptyBlock: some View {
         VStack(spacing: 12) {
             FashEmptyStateView(
@@ -395,6 +421,7 @@ private enum ProfileScrollIds {
 /// Scrollable tab row with primary underline — Android [ProfileTabSwitcher].
 struct ProfileTabSwitcher: View {
     @Environment(\.fashSpacing) private var spacing
+    @Namespace private var tabIndicator
     let tabSet: ProfileListingTabSet
     let orderedTabIndices: [Int]
     @Binding var selectedTab: Int
@@ -406,7 +433,9 @@ struct ProfileTabSwitcher: View {
                     ForEach(orderedTabIndices, id: \.self) { logicalIndex in
                         let selected = selectedTab == logicalIndex
                         Button {
-                            selectedTab = logicalIndex
+                            withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+                                selectedTab = logicalIndex
+                            }
                         } label: {
                             VStack(spacing: 6) {
                                 Text(tabSet.title(for: logicalIndex))
@@ -414,9 +443,17 @@ struct ProfileTabSwitcher: View {
                                     .foregroundStyle(selected ? FashColors.textPrimary : FashColors.textSecondary.opacity(0.75))
                                     .lineLimit(1)
                                     .minimumScaleFactor(0.85)
-                                Rectangle()
-                                    .fill(selected ? FashColors.brandPrimary : Color.clear)
-                                    .frame(height: 2)
+                                ZStack {
+                                    Rectangle()
+                                        .fill(Color.clear)
+                                        .frame(height: 2)
+                                    if selected {
+                                        Rectangle()
+                                            .fill(FashColors.brandPrimary)
+                                            .frame(height: 2)
+                                            .matchedGeometryEffect(id: "profile_tab_indicator", in: tabIndicator)
+                                    }
+                                }
                             }
                             .frame(minWidth: tabMinWidth)
                             .padding(.horizontal, 8)
@@ -429,8 +466,9 @@ struct ProfileTabSwitcher: View {
                 .padding(.horizontal, spacing.editorialStart)
             }
             .background(FashColors.screen)
+            .animation(.spring(response: 0.34, dampingFraction: 0.86), value: selectedTab)
             .onChange(of: selectedTab) { _, tab in
-                withAnimation(.easeInOut(duration: 0.2)) {
+                withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
                     proxy.scrollTo(tab, anchor: .center)
                 }
             }

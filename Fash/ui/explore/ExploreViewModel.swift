@@ -873,6 +873,7 @@ final class ExploreViewModel {
             deps.showSnackbar(FeedEngagementFeedback.actionErrorMessage(for: error))
             return
         case .success(let liked):
+            patchListing(item.id) { $0.applyingLikeToggle(liked) }
             if liked {
                 deps.feedEventReporter.like(listingId: item.id, surface: "explore", position: position)
             }
@@ -885,26 +886,16 @@ final class ExploreViewModel {
         case .failure(let error):
             deps.showSnackbar(FeedEngagementFeedback.actionErrorMessage(for: error))
         case .success(let saved):
+            patchListing(item.id) { $0.applyingSaveToggle(saved) }
             if saved {
                 deps.feedEventReporter.save(listingId: item.id, surface: "explore", position: position)
             }
             deps.showSnackbar(FeedEngagementFeedback.saveMessage(saved: saved))
-            patchListing(item.id) { cur in
-                let delta = (saved && !cur.isSaved) ? 1 : ((!saved && cur.isSaved) ? -1 : 0)
-                return ListingFeedItem(
-                    id: cur.id, title: cur.title, coverImageUrl: cur.coverImageUrl,
-                    coverImageWidth: cur.coverImageWidth, coverImageHeight: cur.coverImageHeight,
-                    imageUrls: cur.imageUrls,
-                    priceVnd: cur.priceVnd, brand: cur.brand, size: cur.size, categoryName: cur.categoryName,
-                    listingAestheticTag: cur.listingAestheticTag, condition: cur.condition,
-                    likeCount: cur.likeCount, saveCount: max(0, cur.saveCount + delta),
-                    sellerId: cur.sellerId, sellerUsername: cur.sellerUsername, sellerStyleTag: cur.sellerStyleTag,
-                    createdAt: cur.createdAt, isLiked: cur.isLiked, isSaved: saved,
-                    onsiteInspectionCommitment: cur.onsiteInspectionCommitment,
-                    listingStatus: cur.listingStatus, descriptionText: cur.descriptionText
-                )
-            }
         }
+    }
+
+    func patchListingEngagement(_ id: String, transform: (ListingFeedItem) -> ListingFeedItem) {
+        patchListing(id, transform: transform)
     }
 
     private func patchListing(_ id: String, transform: (ListingFeedItem) -> ListingFeedItem) {

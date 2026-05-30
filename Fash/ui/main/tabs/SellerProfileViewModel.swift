@@ -158,6 +158,7 @@ final class SellerProfileViewModel {
     func toggleLike(_ item: ListingFeedItem, deps: AppDependencies) async {
         switch await deps.listingRepository.toggleLike(listingId: item.id) {
         case .success(let liked):
+            patch(item.id, liked: liked, saved: nil)
             if liked {
                 deps.feedEventReporter.like(listingId: item.id, surface: "seller_profile")
             }

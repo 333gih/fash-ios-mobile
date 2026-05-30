@@ -259,6 +259,7 @@ final class HomeViewModel {
         Task {
             switch await deps.listingRepository.toggleLike(listingId: item.id) {
             case .success(let liked):
+                patchListingInFeeds(item.id) { $0.applyingLikeToggle(liked) }
                 if liked {
                     deps.feedEventReporter.like(listingId: item.id, surface: surface, position: position)
                 }
@@ -276,15 +277,7 @@ final class HomeViewModel {
                 currentlySaved: item.isSaved
             ) {
             case .success(let saved):
-                patchListingInFeeds(item.id) { cur in
-                    let delta = (saved && !cur.isSaved) ? 1 : ((!saved && cur.isSaved) ? -1 : 0)
-                    return cur.withEngagement(
-                        likeCount: cur.likeCount,
-                        isLiked: cur.isLiked,
-                        saveCount: max(0, cur.saveCount + delta),
-                        isSaved: saved
-                    )
-                }
+                patchListingInFeeds(item.id) { $0.applyingSaveToggle(saved) }
                 if saved {
                     deps.feedEventReporter.save(listingId: item.id, surface: surface, position: position)
                 }
@@ -607,6 +600,10 @@ final class HomeViewModel {
         ]
         let hasMeasurement = measurements.contains { ($0 ?? 0) > 0 }
         showSizingBanner = !hasSize && !hasMeasurement
+    }
+
+    func patchListingEngagement(_ id: String, transform: (ListingFeedItem) -> ListingFeedItem) {
+        patchListingInFeeds(id, transform: transform)
     }
 
     private func patchListingInFeeds(_ id: String, transform: (ListingFeedItem) -> ListingFeedItem) {

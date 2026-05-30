@@ -89,6 +89,12 @@ final class ListingPreviewStore {
         isDismissing = false
     }
 
+    func patchFeedItem(_ id: String, transform: (ListingFeedItem) -> ListingFeedItem) {
+        guard var cur = state, cur.feedItem.id == id else { return }
+        cur.feedItem = transform(cur.feedItem)
+        state = cur
+    }
+
     func openDetail(deps: AppDependencies) {
         guard let preview = state else { return }
         deps.feedEventReporter.previewDetail(

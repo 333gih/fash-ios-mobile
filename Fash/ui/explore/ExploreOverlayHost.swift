@@ -52,7 +52,8 @@ struct ExploreOverlayHost: View {
                     onClose()
                     router.showFeaturedSellersAll = true
                 },
-                hostManagesStickyChrome: true
+                hostManagesStickyChrome: true,
+                onRequestSignIn: onRequestSignIn
             )
         }
         .background(FashColors.screen)
@@ -67,7 +68,10 @@ struct ExploreOverlayHost: View {
                 listingPreview: deps.listingPreview,
                 router: router,
                 isGuestMode: isGuestMode,
-                onRequestLogin: { onRequestSignIn?(L10n.guestLoginReasonBuy) }
+                onRequestLogin: { onRequestSignIn?(L10n.guestLoginReasonBuy) },
+                onFeedEngagementPatch: { id, transform in
+                    viewModel.patchListingEngagement(id, transform: transform)
+                }
             )
         }
         .onAppear {

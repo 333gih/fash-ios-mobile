@@ -85,6 +85,7 @@ struct ProfileListingGrid: View {
     var showQuickActions: Bool = false
     var onListingClick: (ListingFeedItem) -> Void
     var onLike: ((ListingFeedItem) -> Void)? = nil
+    var onSave: ((ListingFeedItem) -> Void)? = nil
 
     private let columns = [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)]
 
@@ -100,7 +101,8 @@ struct ProfileListingGrid: View {
                         onTap: { onListingClick(item) },
                         showQuickActions: showQuickActions,
                         statusOverlayLabel: ListingStatusUi.overlayLabel(for: item.listingStatus),
-                        onLike: onLike.map { handler in { handler(item) } }
+                        onLike: onLike.map { handler in { handler(item) } },
+                        onSave: onSave.map { handler in { handler(item) } }
                     )
                 }
             }

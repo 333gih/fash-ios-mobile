@@ -66,6 +66,10 @@ struct SellerProfileScreen: View {
                                 if isGuestMode { onRequestSignIn?() }
                                 else { Task { await viewModel.toggleLike(item, deps: deps) } }
                             },
+                            onSave: { item in
+                                if isGuestMode { onRequestSignIn?() }
+                                else { Task { await viewModel.toggleSave(item, deps: deps) } }
+                            },
                             expandedHeader: { expandedHeader },
                             compactHeader: { ProfileCompactHeaderBar(profile: viewModel.profile) }
                         )

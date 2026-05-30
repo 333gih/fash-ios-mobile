@@ -198,6 +198,7 @@ final class ProfileViewModel {
     func toggleLike(_ item: ListingFeedItem, deps: AppDependencies) async {
         switch await deps.listingRepository.toggleLike(listingId: item.id) {
         case .success(let liked):
+            patchListing(item.id) { $0.applyingLikeToggle(liked) }
             deps.showSnackbar(FeedEngagementFeedback.likeMessage(liked: liked))
         case .failure(let error):
             deps.showSnackbar(FeedEngagementFeedback.actionErrorMessage(for: error))
@@ -207,15 +208,7 @@ final class ProfileViewModel {
     func toggleSave(_ item: ListingFeedItem, deps: AppDependencies) async {
         switch await deps.listingRepository.toggleSave(listingId: item.id, currentlySaved: item.isSaved) {
         case .success(let saved):
-            patchListing(item.id) { cur in
-                let delta = (saved && !cur.isSaved) ? 1 : ((!saved && cur.isSaved) ? -1 : 0)
-                return cur.withEngagement(
-                    likeCount: cur.likeCount,
-                    isLiked: cur.isLiked,
-                    saveCount: max(0, cur.saveCount + delta),
-                    isSaved: saved
-                )
-            }
+            patchListing(item.id) { $0.applyingSaveToggle(saved) }
             if !saved && item.isSaved {
                 wishlistListings.removeAll { $0.id == item.id }
             } else if saved {

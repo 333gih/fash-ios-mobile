@@ -25,9 +25,7 @@ struct ListingStaggeredMasonryView<Cell: View, Footer: View>: View {
     }
 
     private var gap: CGFloat { spacing.spacing2 }
-    private var edgeStart: CGFloat { spacing.editorialStart }
-    private var edgeEnd: CGFloat { spacing.editorialEnd }
-    private var symmetricInset: CGFloat { max(edgeStart, edgeEnd) }
+    private var edgeInset: CGFloat { ListingMasonryGrid.feedGridHorizontalInset }
 
     private var resolvedViewportWidth: CGFloat {
         containerWidth > 1 ? containerWidth : UIScreen.main.bounds.width
@@ -36,8 +34,8 @@ struct ListingStaggeredMasonryView<Cell: View, Footer: View>: View {
     private var columnWidth: CGFloat {
         ListingMasonryGrid.columnWidth(
             containerWidth: resolvedViewportWidth,
-            leadingInset: symmetricInset,
-            trailingInset: symmetricInset,
+            leadingInset: edgeInset,
+            trailingInset: edgeInset,
             columnGap: gap
         )
     }
@@ -54,7 +52,6 @@ struct ListingStaggeredMasonryView<Cell: View, Footer: View>: View {
 
             footer()
         }
-        .padding(.horizontal, symmetricInset)
         .frame(maxWidth: .infinity, alignment: .top)
         .onPreferenceChange(ListingMasonryContainerWidthKey.self) { width in
             guard width > 1, abs(width - containerWidth) > 0.5 else { return }

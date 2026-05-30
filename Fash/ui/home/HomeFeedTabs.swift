@@ -88,6 +88,7 @@ enum HomeFeedTab: String, CaseIterable, Identifiable {
 
 struct HomeFeedTabSwitcher: View {
     @Environment(\.fashSpacing) private var spacing
+    @Namespace private var tabIndicator
     let tabs: [HomeFeedTab]
     let selectedTab: HomeFeedTab
     var isGuestBrowse: Bool = false
@@ -116,12 +117,13 @@ struct HomeFeedTabSwitcher: View {
                             }
                             .padding(.horizontal, 10)
                             .padding(.vertical, 12)
-                            .overlay(alignment: .bottom) {
+                            .background(alignment: .bottom) {
                                 if selected {
                                     Capsule()
                                         .fill(FashColors.brandPrimary)
                                         .frame(height: 2)
                                         .padding(.horizontal, 6)
+                                        .matchedGeometryEffect(id: "home_tab_indicator", in: tabIndicator)
                                 }
                             }
                         }
@@ -132,8 +134,9 @@ struct HomeFeedTabSwitcher: View {
                 .padding(.horizontal, spacing.editorialStart)
             }
             .background(FashColors.screen)
+            .animation(.spring(response: 0.34, dampingFraction: 0.86), value: selectedTab.id)
             .onChange(of: selectedTab.id) { _, _ in
-                withAnimation(.easeInOut(duration: 0.2)) {
+                withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
                     proxy.scrollTo(selectedTab.id, anchor: .center)
                 }
             }
