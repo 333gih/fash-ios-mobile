@@ -150,12 +150,14 @@ final class PostViewModel {
         draft = draft.withListingPhotoSlotsFromCatalog(categoryId: cat, catalog: catalog)
     }
 
-    func setListingPhotoForStep(stepKey: String, uriString: String?) {
+    func setListingPhotoForStep(stepKey: String, uriString: String?, width: Int? = nil, height: Int? = nil) {
         draft.listingPhotoSlots = draft.listingPhotoSlots.map { s in
             guard s.stepKey == stepKey else { return s }
             var copy = s
             copy.localImageUri = uriString?.trimmingCharacters(in: .whitespaces).nilIfEmpty
             copy.uploadedImageUrl = nil
+            copy.imageWidth = width
+            copy.imageHeight = height
             return copy
         }
     }
@@ -216,6 +218,7 @@ final class PostViewModel {
                 eventMessage = L10n.createListingImageError
                 return false
             }
+            let measured = ListingImagePixelSize.fromImageData(data)
             let mime = mimeTypeForURL(url)
             let ext = mimeTypeToExt(mime)
             let slug = slot.stepKey.replacingOccurrences(of: "[^a-zA-Z0-9_-]", with: "_", options: .regularExpression).prefix(32)
@@ -223,11 +226,15 @@ final class PostViewModel {
             fileIndex += 1
             switch await deps.listingRepository.uploadListingImage(bytes: data, filename: String(filename), mimeType: mime) {
             case .success(let uploaded):
+                let width = uploaded.width ?? measured?.width ?? slot.imageWidth
+                let height = uploaded.height ?? measured?.height ?? slot.imageHeight
                 draft.listingPhotoSlots = draft.listingPhotoSlots.map { s in
                     guard s.stepKey == slot.stepKey else { return s }
                     var copy = s
-                    copy.uploadedImageUrl = uploaded
+                    copy.uploadedImageUrl = uploaded.url
                     copy.localImageUri = nil
+                    copy.imageWidth = width
+                    copy.imageHeight = height
                     return copy
                 }
             case .failure:

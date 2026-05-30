@@ -273,7 +273,7 @@ final class ListingRepository {
         return .failure(lastError)
     }
 
-    func uploadListingImage(bytes: Data, filename: String = "image.jpg", mimeType: String = "image/jpeg") async -> Result<String, Error> {
+    func uploadListingImage(bytes: Data, filename: String = "image.jpg", mimeType: String = "image/jpeg") async -> Result<ListingImageUploadResult, Error> {
         guard let url = URL(string: AppEnvironment.apiPath("api/v1/listings/images")) else {
             return .failure(URLError(.badURL))
         }
@@ -300,7 +300,11 @@ final class ListingRepository {
             let obj = try RepositoryHttp.jsonObject(data)
             let imageUrl = RepositoryHttp.optString(obj, "image_url", "imageUrl", "ImageURL")
             guard !imageUrl.isEmpty else { return .failure(URLError(.cannotParseResponse)) }
-            return .success(imageUrl)
+            let widthRaw = RepositoryHttp.optInt(obj, "width", "Width")
+            let heightRaw = RepositoryHttp.optInt(obj, "height", "Height")
+            let width = widthRaw > 0 ? widthRaw : nil
+            let height = heightRaw > 0 ? heightRaw : nil
+            return .success(ListingImageUploadResult(url: imageUrl, width: width, height: height))
         } catch {
             return .failure(error)
         }
@@ -394,6 +398,8 @@ final class ListingRepository {
                 "image_url": s.imageUrl.trimmingCharacters(in: .whitespaces),
             ]
             if let vi = s.labelVi?.trimmingCharacters(in: .whitespaces), !vi.isEmpty { o["label_vi"] = vi }
+            if let w = s.width, w > 0 { o["width"] = w }
+            if let h = s.height, h > 0 { o["height"] = h }
             return o
         }
     }

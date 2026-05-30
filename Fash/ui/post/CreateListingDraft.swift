@@ -23,6 +23,8 @@ struct ListingPhotoSlotDraft: Equatable, Identifiable {
     let required: Bool
     var localImageUri: String?
     var uploadedImageUrl: String?
+    var imageWidth: Int?
+    var imageHeight: Int?
 
     func hasImageSelected() -> Bool {
         !(localImageUri?.trimmingCharacters(in: .whitespaces).isEmpty ?? true)
@@ -113,7 +115,9 @@ extension CreateListingDraft {
                 sortOrder: c.sortOrder,
                 required: c.required,
                 localImageUri: o?.localImageUri,
-                uploadedImageUrl: o?.uploadedImageUrl
+                uploadedImageUrl: o?.uploadedImageUrl,
+                imageWidth: o?.imageWidth,
+                imageHeight: o?.imageHeight
             )
         }
         return copy(listingPhotoSlots: Array(slots), listingPhotoSlotsCategoryId: categoryId)
@@ -204,7 +208,9 @@ extension CreateListingDraft {
                 labelVi: s.labelVi.isEmpty ? nil : s.labelVi,
                 sortOrder: s.sortOrder,
                 required: s.required,
-                imageUrl: url
+                imageUrl: url,
+                width: s.imageWidth,
+                height: s.imageHeight
             )
         }
     }

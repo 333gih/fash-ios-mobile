@@ -87,6 +87,8 @@ struct ListingImageStepPayload: Equatable {
     let sortOrder: Int
     let required: Bool
     let imageUrl: String
+    let width: Int?
+    let height: Int?
 }
 
 struct CreateListingRequest: Equatable {

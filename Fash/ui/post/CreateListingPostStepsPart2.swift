@@ -282,7 +282,13 @@ struct CreateListingPostStepsPart2: View {
                 Task {
                     if let data = try? await item.loadTransferable(type: Data.self),
                        let tmp = writeTempImage(data) {
-                        postVM.setListingPhotoForStep(stepKey: stepKey, uriString: tmp.absoluteString)
+                        let size = ListingImagePixelSize.fromImageData(data)
+                        postVM.setListingPhotoForStep(
+                            stepKey: stepKey,
+                            uriString: tmp.absoluteString,
+                            width: size?.width,
+                            height: size?.height
+                        )
                     }
                 }
             }

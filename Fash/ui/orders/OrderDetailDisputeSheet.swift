@@ -140,7 +140,8 @@ struct OrderDetailDisputeSheet: View {
         let prefix = isEvidence ? "evidence" : "dispute"
         let filename = "\(prefix)_\(Int(Date().timeIntervalSince1970 * 1000)).jpg"
         switch await deps.listingRepository.uploadListingImage(bytes: data, filename: filename, mimeType: "image/jpeg") {
-        case .success(let url):
+        case .success(let upload):
+            let url = upload.url
             photoUrls.append(url)
         case .failure(let error):
             let msg = FashErrorPresentation.userMessage(for: error)
