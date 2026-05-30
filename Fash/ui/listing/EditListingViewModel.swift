@@ -8,6 +8,11 @@ private let sizeMax = 20
 private let brandMax = 50
 private let maxTags = 5
 
+private func editListingNonEmpty(_ raw: String?) -> String? {
+    let t = raw?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    return t.isEmpty ? nil : t
+}
+
 @Observable
 @MainActor
 final class EditListingViewModel {
@@ -87,7 +92,7 @@ final class EditListingViewModel {
                 countryId: d.countryId,
                 countryIso2: d.countryIso2 ?? "",
                 countryName: d.countryName ?? "",
-                measurementUnit: d.measurementUnit?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty ?? "cm",
+                measurementUnit: editListingNonEmpty(d.measurementUnit) ?? "cm",
                 measurementHem: formatEditMeasurementField(d.measurementHem),
                 measurementChest: formatEditMeasurementField(d.measurementChest),
                 measurementLength: formatEditMeasurementField(d.measurementLength),
@@ -101,7 +106,7 @@ final class EditListingViewModel {
                 genderTarget: normalizeEditChoice(d.genderTarget)
             )
         case .failure(let err):
-            loadError = FashErrorPresentation.userMessage(for: err).nilIfEmpty ?? L10n.editListingLoadError
+            loadError = editListingNonEmpty(FashErrorPresentation.userMessage(for: err)) ?? L10n.editListingLoadError
         }
         isLoading = false
     }
@@ -121,7 +126,7 @@ final class EditListingViewModel {
 
     func searchBrands(query: String, deps: AppDependencies) async {
         if case .success(let page) = await deps.commonCatalogRepository.getBrands(
-            q: query.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
+            q: editListingNonEmpty(query),
             limit: 50
         ) {
             brandsSearch = page.items
@@ -230,9 +235,9 @@ final class EditListingViewModel {
             return true
         case .failure(let err):
             if let http = err as? CoreServiceHttpException, http.statusCode == 409 {
-                deps.showSnackbar(http.message.nilIfEmpty ?? L10n.editListingNotEditable)
+                deps.showSnackbar(editListingNonEmpty(http.message) ?? L10n.editListingNotEditable)
             } else {
-                deps.showSnackbar(FashErrorPresentation.userMessage(for: err).nilIfEmpty ?? L10n.editListingSaveError)
+                deps.showSnackbar(editListingNonEmpty(FashErrorPresentation.userMessage(for: err)) ?? L10n.editListingSaveError)
             }
             return false
         }
@@ -246,7 +251,7 @@ final class EditListingViewModel {
             deps.showSnackbar(L10n.editListingDeleted)
             shouldDismissAfterDelete = true
         case .failure(let err):
-            deps.showSnackbar(FashErrorPresentation.userMessage(for: err).nilIfEmpty ?? L10n.editListingDeleteError)
+            deps.showSnackbar(editListingNonEmpty(FashErrorPresentation.userMessage(for: err)) ?? L10n.editListingDeleteError)
         }
     }
 
@@ -260,15 +265,15 @@ final class EditListingViewModel {
         d.description = String(f.description.prefix(descMax))
         d.priceVnd = price
         d.condition = ListingConditionOptions.normalizeUiToApi(f.condition)
-        d.size = f.size.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
-        d.brand = f.brandName.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+        d.size = editListingNonEmpty(f.size)
+        d.brand = editListingNonEmpty(f.brandName)
         d.brandId = f.brandId
         d.tags = tagNames
         d.aestheticTags = tagNames
         d.countryId = f.countryId
-        d.countryName = f.countryName.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
-        d.countryIso2 = f.countryIso2.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
-        d.measurementUnit = f.measurementUnit.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+        d.countryName = editListingNonEmpty(f.countryName)
+        d.countryIso2 = editListingNonEmpty(f.countryIso2)
+        d.measurementUnit = editListingNonEmpty(f.measurementUnit)
         d.measurementHem = parseEditDoubleField(f.measurementHem)
         d.measurementChest = parseEditDoubleField(f.measurementChest)
         d.measurementLength = parseEditDoubleField(f.measurementLength)
@@ -278,8 +283,8 @@ final class EditListingViewModel {
         d.autoPriceDropEnabled = f.autoPriceDropEnabled
         d.floorPriceVnd = f.autoPriceDropEnabled ? parseEditPositiveLong(f.floorPriceText) : nil
         d.priceDropPercent = f.autoPriceDropEnabled ? parsedEditPriceDropPercent(f.priceDropPercentInput) : nil
-        d.color = normalizeEditChoice(f.color).nilIfEmpty
-        d.genderTarget = normalizeEditChoice(f.genderTarget).nilIfEmpty
+        d.color = editListingNonEmpty(normalizeEditChoice(f.color))
+        d.genderTarget = editListingNonEmpty(normalizeEditChoice(f.genderTarget))
         detail = d
         baselineTagIds = f.selectedTagIds
     }
@@ -359,7 +364,7 @@ private func hasFormChanges(detail: ListingDetail, form: EditListingFormState, b
     if form.countryId != detail.countryId { return true }
     if form.countryName.trimmingCharacters(in: .whitespacesAndNewlines) != (detail.countryName ?? "").trimmingCharacters(in: .whitespacesAndNewlines) { return true }
     let unitForm = form.measurementUnit.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-    let unitD = (detail.measurementUnit ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased().nilIfEmpty ?? "cm"
+    let unitD = editListingNonEmpty((detail.measurementUnit ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()) ?? "cm"
     if unitForm != unitD { return true }
     if !measurementEq(parseEditDoubleField(form.measurementHem), detail.measurementHem) { return true }
     if !measurementEq(parseEditDoubleField(form.measurementChest), detail.measurementChest) { return true }
@@ -400,7 +405,7 @@ private func buildDeltaUpdate(
         ? ListingConditionOptions.normalizeUiToApi(form.condition) : nil
     let sizeP = size != dSize ? size : nil
     let brandChanged = bn != dBrand || form.brandId != detail.brandId
-    let brandIdP = brandChanged ? form.brandId?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty : nil
+    let brandIdP = brandChanged ? editListingNonEmpty(form.brandId) : nil
     let brandNameP = brandChanged ? bn : nil
     let tagsP: [String]? = form.selectedTagIds != baselineTags
         ? form.selectedTagIds.compactMap { id in catalog.first(where: { $0.id == id })?.name.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -416,7 +421,7 @@ private func buildDeltaUpdate(
         ? form.countryName.trimmingCharacters(in: .whitespacesAndNewlines) : nil
 
     let unitForm = form.measurementUnit.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-    let unitD = (detail.measurementUnit ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased().nilIfEmpty ?? "cm"
+    let unitD = editListingNonEmpty((detail.measurementUnit ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()) ?? "cm"
     let measurementUnitP = unitForm != unitD ? unitForm : nil
 
     func deltaMeasurement(_ formVal: String, _ detailVal: Double?) -> Double? {
@@ -434,10 +439,16 @@ private func buildDeltaUpdate(
         return p != nil && p != detail.priceDropPercent ? p : nil
     }() : nil
 
-    let colorP = normalizeEditChoice(form.color) != normalizeEditChoice(detail.color)
-        ? normalizeEditChoice(form.color).nilIfEmpty : nil
-    let genderP = normalizeEditChoice(form.genderTarget) != normalizeEditChoice(detail.genderTarget)
-        ? normalizeEditChoice(form.genderTarget).nilIfEmpty : nil
+    let colorNorm = normalizeEditChoice(form.color)
+    let colorP = colorNorm != normalizeEditChoice(detail.color) ? editListingNonEmpty(colorNorm) : nil
+    let genderNorm = normalizeEditChoice(form.genderTarget)
+    let genderP = genderNorm != normalizeEditChoice(detail.genderTarget) ? editListingNonEmpty(genderNorm) : nil
+
+    var hemP = deltaMeasurement(form.measurementHem, detail.measurementHem)
+    var chestP = deltaMeasurement(form.measurementChest, detail.measurementChest)
+    var lenP = deltaMeasurement(form.measurementLength, detail.measurementLength)
+    var shP = deltaMeasurement(form.measurementShoulders, detail.measurementShoulders)
+    var slP = deltaMeasurement(form.measurementSleeveLength, detail.measurementSleeveLength)
 
     return UpdateListingRequest(
         title: titleP,
@@ -456,11 +467,11 @@ private func buildDeltaUpdate(
         countryId: countryIdP,
         countryName: countryNameP,
         measurementUnit: measurementUnitP,
-        measurementHem: deltaMeasurement(form.measurementHem, detail.measurementHem),
-        measurementChest: deltaMeasurement(form.measurementChest, detail.measurementChest),
-        measurementLength: deltaMeasurement(form.measurementLength, detail.measurementLength),
-        measurementShoulders: deltaMeasurement(form.measurementShoulders, detail.measurementShoulders),
-        measurementSleeveLength: deltaMeasurement(form.measurementSleeveLength, detail.measurementSleeveLength),
+        measurementHem: hemP,
+        measurementChest: chestP,
+        measurementLength: lenP,
+        measurementShoulders: shP,
+        measurementSleeveLength: slP,
         color: colorP,
         genderTarget: genderP
     )
@@ -488,19 +499,13 @@ private func matchEditTagIds(listingTagStrings: [String], catalog: [CommonAesthe
             out.insert(byId.id)
             continue
         }
-        if let byName = catalog.first(where: {
-            $0.name.caseInsensitiveCompare(t) == .orderedSame
-                || $0.displayName().caseInsensitiveCompare(t) == .orderedSame
-        }) {
-            out.insert(byName.id)
+        for tag in catalog where !out.contains(tag.id) {
+            if tag.name.caseInsensitiveCompare(t) == .orderedSame
+                || tag.displayName().caseInsensitiveCompare(t) == .orderedSame {
+                out.insert(tag.id)
+                break
+            }
         }
     }
     return out
-}
-
-private extension String {
-    var nilIfEmpty: String? {
-        let t = trimmingCharacters(in: .whitespacesAndNewlines)
-        return t.isEmpty ? nil : t
-    }
 }

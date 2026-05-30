@@ -327,25 +327,25 @@ struct EditListingScreen: View {
     private func readOnlyShippingSection(detail: ListingDetail) -> some View {
         let hasShipping = detail.shippingAddress != nil
         let hasEst = detail.estimatedShippingVnd != nil
-        if !hasShipping && !hasEst { return }
-
-        sectionTitle(L10n.editListingReadonlySectionTitle)
-        Text(L10n.editListingReadonlySectionSubtitle)
-            .font(FashTypography.bodySmall)
-            .foregroundStyle(FashColors.textSecondary)
-        editListingCard {
-            if let addr = detail.shippingAddress {
-                Text(L10n.postStepShipping)
-                    .font(FashTypography.labelMedium)
-                    .foregroundStyle(FashColors.textSecondary)
-                Text(formatEditShippingAddress(addr))
-                    .font(FashTypography.bodyMedium)
-                    .foregroundStyle(FashColors.textPrimary)
-            }
-            if let fee = detail.estimatedShippingVnd {
-                Text(L10n.productShippingEstimate(FeedPriceFormat.format(fee)))
-                    .font(FashTypography.bodyMedium)
-                    .foregroundStyle(FashColors.textSecondary)
+        if hasShipping || hasEst {
+            sectionTitle(L10n.editListingReadonlySectionTitle)
+            Text(L10n.editListingReadonlySectionSubtitle)
+                .font(FashTypography.bodySmall)
+                .foregroundStyle(FashColors.textSecondary)
+            editListingCard {
+                if let addr = detail.shippingAddress {
+                    Text(L10n.postStepShipping)
+                        .font(FashTypography.labelMedium)
+                        .foregroundStyle(FashColors.textSecondary)
+                    Text(formatEditShippingAddress(addr))
+                        .font(FashTypography.bodyMedium)
+                        .foregroundStyle(FashColors.textPrimary)
+                }
+                if let fee = detail.estimatedShippingVnd {
+                    Text(L10n.productShippingEstimate(FeedPriceFormat.format(fee)))
+                        .font(FashTypography.bodyMedium)
+                        .foregroundStyle(FashColors.textSecondary)
+                }
             }
         }
     }
@@ -367,7 +367,8 @@ struct EditListingScreen: View {
         if let p = detail.parentCategoryName?.trimmingCharacters(in: .whitespacesAndNewlines), !p.isEmpty {
             parts.append(p)
         }
-        parts.append(detail.category?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty ?? L10n.createListingSelect)
+        let cat = detail.category?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        parts.append(cat.isEmpty ? L10n.createListingSelect : cat)
         return parts.joined(separator: " · ")
     }
 
