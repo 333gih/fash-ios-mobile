@@ -41,8 +41,9 @@ final class SellerProfileViewModel {
         let showBlocking = profile == nil
         if showBlocking { isLoading = true }
         defer {
-            guard generation == loadGeneration else { return }
-            if showBlocking { isLoading = false }
+            if generation == loadGeneration, showBlocking {
+                isLoading = false
+            }
         }
         loadError = false
 
