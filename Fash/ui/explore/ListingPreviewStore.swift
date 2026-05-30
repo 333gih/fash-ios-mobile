@@ -3,7 +3,7 @@ import Observation
 
 struct ExploreListingPreviewState: Identifiable {
     let id = UUID()
-    let feedItem: ListingFeedItem
+    var feedItem: ListingFeedItem
     let surface: String
     let gridPosition: Int
     var detail: ListingPreviewDetail?

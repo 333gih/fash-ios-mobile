@@ -52,8 +52,8 @@ struct ExploreOverlayHost: View {
                     onClose()
                     router.showFeaturedSellersAll = true
                 },
-                hostManagesStickyChrome: true,
-                onRequestSignIn: onRequestSignIn
+                onRequestSignIn: onRequestSignIn,
+                hostManagesStickyChrome: true
             )
         }
         .background(FashColors.screen)

@@ -131,18 +131,18 @@ struct FashScrollViewTabSwipe: UIViewRepresentable {
             case .ended, .cancelled, .failed:
                 let wasLocked = horizontalLocked
                 let velocity = recognizer.velocity(in: view).x
-                let flingNext = velocity <= -Self.flingVelocityThreshold
-                let flingPrev = velocity >= Self.flingVelocityThreshold
+                let flingNext = velocity <= -FashScrollViewTabSwipe.flingVelocityThreshold
+                let flingPrev = velocity >= FashScrollViewTabSwipe.flingVelocityThreshold
 
                 let commitNext =
                     wasLocked
-                    && (accumulatedDrag <= -Self.swipeThreshold
-                        || (flingNext && abs(accumulatedDrag) > Self.flingDistanceThreshold))
+                    && (accumulatedDrag <= -FashScrollViewTabSwipe.swipeThreshold
+                        || (flingNext && abs(accumulatedDrag) > FashScrollViewTabSwipe.flingDistanceThreshold))
                     && canGoNext
                 let commitPrev =
                     wasLocked
-                    && (accumulatedDrag >= Self.swipeThreshold
-                        || (flingPrev && abs(accumulatedDrag) > Self.flingDistanceThreshold))
+                    && (accumulatedDrag >= FashScrollViewTabSwipe.swipeThreshold
+                        || (flingPrev && abs(accumulatedDrag) > FashScrollViewTabSwipe.flingDistanceThreshold))
                     && canGoPrevious
                 let committed = commitNext || commitPrev
 
