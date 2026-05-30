@@ -462,7 +462,6 @@ private struct ExploreListingCell: View {
     var body: some View {
         ListingGridCard(
             item: item,
-            statusOverlayLabel: ListingStatusUi.overlayLabel(for: item.listingStatus, suppressActive: true),
             onTap: {
                 viewModel.reportListingClick(item: item, position: index, deps: deps)
                 if openListingAsFullScreen {
@@ -479,6 +478,7 @@ private struct ExploreListingCell: View {
             },
             imageAspectRatio: ListingMasonryGrid.tileAspectWidthOverHeight(for: item),
             showQuickActions: true,
+            statusOverlayLabel: ListingStatusUi.overlayLabel(for: item.listingStatus, suppressActive: true),
             onLike: {
                 if isGuestMode {
                     onRequestSignIn?(L10n.guestLoginReasonLike)
