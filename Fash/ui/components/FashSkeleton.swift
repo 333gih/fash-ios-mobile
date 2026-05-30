@@ -25,6 +25,8 @@ enum FashSkeleton {
                 }
             }
         }
+        .padding(.leading, spacing.editorialStart)
+        .padding(.trailing, spacing.editorialEnd)
         .padding(.vertical, spacing.spacing4)
     }
 

@@ -113,13 +113,9 @@ struct ListingGridCard: View {
 
     /// Matches two-column masonry width when the parent does not inject [listingMasonryColumnWidth].
     private static func estimatedFeedColumnWidth(spacing: FashSpacing) -> CGFloat {
-        let screen = UIScreen.main.bounds.width
-        let gap = spacing.spacing2
-        return ListingMasonryGrid.columnWidth(
-            containerWidth: screen,
-            leadingInset: ListingMasonryGrid.feedGridHorizontalInset,
-            trailingInset: ListingMasonryGrid.feedGridHorizontalInset,
-            columnGap: gap
+        ListingMasonryGrid.feedGridColumnWidth(
+            containerWidth: UIScreen.main.bounds.width,
+            spacing: spacing
         )
     }
 

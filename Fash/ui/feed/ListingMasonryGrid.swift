@@ -2,8 +2,16 @@ import SwiftUI
 
 /// Pinterest masonry — tile height from API cover pixels, shortest-column placement.
 enum ListingMasonryGrid {
-    /// Home / Explore / Profile listing grids — edge-to-edge; only [columnGap] between columns.
-    static let feedGridHorizontalInset: CGFloat = 0
+    /// Two-column feed width — Android `rememberListingMasonryColumnWidthDp` (symmetric inset in formula only).
+    static func feedGridColumnWidth(containerWidth: CGFloat, spacing: FashSpacing) -> CGFloat {
+        let symmetricInset = max(spacing.editorialStart, spacing.editorialEnd)
+        return columnWidth(
+            containerWidth: containerWidth,
+            leadingInset: symmetricInset,
+            trailingInset: symmetricInset,
+            columnGap: spacing.spacing2
+        )
+    }
 
     /// Fallback when API omits dimensions (typical product photo 4:5).
     static let defaultAspectWidthOverHeight: CGFloat = 4.0 / 5.0
@@ -311,20 +319,17 @@ struct ListingMasonryColumnFeed<Content: View>: View {
     @State private var containerWidth: CGFloat = 0
 
     private var gap: CGFloat { columnSpacing ?? spacing.spacing2 }
-    private var edgeInset: CGFloat {
-        leadingPadding ?? trailingPadding ?? ListingMasonryGrid.feedGridHorizontalInset
-    }
+    private var resolvedLeading: CGFloat { leadingPadding ?? spacing.editorialStart }
+    private var resolvedTrailing: CGFloat { trailingPadding ?? spacing.editorialEnd }
 
     private var resolvedViewportWidth: CGFloat {
         containerWidth > 1 ? containerWidth : UIScreen.main.bounds.width
     }
 
     private var columnWidth: CGFloat {
-        ListingMasonryGrid.columnWidth(
+        ListingMasonryGrid.feedGridColumnWidth(
             containerWidth: resolvedViewportWidth,
-            leadingInset: edgeInset,
-            trailingInset: edgeInset,
-            columnGap: gap
+            spacing: spacing
         )
     }
 
@@ -347,6 +352,8 @@ struct ListingMasonryColumnFeed<Content: View>: View {
                 masonryColumn(layout.right)
             }
             .frame(maxWidth: .infinity, alignment: .top)
+            .padding(.leading, resolvedLeading)
+            .padding(.trailing, resolvedTrailing)
         }
         .frame(maxWidth: .infinity, alignment: .top)
         .onPreferenceChange(ListingMasonryContainerWidthKey.self) { width in

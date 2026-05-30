@@ -25,18 +25,15 @@ struct ListingStaggeredMasonryView<Cell: View, Footer: View>: View {
     }
 
     private var gap: CGFloat { spacing.spacing2 }
-    private var edgeInset: CGFloat { ListingMasonryGrid.feedGridHorizontalInset }
 
     private var resolvedViewportWidth: CGFloat {
         containerWidth > 1 ? containerWidth : UIScreen.main.bounds.width
     }
 
     private var columnWidth: CGFloat {
-        ListingMasonryGrid.columnWidth(
+        ListingMasonryGrid.feedGridColumnWidth(
             containerWidth: resolvedViewportWidth,
-            leadingInset: edgeInset,
-            trailingInset: edgeInset,
-            columnGap: gap
+            spacing: spacing
         )
     }
 
@@ -44,13 +41,17 @@ struct ListingStaggeredMasonryView<Cell: View, Footer: View>: View {
         VStack(spacing: gap) {
             widthProbe
 
-            HStack(alignment: .top, spacing: gap) {
-                pinterestColumn(layout.left)
-                pinterestColumn(layout.right)
-            }
-            .frame(maxWidth: .infinity)
+            VStack(spacing: gap) {
+                HStack(alignment: .top, spacing: gap) {
+                    pinterestColumn(layout.left)
+                    pinterestColumn(layout.right)
+                }
+                .frame(maxWidth: .infinity)
 
-            footer()
+                footer()
+            }
+            .padding(.leading, spacing.editorialStart)
+            .padding(.trailing, spacing.editorialEnd)
         }
         .frame(maxWidth: .infinity, alignment: .top)
         .onPreferenceChange(ListingMasonryContainerWidthKey.self) { width in
