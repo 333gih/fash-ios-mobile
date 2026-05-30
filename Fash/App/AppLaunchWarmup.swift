@@ -21,7 +21,7 @@ enum AppLaunchWarmup {
         progress.beginWarmup(homeSteps: 1, exploreSteps: 0, shellSteps: 0)
 
         await withTaskGroup(of: Void.self) { group in
-            group.addTask {
+            group.addTask { @MainActor in
                 await homeVM.awaitLaunchReady(deps: deps, isGuestMode: isGuestMode)
                 progress.completeHomeStep()
             }
@@ -52,7 +52,7 @@ enum AppLaunchWarmup {
         ordersVM: OrdersViewModel,
         isGuestMode: Bool
     ) {
-        Task(priority: .utility) {
+        Task(priority: .utility) { @MainActor in
             async let explore: Void = exploreVM.warmLaunchCaches(
                 deps: deps,
                 isGuestMode: isGuestMode,
