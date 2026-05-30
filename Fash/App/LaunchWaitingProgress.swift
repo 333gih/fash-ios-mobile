@@ -11,8 +11,10 @@ final class LaunchWaitingProgress {
 
     private var homeStepTotal = 0
     private var exploreStepTotal = 0
+    private var shellStepTotal = 0
     private var homeStepsDone = 0
     private var exploreStepsDone = 0
+    private var shellStepsDone = 0
     private var splashBaseline: Double = 0
 
     func reset() {
@@ -20,8 +22,10 @@ final class LaunchWaitingProgress {
         isActive = false
         homeStepTotal = 0
         exploreStepTotal = 0
+        shellStepTotal = 0
         homeStepsDone = 0
         exploreStepsDone = 0
+        shellStepsDone = 0
         splashBaseline = 0
     }
 
@@ -36,12 +40,14 @@ final class LaunchWaitingProgress {
         apply(splashBaseline)
     }
 
-    func beginWarmup(homeSteps: Int, exploreSteps: Int) {
+    func beginWarmup(homeSteps: Int, exploreSteps: Int, shellSteps: Int = 0) {
         isActive = true
         homeStepTotal = max(1, homeSteps)
         exploreStepTotal = max(1, exploreSteps)
+        shellStepTotal = max(0, shellSteps)
         homeStepsDone = 0
         exploreStepsDone = 0
+        shellStepsDone = 0
         if splashBaseline > 0 {
             apply(splashBaseline)
         } else {
@@ -61,6 +67,12 @@ final class LaunchWaitingProgress {
         applyWarmupFraction()
     }
 
+    func completeShellStep() {
+        guard shellStepTotal > 0 else { return }
+        shellStepsDone = min(shellStepTotal, shellStepsDone + 1)
+        applyWarmupFraction()
+    }
+
     func complete() {
         isActive = true
         apply(1)
@@ -71,7 +83,13 @@ final class LaunchWaitingProgress {
         let homePart = Double(homeStepsDone) / Double(homeStepTotal)
         let explorePart = Double(exploreStepsDone) / Double(exploreStepTotal)
         let warmupSpan = 1 - splashBaseline
-        let warmupProgress = 0.5 * homePart + 0.5 * explorePart
+        let warmupProgress: Double
+        if shellStepTotal > 0 {
+            let shellPart = Double(shellStepsDone) / Double(shellStepTotal)
+            warmupProgress = 0.35 * homePart + 0.35 * explorePart + 0.30 * shellPart
+        } else {
+            warmupProgress = 0.5 * homePart + 0.5 * explorePart
+        }
         apply(splashBaseline + warmupSpan * warmupProgress)
     }
 

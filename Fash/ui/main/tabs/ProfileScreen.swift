@@ -51,7 +51,7 @@ struct ProfileScreen: View {
             }
         }
         .background(FashColors.screen)
-        .task { await viewModel.refresh(deps: deps) }
+        .task { await viewModel.refreshIfStale(deps: deps) }
         .onChange(of: viewModel.profileTabOpenGeneration) { _, _ in
             _ = applyProfileTabOpenRequestIfNeeded()
         }

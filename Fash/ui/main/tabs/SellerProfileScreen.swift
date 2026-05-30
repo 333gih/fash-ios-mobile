@@ -21,6 +21,8 @@ struct SellerProfileScreen: View {
     @State private var promoSlides: [FashPromoSlideDef] = []
     @State private var showPromoFooter = false
 
+    @State private var showSlowLoadHint = false
+
     private var promoBottomInset: CGFloat {
         showPromoFooter && !promoSlides.isEmpty ? FashStickyPromoDockHeight : 0
     }
@@ -31,9 +33,20 @@ struct SellerProfileScreen: View {
             ZStack(alignment: .bottom) {
                 Group {
                     if viewModel.isLoading && viewModel.profile == nil {
-                        ProgressView()
-                            .tint(FashColors.brandPrimary)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        VStack(spacing: 16) {
+                            ProgressView()
+                                .tint(FashColors.brandPrimary)
+                            if showSlowLoadHint {
+                                Text(L10n.profileSlowLoadHint)
+                                    .font(FashTypography.bodySmall)
+                                    .foregroundStyle(FashColors.textSecondary)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal, spacing.editorialStart)
+                                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+                            }
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .animation(.easeOut(duration: 0.42), value: showSlowLoadHint)
                     } else if viewModel.loadError && viewModel.profile == nil {
                         FashEmptyStateView(title: L10n.profileLoadError, actionTitle: L10n.feedRetry) {
                             Task { await viewModel.loadForSeller(username, deps: deps, isGuestMode: isGuestMode) }
@@ -81,9 +94,19 @@ struct SellerProfileScreen: View {
         .background(FashColors.screen)
         .onChange(of: username) { _, _ in
             showPromoFooter = false
+            showSlowLoadHint = false
             viewModel.selectedTab = SellerProfileTab.selling.rawValue
         }
         .task(id: username) {
+            showSlowLoadHint = false
+            let slowHintTask = Task { @MainActor in
+                try? await Task.sleep(for: .seconds(2.5))
+                guard !Task.isCancelled else { return }
+                if viewModel.isLoading, viewModel.profile == nil {
+                    showSlowLoadHint = true
+                }
+            }
+            defer { slowHintTask.cancel() }
             await viewModel.loadForSeller(username, deps: deps, isGuestMode: isGuestMode)
             if case .success(let response) = await deps.advertisingRepository.getSlides(publicBrowse: isGuestMode) {
                 promoSlides = response.items.map(FashPromoSlideDef.fromAdvertising)

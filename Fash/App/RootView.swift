@@ -5,6 +5,9 @@ struct RootView: View {
     @State private var router = AppRouter()
     @State private var homeVM = HomeViewModel()
     @State private var exploreVM = ExploreViewModel()
+    @State private var profileVM = ProfileViewModel()
+    @State private var chatVM = ChatViewModel()
+    @State private var ordersVM = OrdersViewModel()
     @State private var loginVM = LoginViewModel()
     @State private var addressBookVM = AddressBookViewModel()
     @State private var changePasswordVM = ChangePasswordViewModel()
@@ -71,7 +74,14 @@ struct RootView: View {
         if router.showSplash || router.isLoggingOut || router.isLaunchWarmupInProgress {
             FashWaitingScreen(progress: launchProgress)
         } else if router.isGuestMode {
-            GuestMainShell(router: router, homeVM: homeVM, exploreVM: exploreVM)
+            GuestMainShell(
+                router: router,
+                homeVM: homeVM,
+                exploreVM: exploreVM,
+                profileVM: profileVM,
+                chatVM: chatVM,
+                ordersVM: ordersVM
+            )
         } else if let step = router.loginStep {
             loginFlow(step: step)
         } else if router.setupGateFetchFailed {
@@ -82,7 +92,14 @@ struct RootView: View {
         } else if let onboard = router.onboardingStep {
             onboardingFlow(step: onboard)
         } else {
-            MainNavScreen(router: router, homeVM: homeVM, exploreVM: exploreVM)
+            MainNavScreen(
+                router: router,
+                homeVM: homeVM,
+                exploreVM: exploreVM,
+                profileVM: profileVM,
+                chatVM: chatVM,
+                ordersVM: ordersVM
+            )
         }
     }
 
@@ -376,6 +393,9 @@ struct RootView: View {
             deps: deps,
             homeVM: homeVM,
             exploreVM: exploreVM,
+            profileVM: profileVM,
+            chatVM: chatVM,
+            ordersVM: ordersVM,
             isGuestMode: router.isGuestMode,
             progress: launchProgress
         )

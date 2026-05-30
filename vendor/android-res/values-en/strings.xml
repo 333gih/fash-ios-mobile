@@ -267,9 +267,11 @@
     <string name="listing_card_photo_stack_a11y">Listing has %d photos</string>
     <string name="listing_card_a11y_seller_role">Seller</string>
     <string name="feed_load_error">Could not load feed. Try again.</string>
+    <string name="feed_loading_more">Loading more…</string>
     <string name="feed_empty_title">No listings yet</string>
     <string name="feed_empty_subtitle">Follow sellers or explore to discover new items.</string>
     <string name="feed_retry">Retry</string>
+    <string name="profile_slow_load_hint">Loading profile, please wait a moment…</string>
     <string name="feed_action_error">Action failed. Try again.</string>
     <string name="listing_like_added_snackbar">Added to likes.</string>
     <string name="listing_like_removed_snackbar">Removed from likes.</string>

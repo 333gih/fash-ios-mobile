@@ -298,9 +298,11 @@
     <string name="listing_card_photo_stack_a11y">Tin có %d ảnh</string>
     <string name="listing_card_a11y_seller_role">Người bán</string>
     <string name="feed_load_error">Không tải được nội dung. Thử lại.</string>
+    <string name="feed_loading_more">Đang tải thêm…</string>
     <string name="feed_empty_title">Chưa có tin nào</string>
     <string name="feed_empty_subtitle">Theo dõi người bán hoặc khám phá để xem sản phẩm mới.</string>
     <string name="feed_retry">Thử lại</string>
+    <string name="profile_slow_load_hint">Đang tải hồ sơ, vui lòng chờ một chút…</string>
     <string name="feed_action_error">Thao tác thất bại. Thử lại.</string>
     <string name="listing_like_added_snackbar">Đã thêm vào yêu thích.</string>
     <string name="listing_like_removed_snackbar">Đã bỏ khỏi yêu thích.</string>

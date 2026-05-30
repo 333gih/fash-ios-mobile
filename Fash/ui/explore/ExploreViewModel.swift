@@ -7,8 +7,6 @@ enum ExplorePrimarySection: String, CaseIterable {
 }
 
 private let exploreFeedPageSize = 20
-/// Pinterest / Android Explore — prefetch when this many tiles from the end appear.
-private let exploreFeedPrefetchThreshold = 3
 /// Matches Android `ExploreStaleThresholdMs` — skip redundant reload when reopening Explore.
 private let exploreStaleThreshold: TimeInterval = 60
 
@@ -383,14 +381,6 @@ final class ExploreViewModel {
             defer { loadMoreTask = nil }
             await loadMore(deps: deps, isGuestMode: isGuestMode)
         }
-    }
-
-    /// Android Explore grid — prefetch when [position] is within [exploreFeedPrefetchThreshold] of the end.
-    func requestLoadMoreIfNearEnd(position: Int, deps: AppDependencies, isGuestMode: Bool) {
-        guard canLoadMoreListings else { return }
-        let threshold = max(0, items.count - exploreFeedPrefetchThreshold)
-        guard position >= threshold else { return }
-        requestLoadMore(deps: deps, isGuestMode: isGuestMode)
     }
 
     func cancelLoadMore() {

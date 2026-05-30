@@ -5,11 +5,11 @@ struct MainNavScreen: View {
     @Bindable var router: AppRouter
     @Bindable var homeVM: HomeViewModel
     @Bindable var exploreVM: ExploreViewModel
+    @Bindable var profileVM: ProfileViewModel
+    @Bindable var chatVM: ChatViewModel
+    @Bindable var ordersVM: OrdersViewModel
     var isGuestMode = false
     var onRequestSignIn: ((String) -> Void)? = nil
-    @State private var profileVM = ProfileViewModel()
-    @State private var chatVM = ChatViewModel()
-    @State private var ordersVM = OrdersViewModel()
     @State private var postVM = PostViewModel()
     @State private var addressBookVM = AddressBookViewModel()
     @State private var notificationsVM: NotificationsViewModel?

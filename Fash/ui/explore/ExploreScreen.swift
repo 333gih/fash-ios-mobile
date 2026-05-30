@@ -298,15 +298,6 @@ struct ExploreScreen: View {
         }
         .animation(.easeInOut(duration: 0.22), value: showsStickyChromeOverlay)
         .refreshable { await viewModel.pullToRefresh(deps: deps, isGuestMode: isGuestMode) }
-        .feedScrollPrefetch(
-            coordinateSpace: "exploreFeedScroll",
-            itemCount: viewModel.items.count,
-            scrollAnchorMinY: headerScrollMinY,
-            enabled: viewModel.hasMore && viewModel.primarySection == .listings,
-            isLoadingMore: viewModel.isLoadingMore
-        ) {
-            viewModel.requestLoadMore(deps: deps, isGuestMode: isGuestMode)
-        }
     }
 
     @ViewBuilder
@@ -342,19 +333,13 @@ struct ExploreScreen: View {
             }
             .padding(.top, spacing.spacing2)
 
-            FeedPaginationSentinel(
-                enabled: viewModel.hasMore,
-                isLoadingMore: viewModel.isLoadingMore
-            ) {
-                viewModel.requestLoadMore(deps: deps, isGuestMode: isGuestMode)
-            }
-
-            if viewModel.isLoadingMore {
-                ProgressView()
-                    .tint(FashColors.brandPrimary)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 56)
-                    .padding(.vertical, 8)
+            if viewModel.hasMore || viewModel.isLoadingMore {
+                FeedLoadMoreFooter(
+                    enabled: viewModel.hasMore,
+                    isLoadingMore: viewModel.isLoadingMore
+                ) {
+                    viewModel.requestLoadMore(deps: deps, isGuestMode: isGuestMode)
+                }
             }
 
             if !viewModel.hasMore {
@@ -489,7 +474,6 @@ private struct ExploreListingCell: View {
                 }
             }
         )
-        .feedCellScrollVisibility(index: index, coordinateSpace: "exploreFeedScroll")
         .onAppear {
             appearedAt = Date()
             viewModel.recordView(item: item, position: index, deps: deps)

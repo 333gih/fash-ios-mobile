@@ -48,10 +48,6 @@ struct HomeFeedContent: View {
         isGuestMode ? nil : viewModel.homeUxPersonalization.exploreShortcut
     }
 
-    private var followingPaginationEnabled: Bool {
-        viewModel.selectedFeedTab == .following && viewModel.followingHasMore
-    }
-
     /// Avoid collapsed empty gap while tab content swaps during horizontal swipe.
     private var homeFeedMinHeight: CGFloat {
         if !viewModel.items.isEmpty { return 0 }
@@ -66,7 +62,6 @@ struct HomeFeedContent: View {
     @State private var homeScrollResetToken = 0
     @State private var scrollClampRevision = 0
     @State private var homeHeaderHeight: CGFloat = 0
-    @State private var homeFeedScrollAnchorMinY: CGFloat = 0
     @State private var pendingPinnedFeedScroll = false
     @State private var masonryColumnAssignmentsByTab: [String: [String: Bool]] = [:]
 
@@ -82,8 +77,6 @@ struct HomeFeedContent: View {
             ScrollViewReader { scrollProxy in
                 ScrollView {
                     LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
-                        HomeFeedScrollOffsetAnchor()
-
                         Section {
                             homeScrollAwayHeader
                                 .homeFeedHeaderHeightReporting()
@@ -109,16 +102,6 @@ struct HomeFeedContent: View {
                 }
                 .coordinateSpace(name: "homeFeedScroll")
                 .scrollPosition(id: $homeScrollPosition, anchor: .top)
-                .onPreferenceChange(HomeFeedScrollOffsetKey.self) { homeFeedScrollAnchorMinY = $0 }
-                .feedScrollPrefetch(
-                    coordinateSpace: "homeFeedScroll",
-                    itemCount: viewModel.items.count,
-                    scrollAnchorMinY: homeFeedScrollAnchorMinY,
-                    enabled: followingPaginationEnabled,
-                    isLoadingMore: viewModel.isLoadingMoreFollowing
-                ) {
-                    viewModel.loadMoreFollowing(deps: deps, isGuestMode: isGuestMode)
-                }
                 .background {
                     PinnedTabScrollOffsetFixer(
                         resetToken: homeScrollResetToken,
@@ -302,12 +285,14 @@ struct HomeFeedContent: View {
                     )
                 }
 
-                if viewModel.selectedFeedTab == .following, viewModel.isLoadingMoreFollowing {
-                    ProgressView()
-                        .tint(FashColors.brandPrimary)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 56)
-                        .padding(.vertical, 8)
+                if viewModel.selectedFeedTab == .following,
+                   viewModel.followingHasMore || viewModel.isLoadingMoreFollowing {
+                    FeedLoadMoreFooter(
+                        enabled: viewModel.followingHasMore,
+                        isLoadingMore: viewModel.isLoadingMoreFollowing
+                    ) {
+                        viewModel.loadMoreFollowing(deps: deps, isGuestMode: isGuestMode)
+                    }
                 }
             }
             .padding(.top, spacing.spacing2)
@@ -367,7 +352,6 @@ private struct HomeFeedListingCell: View {
             onLike: onLike,
             onSave: onSave
         )
-        .feedCellScrollVisibility(index: index, coordinateSpace: "homeFeedScroll")
         .onAppear {
             appearedAt = Date()
             recordViewTask?.cancel()

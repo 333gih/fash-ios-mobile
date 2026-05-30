@@ -5,6 +5,9 @@ struct GuestMainShell: View {
     @Bindable var router: AppRouter
     @Bindable var homeVM: HomeViewModel
     @Bindable var exploreVM: ExploreViewModel
+    @Bindable var profileVM: ProfileViewModel
+    @Bindable var chatVM: ChatViewModel
+    @Bindable var ordersVM: OrdersViewModel
     @State private var showLoginSheet = false
     @State private var guestLoginReason: String?
 
@@ -13,6 +16,9 @@ struct GuestMainShell: View {
             router: router,
             homeVM: homeVM,
             exploreVM: exploreVM,
+            profileVM: profileVM,
+            chatVM: chatVM,
+            ordersVM: ordersVM,
             isGuestMode: true,
             onRequestSignIn: { reason in
             guestLoginReason = reason
