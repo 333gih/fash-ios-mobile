@@ -94,17 +94,32 @@ struct ListingGridCard: View {
 
     @ViewBuilder
     private var imageLayer: some View {
-        Group {
-            if displayImageUrl.isEmpty {
-                Rectangle()
-                    .fill(FashColors.surfaceContainerHigh)
-                    .overlay {
-                        Text(L10n.noImage)
-                            .font(FashTypography.bodySmall)
-                            .foregroundStyle(FashColors.textSecondary)
-                    }
-            } else {
-                FashAsyncImage(url: displayImageUrl, contentMode: .fill)
+        GeometryReader { geo in
+            Group {
+                if displayImageUrl.isEmpty {
+                    Rectangle()
+                        .fill(FashColors.surfaceContainerHigh)
+                        .overlay {
+                            Text(L10n.noImage)
+                                .font(FashTypography.bodySmall)
+                                .foregroundStyle(FashColors.textSecondary)
+                        }
+                } else {
+                    let px = FeedListingImageSizer.pixelSize(
+                        columnWidthPoints: geo.size.width,
+                        aspectRatio: imageAspectRatio
+                    )
+                    let feedUrl = FeedListingImageSizer.urlForFeedGrid(
+                        displayImageUrl,
+                        columnWidthPoints: geo.size.width,
+                        aspectRatio: imageAspectRatio
+                    )
+                    FashAsyncImage(
+                        url: feedUrl,
+                        contentMode: .fill,
+                        targetPixelSize: px
+                    )
+                }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

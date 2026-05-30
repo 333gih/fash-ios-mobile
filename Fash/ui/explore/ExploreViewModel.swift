@@ -654,6 +654,7 @@ final class ExploreViewModel {
             hasMore = feed.count >= exploreFeedPageSize
             loadError = false
             lastSuccessfulExploreRefreshAt = Date()
+            FeedListingImagePrefetch.prefetch(items: feed)
         case .failure:
             if !hadItems {
                 items = []
@@ -764,6 +765,7 @@ final class ExploreViewModel {
             if !append {
                 lastSuccessfulExploreRefreshAt = Date()
             }
+            FeedListingImagePrefetch.prefetch(items: append ? feed : items)
         case .failure:
             if !append {
                 items = []

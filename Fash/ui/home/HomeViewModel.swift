@@ -518,7 +518,10 @@ final class HomeViewModel {
 
     private func syncItemsForSelectedTab() {
         items = itemsForTab(selectedFeedTab)
-        if !items.isEmpty { errorMessage = nil }
+        if !items.isEmpty {
+            errorMessage = nil
+            FeedListingImagePrefetch.prefetch(items: items)
+        }
     }
 
     private func itemsForTab(_ tab: HomeFeedTab) -> [ListingFeedItem] {

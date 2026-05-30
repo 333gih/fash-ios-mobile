@@ -5,6 +5,8 @@ import Kingfisher
 struct FashAsyncImage: View {
     let url: String?
     var contentMode: SwiftUI.ContentMode = .fill
+    /// When set, Kingfisher decodes near display size (faster feed scroll, less memory).
+    var targetPixelSize: CGSize? = nil
 
     private var resolvedURL: String? {
         guard let url, !url.isEmpty else { return nil }
@@ -15,17 +17,34 @@ struct FashAsyncImage: View {
     var body: some View {
         Group {
             if let resolvedURL, let imageURL = URL(string: resolvedURL) {
-                KFImage(imageURL)
-                    .fade(duration: 0.2)
-                    .placeholder { FashAsyncImagePlaceholder() }
-                    .resizable()
-                    .aspectRatio(contentMode: contentMode)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .clipped()
-                    .background(FashAsyncImageError())
+                configuredImage(imageURL)
             } else {
                 FashAsyncImageError()
             }
+        }
+    }
+
+    @ViewBuilder
+    private func configuredImage(_ imageURL: URL) -> some View {
+        if let targetPixelSize, targetPixelSize.width > 0, targetPixelSize.height > 0 {
+            KFImage(imageURL)
+                .setProcessor(DownsamplingImageProcessor(size: targetPixelSize))
+                .fade(duration: 0.2)
+                .placeholder { FashAsyncImagePlaceholder() }
+                .resizable()
+                .aspectRatio(contentMode: contentMode)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped()
+                .background(FashAsyncImageError())
+        } else {
+            KFImage(imageURL)
+                .fade(duration: 0.2)
+                .placeholder { FashAsyncImagePlaceholder() }
+                .resizable()
+                .aspectRatio(contentMode: contentMode)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped()
+                .background(FashAsyncImageError())
         }
     }
 }

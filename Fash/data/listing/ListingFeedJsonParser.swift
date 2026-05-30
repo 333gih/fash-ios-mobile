@@ -183,12 +183,18 @@ enum ListingFeedJsonParser {
             let name = (tag["name"] as? String) ?? (tag["display_name"] as? String) ?? (tag["Name"] as? String) ?? ""
             return name.isEmpty ? nil : name
         }
+        let rootCoverW = (row["cover_image_width"] as? NSNumber)?.intValue
+            ?? (row["CoverImageWidth"] as? NSNumber)?.intValue
+        let rootCoverH = (row["cover_image_height"] as? NSNumber)?.intValue
+            ?? (row["CoverImageHeight"] as? NSNumber)?.intValue
+        let coverW = (rootCoverW ?? 0) > 0 ? rootCoverW : coverMeta.width
+        let coverH = (rootCoverH ?? 0) > 0 ? rootCoverH : coverMeta.height
         return ListingFeedItem(
             id: id,
             title: title,
             coverImageUrl: coverMeta.url,
-            coverImageWidth: coverMeta.width,
-            coverImageHeight: coverMeta.height,
+            coverImageWidth: coverW,
+            coverImageHeight: coverH,
             imageUrls: imageUrls,
             priceVnd: priceVnd,
             brand: (row["brand"] as? String) ?? (row["Brand"] as? String) ?? ((row["brand"] as? [String: Any])?["name"] as? String),
