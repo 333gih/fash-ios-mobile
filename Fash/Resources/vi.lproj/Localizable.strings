@@ -1036,6 +1036,8 @@
 "login_google_error_code" = "Đăng nhập Google thất bại (mã %1$d — %2$@).";
 "login_google_network_error" = "Không kết nối được máy chủ Google (mạng hoặc DNS). Kiểm tra Internet, tắt VPN hoặc DNS riêng (Private DNS), thử Wi‑Fi khác hoặc mạng dữ liệu.";
 "login_google_not_configured" = "Thêm GOOGLE_WEB_CLIENT_ID (OAuth Web client) vào env — và Android client + SHA-1 trên Google Cloud.";
+"login_google_play_services_error" = "Google Play Services chưa sẵn sàng. Cập nhật hoặc cài đặt Google Play Services rồi thử lại.";
+"login_google_play_services_error_detail" = "Google Play Services chưa sẵn sàng: %1$@.";
 "login_google_success" = "Đăng nhập Google thành công.";
 "login_hero_cd" = "Minh họa thời trang";
 "login_hero_pager_cd" = "Minh họa thời trang, ảnh %1$d / %2$d";

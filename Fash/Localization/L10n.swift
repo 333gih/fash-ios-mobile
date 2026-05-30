@@ -1212,6 +1212,10 @@ enum L10n {
     }
     static var loginGoogleNetworkError: String { t("login_google_network_error") }
     static var loginGoogleNotConfigured: String { t("login_google_not_configured") }
+    static var loginGooglePlayServicesError: String { t("login_google_play_services_error") }
+    static func loginGooglePlayServicesErrorDetail(_ a1: CVarArg) -> String {
+        String(format: t("login_google_play_services_error_detail"), a1)
+    }
     static var loginGoogleSuccess: String { t("login_google_success") }
     static var loginHeroCd: String { t("login_hero_cd") }
     static func loginHeroPagerCd(_ a1: CVarArg, _ a2: CVarArg) -> String {
