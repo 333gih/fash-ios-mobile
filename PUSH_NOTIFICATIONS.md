@@ -37,7 +37,9 @@ Bearer JWT bắt buộc (sau login). Backend lưu vào bảng `fcm_tokens` — x
 
 1. App ID bật capability **Push Notifications**.
 2. Provisioning profile include push entitlement.
-3. `Fash/Fash.entitlements` có `aps-environment` (development / production).
+3. Entitlements theo build:
+   - `Fash/Fash-Dev.entitlements` → `aps-environment` **development** (DevDebug, DevRelease, ProdDebug)
+   - `Fash/Fash-Prod.entitlements` → **production** (ProdRelease / TestFlight — bắt buộc cho push thật)
 
 ## Bước 3 — Code iOS (trong repo)
 

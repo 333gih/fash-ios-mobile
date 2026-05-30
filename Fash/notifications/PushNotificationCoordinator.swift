@@ -27,12 +27,22 @@ final class PushNotificationCoordinator: NSObject {
         }
     }
 
-    /// Call after login / session bootstrap (Android `LaunchedEffect` after splash + authenticated).
+    /// Call after login / session bootstrap (Android `FcmTokenRegistrar.registerCurrentTokenIfSession`).
     func registerCurrentTokenIfSession() async {
         guard Self.isFirebaseConfigured else { return }
         guard AppDependencies.shared.authSessionStore.read() != nil else { return }
-        guard let token = await Self.fetchFCMToken(), !token.isEmpty else { return }
-        await AppDependencies.shared.fcmTokenRegistrar.registerDeviceToken(token)
+        for attempt in 0..<4 {
+            if let token = await Self.fetchFCMToken(), !token.isEmpty {
+                await AppDependencies.shared.fcmTokenRegistrar.registerDeviceToken(token)
+                return
+            }
+            if attempt < 3 {
+                try? await Task.sleep(for: .milliseconds(400 * (attempt + 1)))
+            }
+        }
+        #if DEBUG
+        print("[Push] registerCurrentTokenIfSession: FCM token unavailable after retries (APNs / Firebase?)")
+        #endif
     }
 
     /// Requests notification permission and registers with APNs (required before FCM token on real device).

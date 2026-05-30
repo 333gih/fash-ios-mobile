@@ -17,7 +17,10 @@ final class FcmTokenRegistrar {
     }
 
     func registerDeviceToken(_ token: String) async {
-        guard let session = sessionStore.read() else { return }
+        guard let session = sessionStore.read() else {
+            logD("registerDeviceToken: no session, skip")
+            return
+        }
         await registerFcmWithOptionalRefresh(session: session, token: token)
     }
 
@@ -28,22 +31,63 @@ final class FcmTokenRegistrar {
             token: token,
             clientLocale: locale
         )
-        if case .success = first { return }
-        guard case .failure(let err) = first, isUnauthorized(err) else { return }
+        if case .success = first {
+            logD("registerFcm: backend OK")
+            return
+        }
+        guard case .failure(let err) = first else {
+            logW("registerFcm: unknown failure")
+            return
+        }
+        if !isUnauthorized(err) {
+            logE("registerFcm: backend failed — \(err.localizedDescription)")
+            return
+        }
         let refreshed = await AuthTokenRefreshCoordinator.refreshIfStillCurrent(
             sessionStore: sessionStore,
             authRepository: authRepository,
             accessTokenWhenUnauthorized: session.accessToken
         )
-        guard case .success(let newSession) = refreshed else { return }
-        _ = await authRepository.registerFcm(
+        guard case .success(let newSession) = refreshed else {
+            logW("registerFcm: access token expired; refresh failed")
+            return
+        }
+        let second = await authRepository.registerFcm(
             accessToken: newSession.accessToken,
             token: token,
             clientLocale: locale
         )
+        switch second {
+        case .success:
+            logD("registerFcm: backend OK after token refresh")
+        case .failure(let retryErr):
+            if isUnauthorized(retryErr) {
+                logW("registerFcm: still 401 after refresh")
+            } else {
+                logE("registerFcm: failed after refresh — \(retryErr.localizedDescription)")
+            }
+        }
     }
 
     private func isUnauthorized(_ error: Error) -> Bool {
         (error as? CoreServiceHttpException)?.statusCode == 401
+    }
+
+    private func logD(_ message: String) {
+        #if DEBUG
+        print("[FcmTokenRegistrar] \(message)")
+        #endif
+    }
+
+    private func logW(_ message: String) {
+        #if DEBUG
+        print("[FcmTokenRegistrar] WARN \(message)")
+        #endif
+    }
+
+    private func logE(_ message: String) {
+        #if DEBUG
+        print("[FcmTokenRegistrar] ERROR \(message)")
+        #endif
     }
 }

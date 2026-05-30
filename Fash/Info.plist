@@ -11,6 +11,8 @@
 	</array>
 	<key>CFBundleDisplayName</key>
 	<string>FASH.</string>
+	<key>FirebaseAppDelegateProxyEnabled</key>
+	<false/>
 	<key>CFBundleIconName</key>
 	<string>AppIcon</string>
 	<key>CFBundleExecutable</key>
