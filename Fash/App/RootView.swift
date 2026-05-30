@@ -163,7 +163,6 @@ struct RootView: View {
                 isGuestMode: router.isGuestMode,
                 onDismiss: { router.sellerShopUsername = nil },
                 onListingClick: { id in
-                    router.sellerShopUsername = nil
                     deps.presentListingDetail(listingId: id, router: router)
                 },
                 onNavigateToExploreFromProfile: { cat, brand, tag, q, countryId, iso in

@@ -22,25 +22,36 @@ extension AppDependencies {
     }
 
     /// Opens full product detail; preview dismisses in parallel (no wait for sheet).
-    func presentListingDetail(listingId: String, router: AppRouter) {
+    /// When `dismissExploreOverlay` is nil, Explore stays open if it is already showing (back returns to Khám phá).
+    func presentListingDetail(
+        listingId: String,
+        router: AppRouter,
+        dismissExploreOverlay: Bool? = nil
+    ) {
         let id = listingId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !id.isEmpty else { return }
-        dismissExploreOverlayIfNeeded(router)
+        let shouldDismissExplore = dismissExploreOverlay ?? !router.showExploreOverlay
+        dismissExploreOverlayIfNeeded(router, when: shouldDismissExplore)
         router.pendingListingIdAfterPreview = nil
         router.selectedListingId = id
         listingPreview.close(deps: self, animated: true)
     }
 
     /// Navigate to seller shop while preview animates away underneath the new screen.
-    func navigateFromListingPreview(router: AppRouter, _ navigate: () -> Void) {
-        dismissExploreOverlayIfNeeded(router)
+    func navigateFromListingPreview(
+        router: AppRouter,
+        dismissExploreOverlay: Bool? = nil,
+        _ navigate: () -> Void
+    ) {
+        let shouldDismissExplore = dismissExploreOverlay ?? !router.showExploreOverlay
+        dismissExploreOverlayIfNeeded(router, when: shouldDismissExplore)
         router.pendingListingIdAfterPreview = nil
         navigate()
         listingPreview.close(deps: self, animated: true)
     }
 
-    private func dismissExploreOverlayIfNeeded(_ router: AppRouter) {
-        guard router.showExploreOverlay else { return }
+    private func dismissExploreOverlayIfNeeded(_ router: AppRouter, when shouldDismiss: Bool) {
+        guard shouldDismiss, router.showExploreOverlay else { return }
         router.showExploreOverlay = false
         router.exploreSearchExpanded = false
     }
