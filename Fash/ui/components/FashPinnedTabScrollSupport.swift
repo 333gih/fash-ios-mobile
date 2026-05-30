@@ -17,6 +17,7 @@ enum PinnedTabScrollPolicy {
 /// Resets UIScrollView offset after tab swaps when feed/grid height shrinks — SwiftUI `scrollTo` alone keeps stale offset.
 struct PinnedTabScrollOffsetFixer: UIViewRepresentable {
     var resetToken: Int
+    var clampRevision: Int = 0
     var headerHeight: CGFloat
 
     func makeCoordinator() -> Coordinator { Coordinator() }
@@ -29,25 +30,42 @@ struct PinnedTabScrollOffsetFixer: UIViewRepresentable {
 
     func updateUIView(_ uiView: AnchorView, context: Context) {
         uiView.coordinator = context.coordinator
-        guard resetToken > 0, resetToken != context.coordinator.lastAppliedToken else { return }
-        context.coordinator.lastAppliedToken = resetToken
-        uiView.scheduleReset(headerHeight: headerHeight)
+        let token = resetToken
+        let revision = clampRevision
+        guard token > 0 || revision > 0 else { return }
+
+        let tokenChanged = token != context.coordinator.lastAppliedToken
+        let revisionChanged = revision != context.coordinator.lastAppliedClampRevision
+        guard tokenChanged || revisionChanged else { return }
+
+        context.coordinator.lastAppliedToken = token
+        context.coordinator.lastAppliedClampRevision = revision
+        let mode: AnchorView.ResetMode = tokenChanged ? .pinnedReset : .clampOnly
+        uiView.scheduleReset(headerHeight: headerHeight, mode: mode)
     }
 
     final class Coordinator {
         var lastAppliedToken = 0
+        var lastAppliedClampRevision = 0
     }
 
     final class AnchorView: UIView {
+        enum ResetMode {
+            /// Tab swap — align grid under pinned chrome.
+            case pinnedReset
+            /// Content height changed — only trim stale deep offsets, never pull user back to tabs.
+            case clampOnly
+        }
+
         weak var coordinator: Coordinator?
 
-        func scheduleReset(headerHeight: CGFloat) {
+        func scheduleReset(headerHeight: CGFloat, mode: ResetMode) {
             DispatchQueue.main.async { [weak self] in
-                self?.applyReset(headerHeight: headerHeight, attempt: 0)
+                self?.applyReset(headerHeight: headerHeight, mode: mode, attempt: 0)
             }
         }
 
-        private func applyReset(headerHeight: CGFloat, attempt: Int) {
+        private func applyReset(headerHeight: CGFloat, mode: ResetMode, attempt: Int) {
             guard let scrollView = enclosingScrollView() else { return }
             scrollView.layoutIfNeeded()
 
@@ -63,13 +81,21 @@ struct PinnedTabScrollOffsetFixer: UIViewRepresentable {
             )
             let currentY = scrollView.contentOffset.y
 
-            if abs(currentY - pinnedTarget) > 1.5 || currentY > maxOffset + 1.5 {
-                scrollView.setContentOffset(CGPoint(x: 0, y: pinnedTarget), animated: false)
+            switch mode {
+            case .pinnedReset:
+                if abs(currentY - pinnedTarget) > 1.5 || currentY > maxOffset + 1.5 {
+                    scrollView.setContentOffset(CGPoint(x: 0, y: pinnedTarget), animated: false)
+                }
+            case .clampOnly:
+                if currentY > maxOffset + 1.5 {
+                    scrollView.setContentOffset(CGPoint(x: 0, y: maxOffset), animated: false)
+                }
             }
 
-            guard attempt < 5 else { return }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { [weak self] in
-                self?.applyReset(headerHeight: headerHeight, attempt: attempt + 1)
+            let maxAttempts = mode == .pinnedReset ? 8 : 2
+            guard attempt < maxAttempts else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) { [weak self] in
+                self?.applyReset(headerHeight: headerHeight, mode: mode, attempt: attempt + 1)
             }
         }
     }
@@ -81,14 +107,16 @@ enum PinnedTabScrollReset {
         scrollPosition: Binding<ID?>,
         proxy: ScrollViewProxy,
         resetToken: Binding<Int>,
-        contentId: ID
+        contentId: ID,
+        followUpDelaysMs: [Int] = [60, 140, 260]
     ) {
         scrollPosition.wrappedValue = contentId
         proxy.scrollTo(contentId, anchor: .top)
         resetToken.wrappedValue += 1
 
+        guard !followUpDelaysMs.isEmpty else { return }
         Task { @MainActor in
-            for delayMs in [60, 140, 260] {
+            for delayMs in followUpDelaysMs {
                 try? await Task.sleep(for: .milliseconds(delayMs))
                 scrollPosition.wrappedValue = contentId
                 proxy.scrollTo(contentId, anchor: .top)

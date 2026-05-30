@@ -70,6 +70,8 @@ private struct FeedScrollPrefetchModifier: ViewModifier {
 
     @State private var lastPrefetchItemCount = 0
     @State private var lastVisibleFrames: [Int: FeedCellScrollFrame] = [:]
+    @State private var lastScrollAnchorMinY: CGFloat = 0
+    @State private var debounceTask: Task<Void, Never>?
 
     private var viewportHeight: CGFloat {
         UIScreen.main.bounds.height
@@ -79,10 +81,12 @@ private struct FeedScrollPrefetchModifier: ViewModifier {
         content
             .onPreferenceChange(FeedCellScrollVisibilityKey.self) { frames in
                 lastVisibleFrames = frames
-                evaluatePrefetch(frames: frames)
+                schedulePrefetchEvaluation()
             }
-            .onChange(of: scrollAnchorMinY) { _, _ in
-                evaluatePrefetch(frames: lastVisibleFrames)
+            .onChange(of: scrollAnchorMinY) { _, newValue in
+                guard abs(newValue - lastScrollAnchorMinY) > 24 else { return }
+                lastScrollAnchorMinY = newValue
+                schedulePrefetchEvaluation()
             }
             .onChange(of: itemCount) { _, _ in
                 lastPrefetchItemCount = 0
@@ -92,6 +96,18 @@ private struct FeedScrollPrefetchModifier: ViewModifier {
                     lastPrefetchItemCount = 0
                 }
             }
+            .onDisappear {
+                debounceTask?.cancel()
+            }
+    }
+
+    private func schedulePrefetchEvaluation() {
+        debounceTask?.cancel()
+        debounceTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(140))
+            guard !Task.isCancelled else { return }
+            evaluatePrefetch(frames: lastVisibleFrames)
+        }
     }
 
     private func evaluatePrefetch(frames: [Int: FeedCellScrollFrame]) {

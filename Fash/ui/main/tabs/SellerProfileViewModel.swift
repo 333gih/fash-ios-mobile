@@ -18,11 +18,16 @@ final class SellerProfileViewModel {
     var selectedTab = SellerProfileTab.selling.rawValue
 
     private var activeKey: String?
+    private var loadGeneration = 0
 
     func loadForSeller(_ username: String, deps: AppDependencies, isGuestMode: Bool) async {
         let key = username.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: "@", with: "")
         guard !key.isEmpty else { return }
         if key == activeKey, profile != nil { return }
+
+        loadGeneration += 1
+        let generation = loadGeneration
+
         let sellerChanged = activeKey != nil && activeKey != key
         activeKey = key
         if sellerChanged || profile == nil {
@@ -35,31 +40,75 @@ final class SellerProfileViewModel {
         }
         let showBlocking = profile == nil
         if showBlocking { isLoading = true }
-        defer { if showBlocking { isLoading = false } }
+        defer {
+            guard generation == loadGeneration else { return }
+            if showBlocking { isLoading = false }
+        }
         loadError = false
 
         async let tagsResult = deps.commonCatalogRepository.getAestheticTags(all: true)
-        let profileResult: Result<ProfileInfo, Error> = if isGuestMode {
-            await deps.userRepository.getProfilePublic(key)
-        } else {
-            await deps.userRepository.getProfile(key)
-        }
+        let profileResult = await fetchSellerProfileWithRetry(
+            key: key,
+            deps: deps,
+            isGuestMode: isGuestMode
+        )
+        guard generation == loadGeneration else { return }
 
         switch profileResult {
         case .success(let prof):
             profile = prof
+            loadError = false
             isFollowing = isGuestMode ? false : prof.isFollowing
             if case .success(let tags) = await tagsResult {
+                guard generation == loadGeneration else { return }
                 aestheticCatalog = tags
             }
-            await loadListings(sellerId: prof.userId, username: key, deps: deps, isGuestMode: isGuestMode)
-            await loadSellerFocus(username: key, deps: deps, isGuestMode: isGuestMode)
+            await loadListings(
+                sellerId: prof.userId,
+                username: key,
+                deps: deps,
+                isGuestMode: isGuestMode,
+                generation: generation
+            )
+            await loadSellerFocus(
+                username: key,
+                deps: deps,
+                isGuestMode: isGuestMode,
+                generation: generation
+            )
         case .failure:
+            guard generation == loadGeneration else { return }
             loadError = true
         }
     }
 
-    private func loadSellerFocus(username: String, deps: AppDependencies, isGuestMode: Bool) async {
+    private func fetchSellerProfileWithRetry(
+        key: String,
+        deps: AppDependencies,
+        isGuestMode: Bool
+    ) async -> Result<ProfileInfo, Error> {
+        func once() async -> Result<ProfileInfo, Error> {
+            if isGuestMode {
+                await deps.userRepository.getProfilePublic(key)
+            } else {
+                await deps.userRepository.getProfile(key)
+            }
+        }
+        var result = await once()
+        if case .failure = result {
+            try? await Task.sleep(for: .milliseconds(400))
+            result = await once()
+        }
+        return result
+    }
+
+    private func loadSellerFocus(
+        username: String,
+        deps: AppDependencies,
+        isGuestMode: Bool,
+        generation: Int
+    ) async {
+        guard generation == loadGeneration else { return }
         guard !isGuestMode else {
             sellerFocus = nil
             sellerFocusForbidden = false
@@ -70,8 +119,10 @@ final class SellerProfileViewModel {
         defer { sellerFocusLoading = false }
         switch await deps.userRepository.getSellerListingFocus(username) {
         case .success(let focus):
+            guard generation == loadGeneration else { return }
             sellerFocus = focus.isEmpty ? nil : focus
         case .failure(let err):
+            guard generation == loadGeneration else { return }
             if err as? SellerFocusError == .forbidden {
                 sellerFocusForbidden = true
             }
@@ -149,20 +200,57 @@ final class SellerProfileViewModel {
         }
     }
 
-    private func loadListings(sellerId: String, username: String, deps: AppDependencies, isGuestMode: Bool) async {
+    private func loadListings(
+        sellerId: String,
+        username: String,
+        deps: AppDependencies,
+        isGuestMode: Bool,
+        generation: Int
+    ) async {
         let id = sellerId.trimmingCharacters(in: .whitespaces).isEmpty ? username : sellerId
-        async let active = deps.listingRepository.getListingsBySeller(
-            sellerId: id, status: "active", limit: 50, publicBrowse: isGuestMode
+        async let active = fetchSellerListingsWithRetry(
+            sellerId: id,
+            status: "active",
+            deps: deps,
+            isGuestMode: isGuestMode
         )
-        async let sold = deps.listingRepository.getListingsBySeller(
-            sellerId: id, status: "sold", limit: 50, publicBrowse: isGuestMode
+        async let sold = fetchSellerListingsWithRetry(
+            sellerId: id,
+            status: "sold",
+            deps: deps,
+            isGuestMode: isGuestMode
         )
+        guard generation == loadGeneration else { return }
         if case .success(let list) = await active {
+            guard generation == loadGeneration else { return }
             sellingListings = list.filter { ($0.listingStatus ?? "").lowercased() != "sold" }
         }
         if case .success(let list) = await sold {
+            guard generation == loadGeneration else { return }
             soldListings = list
         }
+    }
+
+    private func fetchSellerListingsWithRetry(
+        sellerId: String,
+        status: String,
+        deps: AppDependencies,
+        isGuestMode: Bool
+    ) async -> Result<[ListingFeedItem], Error> {
+        func once() async -> Result<[ListingFeedItem], Error> {
+            await deps.listingRepository.getListingsBySeller(
+                sellerId: sellerId,
+                status: status,
+                limit: 50,
+                publicBrowse: isGuestMode
+            )
+        }
+        var result = await once()
+        if case .failure = result {
+            try? await Task.sleep(for: .milliseconds(350))
+            result = await once()
+        }
+        return result
     }
 
     private func patch(_ id: String, liked: Bool?, saved: Bool?) {

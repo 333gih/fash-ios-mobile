@@ -116,11 +116,21 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     @State private var lastScrollOffset: CGFloat = 0
     @State private var profileScrollPosition: String?
     @State private var profileScrollResetToken = 0
+    @State private var scrollClampRevision = 0
     @State private var pendingPinnedGridScroll = false
+    @State private var pinnedScrollTaskGeneration = 0
+    @State private var masonryColumnAssignmentsByTab: [Int: [String: Bool]] = [:]
 
-    /// Android `empty_$safeSelectedTab` / row keys — one scroll id per tab + empty/data branch.
+    /// Stable per tab — do not branch on empty/rows or SwiftUI recreates the grid and jumps scroll.
     private var listingGridScrollId: String {
-        ProfileScrollIds.listingGrid(tab: selectedTab, isEmpty: items.isEmpty)
+        ProfileScrollIds.listingGrid(tab: selectedTab)
+    }
+
+    private var masonryColumnAssignments: Binding<[String: Bool]> {
+        Binding(
+            get: { masonryColumnAssignmentsByTab[selectedTab] ?? [:] },
+            set: { masonryColumnAssignmentsByTab[selectedTab] = $0 }
+        )
     }
 
     var body: some View {
@@ -145,7 +155,10 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                             if items.isEmpty {
                                 emptyBlock
                             } else {
-                                ListingMasonryLazyRows(items: items) { item, _ in
+                                ListingStaggeredMasonryView(
+                                    items: items,
+                                    columnAssignments: masonryColumnAssignments
+                                ) { item, _ in
                                     ListingGridCard(
                                         item: item,
                                         onTap: { onListingClick(item) },
@@ -162,7 +175,6 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                             }
                         }
                         .id(listingGridScrollId)
-                        .animation(nil, value: listingGridScrollId)
 
                         Color.clear.frame(height: max(120, additionalBottomInset + 80))
                     } header: {
@@ -184,6 +196,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             .background {
                 PinnedTabScrollOffsetFixer(
                     resetToken: profileScrollResetToken,
+                    clampRevision: scrollClampRevision,
                     headerHeight: headerHeight
                 )
             }
@@ -211,17 +224,13 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             }
             .onChange(of: selectedTab) { oldTab, newTab in
                 guard oldTab != newTab else { return }
+                pinnedScrollTaskGeneration += 1
                 profileScrollPosition = nil
                 pendingPinnedGridScroll = true
                 applyPinnedGridScroll(using: scrollProxy)
-                Task { @MainActor in
-                    try? await Task.sleep(for: .milliseconds(320))
-                    guard pendingPinnedGridScroll else { return }
-                    pendingPinnedGridScroll = false
-                    applyPinnedGridScroll(using: scrollProxy)
-                }
             }
-            .onChange(of: listingGridScrollId) { _, _ in
+            .onChange(of: items.count) { _, _ in
+                scrollClampRevision += 1
                 guard pendingPinnedGridScroll else { return }
                 applyPinnedGridScroll(using: scrollProxy)
                 pendingPinnedGridScroll = false
@@ -235,12 +244,26 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
 
     private func applyPinnedGridScroll(using scrollProxy: ScrollViewProxy) {
         synchronizePinnedChromeForTabSwitch()
+        let generation = pinnedScrollTaskGeneration
         PinnedTabScrollReset.scrollToPinnedContent(
             scrollPosition: $profileScrollPosition,
             proxy: scrollProxy,
             resetToken: $profileScrollResetToken,
-            contentId: listingGridScrollId
+            contentId: listingGridScrollId,
+            followUpDelaysMs: [120]
         )
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(280))
+            guard generation == pinnedScrollTaskGeneration, pendingPinnedGridScroll else { return }
+            pendingPinnedGridScroll = false
+            PinnedTabScrollReset.scrollToPinnedContent(
+                scrollPosition: $profileScrollPosition,
+                proxy: scrollProxy,
+                resetToken: $profileScrollResetToken,
+                contentId: listingGridScrollId,
+                followUpDelaysMs: []
+            )
+        }
     }
 
     /// Keep compact chrome + section title visible while grid relayouts after tab swap.
@@ -381,8 +404,8 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
 private enum ProfileScrollIds {
     static let expandedHeader = "profile_expanded_header"
 
-    static func listingGrid(tab: Int, isEmpty: Bool) -> String {
-        "profile_listing_grid_\(tab)_\(isEmpty ? "empty" : "rows")"
+    static func listingGrid(tab: Int) -> String {
+        "profile_listing_grid_\(tab)"
     }
 }
 

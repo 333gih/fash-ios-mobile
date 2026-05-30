@@ -24,6 +24,7 @@ final class HomeViewModel {
     var isLoadingMoreFollowing = false
     var buyerStats = BuyerHomeStats()
     var showSizingBanner = false
+    private(set) var homeScrollToTopToken = 0
 
     private var sections = HomeRecommendationSections()
     private var followingItems: [ListingFeedItem] = []
@@ -94,6 +95,11 @@ final class HomeViewModel {
         prefetchAdjacentTabs(around: tab, deps: deps, isGuestMode: isGuestMode)
     }
 
+    /// Bottom-nav re-tap / pull-to-refresh — scroll feed to top (Android `requestScrollHomeToTop`).
+    func requestScrollHomeToTop() {
+        homeScrollToTopToken &+= 1
+    }
+
     func normalizeSelectedFeedTab(isGuestMode: Bool, deps: AppDependencies) {
         if isGuestMode {
             if selectedFeedTab != .huntToday {
@@ -160,8 +166,12 @@ final class HomeViewModel {
     }
 
     func pullToRefresh(deps: AppDependencies, isGuestMode: Bool = false) async {
+        requestScrollHomeToTop()
         isRefreshing = true
-        defer { isRefreshing = false }
+        defer {
+            isRefreshing = false
+            requestScrollHomeToTop()
+        }
         invalidateAllTabFeeds()
         if !isGuestMode {
             async let ux: Void = loadUxPersonalization(deps: deps, isGuestMode: isGuestMode)

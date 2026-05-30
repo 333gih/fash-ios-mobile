@@ -55,6 +55,7 @@ struct HomeFeedContent: View {
     /// Avoid collapsed empty gap while tab content swaps during horizontal swipe.
     private var homeFeedMinHeight: CGFloat {
         if !viewModel.items.isEmpty { return 0 }
+        if viewModel.isRefreshing { return 280 }
         if viewModel.isShellLoading || viewModel.isTabLoading(viewModel.selectedFeedTab) {
             return 520
         }
@@ -63,6 +64,7 @@ struct HomeFeedContent: View {
 
     @State private var homeScrollPosition: String?
     @State private var homeScrollResetToken = 0
+    @State private var scrollClampRevision = 0
     @State private var homeHeaderHeight: CGFloat = 0
     @State private var homeFeedScrollAnchorMinY: CGFloat = 0
     @State private var pendingPinnedFeedScroll = false
@@ -120,15 +122,22 @@ struct HomeFeedContent: View {
                 .background {
                     PinnedTabScrollOffsetFixer(
                         resetToken: homeScrollResetToken,
+                        clampRevision: scrollClampRevision,
                         headerHeight: homeHeaderHeight
                     )
                 }
                 .onHomeHeaderHeightChange($homeHeaderHeight)
                 .refreshable { await viewModel.pullToRefresh(deps: deps, isGuestMode: isGuestMode) }
+                .onChange(of: viewModel.homeScrollToTopToken) { _, _ in
+                    scrollHomeToTop(using: scrollProxy)
+                }
                 .onChange(of: viewModel.selectedFeedTabKey) { oldKey, newKey in
                     guard oldKey != newKey else { return }
                     applyPinnedFeedScroll(using: scrollProxy)
                     pendingPinnedFeedScroll = viewModel.isTabLoading(viewModel.selectedFeedTab)
+                }
+                .onChange(of: viewModel.items.count) { _, _ in
+                    scrollClampRevision += 1
                 }
                 .onChange(of: viewModel.tabsLoading) { _, _ in
                     guard pendingPinnedFeedScroll else { return }
@@ -293,13 +302,6 @@ struct HomeFeedContent: View {
                     )
                 }
 
-                FeedPaginationSentinel(
-                    enabled: followingPaginationEnabled,
-                    isLoadingMore: viewModel.isLoadingMoreFollowing
-                ) {
-                    viewModel.loadMoreFollowing(deps: deps, isGuestMode: isGuestMode)
-                }
-
                 if viewModel.selectedFeedTab == .following, viewModel.isLoadingMoreFollowing {
                     ProgressView()
                         .tint(FashColors.brandPrimary)
@@ -327,7 +329,17 @@ struct HomeFeedContent: View {
         HomeFeedScrollReset.scrollToPinnedFeed(
             scrollPosition: $homeScrollPosition,
             proxy: scrollProxy,
-            resetToken: $homeScrollResetToken
+            resetToken: $homeScrollResetToken,
+            clampRevision: $scrollClampRevision
+        )
+    }
+
+    private func scrollHomeToTop(using scrollProxy: ScrollViewProxy) {
+        HomeFeedScrollReset.scrollToTop(
+            scrollPosition: $homeScrollPosition,
+            proxy: scrollProxy,
+            resetToken: $homeScrollResetToken,
+            clampRevision: $scrollClampRevision
         )
     }
 }
@@ -344,6 +356,7 @@ private struct HomeFeedListingCell: View {
     let onDwell: (Int) -> Void
 
     @State private var appearedAt: Date?
+    @State private var recordViewTask: Task<Void, Never>?
 
     var body: some View {
         ListingGridCard(
@@ -357,9 +370,16 @@ private struct HomeFeedListingCell: View {
         .feedCellScrollVisibility(index: index, coordinateSpace: "homeFeedScroll")
         .onAppear {
             appearedAt = Date()
-            onRecordView()
+            recordViewTask?.cancel()
+            recordViewTask = Task {
+                try? await Task.sleep(for: .milliseconds(450))
+                guard !Task.isCancelled else { return }
+                onRecordView()
+            }
         }
         .onDisappear {
+            recordViewTask?.cancel()
+            recordViewTask = nil
             if let appearedAt {
                 let dwellMs = Int(Date().timeIntervalSince(appearedAt) * 1_000)
                 onDwell(dwellMs)
