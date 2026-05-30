@@ -90,15 +90,15 @@ enum AppLaunchWarmup {
         guard !isGuestMode else { return }
         async let profile: Void = {
             await profileVM.refresh(deps: deps, force: true)
-            progress.completeShellStep()
+            await MainActor.run { progress.completeShellStep() }
         }()
         async let chat: Void = {
             await chatVM.loadConversations(deps: deps)
-            progress.completeShellStep()
+            await MainActor.run { progress.completeShellStep() }
         }()
         async let orders: Void = {
             await ordersVM.refresh(deps: deps)
-            progress.completeShellStep()
+            await MainActor.run { progress.completeShellStep() }
         }()
         _ = await (profile, chat, orders)
     }
