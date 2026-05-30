@@ -87,17 +87,17 @@ final class SellerProfileViewModel {
         deps: AppDependencies,
         isGuestMode: Bool
     ) async -> Result<ProfileInfo, Error> {
-        func once() async -> Result<ProfileInfo, Error> {
+        func fetchAttempt() async -> Result<ProfileInfo, Error> {
             if isGuestMode {
                 await deps.userRepository.getProfilePublic(key)
             } else {
                 await deps.userRepository.getProfile(key)
             }
         }
-        var result = await once()
+        var result = await fetchAttempt()
         if case .failure = result {
             try? await Task.sleep(for: .milliseconds(400))
-            result = await once()
+            result = await fetchAttempt()
         }
         return result
     }
@@ -237,7 +237,7 @@ final class SellerProfileViewModel {
         deps: AppDependencies,
         isGuestMode: Bool
     ) async -> Result<[ListingFeedItem], Error> {
-        func once() async -> Result<[ListingFeedItem], Error> {
+        func fetchAttempt() async -> Result<[ListingFeedItem], Error> {
             await deps.listingRepository.getListingsBySeller(
                 sellerId: sellerId,
                 status: status,
@@ -245,10 +245,10 @@ final class SellerProfileViewModel {
                 publicBrowse: isGuestMode
             )
         }
-        var result = await once()
+        var result = await fetchAttempt()
         if case .failure = result {
             try? await Task.sleep(for: .milliseconds(350))
-            result = await once()
+            result = await fetchAttempt()
         }
         return result
     }
