@@ -29,6 +29,7 @@ Bearer JWT bắt buộc (sau login). Backend lưu vào bảng `fcm_tokens` — x
    - `com.pc.fash-ios-mobile.dev` (Fash-Dev)
    - `com.pc.fash-ios-mobile` (Fash-Prod)
 3. Tải **`GoogleService-Info.plist`** → copy thành `Fash/GoogleService-Info.plist` (xem `GoogleService-Info.plist.example`).
+   - **TestFlight (CI):** lưu bản prod trong `secrets/GoogleService-Info.plist`, đẩy secret `GOOGLE_SERVICE_INFO_PLIST_BASE64` qua `scripts/push_github_ios_secrets.ps1` (xem `docs/CI.md`).
 4. **Project settings → Cloud Messaging → Apple app configuration**:
    - Upload **APNs Authentication Key** (`.p8` từ Apple Developer → Keys → Apple Push Notifications service).
 

@@ -85,6 +85,13 @@ if ([string]::IsNullOrWhiteSpace($p8) -and $envMap["APP_STORE_CONNECT_API_PRIVAT
 }
 Set-GhSecret "APP_STORE_CONNECT_API_PRIVATE_KEY" $p8
 
+# Firebase GoogleService-Info.plist (FCM push in TestFlight builds)
+$plistB64 = $envMap["GOOGLE_SERVICE_INFO_PLIST_BASE64"]
+if ([string]::IsNullOrWhiteSpace($plistB64) -and $envMap["GOOGLE_SERVICE_INFO_PLIST_PATH"]) {
+    $plistB64 = To-Base64File $envMap["GOOGLE_SERVICE_INFO_PLIST_PATH"]
+}
+Set-GhSecret "GOOGLE_SERVICE_INFO_PLIST_BASE64" $plistB64
+
 Write-Host ""
 Write-Host "Done. Verify: gh secret list @repoArg"
 Write-Host "Then: Actions -> iOS Release -> Run workflow"

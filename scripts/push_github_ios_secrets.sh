@@ -71,6 +71,12 @@ set_secret "APP_STORE_CONNECT_ISSUER_ID" "${APP_STORE_CONNECT_ISSUER_ID:-}"
 set_secret "APP_STORE_CONNECT_API_KEY_ID" "${APP_STORE_CONNECT_API_KEY_ID:-}"
 set_secret "APP_STORE_CONNECT_API_PRIVATE_KEY" "${P8}"
 
+PLIST_B64="${GOOGLE_SERVICE_INFO_PLIST_BASE64:-}"
+if [[ -z "${PLIST_B64}" && -n "${GOOGLE_SERVICE_INFO_PLIST_PATH:-}" ]]; then
+  PLIST_B64="$(file_to_b64 "${GOOGLE_SERVICE_INFO_PLIST_PATH}")"
+fi
+set_secret "GOOGLE_SERVICE_INFO_PLIST_BASE64" "${PLIST_B64}"
+
 echo ""
 echo "Done. Verify: gh secret list ${REPO_ARGS[*]}"
 echo "Then: Actions → iOS Release → Run workflow"

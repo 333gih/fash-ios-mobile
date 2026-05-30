@@ -27,3 +27,4 @@ secrets/Fash_AppStore.mobileprovision
 secrets/AuthKey_*.p8
 # Firebase iOS config (download per bundle id from Firebase Console)
 Fash/GoogleService-Info.plist
+secrets/GoogleService-Info.plist

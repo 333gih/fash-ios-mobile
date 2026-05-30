@@ -168,6 +168,9 @@ Script map sang GitHub Secrets:
 | `IOS_DISTRIBUTION_CERTIFICATE_PATH` → base64 | `IOS_DISTRIBUTION_CERTIFICATE_BASE64` |
 | `IOS_PROVISIONING_PROFILE_PATH` → base64 | `IOS_PROVISIONING_PROFILE_BASE64` |
 | `APP_STORE_CONNECT_*` | cùng tên |
+| `GOOGLE_SERVICE_INFO_PLIST_PATH` → base64 | `GOOGLE_SERVICE_INFO_PLIST_BASE64` |
+
+Plist phải là bản **prod** (`BUNDLE_ID` = `com.pc.fash-ios-mobile`). CI decode vào `Fash/GoogleService-Info.plist` trước khi archive **Fash-Prod** — bật FCM/push trên TestFlight.
 
 ### Cách 2 — Dán thủ công trên GitHub
 
@@ -188,6 +191,12 @@ Script map sang GitHub Secrets:
 | `APP_STORE_CONNECT_ISSUER_ID` | Issuer ID từ App Store Connect → Users and Access → Keys |
 | `APP_STORE_CONNECT_API_KEY_ID` | Key ID |
 | `APP_STORE_CONNECT_API_PRIVATE_KEY` | Nội dung file `.p8` (giữ nguyên `-----BEGIN PRIVATE KEY-----`) |
+
+**FCM push trên TestFlight (Fash-Prod):**
+
+| Secret | Mô tả |
+|---|---|
+| `GOOGLE_SERVICE_INFO_PLIST_BASE64` | `GoogleService-Info.plist` prod, encode base64 |
 
 Sau khi thêm secrets:
 

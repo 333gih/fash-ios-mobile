@@ -104,6 +104,24 @@ jobs:
           echo "build=${BUILD}" >> "${GITHUB_OUTPUT}"
           echo "Release target: ${MARKETING} (${BUILD})"
 
+      - name: Install GoogleService-Info.plist (FCM)
+        if: env.SCHEME == 'Fash-Prod'
+        env:
+          PLIST_B64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_BASE64 }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${PLIST_B64:-}" ]]; then
+            echo "::warning::GOOGLE_SERVICE_INFO_PLIST_BASE64 not set — FCM/push disabled in this IPA (see docs/CI.md)"
+            exit 0
+          fi
+          echo "${PLIST_B64}" | base64 --decode > Fash/GoogleService-Info.plist
+          BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :BUNDLE_ID' Fash/GoogleService-Info.plist)"
+          echo "Installed GoogleService-Info.plist (BUNDLE_ID=${BUNDLE_ID})"
+          if [[ "${BUNDLE_ID}" != "com.pc.fash-ios-mobile" ]]; then
+            echo "::error::GoogleService-Info.plist BUNDLE_ID must be com.pc.fash-ios-mobile for Fash-Prod (got ${BUNDLE_ID})"
+            exit 1
+          fi
+
       - name: Prepare Xcode project
         run: bash scripts/ci_ios_prepare.sh "${SCHEME}"
 
