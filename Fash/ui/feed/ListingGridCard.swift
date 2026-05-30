@@ -75,19 +75,12 @@ struct ListingGridCard: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .allowsHitTesting(false)
 
-            topTrailingBadges
+            topTrailingChrome
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                .allowsHitTesting(false)
-
-            if showQuickActions {
-                quickActions
-                    .zIndex(2)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-            }
         }
         .aspectRatio(imageAspectRatio, contentMode: .fit)
         .frame(maxWidth: .infinity)
-        .fixedSize(horizontal: false, vertical: true)
+        .layoutPriority(1)
         .clipShape(shape)
         .contentShape(shape)
         .accessibilityElement(children: .combine)
@@ -227,6 +220,18 @@ struct ListingGridCard: View {
     }
 
     @ViewBuilder
+    private var topTrailingChrome: some View {
+        VStack(alignment: .trailing, spacing: 6) {
+            topTrailingBadges
+            if showQuickActions {
+                quickActions
+            }
+        }
+        .padding(4)
+        .zIndex(2)
+    }
+
+    @ViewBuilder
     private var topTrailingBadges: some View {
         VStack(alignment: .trailing, spacing: 6) {
             if item.onsiteInspectionCommitment, !compactFooter {
@@ -236,7 +241,7 @@ struct ListingGridCard: View {
                 badgePill(scarcity, color: FashColors.brandPrimary.opacity(0.88))
             }
         }
-        .padding(6)
+        .allowsHitTesting(false)
     }
 
     @ViewBuilder

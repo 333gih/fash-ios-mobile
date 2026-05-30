@@ -3,7 +3,8 @@ import SwiftUI
 /// Pinterest-style two-column masonry — fixed tile width, vertical stagger only.
 ///
 /// Uses shortest-column placement with stable ids across load-more (Android `LazyVerticalStaggeredGrid`).
-/// Each column is a `LazyVStack` so tiles virtualize inside the outer home `ScrollView`.
+/// Virtualizes via page-sized `LazyVStack` chunks; each chunk uses non-lazy `VStack` columns (nested
+/// `LazyVStack` columns inside `ScrollView` mis-measure width/height and overlap tiles).
 struct ListingStaggeredMasonryView<Cell: View>: View {
     @Environment(\.fashSpacing) private var spacing
 
@@ -37,6 +38,10 @@ struct ListingStaggeredMasonryView<Cell: View>: View {
         max(0, columnWidth * 2 + gap)
     }
 
+    private var chunks: [ListingMasonryFeedPages.Chunk] {
+        ListingMasonryFeedPages.chunks(from: items)
+    }
+
     var body: some View {
         ZStack(alignment: .top) {
             Color.clear
@@ -50,9 +55,10 @@ struct ListingStaggeredMasonryView<Cell: View>: View {
                     }
                 }
 
-            HStack(alignment: .top, spacing: gap) {
-                masonryColumn(layout.left)
-                masonryColumn(layout.right)
+            LazyVStack(spacing: gap) {
+                ForEach(chunks) { chunk in
+                    chunkRow(chunk)
+                }
             }
             .frame(width: gridBlockWidth, alignment: .center)
             .frame(maxWidth: .infinity, alignment: .center)
@@ -73,21 +79,35 @@ struct ListingStaggeredMasonryView<Cell: View>: View {
 
     private func refreshLayout() {
         var assignments = columnAssignments
-        layout = ListingMasonryGrid.makeStableColumnLayout(
+        let newLayout = ListingMasonryGrid.makeStableColumnLayout(
             items: items,
             assignedIsRightColumn: &assignments
         )
-        if assignments != columnAssignments {
-            columnAssignments = assignments
+        layout = newLayout
+        guard assignments != columnAssignments else { return }
+        let pending = assignments
+        Task { @MainActor in
+            columnAssignments = pending
+        }
+    }
+
+    @ViewBuilder
+    private func chunkRow(_ chunk: ListingMasonryFeedPages.Chunk) -> some View {
+        let chunkIds = Set(chunk.entries.map(\.item.id))
+        HStack(alignment: .top, spacing: gap) {
+            masonryColumn(layout.left.filter { chunkIds.contains($0.item.id) })
+            masonryColumn(layout.right.filter { chunkIds.contains($0.item.id) })
         }
     }
 
     @ViewBuilder
     private func masonryColumn(_ column: [(index: Int, item: ListingFeedItem)]) -> some View {
-        LazyVStack(spacing: gap) {
+        VStack(spacing: gap) {
             ForEach(column, id: \.item.id) { entry in
                 cellContent(entry.item, entry.index)
                     .frame(width: columnWidth, alignment: .top)
+                    .frame(maxWidth: columnWidth)
+                    .clipped()
             }
         }
         .frame(width: columnWidth, alignment: .top)

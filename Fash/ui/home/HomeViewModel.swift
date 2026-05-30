@@ -109,7 +109,7 @@ final class HomeViewModel {
         }
     }
 
-    func loadShell(deps: AppDependencies, isGuestMode: Bool, skipIfFresh: Bool = false) async {
+    func loadShell(deps: AppDependencies, isGuestMode: Bool, skipIfFresh: Bool = false, launchProgress: LaunchWaitingProgress? = nil) async {
         if skipIfFresh, isLaunchShellFresh {
             normalizeSelectedFeedTab(isGuestMode: isGuestMode, deps: deps)
             ensureTabLoaded(selectedFeedTab, deps: deps, isGuestMode: isGuestMode)
@@ -121,10 +121,22 @@ final class HomeViewModel {
 
         normalizeSelectedFeedTab(isGuestMode: isGuestMode, deps: deps)
         if !isGuestMode {
-            async let ux: Void = loadUxPersonalization(deps: deps, isGuestMode: isGuestMode)
-            async let sections: Bool = prefetchRecommendationSections(deps: deps, isGuestMode: isGuestMode)
-            async let stats = loadBuyerHomeStats(deps: deps, isGuestMode: isGuestMode)
-            async let sizing = refreshSizingBannerState(deps: deps, isGuestMode: isGuestMode)
+            async let ux: Void = {
+                await loadUxPersonalization(deps: deps, isGuestMode: isGuestMode)
+                launchProgress?.completeHomeStep()
+            }()
+            async let sections: Void = {
+                _ = await prefetchRecommendationSections(deps: deps, isGuestMode: isGuestMode)
+                launchProgress?.completeHomeStep()
+            }()
+            async let stats: Void = {
+                _ = await loadBuyerHomeStats(deps: deps, isGuestMode: isGuestMode)
+                launchProgress?.completeHomeStep()
+            }()
+            async let sizing: Void = {
+                await refreshSizingBannerState(deps: deps, isGuestMode: isGuestMode)
+                launchProgress?.completeHomeStep()
+            }()
             _ = await (ux, sections, stats, sizing)
         }
 
@@ -134,12 +146,16 @@ final class HomeViewModel {
         if case .success(let sellers) = await sellersResult {
             featuredSellers = sellers
         }
+        launchProgress?.completeHomeStep()
+
         if case .success(let slides) = await slidesResult {
             promoSlides = slides.items
         }
+        launchProgress?.completeHomeStep()
 
         ensureTabLoaded(selectedFeedTab, deps: deps, isGuestMode: isGuestMode, force: true)
         prefetchAdjacentTabs(around: selectedFeedTab, deps: deps, isGuestMode: isGuestMode)
+        launchProgress?.completeHomeStep()
         lastSuccessfulRefreshAt = Date()
     }
 

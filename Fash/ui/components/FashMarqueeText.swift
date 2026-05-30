@@ -26,39 +26,54 @@ struct FashMarqueeText: View {
     }
 
     var body: some View {
-        ZStack(alignment: .leading) {
-            staticLabel
-                .opacity(shouldScroll ? 0 : 1)
-
-            if shouldScroll {
-                scrollingLabel
-                    .offset(x: offset)
+        Color.clear
+            .frame(maxWidth: .infinity, minHeight: lineHeight, maxHeight: lineHeight)
+            .overlay(alignment: .leading) {
+                staticLabel
+                    .opacity(shouldScroll ? 0 : 1)
             }
-        }
-        .frame(maxWidth: .infinity, minHeight: lineHeight, maxHeight: lineHeight, alignment: .leading)
-        .background {
-            GeometryReader { geo in
-                Color.clear
-                    .onAppear { containerWidth = geo.size.width }
-                    .onChange(of: geo.size.width) { _, width in
-                        containerWidth = width
-                        restartMarquee()
+            .overlay(alignment: .leading) {
+                if shouldScroll {
+                    scrollingLabel
+                        .offset(x: offset)
+                }
+            }
+            .clipped()
+            .background {
+                GeometryReader { geo in
+                    Color.clear
+                        .onAppear { containerWidth = geo.size.width }
+                        .onChange(of: geo.size.width) { _, width in
+                            containerWidth = width
+                            restartMarquee()
+                        }
+                }
+            }
+            .background {
+                Text(text)
+                    .font(font.weight(fontWeight))
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .background {
+                        GeometryReader { textGeo in
+                            Color.clear
+                                .preference(key: FashMarqueeTextWidthKey.self, value: textGeo.size.width)
+                        }
                     }
+                    .hidden()
             }
-        }
-        .clipped()
-        .onPreferenceChange(FashMarqueeTextWidthKey.self) { width in
-            textWidth = width
-            restartMarquee()
-        }
-        .onChange(of: text) { _, _ in
-            restartMarquee()
-        }
-        .onDisappear {
-            marqueeTask?.cancel()
-            marqueeTask = nil
-            offset = 0
-        }
+            .onPreferenceChange(FashMarqueeTextWidthKey.self) { width in
+                textWidth = width
+                restartMarquee()
+            }
+            .onChange(of: text) { _, _ in
+                restartMarquee()
+            }
+            .onDisappear {
+                marqueeTask?.cancel()
+                marqueeTask = nil
+                offset = 0
+            }
     }
 
     private var staticLabel: some View {
@@ -89,12 +104,6 @@ struct FashMarqueeText: View {
             .font(font.weight(fontWeight))
             .foregroundStyle(color)
             .lineLimit(1)
-            .background {
-                GeometryReader { textGeo in
-                    Color.clear
-                        .preference(key: FashMarqueeTextWidthKey.self, value: textGeo.size.width)
-                }
-            }
     }
 
     private func restartMarquee() {

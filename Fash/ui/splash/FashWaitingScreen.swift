@@ -8,6 +8,7 @@ private let thumbCornerRadius: CGFloat = 28
 struct FashWaitingScreen: View {
     /// Third dot active (final onboarding step), matching Android default.
     var activeDotIndex: Int = 2
+    @Bindable var progress: LaunchWaitingProgress
 
     @State private var showLongWaitFeedback = false
 
@@ -107,17 +108,19 @@ struct FashWaitingScreen: View {
 
     @ViewBuilder
     private var longWaitFeedback: some View {
-        if showLongWaitFeedback {
+        let progressFraction = progress.fraction
+        let showsProgress = progress.isActive || showLongWaitFeedback
+        if showsProgress {
             VStack(spacing: 10) {
-                ProgressView()
-                    .progressViewStyle(.linear)
-                    .tint(splashAccent)
+                WaitingScreenLinearProgress(fraction: max(progressFraction, showLongWaitFeedback ? 0.08 : 0.04))
                     .frame(width: 168)
                     .accessibilityLabel(L10n.waitingScreenStillLoadingCd)
-                Text(L10n.waitingScreenStillLoading)
-                    .font(FashTypography.bodySmall.weight(.medium))
-                    .foregroundStyle(onSurfaceMuted)
-                    .multilineTextAlignment(.center)
+                if showLongWaitFeedback || progressFraction >= 0.99 {
+                    Text(L10n.waitingScreenStillLoading)
+                        .font(FashTypography.bodySmall.weight(.medium))
+                        .foregroundStyle(onSurfaceMuted)
+                        .multilineTextAlignment(.center)
+                }
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 16)
@@ -158,6 +161,27 @@ struct FashWaitingScreen: View {
             }
         }
         .accessibilityHidden(true)
+    }
+}
+
+/// Determinate launch progress — `ProgressView(.linear)` without a value stays static on iOS.
+private struct WaitingScreenLinearProgress: View {
+    let fraction: Double
+
+    private let trackColor = FashColorTokens.Dark.outlineMuted.opacity(0.35)
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule(style: .continuous)
+                    .fill(trackColor)
+                Capsule(style: .continuous)
+                    .fill(splashAccent)
+                    .frame(width: max(0, geo.size.width * fraction))
+            }
+        }
+        .frame(height: 3)
+        .animation(.easeOut(duration: 0.28), value: fraction)
     }
 }
 

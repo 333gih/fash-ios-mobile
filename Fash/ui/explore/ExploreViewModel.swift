@@ -268,14 +268,31 @@ final class ExploreViewModel {
     }
 
     /// Launch waiting-screen prefetch — suggestions, catalog, and first listings page when empty.
-    func warmLaunchCaches(deps: AppDependencies, isGuestMode: Bool) async {
-        async let overlay: Void = loadSearchOverlayData(deps: deps)
-        async let catalog: Void = loadFilterCatalogIfNeeded(deps: deps)
-        async let chips: Void = loadQuickInterestChips(deps: deps)
-        async let sellers: Void = loadFeaturedSellers(deps: deps, isGuestMode: isGuestMode)
+    func warmLaunchCaches(
+        deps: AppDependencies,
+        isGuestMode: Bool,
+        launchProgress: LaunchWaitingProgress? = nil
+    ) async {
+        async let overlay: Void = {
+            await loadSearchOverlayData(deps: deps)
+            launchProgress?.completeExploreStep()
+        }()
+        async let catalog: Void = {
+            await loadFilterCatalogIfNeeded(deps: deps)
+            launchProgress?.completeExploreStep()
+        }()
+        async let chips: Void = {
+            await loadQuickInterestChips(deps: deps)
+            launchProgress?.completeExploreStep()
+        }()
+        async let sellers: Void = {
+            await loadFeaturedSellers(deps: deps, isGuestMode: isGuestMode)
+            launchProgress?.completeExploreStep()
+        }()
         _ = await (overlay, catalog, chips, sellers)
         if items.isEmpty {
             await fetchListingsFirstPage(deps: deps, isGuestMode: isGuestMode)
+            launchProgress?.completeExploreStep()
         }
     }
 

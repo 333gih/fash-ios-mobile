@@ -86,7 +86,7 @@ enum ListingMasonryGrid {
     }
 }
 
-/// Page-sized chunks for optional batching. Explore uses [ListingMasonryLazyRows] over the full list instead.
+/// Page-sized chunks for optional batching. [ListingStaggeredMasonryView] lazy-loads chunks over the full list.
 enum ListingMasonryFeedPages {
     /// Matches Explore/Home listing page size (`exploreFeedPageSize`).
     static let defaultChunkSize = 20

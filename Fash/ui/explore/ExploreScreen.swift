@@ -298,11 +298,14 @@ struct ExploreScreen: View {
         }
         .animation(.easeInOut(duration: 0.22), value: showsStickyChromeOverlay)
         .refreshable { await viewModel.pullToRefresh(deps: deps, isGuestMode: isGuestMode) }
-        .onChange(of: viewModel.isRefreshing) { _, refreshing in
-            if refreshing { masonryColumnAssignments = [:] }
-        }
-        .onChange(of: viewModel.listingsFeedEpoch) { _, _ in
-            masonryColumnAssignments = [:]
+        .feedScrollPrefetch(
+            coordinateSpace: "exploreFeedScroll",
+            itemCount: viewModel.items.count,
+            scrollAnchorMinY: headerScrollMinY,
+            enabled: viewModel.hasMore && viewModel.primarySection == .listings,
+            isLoadingMore: viewModel.isLoadingMore
+        ) {
+            viewModel.requestLoadMore(deps: deps, isGuestMode: isGuestMode)
         }
     }
 
@@ -486,14 +489,10 @@ private struct ExploreListingCell: View {
                 }
             }
         )
+        .feedCellScrollVisibility(index: index, coordinateSpace: "exploreFeedScroll")
         .onAppear {
             appearedAt = Date()
             viewModel.recordView(item: item, position: index, deps: deps)
-            viewModel.requestLoadMoreIfNearEnd(
-                position: index,
-                deps: deps,
-                isGuestMode: isGuestMode
-            )
         }
         .onDisappear {
             if let appearedAt {

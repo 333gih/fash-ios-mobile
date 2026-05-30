@@ -15,11 +15,22 @@ enum AppLaunchWarmup {
         deps: AppDependencies,
         homeVM: HomeViewModel,
         exploreVM: ExploreViewModel,
-        isGuestMode: Bool
+        isGuestMode: Bool,
+        progress: LaunchWaitingProgress
     ) async {
+        let exploreSteps = exploreVM.items.isEmpty ? 5 : 4
+        let homeSteps = isGuestMode ? 3 : 7
+        progress.beginWarmup(homeSteps: homeSteps, exploreSteps: exploreSteps)
+
         await withTaskGroup(of: Void.self) { group in
             group.addTask {
-                await performWarmup(deps: deps, homeVM: homeVM, exploreVM: exploreVM, isGuestMode: isGuestMode)
+                await performWarmup(
+                    deps: deps,
+                    homeVM: homeVM,
+                    exploreVM: exploreVM,
+                    isGuestMode: isGuestMode,
+                    progress: progress
+                )
             }
             group.addTask {
                 try? await Task.sleep(for: .seconds(maximumWaitSeconds))
@@ -27,16 +38,26 @@ enum AppLaunchWarmup {
             _ = await group.next()
             group.cancelAll()
         }
+        progress.complete()
     }
 
     private static func performWarmup(
         deps: AppDependencies,
         homeVM: HomeViewModel,
         exploreVM: ExploreViewModel,
-        isGuestMode: Bool
+        isGuestMode: Bool,
+        progress: LaunchWaitingProgress
     ) async {
-        async let home: Void = homeVM.loadShell(deps: deps, isGuestMode: isGuestMode)
-        async let explore: Void = exploreVM.warmLaunchCaches(deps: deps, isGuestMode: isGuestMode)
+        async let home: Void = homeVM.loadShell(
+            deps: deps,
+            isGuestMode: isGuestMode,
+            launchProgress: progress
+        )
+        async let explore: Void = exploreVM.warmLaunchCaches(
+            deps: deps,
+            isGuestMode: isGuestMode,
+            launchProgress: progress
+        )
         _ = await (home, explore)
     }
 }

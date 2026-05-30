@@ -6,6 +6,37 @@ enum HomeScrollIds {
     static let feedContent = "home_feed_content"
 }
 
+/// Feed scroll offset anchor — parity with Explore [ExploreFeedScrollOffsetAnchor].
+struct HomeFeedScrollOffsetKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
+struct HomeFeedScrollOffsetAnchor: View {
+    var body: some View {
+        Color.clear
+            .frame(height: 0)
+            .homeFeedScrollOffsetReporting()
+    }
+}
+
+extension View {
+    func homeFeedScrollOffsetReporting(space: String = "homeFeedScroll") -> some View {
+        background {
+            GeometryReader { geo in
+                Color.clear.preference(
+                    key: HomeFeedScrollOffsetKey.self,
+                    value: geo.frame(in: .named(space)).minY
+                )
+            }
+            .allowsHitTesting(false)
+        }
+    }
+}
+
 struct HomeHeaderHeightKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
 

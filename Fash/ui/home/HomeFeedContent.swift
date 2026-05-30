@@ -64,6 +64,7 @@ struct HomeFeedContent: View {
     @State private var homeScrollPosition: String?
     @State private var homeScrollResetToken = 0
     @State private var homeHeaderHeight: CGFloat = 0
+    @State private var homeFeedScrollAnchorMinY: CGFloat = 0
     @State private var pendingPinnedFeedScroll = false
     @State private var masonryColumnAssignmentsByTab: [String: [String: Bool]] = [:]
 
@@ -79,6 +80,8 @@ struct HomeFeedContent: View {
             ScrollViewReader { scrollProxy in
                 ScrollView {
                     LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+                        HomeFeedScrollOffsetAnchor()
+
                         Section {
                             homeScrollAwayHeader
                                 .homeFeedHeaderHeightReporting()
@@ -102,7 +105,18 @@ struct HomeFeedContent: View {
                         viewModel.selectFeedTab(tabs[index], deps: deps, isGuestMode: isGuestMode)
                     }
                 }
+                .coordinateSpace(name: "homeFeedScroll")
                 .scrollPosition(id: $homeScrollPosition, anchor: .top)
+                .onPreferenceChange(HomeFeedScrollOffsetKey.self) { homeFeedScrollAnchorMinY = $0 }
+                .feedScrollPrefetch(
+                    coordinateSpace: "homeFeedScroll",
+                    itemCount: viewModel.items.count,
+                    scrollAnchorMinY: homeFeedScrollAnchorMinY,
+                    enabled: followingPaginationEnabled,
+                    isLoadingMore: viewModel.isLoadingMoreFollowing
+                ) {
+                    viewModel.loadMoreFollowing(deps: deps, isGuestMode: isGuestMode)
+                }
                 .background {
                     PinnedTabScrollOffsetFixer(
                         resetToken: homeScrollResetToken,
@@ -110,9 +124,6 @@ struct HomeFeedContent: View {
                     )
                 }
                 .onHomeHeaderHeightChange($homeHeaderHeight)
-                .onChange(of: viewModel.isRefreshing) { _, refreshing in
-                    if refreshing { masonryColumnAssignmentsByTab.removeAll() }
-                }
                 .refreshable { await viewModel.pullToRefresh(deps: deps, isGuestMode: isGuestMode) }
                 .onChange(of: viewModel.selectedFeedTabKey) { oldKey, newKey in
                     guard oldKey != newKey else { return }
@@ -343,6 +354,7 @@ private struct HomeFeedListingCell: View {
             onLike: onLike,
             onSave: onSave
         )
+        .feedCellScrollVisibility(index: index, coordinateSpace: "homeFeedScroll")
         .onAppear {
             appearedAt = Date()
             onRecordView()

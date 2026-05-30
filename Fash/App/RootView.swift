@@ -9,6 +9,7 @@ struct RootView: View {
     @State private var addressBookVM = AddressBookViewModel()
     @State private var changePasswordVM = ChangePasswordViewModel()
     @State private var featuredSellersVM = FeaturedSellersViewModel()
+    @State private var launchProgress = LaunchWaitingProgress()
 
     var body: some View {
         FashTheme {
@@ -40,13 +41,17 @@ struct RootView: View {
             }
         }
         .task {
+            launchProgress.beginSplash()
+            launchProgress.markSplash(0.08)
             deps.prefetchSessionValidation()
             async let sessionValidated = deps.awaitSessionValidation()
             async let minimumBranding = Task {
                 try? await Task.sleep(for: .seconds(AppLaunchWarmup.minimumDisplaySeconds))
             }
             _ = await sessionValidated
+            launchProgress.markSplash(0.22)
             await bootstrapSession()
+            launchProgress.markSplash(0.34)
             _ = await minimumBranding.value
             router.showSplash = false
         }
@@ -64,7 +69,7 @@ struct RootView: View {
     @ViewBuilder
     private var rootContent: some View {
         if router.showSplash || router.isLoggingOut || router.isLaunchWarmupInProgress {
-            FashWaitingScreen()
+            FashWaitingScreen(progress: launchProgress)
         } else if router.isGuestMode {
             GuestMainShell(router: router, homeVM: homeVM, exploreVM: exploreVM)
         } else if let step = router.loginStep {
@@ -319,7 +324,7 @@ struct RootView: View {
         case .setupPassword:
             SetupPasswordOnboardScreen(onContinue: { router.onboardingStep = .completed })
         case .completed:
-            FashWaitingScreen()
+            FashWaitingScreen(progress: launchProgress)
                 .task { await prepareMainShellEntry() }
         }
     }
@@ -371,7 +376,8 @@ struct RootView: View {
             deps: deps,
             homeVM: homeVM,
             exploreVM: exploreVM,
-            isGuestMode: router.isGuestMode
+            isGuestMode: router.isGuestMode,
+            progress: launchProgress
         )
         router.loginStep = nil
         router.onboardingStep = nil
