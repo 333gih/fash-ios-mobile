@@ -5,9 +5,9 @@ enum ListingMasonryGrid {
     /// Fallback when API omits dimensions (typical product photo 4:5).
     static let defaultAspectWidthOverHeight: CGFloat = 4.0 / 5.0
 
-    /// Soft bounds on width/height ratio (w/h) to ignore corrupt metadata.
-    private static let minAspectWidthOverHeight: CGFloat = 0.45
-    private static let maxAspectWidthOverHeight: CGFloat = 2.0
+    /// Soft bounds on width/height ratio (w/h) — allow tall portraits and wide banners.
+    private static let minAspectWidthOverHeight: CGFloat = 0.3
+    private static let maxAspectWidthOverHeight: CGFloat = 2.5
 
     /// width / height from cover pixels; neutral default when missing.
     static func tileAspectWidthOverHeight(for item: ListingFeedItem) -> CGFloat {

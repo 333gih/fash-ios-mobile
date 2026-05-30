@@ -1,18 +1,28 @@
 import SwiftUI
 
-/// Pinterest two-column masonry — shortest-column layout, real image heights, column-chunk virtualization.
-///
-/// Chunks **each column** separately (not sequential page ids) so fast scroll does not leave white gaps.
-struct ListingStaggeredMasonryView<Cell: View>: View {
+/// Pinterest masonry — shortest column + **two `LazyVStack` columns** in one `ScrollView` (no nested lazy chunks).
+struct ListingStaggeredMasonryView<Cell: View, Footer: View>: View {
     @Environment(\.fashSpacing) private var spacing
 
     let items: [ListingFeedItem]
     @Binding var columnAssignments: [String: Bool]
-    var chunkSize: Int = ListingMasonryFeedPages.defaultChunkSize
+    @ViewBuilder var footer: () -> Footer
     @ViewBuilder let cellContent: (ListingFeedItem, Int) -> Cell
 
     @State private var layout: ListingMasonryColumnLayout = .empty
     @State private var containerWidth: CGFloat = 0
+
+    init(
+        items: [ListingFeedItem],
+        columnAssignments: Binding<[String: Bool]>,
+        @ViewBuilder footer: @escaping () -> Footer = { EmptyView() },
+        @ViewBuilder cellContent: @escaping (ListingFeedItem, Int) -> Cell
+    ) {
+        self.items = items
+        self._columnAssignments = columnAssignments
+        self.footer = footer
+        self.cellContent = cellContent
+    }
 
     private var gap: CGFloat { spacing.spacing2 }
     private var edgeStart: CGFloat { spacing.editorialStart }
@@ -32,39 +42,19 @@ struct ListingStaggeredMasonryView<Cell: View>: View {
         )
     }
 
-    private var gridBlockWidth: CGFloat {
-        max(0, columnWidth * 2 + gap)
-    }
-
-    private var columnChunks: [ListingMasonryFeedPages.Chunk] {
-        ListingMasonryFeedPages.columnChunks(layout: layout, pageSize: chunkSize)
-    }
-
     var body: some View {
-        ZStack(alignment: .top) {
-            Color.clear
-                .frame(maxWidth: .infinity, maxHeight: 0)
-                .background {
-                    GeometryReader { proxy in
-                        Color.clear.preference(
-                            key: ListingMasonryContainerWidthKey.self,
-                            value: proxy.size.width
-                        )
-                    }
-                }
+        VStack(spacing: gap) {
+            widthProbe
 
-            LazyVStack(spacing: gap) {
-                ForEach(columnChunks) { chunk in
-                    HStack(alignment: .top, spacing: gap) {
-                        masonryColumnChunk(chunk.left)
-                        masonryColumnChunk(chunk.right)
-                    }
-                }
+            HStack(alignment: .top, spacing: gap) {
+                pinterestColumn(layout.left)
+                pinterestColumn(layout.right)
             }
-            .frame(width: gridBlockWidth, alignment: .center)
-            .frame(maxWidth: .infinity, alignment: .center)
-            .padding(.horizontal, symmetricInset)
+            .frame(maxWidth: .infinity)
+
+            footer()
         }
+        .padding(.horizontal, symmetricInset)
         .frame(maxWidth: .infinity, alignment: .top)
         .onPreferenceChange(ListingMasonryContainerWidthKey.self) { width in
             guard width > 1, abs(width - containerWidth) > 0.5 else { return }
@@ -73,6 +63,19 @@ struct ListingStaggeredMasonryView<Cell: View>: View {
         }
         .onAppear { refreshLayout() }
         .onChange(of: itemIdsSignature) { _, _ in refreshLayout() }
+    }
+
+    private var widthProbe: some View {
+        Color.clear
+            .frame(maxWidth: .infinity, maxHeight: 0)
+            .background {
+                GeometryReader { proxy in
+                    Color.clear.preference(
+                        key: ListingMasonryContainerWidthKey.self,
+                        value: proxy.size.width
+                    )
+                }
+            }
     }
 
     private var itemIdsSignature: [String] {
@@ -96,21 +99,40 @@ struct ListingStaggeredMasonryView<Cell: View>: View {
     }
 
     @ViewBuilder
-    private func masonryColumnChunk(_ entries: [(index: Int, item: ListingFeedItem)]) -> some View {
-        VStack(spacing: gap) {
+    private func pinterestColumn(_ entries: [(index: Int, item: ListingFeedItem)]) -> some View {
+        LazyVStack(spacing: gap) {
             ForEach(entries, id: \.item.id) { entry in
-                let tileHeight = ListingMasonryGrid.tileHeight(
-                    columnWidth: columnWidth,
-                    item: entry.item
-                )
-                cellContent(entry.item, entry.index)
-                    .environment(\.listingMasonryColumnWidth, columnWidth)
-                    .frame(width: columnWidth, height: tileHeight, alignment: .top)
-                    .frame(maxWidth: columnWidth)
-                    .clipped()
+                masonryTile(entry)
             }
         }
         .frame(width: columnWidth, alignment: .top)
+    }
+
+    @ViewBuilder
+    private func masonryTile(_ entry: (index: Int, item: ListingFeedItem)) -> some View {
+        let tileHeight = ListingMasonryGrid.tileHeight(
+            columnWidth: columnWidth,
+            item: entry.item
+        )
+        cellContent(entry.item, entry.index)
+            .environment(\.listingMasonryColumnWidth, columnWidth)
+            .frame(width: columnWidth, height: max(1, tileHeight), alignment: .top)
+            .clipped()
+    }
+}
+
+extension ListingStaggeredMasonryView where Footer == EmptyView {
+    init(
+        items: [ListingFeedItem],
+        columnAssignments: Binding<[String: Bool]>,
+        @ViewBuilder cellContent: @escaping (ListingFeedItem, Int) -> Cell
+    ) {
+        self.init(
+            items: items,
+            columnAssignments: columnAssignments,
+            footer: { EmptyView() },
+            cellContent: cellContent
+        )
     }
 }
 
@@ -125,5 +147,4 @@ extension EnvironmentValues {
     }
 }
 
-/// Alias for Pinterest-style masonry engine.
 typealias ListingPinterestMasonryView = ListingStaggeredMasonryView

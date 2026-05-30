@@ -154,8 +154,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                             } else {
                                 ListingStaggeredMasonryView(
                                     items: items,
-                                    columnAssignments: masonryColumnAssignments,
-                                    chunkSize: 12
+                                    columnAssignments: masonryColumnAssignments
                                 ) { item, _ in
                                     ListingGridCard(
                                         item: item,

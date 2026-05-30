@@ -260,7 +260,7 @@ struct ExploreScreen: View {
     private var listingsGrid: some View {
         ScrollViewReader { scrollProxy in
             ScrollView {
-                LazyVStack(spacing: 0, pinnedViews: []) {
+                VStack(alignment: .leading, spacing: 0) {
                     ExploreFeedScrollOffsetAnchor()
                         .id(ExploreFeedScrollIds.top)
 
@@ -272,11 +272,11 @@ struct ExploreScreen: View {
             }
             .scrollBounceBehavior(.basedOnSize, axes: .vertical)
             .onChange(of: viewModel.listingsScrollToTopToken) { _, _ in
-                var transaction = Transaction()
-                transaction.disablesAnimations = true
-                withTransaction(transaction) {
-                    scrollProxy.scrollTo(ExploreFeedScrollIds.top, anchor: .top)
-                }
+                scrollExploreToTop(using: scrollProxy)
+            }
+            .onChange(of: viewModel.listingsFeedEpoch) { _, _ in
+                masonryColumnAssignments = [:]
+                scrollExploreToTop(using: scrollProxy)
             }
         }
         .background(FashColors.screen)
@@ -298,7 +298,18 @@ struct ExploreScreen: View {
             }
         }
         .animation(.easeInOut(duration: 0.22), value: showsStickyChromeOverlay)
-        .refreshable { await viewModel.pullToRefresh(deps: deps, isGuestMode: isGuestMode) }
+        .refreshable {
+            masonryColumnAssignments = [:]
+            await viewModel.pullToRefresh(deps: deps, isGuestMode: isGuestMode)
+        }
+    }
+
+    private func scrollExploreToTop(using scrollProxy: ScrollViewProxy) {
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            scrollProxy.scrollTo(ExploreFeedScrollIds.top, anchor: .top)
+        }
     }
 
     @ViewBuilder
@@ -321,7 +332,21 @@ struct ExploreScreen: View {
             ListingStaggeredMasonryView(
                 items: viewModel.items,
                 columnAssignments: $masonryColumnAssignments
-            ) { item, index in
+            ) {
+                VStack(spacing: spacing.spacing2) {
+                    if viewModel.hasMore || viewModel.isLoadingMore {
+                        FeedLoadMoreFooter(
+                            enabled: viewModel.hasMore,
+                            isLoadingMore: viewModel.isLoadingMore
+                        ) {
+                            viewModel.requestLoadMore(deps: deps, isGuestMode: isGuestMode)
+                        }
+                    }
+                    if !viewModel.hasMore {
+                        HomeBrandFooterStrip()
+                    }
+                }
+            } cellContent: { item, index in
                 ExploreListingCell(
                     item: item,
                     index: index,
@@ -332,21 +357,8 @@ struct ExploreScreen: View {
                     deps: deps
                 )
             }
+            .id(viewModel.listingsFeedEpoch)
             .padding(.top, spacing.spacing2)
-
-            if viewModel.hasMore || viewModel.isLoadingMore {
-                FeedLoadMoreFooter(
-                    enabled: viewModel.hasMore,
-                    isLoadingMore: viewModel.isLoadingMore
-                ) {
-                    viewModel.requestLoadMore(deps: deps, isGuestMode: isGuestMode)
-                }
-            }
-
-            if !viewModel.hasMore {
-                HomeBrandFooterStrip()
-                    .padding(.top, spacing.spacing4)
-            }
         }
     }
 
@@ -462,7 +474,7 @@ private struct ExploreListingCell: View {
                     )
                 }
             },
-            imageAspectRatio: ListingMasonryGrid.masonryAspectRatio(for: item),
+            imageAspectRatio: ListingMasonryGrid.tileAspectWidthOverHeight(for: item),
             showQuickActions: true,
             onLike: {
                 if !isGuestMode {
@@ -473,10 +485,12 @@ private struct ExploreListingCell: View {
         .onAppear {
             appearedAt = Date()
             viewModel.recordView(item: item, position: index, deps: deps)
-            if FeedPaginationPolicy.shouldPrefetchNextPage(
-                appearedIndex: index,
-                totalCount: viewModel.items.count
-            ) {
+            if !viewModel.isRefreshing,
+               !viewModel.isReloadingListings,
+               FeedPaginationPolicy.shouldPrefetchNextPage(
+                   appearedIndex: index,
+                   totalCount: viewModel.items.count
+               ) {
                 viewModel.requestLoadMore(deps: deps, isGuestMode: isGuestMode)
             }
         }

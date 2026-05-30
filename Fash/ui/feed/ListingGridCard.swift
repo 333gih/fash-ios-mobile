@@ -136,14 +136,15 @@ struct ListingGridCard: View {
                             .foregroundStyle(FashColors.textSecondary)
                     }
             } else {
+                let tileAspect = ListingMasonryGrid.tileAspectWidthOverHeight(for: item)
                 let px = FeedListingImageSizer.pixelSize(
                     columnWidthPoints: columnW,
-                    aspectRatio: imageAspectRatio
+                    aspectRatio: tileAspect
                 )
                 let feedUrl = FeedListingImageSizer.urlForFeedGrid(
                     displayImageUrl,
                     columnWidthPoints: columnW,
-                    aspectRatio: imageAspectRatio
+                    aspectRatio: tileAspect
                 )
                 FashAsyncImage(
                     url: feedUrl,

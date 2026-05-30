@@ -29,13 +29,39 @@ enum ListingImageUrlsWire {
         let root = coverFromRoot.trimmingCharacters(in: .whitespaces)
         let steps = parseImageSteps(from: listing)
         if !root.isEmpty {
-            let match = steps.first { $0.url == root }
-            return CoverImageMeta(url: root, width: match?.width, height: match?.height)
+            let match = steps.first { imageUrlsReferToSameAsset($0.url, root) }
+            if let match {
+                return CoverImageMeta(url: root, width: match.width, height: match.height)
+            }
+            // Signed CDN URLs often differ from stored step paths — reuse first step dimensions.
+            if let first = steps.first, first.width != nil, first.height != nil {
+                return CoverImageMeta(url: root, width: first.width, height: first.height)
+            }
+            return CoverImageMeta(url: root, width: nil, height: nil)
         }
         if let first = steps.first {
             return CoverImageMeta(url: first.url, width: first.width, height: first.height)
         }
         return CoverImageMeta(url: "", width: nil, height: nil)
+    }
+
+    /// Same asset when paths match ignoring query (Shopify/CDN signing).
+    private static func imageUrlsReferToSameAsset(_ lhs: String, _ rhs: String) -> Bool {
+        let a = normalizeImageUrlPath(lhs)
+        let b = normalizeImageUrlPath(rhs)
+        if a.isEmpty || b.isEmpty { return false }
+        if a == b { return true }
+        return a.hasSuffix(b) || b.hasSuffix(a)
+    }
+
+    private static func normalizeImageUrlPath(_ raw: String) -> String {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let url = URL(string: trimmed),
+              var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        else { return trimmed }
+        components.query = nil
+        components.fragment = nil
+        return components.string ?? trimmed
     }
 
     private static func parseImageSteps(from listing: [String: Any]) -> [ImageStepRow] {

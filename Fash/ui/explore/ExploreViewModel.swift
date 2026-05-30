@@ -364,6 +364,8 @@ final class ExploreViewModel {
     }
 
     func pullToRefresh(deps: AppDependencies, isGuestMode: Bool) async {
+        cancelLoadMore()
+        requestListingsScrollToTop()
         isRefreshing = true
         defer { isRefreshing = false }
         await refresh(deps: deps, isGuestMode: isGuestMode)
