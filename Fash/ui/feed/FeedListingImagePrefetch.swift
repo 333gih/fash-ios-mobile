@@ -27,11 +27,6 @@ enum FeedListingImagePrefetch {
             return url
         }
         guard !urls.isEmpty else { return }
-        let px = FeedListingImageSizer.pixelSize(
-            columnWidthPoints: colW,
-            aspectRatio: 4 / 3
-        )
-        let processor = DownsamplingImageProcessor(size: px)
-        ImagePrefetcher(urls: urls, options: [.processor(processor)]).start()
+        ImagePrefetcher(urls: urls).start()
     }
 }

@@ -183,8 +183,16 @@ enum ListingFeedJsonParser {
             let name = (tag["name"] as? String) ?? (tag["display_name"] as? String) ?? (tag["Name"] as? String) ?? ""
             return name.isEmpty ? nil : name
         }
-        let rootCoverW = RepositoryHttp.optInt(row, "cover_image_width", "CoverImageWidth", default: 0)
-        let rootCoverH = RepositoryHttp.optInt(row, "cover_image_height", "CoverImageHeight", default: 0)
+        let rootCoverW = RepositoryHttp.optInt(
+            row,
+            "cover_image_width", "CoverImageWidth", "image_width", "imageWidth",
+            default: 0
+        )
+        let rootCoverH = RepositoryHttp.optInt(
+            row,
+            "cover_image_height", "CoverImageHeight", "image_height", "imageHeight",
+            default: 0
+        )
         let coverW = rootCoverW > 0 ? rootCoverW : coverMeta.width
         let coverH = rootCoverH > 0 ? rootCoverH : coverMeta.height
         return ListingFeedItem(

@@ -1,15 +1,14 @@
 import SwiftUI
 
-/// Pinterest-style two-column masonry — fixed tile width, vertical stagger only.
+/// Pinterest two-column masonry — shortest-column layout, real image heights, column-chunk virtualization.
 ///
-/// Uses shortest-column placement with stable ids across load-more (Android `LazyVerticalStaggeredGrid`).
-/// Virtualizes via page-sized `LazyVStack` chunks; each chunk uses non-lazy `VStack` columns (nested
-/// `LazyVStack` columns inside `ScrollView` mis-measure width/height and overlap tiles).
+/// Chunks **each column** separately (not sequential page ids) so fast scroll does not leave white gaps.
 struct ListingStaggeredMasonryView<Cell: View>: View {
     @Environment(\.fashSpacing) private var spacing
 
     let items: [ListingFeedItem]
     @Binding var columnAssignments: [String: Bool]
+    var chunkSize: Int = ListingMasonryFeedPages.defaultChunkSize
     @ViewBuilder let cellContent: (ListingFeedItem, Int) -> Cell
 
     @State private var layout: ListingMasonryColumnLayout = .empty
@@ -18,7 +17,6 @@ struct ListingStaggeredMasonryView<Cell: View>: View {
     private var gap: CGFloat { spacing.spacing2 }
     private var edgeStart: CGFloat { spacing.editorialStart }
     private var edgeEnd: CGFloat { spacing.editorialEnd }
-    /// Equal left/right inset — equal column widths (editorialEnd < editorialStart).
     private var symmetricInset: CGFloat { max(edgeStart, edgeEnd) }
 
     private var resolvedViewportWidth: CGFloat {
@@ -38,8 +36,8 @@ struct ListingStaggeredMasonryView<Cell: View>: View {
         max(0, columnWidth * 2 + gap)
     }
 
-    private var chunks: [ListingMasonryFeedPages.Chunk] {
-        ListingMasonryFeedPages.chunks(from: items)
+    private var columnChunks: [ListingMasonryFeedPages.Chunk] {
+        ListingMasonryFeedPages.columnChunks(layout: layout, pageSize: chunkSize)
     }
 
     var body: some View {
@@ -56,8 +54,11 @@ struct ListingStaggeredMasonryView<Cell: View>: View {
                 }
 
             LazyVStack(spacing: gap) {
-                ForEach(chunks) { chunk in
-                    chunkRow(chunk)
+                ForEach(columnChunks) { chunk in
+                    HStack(alignment: .top, spacing: gap) {
+                        masonryColumnChunk(chunk.left)
+                        masonryColumnChunk(chunk.right)
+                    }
                 }
             }
             .frame(width: gridBlockWidth, alignment: .center)
@@ -68,6 +69,7 @@ struct ListingStaggeredMasonryView<Cell: View>: View {
         .onPreferenceChange(ListingMasonryContainerWidthKey.self) { width in
             guard width > 1, abs(width - containerWidth) > 0.5 else { return }
             containerWidth = width
+            refreshLayout()
         }
         .onAppear { refreshLayout() }
         .onChange(of: itemIdsSignature) { _, _ in refreshLayout() }
@@ -81,6 +83,8 @@ struct ListingStaggeredMasonryView<Cell: View>: View {
         var assignments = columnAssignments
         let newLayout = ListingMasonryGrid.makeStableColumnLayout(
             items: items,
+            columnWidth: columnWidth,
+            verticalGap: gap,
             assignedIsRightColumn: &assignments
         )
         layout = newLayout
@@ -92,19 +96,10 @@ struct ListingStaggeredMasonryView<Cell: View>: View {
     }
 
     @ViewBuilder
-    private func chunkRow(_ chunk: ListingMasonryFeedPages.Chunk) -> some View {
-        let chunkIds = Set(chunk.entries.map(\.item.id))
-        HStack(alignment: .top, spacing: gap) {
-            masonryColumn(layout.left.filter { chunkIds.contains($0.item.id) })
-            masonryColumn(layout.right.filter { chunkIds.contains($0.item.id) })
-        }
-    }
-
-    @ViewBuilder
-    private func masonryColumn(_ column: [(index: Int, item: ListingFeedItem)]) -> some View {
+    private func masonryColumnChunk(_ entries: [(index: Int, item: ListingFeedItem)]) -> some View {
         VStack(spacing: gap) {
-            ForEach(column, id: \.item.id) { entry in
-                let tileHeight = ListingMasonryGrid.estimatedTileHeight(
+            ForEach(entries, id: \.item.id) { entry in
+                let tileHeight = ListingMasonryGrid.tileHeight(
                     columnWidth: columnWidth,
                     item: entry.item
                 )
@@ -129,3 +124,6 @@ extension EnvironmentValues {
         set { self[ListingMasonryColumnWidthKey.self] = newValue }
     }
 }
+
+/// Alias for Pinterest-style masonry engine.
+typealias ListingPinterestMasonryView = ListingStaggeredMasonryView

@@ -473,6 +473,12 @@ private struct ExploreListingCell: View {
         .onAppear {
             appearedAt = Date()
             viewModel.recordView(item: item, position: index, deps: deps)
+            if FeedPaginationPolicy.shouldPrefetchNextPage(
+                appearedIndex: index,
+                totalCount: viewModel.items.count
+            ) {
+                viewModel.requestLoadMore(deps: deps, isGuestMode: isGuestMode)
+            }
         }
         .onDisappear {
             if let appearedAt {

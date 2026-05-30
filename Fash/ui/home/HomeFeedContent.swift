@@ -229,8 +229,13 @@ struct HomeFeedContent: View {
                     HomeFeedListingCell(
                         item: item,
                         index: index,
+                        totalCount: viewModel.items.count,
                         surface: analyticsSurface,
                         imageAspectRatio: ListingMasonryGrid.masonryAspectRatio(for: item),
+                        canPrefetchLoadMore: viewModel.selectedFeedTab == .following && viewModel.followingHasMore,
+                        onPrefetchLoadMore: {
+                            viewModel.loadMoreFollowing(deps: deps, isGuestMode: isGuestMode)
+                        },
                         onTap: {
                             viewModel.reportListingClick(
                                 item: item,
@@ -316,8 +321,11 @@ struct HomeFeedContent: View {
 private struct HomeFeedListingCell: View {
     let item: ListingFeedItem
     let index: Int
+    let totalCount: Int
     let surface: String
     let imageAspectRatio: CGFloat
+    var canPrefetchLoadMore: Bool = false
+    var onPrefetchLoadMore: () -> Void = {}
     let onTap: () -> Void
     let onLike: () -> Void
     let onRecordView: () -> Void
@@ -341,6 +349,13 @@ private struct HomeFeedListingCell: View {
                 try? await Task.sleep(for: .milliseconds(450))
                 guard !Task.isCancelled else { return }
                 onRecordView()
+            }
+            if canPrefetchLoadMore,
+               FeedPaginationPolicy.shouldPrefetchNextPage(
+                   appearedIndex: index,
+                   totalCount: totalCount
+               ) {
+                onPrefetchLoadMore()
             }
         }
         .onDisappear {

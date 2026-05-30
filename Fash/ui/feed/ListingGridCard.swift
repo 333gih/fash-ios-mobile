@@ -147,9 +147,10 @@ struct ListingGridCard: View {
                 )
                 FashAsyncImage(
                     url: feedUrl,
-                    contentMode: .fill,
+                    contentMode: masonryColumnWidth != nil ? .fit : .fill,
                     targetPixelSize: px
                 )
+                .background(FashColors.surfaceContainerHigh)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

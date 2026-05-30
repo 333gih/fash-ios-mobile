@@ -1,44 +1,33 @@
 import SwiftUI
 
-/// Port of Android `ListingMasonryGrid` (ui.feed).
+/// Pinterest masonry — tile height from API cover pixels, shortest-column placement.
 enum ListingMasonryGrid {
-    private static let staggerRatios: [CGFloat] = [
-        2.0 / 3.0, 3.0 / 4.0, 4.0 / 5.0, 5.0 / 6.0, 1.0,
-    ]
-    private static let minMasonryAspect: CGFloat = 3.0 / 5.0
-    private static let maxMasonryAspect: CGFloat = 5.0 / 4.0
+    /// Fallback when API omits dimensions (typical product photo 4:5).
+    static let defaultAspectWidthOverHeight: CGFloat = 4.0 / 5.0
 
-    /// Vary tile height by listing id hash — Android `listingMasonryStaggerAspectRatio`.
-    static func staggerAspectRatio(for listingId: String) -> CGFloat {
-        let bucket = abs(javaStringHashCode(listingId)) % staggerRatios.count
-        return staggerRatios[bucket]
-    }
+    /// Soft bounds on width/height ratio (w/h) to ignore corrupt metadata.
+    private static let minAspectWidthOverHeight: CGFloat = 0.45
+    private static let maxAspectWidthOverHeight: CGFloat = 2.0
 
-    /// Pinterest-style width/height from cover pixels, clamped; falls back to id-hash stagger.
-    static func masonryAspectRatio(for item: ListingFeedItem) -> CGFloat {
-        if let w = item.coverImageWidth, let h = item.coverImageHeight, w > 0, h > 0 {
-            return clampMasonryAspectRatio(CGFloat(w) / CGFloat(h))
+    /// width / height from cover pixels; neutral default when missing.
+    static func tileAspectWidthOverHeight(for item: ListingFeedItem) -> CGFloat {
+        guard let w = item.coverImageWidth, let h = item.coverImageHeight, w > 0, h > 0 else {
+            return defaultAspectWidthOverHeight
         }
-        return staggerAspectRatio(for: item.id)
+        let raw = CGFloat(w) / CGFloat(h)
+        return min(max(raw, minAspectWidthOverHeight), maxAspectWidthOverHeight)
     }
 
-    static func clampMasonryAspectRatio(_ raw: CGFloat) -> CGFloat {
-        min(max(raw, minMasonryAspect), maxMasonryAspect)
-    }
-
-    /// JVM/Kotlin `String.hashCode()` — stable bucket parity with Android.
-    private static func javaStringHashCode(_ value: String) -> Int {
-        var hash = 0
-        for unit in value.utf16 {
-            hash = 31 &* hash &+ Int(unit)
-        }
-        return hash
-    }
-
-    /// Tile height when the column width is known (image aspect ratio only).
-    static func estimatedTileHeight(columnWidth: CGFloat, item: ListingFeedItem) -> CGFloat {
+    /// Pinterest: cardHeight = columnWidth * imageHeight / imageWidth
+    static func tileHeight(columnWidth: CGFloat, item: ListingFeedItem) -> CGFloat {
         guard columnWidth > 0 else { return 0 }
-        return columnWidth / masonryAspectRatio(for: item)
+        let aspect = tileAspectWidthOverHeight(for: item)
+        return columnWidth / aspect
+    }
+
+    /// Legacy name used by call sites for Coil/Kingfisher sizing (width/height ratio).
+    static func masonryAspectRatio(for item: ListingFeedItem) -> CGFloat {
+        tileAspectWidthOverHeight(for: item)
     }
 
     static func columnWidth(
@@ -51,6 +40,10 @@ enum ListingMasonryGrid {
         return inner / 2
     }
 
+    static func estimatedTileHeight(columnWidth: CGFloat, item: ListingFeedItem) -> CGFloat {
+        tileHeight(columnWidth: columnWidth, item: item)
+    }
+
     static func estimatedColumnHeight(
         entries: [(index: Int, item: ListingFeedItem)],
         columnWidth: CGFloat,
@@ -58,7 +51,7 @@ enum ListingMasonryGrid {
     ) -> CGFloat {
         guard !entries.isEmpty, columnWidth > 0 else { return 0 }
         let tiles = entries.reduce(CGFloat(0)) { partial, entry in
-            partial + estimatedTileHeight(columnWidth: columnWidth, item: entry.item)
+            partial + tileHeight(columnWidth: columnWidth, item: entry.item)
         }
         return tiles + verticalGap * CGFloat(max(0, entries.count - 1))
     }
@@ -74,7 +67,24 @@ enum ListingMasonryGrid {
         )
     }
 
-    /// One lazy row (up to two tiles) — Android `listingMasonryFeedRows` for long feeds.
+    /// Splits one masonry column into lazy page segments (virtualize without breaking column order).
+    static func chunkColumn(
+        _ column: [(index: Int, item: ListingFeedItem)],
+        pageSize: Int
+    ) -> [[(index: Int, item: ListingFeedItem)]] {
+        guard pageSize > 0, !column.isEmpty else { return column.isEmpty ? [] : [column] }
+        var result: [[(index: Int, item: ListingFeedItem)]] = []
+        result.reserveCapacity((column.count + pageSize - 1) / pageSize)
+        var start = 0
+        while start < column.count {
+            let end = min(start + pageSize, column.count)
+            result.append(Array(column[start..<end]))
+            start = end
+        }
+        return result
+    }
+
+    /// One lazy row (up to two tiles) — sequential pairing only; prefer column chunks in [ListingPinterestMasonryView].
     struct FeedRow: Identifiable {
         let id: String
         let left: (index: Int, item: ListingFeedItem)
@@ -102,37 +112,35 @@ enum ListingMasonryGrid {
     }
 }
 
-/// Page-sized chunks for optional batching. [ListingStaggeredMasonryView] lazy-loads chunks over the full list.
+/// Lazy page size for masonry column segments inside a parent `ScrollView`.
 enum ListingMasonryFeedPages {
-    /// Matches Explore/Home listing page size (`exploreFeedPageSize`).
-    static let defaultChunkSize = 20
+    static let defaultChunkSize = 16
 
     struct Chunk: Identifiable {
         let id: Int
-        let entries: [(index: Int, item: ListingFeedItem)]
+        let left: [(index: Int, item: ListingFeedItem)]
+        let right: [(index: Int, item: ListingFeedItem)]
     }
 
-    static func chunks(from items: [ListingFeedItem], pageSize: Int = defaultChunkSize) -> [Chunk] {
-        guard !items.isEmpty, pageSize > 0 else { return [] }
-        var result: [Chunk] = []
-        result.reserveCapacity((items.count + pageSize - 1) / pageSize)
-        var pageIndex = 0
-        var start = 0
-        while start < items.count {
-            let end = min(start + pageSize, items.count)
-            let entries = (start..<end).map { ($0, items[$0]) }
-            result.append(Chunk(id: pageIndex, entries: entries))
-            pageIndex += 1
-            start = end
+    static func columnChunks(
+        layout: ListingMasonryColumnLayout,
+        pageSize: Int = defaultChunkSize
+    ) -> [Chunk] {
+        let leftChunks = ListingMasonryGrid.chunkColumn(layout.left, pageSize: pageSize)
+        let rightChunks = ListingMasonryGrid.chunkColumn(layout.right, pageSize: pageSize)
+        let count = max(leftChunks.count, rightChunks.count)
+        guard count > 0 else { return [] }
+        return (0..<count).map { index in
+            Chunk(
+                id: index,
+                left: leftChunks.indices.contains(index) ? leftChunks[index] : [],
+                right: rightChunks.indices.contains(index) ? rightChunks[index] : []
+            )
         }
-        return result
     }
 }
 
-/// Two-column masonry listing grid — Android `ListingMasonryGrid` (non-lazy columns).
-///
-/// Uses `VStack` per column instead of nested `LazyVStack` inside `ScrollView`, which causes
-/// phantom gaps while loading or fast-scrolling (SwiftUI nested-lazy height miscalculation).
+/// Two-column masonry listing grid — non-lazy; short lists only.
 struct ListingMasonryGridView<Content: View>: View {
     @Environment(\.fashSpacing) private var spacing
 
@@ -174,11 +182,12 @@ struct ListingMasonryGridView<Content: View>: View {
     private var edgeStart: CGFloat { leadingPadding ?? spacing.editorialStart }
     private var edgeEnd: CGFloat { trailingPadding ?? spacing.editorialEnd }
 
-    /// Shortest-column masonry — balances column heights using stagger aspect ratios (Android StaggeredGrid).
     private var distributedColumns: ListingMasonryColumnLayout {
         var fresh: [String: Bool] = [:]
         return ListingMasonryGrid.makeStableColumnLayout(
             items: entries.sorted { $0.index < $1.index }.map(\.item),
+            columnWidth: 0,
+            verticalGap: gap,
             assignedIsRightColumn: &fresh
         )
     }
@@ -205,9 +214,10 @@ struct ListingMasonryGridView<Content: View>: View {
 }
 
 extension ListingMasonryGrid {
-    /// Assigns each tile to the shorter column using estimated height from [masonryAspectRatio].
     static func distributeShortestColumn(
-        entries: [(index: Int, item: ListingFeedItem)]
+        entries: [(index: Int, item: ListingFeedItem)],
+        columnWidth: CGFloat = 0,
+        verticalGap: CGFloat = 0
     ) -> (
         left: [(index: Int, item: ListingFeedItem)],
         right: [(index: Int, item: ListingFeedItem)]
@@ -215,14 +225,18 @@ extension ListingMasonryGrid {
         var freshAssignments: [String: Bool] = [:]
         let layout = makeStableColumnLayout(
             items: entries.sorted { $0.index < $1.index }.map(\.item),
+            columnWidth: columnWidth,
+            verticalGap: verticalGap,
             assignedIsRightColumn: &freshAssignments
         )
         return (layout.left, layout.right)
     }
 
-    /// Masonry split with **stable** column per listing id — existing tiles do not move when appending pages.
+    /// Shortest-column split; stable column per listing id across pagination.
     static func makeStableColumnLayout(
         items: [ListingFeedItem],
+        columnWidth: CGFloat,
+        verticalGap: CGFloat,
         assignedIsRightColumn: inout [String: Bool]
     ) -> ListingMasonryColumnLayout {
         let liveIds = Set(items.map(\.id))
@@ -238,21 +252,25 @@ extension ListingMasonryGrid {
         right.reserveCapacity(items.count / 2 + 1)
 
         for (index, item) in items.enumerated() {
-            let unitHeight = 1 / masonryAspectRatio(for: item)
+            let tileH: CGFloat
+            if columnWidth > 0 {
+                tileH = tileHeight(columnWidth: columnWidth, item: item) + verticalGap
+            } else {
+                tileH = 1 / tileAspectWidthOverHeight(for: item)
+            }
             let placeRight: Bool
             if let stored = assignedIsRightColumn[item.id] {
                 placeRight = stored
             } else {
-                // New tile (e.g. load-more batch) → shorter column first.
                 placeRight = leftHeight > rightHeight
                 assignedIsRightColumn[item.id] = placeRight
             }
             if placeRight {
                 right.append((index, item))
-                rightHeight += unitHeight
+                rightHeight += tileH
             } else {
                 left.append((index, item))
-                leftHeight += unitHeight
+                leftHeight += tileH
             }
         }
         return ListingMasonryColumnLayout(left: left, right: right)
@@ -268,7 +286,6 @@ struct ListingMasonryContainerWidthKey: PreferenceKey {
     }
 }
 
-/// Two-column masonry layout — left/right item lists with global indices.
 struct ListingMasonryColumnLayout {
     var left: [(index: Int, item: ListingFeedItem)]
     var right: [(index: Int, item: ListingFeedItem)]
@@ -278,10 +295,7 @@ struct ListingMasonryColumnLayout {
     var isEmpty: Bool { left.isEmpty && right.isEmpty }
 }
 
-/// Two-column masonry with **fixed equal tile widths** — Android `LazyVerticalStaggeredGrid` parity.
-///
-/// Uses non-lazy `VStack` columns (nested `LazyVStack` in `ScrollView` overlaps tiles). Pair with
-/// [ListingMasonryGrid.makeStableColumnLayout] for stable load-more placement.
+/// Pinterest two-column feed — column-chunked `LazyVStack` (fixes white gaps from page-id filtering).
 struct ListingMasonryColumnFeed<Content: View>: View {
     @Environment(\.fashSpacing) private var spacing
 
@@ -296,7 +310,6 @@ struct ListingMasonryColumnFeed<Content: View>: View {
     private var gap: CGFloat { columnSpacing ?? spacing.spacing2 }
     private var edgeStart: CGFloat { leadingPadding ?? spacing.editorialStart }
     private var edgeEnd: CGFloat { trailingPadding ?? spacing.editorialEnd }
-    /// Equal left/right inset — avoids lopsided grid (editorialEnd is smaller than editorialStart).
     private var symmetricInset: CGFloat { max(edgeStart, edgeEnd) }
 
     private var resolvedViewportWidth: CGFloat {
@@ -349,20 +362,19 @@ struct ListingMasonryColumnFeed<Content: View>: View {
     private func masonryColumn(_ column: [(index: Int, item: ListingFeedItem)]) -> some View {
         VStack(spacing: gap) {
             ForEach(column, id: \.item.id) { entry in
+                let tileHeight = ListingMasonryGrid.tileHeight(columnWidth: columnWidth, item: entry.item)
                 content(entry.item, entry.index)
-                    .frame(width: columnWidth, alignment: .top)
+                    .environment(\.listingMasonryColumnWidth, columnWidth)
+                    .frame(width: columnWidth, height: tileHeight, alignment: .top)
             }
         }
         .frame(width: columnWidth, alignment: .top)
     }
 }
 
-/// Backward-compatible name — routes to [ListingMasonryColumnFeed].
 typealias ListingMasonryLazyColumns = ListingMasonryColumnFeed
 
-/// Virtualized **row pairs** for long feeds (`ScrollView` + `LazyVStack`) — Android `listingMasonryFeedRows`.
-///
-/// Prefer [ListingMasonryLazyColumns] for equal-width staggered columns; row pairs leave gaps on the shorter side.
+/// @deprecated — sequential row pairs; gaps on the shorter side. Use [ListingPinterestMasonryView].
 struct ListingMasonryLazyRows<Content: View>: View {
     @Environment(\.fashSpacing) private var spacing
 
@@ -397,5 +409,15 @@ struct ListingMasonryLazyRows<Content: View>: View {
             .padding(.leading, edgeStart)
             .padding(.trailing, edgeEnd)
         }
+    }
+}
+
+/// Triggers pagination when the user is within [threshold] items of the list end.
+enum FeedPaginationPolicy {
+    static let defaultPrefetchThreshold = 8
+
+    static func shouldPrefetchNextPage(appearedIndex: Int, totalCount: Int, threshold: Int = defaultPrefetchThreshold) -> Bool {
+        guard totalCount > 0, appearedIndex >= 0 else { return false }
+        return totalCount - appearedIndex - 1 <= threshold
     }
 }
