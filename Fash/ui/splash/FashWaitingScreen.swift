@@ -1,16 +1,12 @@
 import SwiftUI
 
 private let splashAccent = Color(hex: 0xF04D63)
-private let longWaitFeedbackDelayNs: UInt64 = 2_500_000_000
 private let thumbCornerRadius: CGFloat = 28
 
-/// Full-bleed waiting / splash — parity with Android [FashWaitingScreen].
+/// Full-bleed waiting / splash — branded editorial only (no determinate progress bar).
 struct FashWaitingScreen: View {
     /// Third dot active (final onboarding step), matching Android default.
     var activeDotIndex: Int = 2
-    @Bindable var progress: LaunchWaitingProgress
-
-    @State private var showLongWaitFeedback = false
 
     private let background = FashColorTokens.Dark.screen
     private let onSurface = FashColorTokens.Dark.textPrimary
@@ -54,7 +50,6 @@ struct FashWaitingScreen: View {
 
                     VStack(spacing: 0) {
                         Spacer(minLength: 0)
-                        longWaitFeedback
                         genZFooter
                             .padding(.horizontal, 20)
                         stepDots(motion: motion)
@@ -65,15 +60,7 @@ struct FashWaitingScreen: View {
             }
         }
         .ignoresSafeArea()
-        .task {
-            try? await Task.sleep(nanoseconds: longWaitFeedbackDelayNs)
-            withAnimation(.easeOut(duration: 0.42)) {
-                showLongWaitFeedback = true
-            }
-        }
     }
-
-    // MARK: - Watermark
 
     private func watermark(geo: GeometryProxy, motion: WaitingScreenMotion) -> some View {
         let fontSize = min(geo.size.height * 0.16, 132)
@@ -89,8 +76,6 @@ struct FashWaitingScreen: View {
             .allowsHitTesting(false)
     }
 
-    // MARK: - Corner thumbs
-
     private func splashCornerThumb(
         width: CGFloat,
         height: CGFloat,
@@ -102,30 +87,6 @@ struct FashWaitingScreen: View {
             .clipped()
             .clipShape(RoundedRectangle(cornerRadius: thumbCornerRadius, style: .continuous))
             .allowsHitTesting(false)
-    }
-
-    // MARK: - Footer
-
-    @ViewBuilder
-    private var longWaitFeedback: some View {
-        let progressFraction = progress.fraction
-        let showsProgress = progress.isActive || showLongWaitFeedback
-        if showsProgress {
-            VStack(spacing: 10) {
-                WaitingScreenLinearProgress(fraction: max(progressFraction, showLongWaitFeedback ? 0.08 : 0.04))
-                    .frame(width: 168)
-                    .accessibilityLabel(L10n.waitingScreenStillLoadingCd)
-                if showLongWaitFeedback || progressFraction >= 0.99 {
-                    Text(L10n.waitingScreenStillLoading)
-                        .font(FashTypography.bodySmall.weight(.medium))
-                        .foregroundStyle(onSurfaceMuted)
-                        .multilineTextAlignment(.center)
-                }
-            }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 16)
-            .transition(.opacity.combined(with: .move(edge: .bottom)))
-        }
     }
 
     private var genZFooter: some View {
@@ -161,27 +122,6 @@ struct FashWaitingScreen: View {
             }
         }
         .accessibilityHidden(true)
-    }
-}
-
-/// Determinate launch progress — `ProgressView(.linear)` without a value stays static on iOS.
-private struct WaitingScreenLinearProgress: View {
-    let fraction: Double
-
-    private let trackColor = FashColorTokens.Dark.outlineMuted.opacity(0.35)
-
-    var body: some View {
-        GeometryReader { geo in
-            ZStack(alignment: .leading) {
-                Capsule(style: .continuous)
-                    .fill(trackColor)
-                Capsule(style: .continuous)
-                    .fill(splashAccent)
-                    .frame(width: max(0, geo.size.width * fraction))
-            }
-        }
-        .frame(height: 3)
-        .animation(.easeOut(duration: 0.28), value: fraction)
     }
 }
 

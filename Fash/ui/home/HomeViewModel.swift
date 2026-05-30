@@ -115,6 +115,14 @@ final class HomeViewModel {
         }
     }
 
+    /// Launch gate — block main UI only until the active Home feed tab has listings (or failed gracefully).
+    func awaitLaunchReady(deps: AppDependencies, isGuestMode: Bool) async {
+        normalizeSelectedFeedTab(isGuestMode: isGuestMode, deps: deps)
+        await awaitSelectedFeedTab(deps: deps, isGuestMode: isGuestMode, force: true)
+        lastSuccessfulRefreshAt = Date()
+        scheduleShellEnrichment(deps: deps, isGuestMode: isGuestMode)
+    }
+
     func loadShell(deps: AppDependencies, isGuestMode: Bool, skipIfFresh: Bool = false, launchProgress: LaunchWaitingProgress? = nil) async {
         if skipIfFresh, isLaunchShellFresh {
             normalizeSelectedFeedTab(isGuestMode: isGuestMode, deps: deps)
@@ -126,6 +134,21 @@ final class HomeViewModel {
         defer { isShellLoading = false }
 
         normalizeSelectedFeedTab(isGuestMode: isGuestMode, deps: deps)
+        await awaitSelectedFeedTab(deps: deps, isGuestMode: isGuestMode, force: true)
+        launchProgress?.completeHomeStep()
+        await loadShellEnrichment(deps: deps, isGuestMode: isGuestMode, launchProgress: launchProgress)
+        lastSuccessfulRefreshAt = Date()
+    }
+
+    private func scheduleShellEnrichment(deps: AppDependencies, isGuestMode: Bool) {
+        Task { await loadShellEnrichment(deps: deps, isGuestMode: isGuestMode, launchProgress: nil) }
+    }
+
+    private func loadShellEnrichment(
+        deps: AppDependencies,
+        isGuestMode: Bool,
+        launchProgress: LaunchWaitingProgress? = nil
+    ) async {
         if !isGuestMode {
             async let ux: Void = {
                 await loadUxPersonalization(deps: deps, isGuestMode: isGuestMode)
@@ -159,10 +182,31 @@ final class HomeViewModel {
         }
         launchProgress?.completeHomeStep()
 
-        ensureTabLoaded(selectedFeedTab, deps: deps, isGuestMode: isGuestMode, force: true)
         prefetchAdjacentTabs(around: selectedFeedTab, deps: deps, isGuestMode: isGuestMode)
         launchProgress?.completeHomeStep()
-        lastSuccessfulRefreshAt = Date()
+    }
+
+    private func awaitSelectedFeedTab(
+        deps: AppDependencies,
+        isGuestMode: Bool,
+        force: Bool
+    ) async {
+        let tab = selectedFeedTab
+        if isGuestMode && tab.requiresAuth { return }
+        tabLoadTasks[tab.rawValue]?.cancel()
+        setTabLoading(tab, true)
+        setTabError(tab, false)
+        let ok = await loadTab(tab, deps: deps, isGuestMode: isGuestMode, force: force)
+        if ok {
+            loadedTabs.insert(tab.rawValue)
+            if HomeFeedTab.recommendationSectionTabs.contains(tab) {
+                HomeFeedTab.recommendationSectionTabs.forEach { loadedTabs.insert($0.rawValue) }
+            }
+        } else {
+            setTabError(tab, true)
+        }
+        setTabLoading(tab, false)
+        tabLoadTasks[tab.rawValue] = nil
     }
 
     func pullToRefresh(deps: AppDependencies, isGuestMode: Bool = false) async {
@@ -303,7 +347,7 @@ final class HomeViewModel {
     private var isLaunchShellFresh: Bool {
         guard let lastSuccessfulRefreshAt else { return false }
         guard Date().timeIntervalSince(lastSuccessfulRefreshAt) < 120 else { return false }
-        return !items.isEmpty && (!promoSlides.isEmpty || !featuredSellers.isEmpty)
+        return !items.isEmpty
     }
 
     private func invalidateAllTabFeeds() {

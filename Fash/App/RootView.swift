@@ -45,18 +45,14 @@ struct RootView: View {
             }
         }
         .task {
-            launchProgress.beginSplash()
-            launchProgress.markSplash(0.08)
             deps.prefetchSessionValidation()
             async let sessionValidated = deps.awaitSessionValidation()
-            async let minimumBranding = Task {
+            async let brandingFloor = Task {
                 try? await Task.sleep(for: .seconds(AppLaunchWarmup.minimumDisplaySeconds))
             }
             _ = await sessionValidated
-            launchProgress.markSplash(0.22)
             await bootstrapSession()
-            launchProgress.markSplash(0.34)
-            _ = await minimumBranding.value
+            _ = await brandingFloor.value
             router.showSplash = false
         }
         .onAppear {
@@ -92,7 +88,7 @@ struct RootView: View {
     @ViewBuilder
     private var rootContent: some View {
         if router.showSplash || router.isLoggingOut || router.isLaunchWarmupInProgress {
-            FashWaitingScreen(progress: launchProgress)
+            FashWaitingScreen()
         } else if router.isGuestMode {
             GuestMainShell(
                 router: router,
@@ -364,7 +360,7 @@ struct RootView: View {
         case .setupPassword:
             SetupPasswordOnboardScreen(onContinue: { router.onboardingStep = .completed })
         case .completed:
-            FashWaitingScreen(progress: launchProgress)
+            FashWaitingScreen()
                 .task { await prepareMainShellEntry() }
         }
     }
@@ -408,7 +404,7 @@ struct RootView: View {
         }
     }
 
-    /// Prefetch Home feed + promo slider + Explore suggestions before revealing the main shell.
+    /// Gate on Home feed, then reveal shell; Explore and other tabs prefetch in the background.
     private func prepareMainShellEntry() async {
         router.isLaunchWarmupInProgress = true
         defer { router.isLaunchWarmupInProgress = false }
