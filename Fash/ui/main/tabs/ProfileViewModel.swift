@@ -88,6 +88,9 @@ final class ProfileViewModel {
 
     func onProfileTabSelected(_ tabIndex: Int, deps: AppDependencies) {
         deps.uxTabTracker.onTabOpened(scope: "profile", tabKey: UxPersonalizationMapping.profileTabKey(from: tabIndex))
+        if tabIndex == ProfileListingTab.wishlist.rawValue, wishlistListings.isEmpty {
+            Task { await reloadWishlist(deps: deps) }
+        }
     }
 
     func requestWishlistTabFromHome(deps: AppDependencies) {
@@ -154,17 +157,32 @@ final class ProfileViewModel {
     private func loadListings(deps: AppDependencies) async {
         async let mineResult = deps.listingRepository.getMyListings(limit: 50, offset: 0)
         async let wishResult = deps.listingRepository.getWishlistListings(limit: 50, offset: 0)
-        let allMine = (try? await mineResult.get()) ?? []
-        let wish = (try? await wishResult.get()) ?? []
-        sellingListings = allMine.filter { $0.isActiveListing() }
-        inReviewListings = allMine.filter { $0.isInReviewListing() }
-        rejectedListings = allMine.filter { $0.isRejectedListing() }
-        soldListings = allMine.filter { $0.isSoldListingStatus() }
-        wishlistListings = wish
-        if soldCount == 0 { soldCount = soldListings.count }
-        if productCount == 0 {
-            productCount = sellingListings.count + inReviewListings.count + rejectedListings.count
+        switch await mineResult {
+        case .success(let allMine):
+            sellingListings = allMine.filter { $0.isActiveListing() }
+            inReviewListings = allMine.filter { $0.isInReviewListing() }
+            rejectedListings = allMine.filter { $0.isRejectedListing() }
+            soldListings = allMine.filter { $0.isSoldListingStatus() }
+            if soldCount == 0 { soldCount = soldListings.count }
+            if productCount == 0 {
+                productCount = sellingListings.count + inReviewListings.count + rejectedListings.count
+            }
+        case .failure:
+            break
         }
+        switch await wishResult {
+        case .success(let wish):
+            wishlistListings = wish
+        case .failure:
+            break
+        }
+    }
+
+    private func reloadWishlist(deps: AppDependencies) async {
+        guard case .success(let wish) = await deps.listingRepository.getWishlistListings(limit: 50, offset: 0) else {
+            return
+        }
+        wishlistListings = wish
     }
 
     private func loadProfileUxPersonalization(deps: AppDependencies) async {
@@ -217,13 +235,9 @@ final class ProfileViewModel {
             if !saved && snapshot.isSaved {
                 wishlistListings.removeAll { $0.id == item.id }
             } else if saved {
-                if let updated = sellingListings.first(where: { $0.id == item.id })
-                    ?? inReviewListings.first(where: { $0.id == item.id })
-                    ?? rejectedListings.first(where: { $0.id == item.id })
-                    ?? soldListings.first(where: { $0.id == item.id }) {
-                    if !wishlistListings.contains(where: { $0.id == item.id }) {
-                        wishlistListings.append(updated)
-                    }
+                let patched = snapshot.applyingSaveToggle(true)
+                if !wishlistListings.contains(where: { $0.id == item.id }) {
+                    wishlistListings.insert(patched, at: 0)
                 }
             }
             deps.showSnackbar(FeedEngagementFeedback.saveMessage(saved: saved))
@@ -241,4 +255,4 @@ final class ProfileViewModel {
         wishlistListings = wishlistListings.map { $0.id == id ? transform($0) : $0 }
     }
 }
-
+

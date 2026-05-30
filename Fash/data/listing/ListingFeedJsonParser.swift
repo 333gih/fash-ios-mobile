@@ -160,23 +160,31 @@ enum ListingFeedJsonParser {
 
     static func parseFeed(_ data: Data) throws -> [ListingFeedItem] {
         let root = try JSONSerialization.jsonObject(with: data)
-        let rows: [[String: Any]]
-        if let arr = root as? [[String: Any]] {
-            rows = arr
-        } else if let obj = root as? [String: Any], let items = obj["items"] as? [[String: Any]] {
-            rows = items
-        } else if let obj = root as? [String: Any], let dataArr = obj["data"] as? [[String: Any]] {
-            rows = dataArr
-        } else if let obj = root as? [String: Any], let single = obj["data"] as? [String: Any] {
-            rows = [single]
-        } else if let obj = root as? [String: Any], let listing = obj["listing"] as? [String: Any] {
-            rows = [listing]
-        } else if let obj = root as? [String: Any], obj["id"] != nil || obj["ID"] != nil {
-            rows = [obj]
-        } else {
-            rows = []
+        return extractListingRows(from: root).compactMap(parseRow)
+    }
+
+    /// Wishlist, seller listings, search — Android [extractListingsArray] / [parseFeedArray].
+    private static func extractListingRows(from root: Any) -> [[String: Any]] {
+        if let arr = root as? [[String: Any]] { return arr }
+        guard let obj = root as? [String: Any] else { return [] }
+        if let data = obj["data"] {
+            if let arr = data as? [[String: Any]] { return arr }
+            if let nested = data as? [String: Any] { return listingRows(in: nested) }
         }
-        return rows.compactMap(parseRow)
+        if let listing = obj["listing"] as? [String: Any] { return [listing] }
+        return listingRows(in: obj)
+    }
+
+    private static func listingRows(in obj: [String: Any]) -> [[String: Any]] {
+        for key in ["listings", "Listings", "items", "Items", "results", "Results", "rows", "Rows"] {
+            if obj[key] != nil {
+                return (obj[key] as? [[String: Any]]) ?? []
+            }
+        }
+        if obj["id"] != nil || obj["ID"] != nil || obj["listing_id"] != nil {
+            return [obj]
+        }
+        return []
     }
 
     /// Single listing from `GET /listings/{id}` (object or `{ data: {...} }`).

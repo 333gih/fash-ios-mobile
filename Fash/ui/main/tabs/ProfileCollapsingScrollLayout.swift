@@ -209,22 +209,21 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                 headerHeight = nextHeight
                 applyScrollOffset(frame.minY)
             }
-            .onChange(of: selectedTab) { oldTab, newTab in
-                guard oldTab != newTab else { return }
-                let oldVisual = resolvedTabIndices.firstIndex(of: oldTab) ?? 0
-                let newVisual = resolvedTabIndices.firstIndex(of: newTab) ?? 0
-                tabSlideDirection = newVisual > oldVisual ? 1 : -1
-            }
             .onChange(of: resolvedTabIndices) { _, indices in
                 guard !indices.contains(selectedTab) else { return }
                 selectedTab = indices.first ?? 0
             }
             .onChange(of: selectedTab) { oldTab, newTab in
                 guard oldTab != newTab else { return }
-                applyPinnedGridScroll(using: scrollProxy)
+                let oldVisual = resolvedTabIndices.firstIndex(of: oldTab) ?? 0
+                let newVisual = resolvedTabIndices.firstIndex(of: newTab) ?? 0
+                tabSlideDirection = newVisual > oldVisual ? 1 : -1
+                profileScrollPosition = nil
+                synchronizePinnedChromeForTabSwitch()
+                // Clamp only when the new tab is shorter — do not scroll back to grid top on tab swipe.
+                scrollClampRevision += 1
             }
             .onChange(of: items.count) { _, _ in
-                // Trim stale deep offsets when masonry height changes — never re-pin grid (Home feed parity).
                 scrollClampRevision += 1
             }
             .onChange(of: scrollToGridToken) { _, token in
