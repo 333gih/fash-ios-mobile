@@ -100,7 +100,7 @@ struct ProfileListingGrid: View {
                         item: item,
                         onTap: { onListingClick(item) },
                         showQuickActions: showQuickActions,
-                        statusOverlayLabel: ListingStatusUi.overlayLabel(for: item.listingStatus),
+                        statusOverlayLabel: ListingStatusUi.overlayLabel(for: item.listingStatus, suppressActive: false),
                         onLike: onLike.map { handler in { handler(item) } },
                         onSave: onSave.map { handler in { handler(item) } }
                     )

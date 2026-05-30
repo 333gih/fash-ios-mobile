@@ -98,6 +98,8 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     let items: [ListingFeedItem]
     var showQuickActions: Bool = false
     var showStatusOverlay: Bool = false
+    /// When true, hide "active"/"inactive" chips (seller storefront); own profile passes false.
+    var suppressActiveStatusOnGrid: Bool = true
     var additionalBottomInset: CGFloat = 0
     /// Increment to scroll the listing grid under pinned tabs (Home journey shortcuts).
     var scrollToGridToken: Int = 0
@@ -379,7 +381,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                     imageAspectRatio: ListingMasonryGrid.masonryAspectRatio(for: item),
                     showQuickActions: showQuickActions,
                     statusOverlayLabel: showStatusOverlay
-                        ? ListingStatusUi.overlayLabel(for: item.listingStatus)
+                        ? ListingStatusUi.overlayLabel(for: item.listingStatus, suppressActive: suppressActiveStatusOnGrid)
                         : nil,
                     onLike: onLike.map { h in { h(item) } },
                     onSave: onSave.map { h in { h(item) } }

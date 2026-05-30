@@ -45,6 +45,8 @@ struct ProfileScreen: View {
                     orderedTabIndices: viewModel.orderedProfileTabIndices,
                     items: currentItems,
                     showQuickActions: true,
+                    showStatusOverlay: true,
+                    suppressActiveStatusOnGrid: false,
                     scrollToGridToken: scrollToGridToken,
                     onListingClick: { item in handleListingTap(item) },
                     onLike: { item in Task { await viewModel.toggleLike(item, deps: deps) } },

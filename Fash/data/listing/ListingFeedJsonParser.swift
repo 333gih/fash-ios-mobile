@@ -175,6 +175,16 @@ enum ListingFeedJsonParser {
         return listingRows(in: obj)
     }
 
+    private static func parseConditionWire(_ row: [String: Any]) -> String {
+        let direct = RepositoryHttp.optString(row, "condition", "Condition")
+        if !direct.isEmpty { return direct }
+        if let obj = (row["condition"] as? [String: Any]) ?? (row["Condition"] as? [String: Any]) {
+            let fromObj = RepositoryHttp.optString(obj, "code", "value", "name", "display_name", "DisplayName", "Name")
+            if !fromObj.isEmpty { return fromObj }
+        }
+        return ""
+    }
+
     private static func listingRows(in obj: [String: Any]) -> [[String: Any]] {
         for key in ["listings", "Listings", "items", "Items", "results", "Results", "rows", "Rows"] {
             if obj[key] != nil {
@@ -244,7 +254,7 @@ enum ListingFeedJsonParser {
             size: (row["size"] as? String) ?? (row["Size"] as? String),
             categoryName: categoryName,
             listingAestheticTag: listingAesthetic,
-            condition: (row["condition"] as? String) ?? (row["Condition"] as? String) ?? "",
+            condition: parseConditionWire(row),
             likeCount: (row["like_count"] as? NSNumber)?.intValue ?? (row["LikeCount"] as? NSNumber)?.intValue ?? 0,
             saveCount: (row["save_count"] as? NSNumber)?.intValue ?? (row["SaveCount"] as? NSNumber)?.intValue ?? 0,
             sellerId: sellerId,

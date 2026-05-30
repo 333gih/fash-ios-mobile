@@ -390,6 +390,7 @@ private struct HomeFeedListingCell: View {
             onTap: onTap,
             imageAspectRatio: imageAspectRatio,
             showQuickActions: true,
+            statusOverlayLabel: ListingStatusUi.overlayLabel(for: item.listingStatus, suppressActive: true),
             onLike: onLike,
             onSave: onSave
         )

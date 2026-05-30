@@ -57,6 +57,7 @@ struct SellerProfileScreen: View {
                             tabSet: .sellerStorefront,
                             items: viewModel.listingsForSelectedTab,
                             showQuickActions: true,
+                            showStatusOverlay: true,
                             additionalBottomInset: promoBottomInset,
                             onTabsPinnedAtTopChange: { pinned in
                                 showPromoFooter = pinned
