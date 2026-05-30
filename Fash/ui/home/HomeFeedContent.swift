@@ -65,6 +65,14 @@ struct HomeFeedContent: View {
     @State private var homeScrollResetToken = 0
     @State private var homeHeaderHeight: CGFloat = 0
     @State private var pendingPinnedFeedScroll = false
+    @State private var masonryColumnAssignmentsByTab: [String: [String: Bool]] = [:]
+
+    private var masonryColumnAssignments: Binding<[String: Bool]> {
+        Binding(
+            get: { masonryColumnAssignmentsByTab[viewModel.selectedFeedTabKey] ?? [:] },
+            set: { masonryColumnAssignmentsByTab[viewModel.selectedFeedTabKey] = $0 }
+        )
+    }
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -102,6 +110,9 @@ struct HomeFeedContent: View {
                     )
                 }
                 .onHomeHeaderHeightChange($homeHeaderHeight)
+                .onChange(of: viewModel.isRefreshing) { _, refreshing in
+                    if refreshing { masonryColumnAssignmentsByTab.removeAll() }
+                }
                 .refreshable { await viewModel.pullToRefresh(deps: deps, isGuestMode: isGuestMode) }
                 .onChange(of: viewModel.selectedFeedTabKey) { oldKey, newKey in
                     guard oldKey != newKey else { return }
@@ -215,7 +226,10 @@ struct HomeFeedContent: View {
             }
         } else {
             VStack(spacing: 0) {
-                ListingStaggeredMasonryView(items: viewModel.items) { item, index in
+                ListingStaggeredMasonryView(
+                    items: viewModel.items,
+                    columnAssignments: masonryColumnAssignments
+                ) { item, index in
                     HomeFeedListingCell(
                         item: item,
                         index: index,

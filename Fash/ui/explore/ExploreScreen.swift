@@ -20,6 +20,7 @@ struct ExploreScreen: View {
     @State private var showStickyChrome = false
     @State private var headerScrollMinY: CGFloat = 0
     @State private var marketplaceControlsMaxY: CGFloat = .infinity
+    @State private var masonryColumnAssignments: [String: Bool] = [:]
 
     private var tabsFadeOpacity: CGFloat {
         ExploreTabsCollapse.fadeOpacity(headerMinY: headerScrollMinY)
@@ -297,6 +298,9 @@ struct ExploreScreen: View {
         }
         .animation(.easeInOut(duration: 0.22), value: showsStickyChromeOverlay)
         .refreshable { await viewModel.pullToRefresh(deps: deps, isGuestMode: isGuestMode) }
+        .onChange(of: viewModel.isRefreshing) { _, refreshing in
+            if refreshing { masonryColumnAssignments = [:] }
+        }
     }
 
     @ViewBuilder
@@ -316,7 +320,10 @@ struct ExploreScreen: View {
                 subtitle: L10n.feedEmptySubtitle
             )
         } else {
-            ListingStaggeredMasonryView(items: viewModel.items) { item, index in
+            ListingStaggeredMasonryView(
+                items: viewModel.items,
+                columnAssignments: $masonryColumnAssignments
+            ) { item, index in
                 ExploreListingCell(
                     item: item,
                     index: index,

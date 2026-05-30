@@ -243,7 +243,7 @@ extension ListingMasonryGrid {
     }
 }
 
-private struct ListingMasonryContainerWidthKey: PreferenceKey {
+struct ListingMasonryContainerWidthKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
 
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {

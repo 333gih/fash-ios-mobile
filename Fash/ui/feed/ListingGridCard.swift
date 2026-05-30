@@ -86,6 +86,8 @@ struct ListingGridCard: View {
             }
         }
         .aspectRatio(imageAspectRatio, contentMode: .fit)
+        .frame(maxWidth: .infinity)
+        .fixedSize(horizontal: false, vertical: true)
         .clipShape(shape)
         .contentShape(shape)
         .accessibilityElement(children: .combine)
@@ -114,6 +116,7 @@ struct ListingGridCard: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .clipped()
     }
 
     /// Bottom gradient footer — Android `Column` + `Brush.verticalGradient`.
