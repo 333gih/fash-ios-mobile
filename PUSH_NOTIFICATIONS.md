@@ -80,5 +80,7 @@ Test trên **thiết bị thật**. Simulator hỗ trợ push hạn chế.
 | Register 401 | JWT — registrar retry refresh |
 | Register OK, không push | APNs key trên Firebase; bundle id; prod vs dev |
 | Chỉ Android nhận | `device_platform: ios`; FCM iOS token |
+| Out app không thấy push | Server **không gửi FCM** khi `presence:user:{id}` còn (WS online). iOS ngắt WS khi `scenePhase == .background`; hoặc **kill app** rồi test lại |
+| Build 104+ vẫn không push | Firebase Console → APNs **.p8** cho app `com.pc.fash-ios-mobile`; kiểm tra token iOS trong DB `fcm_tokens` |
 
 Env dùng chung Android: `AUTH_SERVICE_BASE_URL`, `AUTH_FCM_REGISTER_PATH`.

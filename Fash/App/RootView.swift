@@ -2,6 +2,7 @@ import SwiftUI
 
 struct RootView: View {
     @Environment(AppDependencies.self) private var deps
+    @Environment(\.scenePhase) private var scenePhase
     @State private var router = AppRouter()
     @State private var homeVM = HomeViewModel()
     @State private var exploreVM = ExploreViewModel()
@@ -65,6 +66,25 @@ struct RootView: View {
             if authed {
                 router.isGuestMode = false
                 deps.isGuestBrowseActive = false
+            }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            switch phase {
+            case .background:
+                // Clear Redis presence so backend sends FCM while app is suspended (Android drops WS in background).
+                deps.realtimeManager.disconnect(clearSubscriptions: false)
+            case .active:
+                guard deps.authSessionStore.read() != nil,
+                      !router.isGuestMode,
+                      router.loginStep == nil,
+                      router.onboardingStep == nil || router.onboardingStep == .completed
+                else { return }
+                Task {
+                    await deps.realtimeManager.connect()
+                    await PushNotificationCoordinator.shared.registerCurrentTokenIfSession()
+                }
+            default:
+                break
             }
         }
     }
