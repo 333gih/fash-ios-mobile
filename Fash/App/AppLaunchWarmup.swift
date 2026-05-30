@@ -79,10 +79,9 @@ enum AppLaunchWarmup {
         guard !isGuestMode else { return }
         async let profile: Void = profileVM.refreshIfStale(deps: deps)
         async let chat: Void = chatVM.loadConversationsWhenNeeded(deps: deps)
-        async let orders: Void = {
-            guard ordersVM.buyingOrders.isEmpty, ordersVM.sellingOrders.isEmpty else { return }
+        _ = await (profile, chat)
+        if ordersVM.buyingOrders.isEmpty, ordersVM.sellingOrders.isEmpty {
             await ordersVM.refresh(deps: deps)
-        }()
-        _ = await (profile, chat, orders)
+        }
     }
 }
