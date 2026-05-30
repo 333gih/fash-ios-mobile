@@ -183,7 +183,10 @@ struct RootView: View {
                 }
             )
         case .editListing(let id):
-            EditListingScreen(listingId: id, onDismiss: { router.editListingId = nil })
+            EditListingScreen(listingId: id, onDismiss: {
+                router.editListingId = nil
+                Task { await profileVM.refresh(deps: deps, force: true) }
+            })
         case .editProfile:
             EditProfileScreen(onDismiss: { router.showEditProfile = false })
         case .chat(let id):

@@ -388,6 +388,92 @@ final class ListingRepository {
         ]
     }
 
+    /// `PUT /listings/{id}` — category and images are not updated here.
+    func updateListing(listingId: String, update: UpdateListingRequest) async -> Result<Void, Error> {
+        let id = listingId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !id.isEmpty else { return .failure(URLError(.badURL)) }
+        let body = buildUpdateListingJSON(update)
+        guard !body.isEmpty else { return .success(()) }
+        guard let url = URL(string: AppEnvironment.apiPath("api/v1/listings/\(id)")) else {
+            return .failure(URLError(.badURL))
+        }
+        var req = URLRequest(url: url)
+        req.httpMethod = "PUT"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        do {
+            req.httpBody = try JSONSerialization.data(withJSONObject: body)
+            let (data, http) = try await client.data(for: req)
+            guard (200..<300).contains(http.statusCode) else {
+                throw CoreServiceHttpException(
+                    statusCode: http.statusCode,
+                    message: CoreServiceErrors.parseMessage(data: data, statusCode: http.statusCode)
+                )
+            }
+            return .success(())
+        } catch {
+            return .failure(error)
+        }
+    }
+
+    /// `DELETE /listings/{id}`
+    func deleteListing(listingId: String) async -> Result<Void, Error> {
+        let id = listingId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !id.isEmpty else { return .failure(URLError(.badURL)) }
+        guard let url = URL(string: AppEnvironment.apiPath("api/v1/listings/\(id)")) else {
+            return .failure(URLError(.badURL))
+        }
+        var req = URLRequest(url: url)
+        req.httpMethod = "DELETE"
+        do {
+            let (data, http) = try await client.data(for: req)
+            guard (200..<300).contains(http.statusCode) else {
+                throw CoreServiceHttpException(
+                    statusCode: http.statusCode,
+                    message: CoreServiceErrors.parseMessage(data: data, statusCode: http.statusCode)
+                )
+            }
+            return .success(())
+        } catch {
+            return .failure(error)
+        }
+    }
+
+    private func buildUpdateListingJSON(_ update: UpdateListingRequest) -> [String: Any] {
+        var json: [String: Any] = [:]
+        if let title = update.title { json["title"] = title }
+        if let condition = update.condition { json["condition"] = condition }
+        if let price = update.priceVnd { json["price"] = price }
+        if let description = update.description { json["description"] = description }
+        if update.brandId != nil || update.brandName != nil {
+            var brand: [String: Any] = [:]
+            if let bid = update.brandId?.trimmingCharacters(in: .whitespacesAndNewlines), !bid.isEmpty {
+                brand["id"] = bid
+            }
+            if let name = update.brandName { brand["name"] = name }
+            json["brand"] = brand
+        }
+        if let size = update.size { json["size"] = size }
+        if let tags = update.aestheticTags { json["aesthetic_tags"] = tags }
+        if let v = update.acceptOffers { json["accept_offers"] = v }
+        if let v = update.autoPriceDropEnabled { json["auto_price_drop_enabled"] = v }
+        if let v = update.floorPriceVnd { json["floor_price"] = v }
+        if let v = update.priceDropPercent { json["price_drop_percent"] = v }
+        if let iso = update.countryOfOrigin { json["country_of_origin"] = iso }
+        if let cid = update.countryId { json["country_id"] = cid }
+        if let cname = update.countryName { json["country_name"] = cname }
+        if let unit = update.measurementUnit { json["measurement_unit"] = unit }
+        if let v = update.measurementHem { json["measurement_hem"] = v }
+        if let v = update.measurementChest { json["measurement_chest"] = v }
+        if let v = update.measurementLength { json["measurement_length"] = v }
+        if let v = update.measurementShoulders { json["measurement_shoulders"] = v }
+        if let v = update.measurementSleeveLength { json["measurement_sleeve_length"] = v }
+        if let sid = update.shippingAddressId { json["shipping_address_id"] = sid }
+        if let color = update.color { json["color"] = color }
+        if let gender = update.genderTarget { json["gender_target"] = gender }
+        if let status = update.status { json["status"] = status }
+        return json
+    }
+
     private func listingImageStepsToJSONArray(_ steps: [ListingImageStepPayload]) -> [[String: Any]] {
         steps.map { s in
             var o: [String: Any] = [

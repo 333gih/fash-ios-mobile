@@ -127,11 +127,32 @@ struct CreateListingResponse: Equatable {
     let id: String
 }
 
+/// Partial update for `PUT /listings/{id}` — Android `UpdateListingRequest`.
 struct UpdateListingRequest: Equatable {
     var title: String?
-    var description: String?
-    var priceVnd: Int64?
     var condition: String?
+    var priceVnd: Int64?
+    var description: String?
+    var brandId: String?
+    var brandName: String?
     var size: String?
+    /// Tag names (not ids); `[]` clears when explicitly replacing tags.
+    var aestheticTags: [String]?
+    var acceptOffers: Bool?
+    var autoPriceDropEnabled: Bool?
+    var floorPriceVnd: Int64?
+    var priceDropPercent: Int?
+    var countryOfOrigin: String?
+    var countryId: String?
+    var countryName: String?
+    var measurementUnit: String?
+    var measurementHem: Double?
+    var measurementChest: Double?
+    var measurementLength: Double?
+    var measurementShoulders: Double?
+    var measurementSleeveLength: Double?
+    var shippingAddressId: String?
+    var color: String?
+    var genderTarget: String?
     var status: String?
 }
