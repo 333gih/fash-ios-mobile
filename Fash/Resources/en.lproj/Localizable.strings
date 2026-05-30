@@ -972,6 +972,8 @@
 "home_style_picks_title" = "Your style";
 "home_tab_empty_for_you_subtitle" = "Browse and save a few items so Fash can learn your taste.";
 "home_tab_empty_for_you_title" = "No picks yet";
+"home_tab_empty_following_subtitle" = "Follow shops to see their latest listings here.";
+"home_tab_empty_following_title" = "Nothing new yet";
 "home_tab_empty_hunt_subtitle" = "Check back soon — new listings are added all the time.";
 "home_tab_empty_hunt_title" = "Nothing trending yet";
 "home_tab_empty_similar_subtitle" = "Save a few favorites — Fash will suggest items in the same vibe.";

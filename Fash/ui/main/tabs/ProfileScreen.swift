@@ -19,6 +19,8 @@ struct ProfileScreen: View {
 
     @State private var selectedTab = 0
     @State private var scrollToGridToken = 0
+    /// Home journey → wishlist / in-review: pin grid after refresh settles (Android `pendingExternalGridScroll`).
+    @State private var pendingExternalGridScroll = false
 
     var body: some View {
         Group {
@@ -51,6 +53,10 @@ struct ProfileScreen: View {
         }
         .background(FashColors.screen)
         .task { await viewModel.refreshIfStale(deps: deps) }
+        .onAppear {
+            _ = applyProfileTabOpenRequestIfNeeded()
+            applyPendingExternalGridScrollIfNeeded()
+        }
         .onChange(of: viewModel.profileTabOpenGeneration) { _, _ in
             _ = applyProfileTabOpenRequestIfNeeded()
         }
@@ -62,8 +68,15 @@ struct ProfileScreen: View {
                 viewModel.onProfileTabSelected(tab, deps: deps)
             }
         }
+        .onChange(of: viewModel.isRefreshing) { _, _ in
+            applyPendingExternalGridScrollIfNeeded()
+        }
+        .onChange(of: currentItems.count) { _, _ in
+            applyPendingExternalGridScrollIfNeeded()
+        }
         .onChange(of: selectedTab) { _, tab in
             viewModel.onProfileTabSelected(tab, deps: deps)
+            applyPendingExternalGridScrollIfNeeded()
         }
     }
 
@@ -78,10 +91,16 @@ struct ProfileScreen: View {
         guard let req = viewModel.consumeProfileTabOpenRequest() else { return false }
         selectedTab = req.tab.rawValue
         viewModel.onProfileTabSelected(req.tab.rawValue, deps: deps)
-        if req.scrollToGrid {
-            scrollToGridToken += 1
-        }
+        pendingExternalGridScroll = req.scrollToGrid
+        applyPendingExternalGridScrollIfNeeded()
         return true
+    }
+
+    /// Scroll listing grid to pinned position once profile refresh finishes (parity with Android ProfileScreen).
+    private func applyPendingExternalGridScrollIfNeeded() {
+        guard pendingExternalGridScroll, !viewModel.isRefreshing else { return }
+        pendingExternalGridScroll = false
+        scrollToGridToken += 1
     }
 
     @ViewBuilder

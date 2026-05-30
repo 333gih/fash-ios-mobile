@@ -1136,6 +1136,8 @@ enum L10n {
     static var homeSizingBannerTitle: String { t("home_sizing_banner_title") }
     static var homeStylePicksSubtitle: String { t("home_style_picks_subtitle") }
     static var homeStylePicksTitle: String { t("home_style_picks_title") }
+    static var homeTabEmptyFollowingSubtitle: String { t("home_tab_empty_following_subtitle") }
+    static var homeTabEmptyFollowingTitle: String { t("home_tab_empty_following_title") }
     static var homeTabEmptyForYouSubtitle: String { t("home_tab_empty_for_you_subtitle") }
     static var homeTabEmptyForYouTitle: String { t("home_tab_empty_for_you_title") }
     static var homeTabEmptyHuntSubtitle: String { t("home_tab_empty_hunt_subtitle") }

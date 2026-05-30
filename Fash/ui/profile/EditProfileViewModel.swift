@@ -30,6 +30,9 @@ final class EditProfileViewModel {
             username = p.username
             bio = p.bio
             referenceSize = p.referenceSize ?? ""
+            if !p.gender.isEmpty {
+                genderPreference = p.gender
+            }
             selectedTagIds = Set(p.aestheticTagSnapshots.map(\.id).filter { !$0.isEmpty })
             if selectedTagIds.isEmpty {
                 selectedTagIds = Set(
@@ -63,11 +66,14 @@ final class EditProfileViewModel {
         let tagItems = tags
             .filter { selectedTagIds.contains($0.id) }
             .map { AestheticTagPutItem(id: $0.id, name: $0.name) }
+        let profileGender = profile?.gender.trimmingCharacters(in: .whitespaces).lowercased() ?? ""
+        let genderNorm = genderPreference.trimmingCharacters(in: .whitespaces).lowercased()
         let patch = ProfilePatch(
             displayName: displayName.trimmingCharacters(in: .whitespaces),
             username: username.trimmingCharacters(in: .whitespaces).nilIfEmpty,
             bio: bio.trimmingCharacters(in: .whitespaces),
             aestheticTags: tagItems,
+            gender: genderNorm != profileGender ? genderNorm.nilIfEmpty : nil,
             referenceSize: SizingReferenceGuide.normalizedReferenceSizeForStorage(
                 referenceSize,
                 genderPreference: genderPreference

@@ -116,8 +116,6 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     @State private var profileScrollPosition: String?
     @State private var profileScrollResetToken = 0
     @State private var scrollClampRevision = 0
-    @State private var pendingPinnedGridScroll = false
-    @State private var pinnedScrollTaskGeneration = 0
     @State private var masonryColumnAssignmentsByTab: [Int: [String: Bool]] = [:]
 
     /// Stable per tab — do not branch on empty/rows or SwiftUI recreates the grid and jumps scroll.
@@ -222,16 +220,11 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             }
             .onChange(of: selectedTab) { oldTab, newTab in
                 guard oldTab != newTab else { return }
-                pinnedScrollTaskGeneration += 1
-                profileScrollPosition = nil
-                pendingPinnedGridScroll = true
                 applyPinnedGridScroll(using: scrollProxy)
             }
             .onChange(of: items.count) { _, _ in
+                // Trim stale deep offsets when masonry height changes — never re-pin grid (Home feed parity).
                 scrollClampRevision += 1
-                guard pendingPinnedGridScroll else { return }
-                applyPinnedGridScroll(using: scrollProxy)
-                pendingPinnedGridScroll = false
             }
             .onChange(of: scrollToGridToken) { _, token in
                 guard token > 0 else { return }
@@ -242,7 +235,6 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
 
     private func applyPinnedGridScroll(using scrollProxy: ScrollViewProxy) {
         synchronizePinnedChromeForTabSwitch()
-        let generation = pinnedScrollTaskGeneration
         PinnedTabScrollReset.scrollToPinnedContent(
             scrollPosition: $profileScrollPosition,
             proxy: scrollProxy,
@@ -250,17 +242,10 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             contentId: listingGridScrollId,
             followUpDelaysMs: [120]
         )
+        // Release scrollPosition anchor so listing relayout / refresh does not pull the user back to grid top.
         Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(280))
-            guard generation == pinnedScrollTaskGeneration, pendingPinnedGridScroll else { return }
-            pendingPinnedGridScroll = false
-            PinnedTabScrollReset.scrollToPinnedContent(
-                scrollPosition: $profileScrollPosition,
-                proxy: scrollProxy,
-                resetToken: $profileScrollResetToken,
-                contentId: listingGridScrollId,
-                followUpDelaysMs: []
-            )
+            try? await Task.sleep(for: .milliseconds(320))
+            profileScrollPosition = nil
         }
     }
 

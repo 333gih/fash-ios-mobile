@@ -219,14 +219,7 @@ struct HomeFeedContent: View {
             FashSkeleton.listingGrid()
                 .padding(.top, spacing.spacing2)
         } else if viewModel.items.isEmpty {
-            if viewModel.selectedFeedTab == .following {
-                HomePersonalizedFeedEmptyCard(
-                    onExploreClick: onOpenExplore,
-                    onFeaturedSellersClick: onOpenFeaturedSellersAll
-                )
-            } else {
-                HomeFeedTabGenericEmpty(tab: viewModel.selectedFeedTab)
-            }
+            HomeFeedTabGenericEmpty(tab: viewModel.selectedFeedTab)
         } else {
             VStack(spacing: 0) {
                 ListingStaggeredMasonryView(

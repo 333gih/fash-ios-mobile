@@ -57,6 +57,44 @@ final class UserRepository {
         return .failure(URLError(.cannotConnectToHost))
     }
 
+    /// `PUT /users/me/shopping-preferences` — buy/sell intents and optional gender for recommendations.
+    func saveShoppingPreferences(
+        shoppingIntents: [String],
+        preferredPriceMin: Int64? = nil,
+        preferredPriceMax: Int64? = nil,
+        preferredConditions: [String] = [],
+        gender: String? = nil
+    ) async -> Result<Void, Error> {
+        var json: [String: Any] = ["shopping_intents": shoppingIntents]
+        if let min = preferredPriceMin { json["preferred_price_min"] = min }
+        if let max = preferredPriceMax { json["preferred_price_max"] = max }
+        if !preferredConditions.isEmpty { json["preferred_conditions"] = preferredConditions }
+        if let g = gender?.trimmingCharacters(in: .whitespaces).lowercased(), !g.isEmpty {
+            json["gender"] = g
+        }
+        guard let body = try? JSONSerialization.data(withJSONObject: json) else {
+            return .failure(URLError(.cannotParseResponse))
+        }
+        let urlString = AppEnvironment.apiPath("api/v1/users/me/shopping-preferences")
+        guard let url = URL(string: urlString) else { return .failure(URLError(.badURL)) }
+        var req = URLRequest(url: url)
+        req.httpMethod = "PUT"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = body
+        do {
+            let (data, http) = try await client.data(for: req)
+            guard (200..<300).contains(http.statusCode) else {
+                throw CoreServiceHttpException(
+                    statusCode: http.statusCode,
+                    message: CoreServiceErrors.parseMessage(data: data, statusCode: http.statusCode)
+                )
+            }
+            return .success(())
+        } catch {
+            return .failure(error)
+        }
+    }
+
     func updateProfile(_ patch: ProfilePatch) async -> Result<Void, Error> {
         var json: [String: Any] = [:]
         if let v = patch.displayName { json["display_name"] = v }

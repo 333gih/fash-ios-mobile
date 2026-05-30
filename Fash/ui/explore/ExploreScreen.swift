@@ -155,12 +155,13 @@ struct ExploreScreen: View {
 
     private var sellersExpandedHeader: some View {
         VStack(spacing: spacing.spacing2) {
-            sectionToggle
-                .opacity(tabsFadeOpacity)
-                .animation(.easeInOut(duration: 0.22), value: tabsFadeOpacity)
-            marketplaceControlsColumn
+            if !showsStickyChromeOverlay {
+                sectionToggle
+                    .opacity(tabsFadeOpacity)
+                    .animation(.easeInOut(duration: 0.22), value: tabsFadeOpacity)
+                marketplaceControlsColumn
+            }
         }
-        .padding(.top, spacing.spacing2)
     }
 
     private var exploreStickyChromeHeader: some View {

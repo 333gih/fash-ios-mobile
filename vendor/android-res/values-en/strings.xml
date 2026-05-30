@@ -309,6 +309,8 @@
     <string name="home_feed_empty_title">Nothing here yet</string>
     <string name="home_feed_empty_subtitle">Follow sellers to see their new listings on Home — or open Explore to browse the full marketplace.</string>
     <string name="home_empty_cta_explore">Go to Explore</string>
+    <string name="home_tab_empty_following_title">Nothing new yet</string>
+    <string name="home_tab_empty_following_subtitle">Follow shops to see their latest listings here.</string>
     <string name="home_tab_empty_hunt_title">Nothing trending yet</string>
     <string name="home_tab_empty_hunt_subtitle">Check back soon — new listings are added all the time.</string>
     <string name="home_tab_empty_for_you_title">No picks yet</string>

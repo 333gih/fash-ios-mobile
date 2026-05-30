@@ -71,7 +71,7 @@ enum HomeFeedTab: String, CaseIterable, Identifiable {
         case .forYou: return L10n.homeTabEmptyForYouTitle
         case .stylePicks: return L10n.homeTabEmptyStyleTitle
         case .similarSaved: return L10n.homeTabEmptySimilarTitle
-        case .following: return L10n.feedEmptyTitle
+        case .following: return L10n.homeTabEmptyFollowingTitle
         }
     }
 
@@ -81,7 +81,7 @@ enum HomeFeedTab: String, CaseIterable, Identifiable {
         case .forYou: return L10n.homeTabEmptyForYouSubtitle
         case .stylePicks: return L10n.homeTabEmptyStyleSubtitle
         case .similarSaved: return L10n.homeTabEmptySimilarSubtitle
-        case .following: return L10n.feedEmptySubtitle
+        case .following: return L10n.homeTabEmptyFollowingSubtitle
         }
     }
 }
@@ -170,52 +170,3 @@ struct HomeFeedTabGenericEmpty: View {
     }
 }
 
-/// Rich empty state for the Following tab — Android [HomePersonalizedFeedEmptyCard].
-struct HomePersonalizedFeedEmptyCard: View {
-    @Environment(\.fashSpacing) private var spacing
-    var onExploreClick: () -> Void
-    var onFeaturedSellersClick: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: spacing.spacing2) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(L10n.homeTopSectionTitle)
-                    .font(FashTypography.titleMedium.weight(.bold))
-                    .foregroundStyle(FashColors.textPrimary)
-                Text(L10n.homeTopSectionSubtitle)
-                    .font(FashTypography.bodySmall)
-                    .foregroundStyle(FashColors.textSecondary)
-            }
-            .padding(.horizontal, spacing.editorialStart)
-
-            VStack(spacing: spacing.spacing2) {
-                Image(systemName: "heart")
-                    .font(.system(size: 28))
-                    .foregroundStyle(FashColors.brandPrimary)
-                    .frame(width: 56, height: 56)
-                    .background(FashColors.brandPrimary.opacity(0.12))
-                    .clipShape(Circle())
-                Text(L10n.homeFeedEmptyTitle)
-                    .font(FashTypography.titleSmall.weight(.bold))
-                    .foregroundStyle(FashColors.textPrimary)
-                    .multilineTextAlignment(.center)
-                Text(L10n.homeFeedEmptySubtitle)
-                    .font(FashTypography.bodySmall)
-                    .foregroundStyle(FashColors.textSecondary)
-                    .multilineTextAlignment(.center)
-                FashPrimaryButton(title: L10n.homeEmptyCtaExplore, action: onExploreClick)
-                Button(L10n.homeFeedEmptyCtaFeatured, action: onFeaturedSellersClick)
-                    .buttonStyle(.bordered)
-                    .tint(FashColors.brandPrimary)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, spacing.spacing3)
-            .padding(.vertical, spacing.spacing4)
-            .background(FashColors.surfaceContainerLow)
-            .clipShape(RoundedRectangle(cornerRadius: spacing.radiusCard, style: .continuous))
-            .padding(.horizontal, spacing.editorialStart)
-        }
-        .padding(.top, spacing.spacing2)
-        .padding(.bottom, spacing.spacing4)
-    }
-}

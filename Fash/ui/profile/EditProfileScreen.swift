@@ -20,6 +20,7 @@ struct EditProfileScreen: View {
                             field(L10n.editProfileDisplayNameLabel, text: $viewModel.displayName)
                             field(L10n.editProfileUsernameLabel, text: $viewModel.username)
                             field(L10n.editProfileBioLabel, text: $viewModel.bio, axis: true)
+                            genderSection
                             ReferenceSizePickerSection(
                                 referenceSize: $viewModel.referenceSize,
                                 genderPreference: viewModel.genderPreference,
@@ -80,6 +81,25 @@ struct EditProfileScreen: View {
                 TextField(title, text: text)
                     .textFieldStyle(.roundedBorder)
             }
+        }
+    }
+
+    private var genderSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(L10n.editProfileSectionGender)
+                .font(FashTypography.labelMedium)
+                .foregroundStyle(FashColors.textSecondary)
+            HStack(spacing: 8) {
+                genderPill("women", L10n.genderWomen)
+                genderPill("men", L10n.genderMen)
+                genderPill("non_binary", L10n.genderNonBinary)
+            }
+        }
+    }
+
+    private func genderPill(_ value: String, _ label: String) -> some View {
+        PostSelectablePill(text: label, selected: viewModel.genderPreference == value) {
+            viewModel.genderPreference = viewModel.genderPreference == value ? "" : value
         }
     }
 
