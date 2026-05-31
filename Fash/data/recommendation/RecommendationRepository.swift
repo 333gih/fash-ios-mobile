@@ -158,6 +158,7 @@ final class RecommendationRepository {
                 "position": event.position,
             ]
             if let dwell = event.dwellMs { obj["dwell_ms"] = dwell }
+            if let experimentId = event.experimentId { obj["experiment_id"] = experimentId }
             arr.append(obj)
         }
         let body: [String: Any] = [

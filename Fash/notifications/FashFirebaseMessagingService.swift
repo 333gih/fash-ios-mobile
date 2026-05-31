@@ -59,6 +59,7 @@ enum FashFirebaseMessagingService {
                 deps.requestAccountSwitchPrompt(prompt)
                 return
             }
+            NotificationEngagementReporter.reportOpen(reporter: deps.feedEventReporter, data: data)
             if AppPromoPushParsing.isAppPromoPushData(data),
                let campaign = AppPromoPushParsing.parseAppPromoFromPushData(
                    data: data,

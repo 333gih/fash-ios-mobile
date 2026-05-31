@@ -113,6 +113,7 @@ enum RealtimeNotificationRouter {
         deps: AppDependencies,
         router: AppRouter
     ) {
+        NotificationEngagementReporter.reportOpen(reporter: deps.feedEventReporter, data: session.dataMap)
         deps.dismissInAppNotification()
         let data = session.dataMap
 

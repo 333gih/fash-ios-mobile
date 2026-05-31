@@ -6,6 +6,7 @@ struct FeedEventPayload: Equatable {
     let eventType: String
     let position: Int
     let dwellMs: Int?
+    let experimentId: String?
 }
 
 /// Batches feed impressions/clicks — Android [FeedEventReporter].
@@ -34,58 +35,99 @@ final class FeedEventReporter: @unchecked Sendable {
     }
 
     func impression(listingId: String, surface: String, position: Int = 0, dwellMs: Int? = nil) {
-        enqueue(FeedEventPayload(listingId: listingId, surface: surface, eventType: "impression", position: position, dwellMs: dwellMs))
+        enqueue(payload(listingId: listingId, surface: surface, eventType: "impression", position: position, dwellMs: dwellMs))
     }
 
     func click(listingId: String, surface: String, position: Int = 0) {
-        enqueue(FeedEventPayload(listingId: listingId, surface: surface, eventType: "click", position: position, dwellMs: nil))
+        enqueue(payload(listingId: listingId, surface: surface, eventType: "click", position: position))
         flush()
     }
 
     func previewOpen(listingId: String, surface: String, position: Int = 0) {
-        enqueue(FeedEventPayload(listingId: listingId, surface: surface, eventType: "preview_open", position: position, dwellMs: nil))
+        enqueue(payload(listingId: listingId, surface: surface, eventType: "preview_open", position: position))
         flush()
     }
 
     func previewDismiss(listingId: String, surface: String, position: Int = 0, dwellMs: Int) {
         guard dwellMs > 0 else { return }
-        enqueue(FeedEventPayload(listingId: listingId, surface: surface, eventType: "preview_dismiss", position: position, dwellMs: dwellMs))
+        enqueue(payload(listingId: listingId, surface: surface, eventType: "preview_dismiss", position: position, dwellMs: dwellMs))
         flush()
     }
 
     func previewDetail(listingId: String, surface: String, position: Int = 0) {
-        enqueue(FeedEventPayload(listingId: listingId, surface: surface, eventType: "preview_detail", position: position, dwellMs: nil))
+        enqueue(payload(listingId: listingId, surface: surface, eventType: "preview_detail", position: position))
         flush()
     }
 
     func dwell(listingId: String, surface: String, position: Int = 0, dwellMs: Int) {
         guard dwellMs > 0 else { return }
-        enqueue(FeedEventPayload(listingId: listingId, surface: surface, eventType: "dwell", position: position, dwellMs: dwellMs))
+        enqueue(payload(listingId: listingId, surface: surface, eventType: "dwell", position: position, dwellMs: dwellMs))
     }
 
     func save(listingId: String, surface: String, position: Int = 0) {
-        enqueue(FeedEventPayload(listingId: listingId, surface: surface, eventType: "save", position: position, dwellMs: nil))
+        enqueue(payload(listingId: listingId, surface: surface, eventType: "save", position: position))
         flush()
     }
 
     func like(listingId: String, surface: String, position: Int = 0) {
-        enqueue(FeedEventPayload(listingId: listingId, surface: surface, eventType: "like", position: position, dwellMs: nil))
+        enqueue(payload(listingId: listingId, surface: surface, eventType: "like", position: position))
         flush()
     }
 
     func share(listingId: String, surface: String, position: Int = 0) {
-        enqueue(FeedEventPayload(listingId: listingId, surface: surface, eventType: "share", position: position, dwellMs: nil))
+        enqueue(payload(listingId: listingId, surface: surface, eventType: "share", position: position))
         flush()
     }
 
     func chatInitiate(listingId: String, surface: String, position: Int = 0) {
-        enqueue(FeedEventPayload(listingId: listingId, surface: surface, eventType: "chat_initiate", position: position, dwellMs: nil))
+        enqueue(payload(listingId: listingId, surface: surface, eventType: "chat_initiate", position: position))
         flush()
     }
 
     func followSeller(listingId: String, surface: String, position: Int = 0) {
-        enqueue(FeedEventPayload(listingId: listingId, surface: surface, eventType: "follow_seller", position: position, dwellMs: nil))
+        enqueue(payload(listingId: listingId, surface: surface, eventType: "follow_seller", position: position))
         flush()
+    }
+
+    func appOpen() {
+        enqueue(payload(
+            listingId: FeedSurfaces.sessionSentinelListingId,
+            surface: FeedSurfaces.appOpen,
+            eventType: "click"
+        ))
+        flush()
+    }
+
+    func notificationOpen(listingId: String? = nil, scenarioId: String? = nil) {
+        let trimmedListing = listingId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let resolvedListingId = trimmedListing.isEmpty ? FeedSurfaces.sessionSentinelListingId : trimmedListing
+        let trimmedScenario = scenarioId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let experimentId = trimmedScenario.isEmpty ? nil : trimmedScenario
+        enqueue(payload(
+            listingId: resolvedListingId,
+            surface: FeedSurfaces.notificationOpen,
+            eventType: "click",
+            experimentId: experimentId
+        ))
+        flush()
+    }
+
+    private func payload(
+        listingId: String,
+        surface: String,
+        eventType: String,
+        position: Int = 0,
+        dwellMs: Int? = nil,
+        experimentId: String? = nil
+    ) -> FeedEventPayload {
+        FeedEventPayload(
+            listingId: listingId,
+            surface: surface,
+            eventType: eventType,
+            position: position,
+            dwellMs: dwellMs,
+            experimentId: experimentId
+        )
     }
 
     func clearPending() {

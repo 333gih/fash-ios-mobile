@@ -67,9 +67,11 @@ struct RootView: View {
         .onChange(of: scenePhase) { _, phase in
             switch phase {
             case .background:
+                AppSessionTracker.shared.onSceneBackground()
                 // Clear Redis presence so backend sends FCM while app is suspended (Android drops WS in background).
                 deps.realtimeManager.disconnect(clearSubscriptions: false)
             case .active:
+                AppSessionTracker.shared.onSceneBecameActive(deps: deps)
                 guard deps.authSessionStore.read() != nil,
                       !router.isGuestMode,
                       router.loginStep == nil,
