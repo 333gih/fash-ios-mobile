@@ -18,6 +18,7 @@ enum FashFirebaseMessagingService {
 
         if data["inbox_refresh"] == "1" {
             AppDependencies.shared.requestInboxUnreadRefresh()
+            AppDependencies.shared.requestChatInboxRefresh()
         }
 
         if AppPromoPushParsing.isAppPromoPushData(data),
@@ -49,6 +50,10 @@ enum FashFirebaseMessagingService {
                 userNotificationId: data["user_notification_id"],
                 dataMap: data
             ))
+            AppDependencies.shared.requestInboxUnreadRefresh()
+            if ChatInAppNotificationPolicy.isChatRelated(data: data) {
+                AppDependencies.shared.requestChatInboxRefresh()
+            }
         }
     }
 
@@ -83,6 +88,10 @@ enum FashFirebaseMessagingService {
                 deps.pendingInboxNotificationId = inboxId
                 deps.navigationRouter?.showNotificationScreen = true
                 deps.navigationRouter?.notificationDetailId = inboxId
+            }
+            deps.requestInboxUnreadRefresh()
+            if ChatInAppNotificationPolicy.isChatRelated(data: data) {
+                deps.requestChatInboxRefresh()
             }
         }
     }

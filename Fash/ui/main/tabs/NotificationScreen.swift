@@ -2,6 +2,7 @@ import SwiftUI
 
 struct NotificationScreen: View {
     @Environment(\.fashSpacing) private var spacing
+    @Environment(AppDependencies.self) private var deps
     @State private var viewModel: NotificationsViewModel
     var promoSlides: [FashPromoSlideDef] = []
     var onPromoSlideClick: (FashPromoSlideDef, Int) -> Void = { _, _ in }
@@ -51,16 +52,18 @@ struct NotificationScreen: View {
                 .navigationBarTitleDisplayMode(.large)
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
-                        Button {
-                            if viewModel.selectedGroup != nil {
-                                viewModel.closeGroup()
-                            } else {
-                                onDismiss()
+                        if viewModel.selectedDetailId == nil && detailId == nil {
+                            Button {
+                                if viewModel.selectedGroup != nil {
+                                    viewModel.closeGroup()
+                                } else {
+                                    onDismiss()
+                                }
+                            } label: {
+                                FashBackButton.toolbarLabel()
                             }
-                        } label: {
-                            FashBackButton.toolbarLabel()
+                            .accessibilityLabel(L10n.cdBack)
                         }
-                        .accessibilityLabel(L10n.cdBack)
                     }
                     if viewModel.selectedGroup != nil {
                         ToolbarItem(placement: .topBarTrailing) {
@@ -81,6 +84,9 @@ struct NotificationScreen: View {
                     if let detailId, !detailId.isEmpty {
                         viewModel.openDetail(detailId)
                     }
+                }
+                .onChange(of: deps.inboxUnreadRefreshGeneration) { _, _ in
+                    Task { await viewModel.refresh() }
                 }
             }
             if showPromoFooter {

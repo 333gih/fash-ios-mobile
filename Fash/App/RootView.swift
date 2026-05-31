@@ -83,6 +83,8 @@ struct RootView: View {
                     await deps.realtimeManager.connect()
                     deps.realtimeManager.sendPresenceActive()
                     await PushNotificationCoordinator.shared.registerCurrentTokenIfSession()
+                    deps.requestInboxUnreadRefresh()
+                    deps.requestChatInboxRefresh()
                 }
             default:
                 break
