@@ -1371,6 +1371,17 @@ enum L10n {
     }
     static var notificationNewArrivalSnackbar: String { t("notification_new_arrival_snackbar") }
     static var notificationNewArrivalSnackbarAction: String { t("notification_new_arrival_snackbar_action") }
+    static var notificationPreferencesLoadError: String { t("notification_preferences_load_error") }
+    static var notificationPreferencesQuietHours: String { t("notification_preferences_quiet_hours") }
+    static var notificationPreferencesQuietHoursEnabled: String { t("notification_preferences_quiet_hours_enabled") }
+    static var notificationPreferencesQuietHoursEnd: String { t("notification_preferences_quiet_hours_end") }
+    static var notificationPreferencesQuietHoursHint: String { t("notification_preferences_quiet_hours_hint") }
+    static var notificationPreferencesQuietHoursStart: String { t("notification_preferences_quiet_hours_start") }
+    static var notificationPreferencesRecommendationEmail: String { t("notification_preferences_recommendation_email") }
+    static var notificationPreferencesRecommendationPush: String { t("notification_preferences_recommendation_push") }
+    static var notificationPreferencesSaveError: String { t("notification_preferences_save_error") }
+    static var notificationPreferencesSubtitle: String { t("notification_preferences_subtitle") }
+    static var notificationPreferencesTitle: String { t("notification_preferences_title") }
     static var notificationPtAdminAppPromoInterstitial: String { t("notification_pt_admin_app_promo_interstitial") }
     static var notificationPtAdminMobilePush: String { t("notification_pt_admin_mobile_push") }
     static var notificationPtAdminMobilePushAnnouncement: String { t("notification_pt_admin_mobile_push_announcement") }
@@ -2265,20 +2276,9 @@ enum L10n {
     static var settingsRowEditProfile: String { t("settings_row_edit_profile") }
     static var settingsRowNotificationSettings: String { t("settings_row_notification_settings") }
     static var settingsRowNotificationSettingsSub: String { t("settings_row_notification_settings_sub") }
+    static var settingsRowOrders: String { t("settings_row_orders") }
     static var settingsRowRecommendationNotifications: String { t("settings_row_recommendation_notifications") }
     static var settingsRowRecommendationNotificationsSub: String { t("settings_row_recommendation_notifications_sub") }
-    static var notificationPreferencesTitle: String { t("notification_preferences_title") }
-    static var notificationPreferencesSubtitle: String { t("notification_preferences_subtitle") }
-    static var notificationPreferencesRecommendationPush: String { t("notification_preferences_recommendation_push") }
-    static var notificationPreferencesRecommendationEmail: String { t("notification_preferences_recommendation_email") }
-    static var notificationPreferencesQuietHours: String { t("notification_preferences_quiet_hours") }
-    static var notificationPreferencesQuietHoursHint: String { t("notification_preferences_quiet_hours_hint") }
-    static var notificationPreferencesQuietHoursEnabled: String { t("notification_preferences_quiet_hours_enabled") }
-    static var notificationPreferencesQuietHoursStart: String { t("notification_preferences_quiet_hours_start") }
-    static var notificationPreferencesQuietHoursEnd: String { t("notification_preferences_quiet_hours_end") }
-    static var notificationPreferencesLoadError: String { t("notification_preferences_load_error") }
-    static var notificationPreferencesSaveError: String { t("notification_preferences_save_error") }
-    static var settingsRowOrders: String { t("settings_row_orders") }
     static var settingsRowShippingAddresses: String { t("settings_row_shipping_addresses") }
     static var settingsSectionAbout: String { t("settings_section_about") }
     static var settingsSectionAccount: String { t("settings_section_account") }
@@ -2296,16 +2296,13 @@ enum L10n {
     static var setupGateRetry: String { t("setup_gate_retry") }
     static var setupGateSignOut: String { t("setup_gate_sign_out") }
     static var share: String { t("share") }
-    static var shareInviteSuccess: String { t("share_invite_success") }
     static var shareListingSubject: String { t("share_listing_subject") }
-    static var shareListingSuccess: String { t("share_listing_success") }
     static func shareListingText(_ a1: CVarArg, _ a2: CVarArg, _ a3: CVarArg) -> String {
         String(format: t("share_listing_text"), a1, a2, a3)
     }
     static func shareProfileSubject(_ a1: CVarArg) -> String {
         String(format: t("share_profile_subject"), a1)
     }
-    static var shareProfileSuccess: String { t("share_profile_success") }
     static func shareProfileText(_ a1: CVarArg, _ a2: CVarArg, _ a3: CVarArg) -> String {
         String(format: t("share_profile_text"), a1, a2, a3)
     }

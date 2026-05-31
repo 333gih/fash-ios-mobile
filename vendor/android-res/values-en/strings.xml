@@ -161,6 +161,19 @@
     <string name="settings_section_notifications">Notifications</string>
     <string name="settings_row_notification_settings">System notification settings</string>
     <string name="settings_row_notification_settings_sub">Enable or disable in Android settings</string>
+    <string name="settings_row_recommendation_notifications">Recommendations &amp; alerts</string>
+    <string name="settings_row_recommendation_notifications_sub">Push, email, and quiet hours</string>
+    <string name="notification_preferences_title">Notification preferences</string>
+    <string name="notification_preferences_subtitle">Manage product recommendations and do-not-disturb hours.</string>
+    <string name="notification_preferences_recommendation_push">Recommendation push</string>
+    <string name="notification_preferences_recommendation_email">Recommendation email</string>
+    <string name="notification_preferences_quiet_hours">Quiet hours</string>
+    <string name="notification_preferences_quiet_hours_hint">You won\'t receive recommendation push during this window.</string>
+    <string name="notification_preferences_quiet_hours_enabled">Enable quiet hours</string>
+    <string name="notification_preferences_quiet_hours_start">Start</string>
+    <string name="notification_preferences_quiet_hours_end">End</string>
+    <string name="notification_preferences_load_error">Could not load notification preferences.</string>
+    <string name="notification_preferences_save_error">Could not save preferences. Please try again.</string>
     <string name="settings_section_account">Account</string>
     <string name="settings_section_about">About</string>
     <string name="settings_about_version_label">Version</string>
@@ -268,10 +281,10 @@
     <string name="listing_card_a11y_seller_role">Seller</string>
     <string name="feed_load_error">Could not load feed. Try again.</string>
     <string name="feed_loading_more">Loading more…</string>
+    <string name="profile_slow_load_hint">Loading profile, please wait a moment…</string>
     <string name="feed_empty_title">No listings yet</string>
     <string name="feed_empty_subtitle">Follow sellers or explore to discover new items.</string>
     <string name="feed_retry">Retry</string>
-    <string name="profile_slow_load_hint">Loading profile, please wait a moment…</string>
     <string name="feed_action_error">Action failed. Try again.</string>
     <string name="listing_like_added_snackbar">Added to likes.</string>
     <string name="listing_like_removed_snackbar">Removed from likes.</string>
@@ -740,9 +753,6 @@
     <string name="share_listing_text">%1$s\n\nOpen in browser:\n%2$s\n\nOpen in app:\n%3$s</string>
     <string name="share_profile_subject">Check out %1$s on Fash</string>
     <string name="share_profile_text">%1$s on Fash — explore their second-hand closet.\n\nOpen in browser:\n%2$s\n\nOpen in app:\n%3$s</string>
-    <string name="share_invite_success">Invite shared.</string>
-    <string name="share_listing_success">Listing shared.</string>
-    <string name="share_profile_success">Shop shared.</string>
     <string name="profile_action_share">Share shop</string>
     <string name="profile_share_shop_title">Share your shop</string>
     <string name="profile_share_shop_subtitle">Send your shop link via chat apps and social networks</string>
@@ -1373,9 +1383,9 @@
     <string name="chat_counter_sheet_buyer_offer">Their offer: %s</string>
     <string name="chat_counter_sheet_submit">Send counter</string>
     <string name="chat_counter_offer_min">Enter at least ₫1,000</string>
+    <string name="chat_offer_must_be_below_listed">Offer must be below listed price (%s)</string>
+    <string name="chat_counter_must_be_above_buyer">Counter must be above the buyer\'s offer (%s)</string>
     <string name="chat_counter_waiting_buyer">Waiting for buyer response…</string>
-    <string name="chat_offer_must_be_below_listed">Your offer must be below the listed price (%1$s).</string>
-    <string name="chat_counter_must_be_above_buyer">Counter must be higher than the buyer's offer (%1$s).</string>
 
     <string name="chat_offline_deal_sheet_title">Record in-person deal</string>
     <string name="chat_offline_deal_sheet_subtitle">Uses the confirmed meetup time and map link. You can add an agreed price below.</string>

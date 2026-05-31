@@ -167,6 +167,19 @@
     <string name="settings_section_notifications">Thông báo</string>
     <string name="settings_row_notification_settings">Cài đặt thông báo hệ thống</string>
     <string name="settings_row_notification_settings_sub">Bật hoặc tắt trong cài đặt Android</string>
+    <string name="settings_row_recommendation_notifications">Gợi ý &amp; thông báo</string>
+    <string name="settings_row_recommendation_notifications_sub">Push, email và giờ yên lặng</string>
+    <string name="notification_preferences_title">Tùy chọn thông báo</string>
+    <string name="notification_preferences_subtitle">Quản lý gợi ý sản phẩm và thời gian không làm phiền.</string>
+    <string name="notification_preferences_recommendation_push">Gợi ý qua push</string>
+    <string name="notification_preferences_recommendation_email">Gợi ý qua email</string>
+    <string name="notification_preferences_quiet_hours">Giờ yên lặng</string>
+    <string name="notification_preferences_quiet_hours_hint">Trong khoảng này bạn sẽ không nhận push gợi ý.</string>
+    <string name="notification_preferences_quiet_hours_enabled">Bật giờ yên lặng</string>
+    <string name="notification_preferences_quiet_hours_start">Bắt đầu</string>
+    <string name="notification_preferences_quiet_hours_end">Kết thúc</string>
+    <string name="notification_preferences_load_error">Không tải được tùy chọn thông báo.</string>
+    <string name="notification_preferences_save_error">Không lưu được tùy chọn. Vui lòng thử lại.</string>
     <string name="settings_section_account">Tài khoản</string>
     <string name="settings_section_about">Giới thiệu</string>
     <string name="settings_about_version_label">Phiên bản</string>
@@ -299,10 +312,10 @@
     <string name="listing_card_a11y_seller_role">Người bán</string>
     <string name="feed_load_error">Không tải được nội dung. Thử lại.</string>
     <string name="feed_loading_more">Đang tải thêm…</string>
+    <string name="profile_slow_load_hint">Đang tải hồ sơ, vui lòng chờ một chút…</string>
     <string name="feed_empty_title">Chưa có tin nào</string>
     <string name="feed_empty_subtitle">Theo dõi người bán hoặc khám phá để xem sản phẩm mới.</string>
     <string name="feed_retry">Thử lại</string>
-    <string name="profile_slow_load_hint">Đang tải hồ sơ, vui lòng chờ một chút…</string>
     <string name="feed_action_error">Thao tác thất bại. Thử lại.</string>
     <string name="listing_like_added_snackbar">Đã thêm vào yêu thích.</string>
     <string name="listing_like_removed_snackbar">Đã bỏ khỏi yêu thích.</string>
@@ -759,9 +772,6 @@
     <string name="share_listing_text">%1$s\n\nMở trên web:\n%2$s\n\nMở trong ứng dụng:\n%3$s</string>
     <string name="share_profile_subject">Xem shop %1$s trên Fash</string>
     <string name="share_profile_text">Shop %1$s trên Fash — khám phá tủ đồ second-hand.\n\nMở trên web:\n%2$s\n\nMở trong ứng dụng:\n%3$s</string>
-    <string name="share_invite_success">Đã chia sẻ lời mời.</string>
-    <string name="share_listing_success">Đã chia sẻ sản phẩm.</string>
-    <string name="share_profile_success">Đã chia sẻ shop.</string>
     <string name="profile_action_share">Chia sẻ shop</string>
     <string name="profile_share_shop_title">Chia sẻ shop của bạn</string>
     <string name="profile_share_shop_subtitle">Gửi link shop qua Zalo, Messenger, Instagram và mạng xã hội khác</string>
@@ -1429,9 +1439,9 @@
     <string name="chat_counter_sheet_buyer_offer">Đề xuất hiện tại: %s</string>
     <string name="chat_counter_sheet_submit">Gửi phản giá</string>
     <string name="chat_counter_offer_min">Nhập tối thiểu 1.000 ₫</string>
+    <string name="chat_offer_must_be_below_listed">Giá đề xuất phải thấp hơn giá niêm yết (%s)</string>
+    <string name="chat_counter_must_be_above_buyer">Giá phản phải cao hơn đề xuất của người mua (%s)</string>
     <string name="chat_counter_waiting_buyer">Chờ phản hồi từ người mua…</string>
-    <string name="chat_offer_must_be_below_listed">Giá đề xuất phải thấp hơn giá niêm yết (%1$s).</string>
-    <string name="chat_counter_must_be_above_buyer">Phản giá phải cao hơn đề xuất của người mua (%1$s).</string>
 
     <string name="chat_offline_deal_sheet_title">Ghi nhận giao dịch trực tiếp</string>
     <string name="chat_offline_deal_sheet_subtitle">Dùng địa điểm và giờ từ lịch hẹn đã xác nhận. Có thể chỉnh giá thống nhất bên dưới.</string>
