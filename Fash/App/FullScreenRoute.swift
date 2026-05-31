@@ -18,6 +18,7 @@ enum FullScreenRoute: Identifiable {
     case featuredSellers
     case inviteFriends
     case changePassword
+    case notificationPreferences
     case editorialList
     case uxSurvey(String)
     case sellerPackageCheckout(SellerProductPackage)
@@ -42,6 +43,7 @@ enum FullScreenRoute: Identifiable {
         case .featuredSellers: return "featuredSellers"
         case .inviteFriends: return "invite"
         case .changePassword: return "changePassword"
+        case .notificationPreferences: return "notificationPreferences"
         case .editorialList: return "editorialList"
         case .uxSurvey(let key): return "uxSurvey-\(key)"
         case .sellerPackageCheckout(let pkg): return "pkgCheckout-\(pkg.code)"
@@ -59,6 +61,7 @@ extension AppRouter {
         if showEditProfile { return .editProfile }
         if let conv = selectedConversationId { return .chat(conv) }
         if showChangePasswordScreen { return .changePassword }
+        if showNotificationPreferencesScreen { return .notificationPreferences }
         if showOrdersScreen, selectedOrderId == nil { return .orders }
         if let orderId = selectedOrderId { return .order(orderId) }
         if let checkoutId = selectedCheckoutListingId { return .checkout(checkoutId) }

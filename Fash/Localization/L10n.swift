@@ -2265,6 +2265,19 @@ enum L10n {
     static var settingsRowEditProfile: String { t("settings_row_edit_profile") }
     static var settingsRowNotificationSettings: String { t("settings_row_notification_settings") }
     static var settingsRowNotificationSettingsSub: String { t("settings_row_notification_settings_sub") }
+    static var settingsRowRecommendationNotifications: String { t("settings_row_recommendation_notifications") }
+    static var settingsRowRecommendationNotificationsSub: String { t("settings_row_recommendation_notifications_sub") }
+    static var notificationPreferencesTitle: String { t("notification_preferences_title") }
+    static var notificationPreferencesSubtitle: String { t("notification_preferences_subtitle") }
+    static var notificationPreferencesRecommendationPush: String { t("notification_preferences_recommendation_push") }
+    static var notificationPreferencesRecommendationEmail: String { t("notification_preferences_recommendation_email") }
+    static var notificationPreferencesQuietHours: String { t("notification_preferences_quiet_hours") }
+    static var notificationPreferencesQuietHoursHint: String { t("notification_preferences_quiet_hours_hint") }
+    static var notificationPreferencesQuietHoursEnabled: String { t("notification_preferences_quiet_hours_enabled") }
+    static var notificationPreferencesQuietHoursStart: String { t("notification_preferences_quiet_hours_start") }
+    static var notificationPreferencesQuietHoursEnd: String { t("notification_preferences_quiet_hours_end") }
+    static var notificationPreferencesLoadError: String { t("notification_preferences_load_error") }
+    static var notificationPreferencesSaveError: String { t("notification_preferences_save_error") }
     static var settingsRowOrders: String { t("settings_row_orders") }
     static var settingsRowShippingAddresses: String { t("settings_row_shipping_addresses") }
     static var settingsSectionAbout: String { t("settings_section_about") }

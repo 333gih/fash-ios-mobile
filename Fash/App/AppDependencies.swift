@@ -36,6 +36,7 @@ final class AppDependencies {
     let editorialGuideRepository: EditorialGuideRepository
     let dealRepository: DealRepository
     let userShippingAddressRepository: UserShippingAddressRepository
+    let notificationPreferencesRepository: NotificationPreferencesRepository
     let corePaymentRepository: CorePaymentRepository
     let uxSurveyRepository: UxSurveyRepository
     let browseSessionStore: BrowseSessionStore
@@ -115,6 +116,7 @@ final class AppDependencies {
         editorialGuideRepository = EditorialGuideRepository()
         dealRepository = DealRepository(client: securedClient)
         userShippingAddressRepository = UserShippingAddressRepository(client: securedClient)
+        notificationPreferencesRepository = NotificationPreferencesRepository(client: securedClient)
         corePaymentRepository = CorePaymentRepository(client: securedClient)
         browseSessionStore = BrowseSessionStore()
         uxSurveyRepository = UxSurveyRepository(

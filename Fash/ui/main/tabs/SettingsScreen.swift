@@ -11,6 +11,7 @@ struct SettingsScreen: View {
     var onOpenAddresses: () -> Void
     var onOpenEditProfile: () -> Void
     var onOpenChangePassword: () -> Void
+    var onOpenNotificationPreferences: () -> Void
 
     var body: some View {
         NavigationStack {
@@ -40,6 +41,14 @@ struct SettingsScreen: View {
                     Button(L10n.settingsRowChangePassword, action: onOpenChangePassword)
                 }
                 Section(L10n.settingsSectionNotifications) {
+                    Button(action: onOpenNotificationPreferences) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(L10n.settingsRowRecommendationNotifications)
+                            Text(L10n.settingsRowRecommendationNotificationsSub)
+                                .font(FashTypography.bodySmall)
+                                .foregroundStyle(FashColors.textSecondary)
+                        }
+                    }
                     Button {
                         openAppNotificationSettings()
                     } label: {

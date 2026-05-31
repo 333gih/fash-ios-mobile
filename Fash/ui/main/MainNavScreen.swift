@@ -107,6 +107,10 @@ struct MainNavScreen: View {
                 onOpenChangePassword: {
                     router.showSettingsScreen = false
                     router.showChangePasswordScreen = true
+                },
+                onOpenNotificationPreferences: {
+                    router.showSettingsScreen = false
+                    router.showNotificationPreferencesScreen = true
                 }
             )
         }

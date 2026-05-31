@@ -12,6 +12,7 @@ struct RootView: View {
     @State private var loginVM = LoginViewModel()
     @State private var addressBookVM = AddressBookViewModel()
     @State private var changePasswordVM = ChangePasswordViewModel()
+    @State private var notificationPreferencesVM = NotificationPreferencesViewModel()
     @State private var featuredSellersVM = FeaturedSellersViewModel()
     @State private var launchProgress = LaunchWaitingProgress()
 
@@ -68,6 +69,7 @@ struct RootView: View {
             switch phase {
             case .background:
                 AppSessionTracker.shared.onSceneBackground()
+                deps.realtimeManager.sendPresenceBackground()
                 // Clear Redis presence so backend sends FCM while app is suspended (Android drops WS in background).
                 deps.realtimeManager.disconnect(clearSubscriptions: false)
             case .active:
@@ -79,6 +81,7 @@ struct RootView: View {
                 else { return }
                 Task {
                     await deps.realtimeManager.connect()
+                    deps.realtimeManager.sendPresenceActive()
                     await PushNotificationCoordinator.shared.registerCurrentTokenIfSession()
                 }
             default:
@@ -275,6 +278,11 @@ struct RootView: View {
             ChangePasswordScreen(
                 viewModel: changePasswordVM,
                 onDismiss: { router.showChangePasswordScreen = false }
+            )
+        case .notificationPreferences:
+            NotificationPreferencesScreen(
+                viewModel: notificationPreferencesVM,
+                onDismiss: { router.showNotificationPreferencesScreen = false }
             )
         case .editorialList:
             HomeEditorialListScreen(

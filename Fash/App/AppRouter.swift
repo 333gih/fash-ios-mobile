@@ -62,6 +62,7 @@ final class AppRouter {
     var notificationDetailId: String?
     var showSettingsScreen = false
     var showChangePasswordScreen = false
+    var showNotificationPreferencesScreen = false
     var featureTourActive = false
 
     // Full-screen overlays
@@ -121,6 +122,7 @@ final class AppRouter {
         if uxSurveyKey != nil { uxSurveyKey = nil; return }
         if showEditorialListScreen { showEditorialListScreen = false; return }
         if showChangePasswordScreen { showChangePasswordScreen = false; return }
+        if showNotificationPreferencesScreen { showNotificationPreferencesScreen = false; return }
         if orderIdPendingCancel != nil { orderIdPendingCancel = nil; return }
         if showInviteFriendsScreen { showInviteFriendsScreen = false; return }
         if showFeaturedSellersAll { showFeaturedSellersAll = false; return }

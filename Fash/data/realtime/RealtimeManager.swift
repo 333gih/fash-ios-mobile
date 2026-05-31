@@ -128,6 +128,14 @@ final class RealtimeManager: @unchecked Sendable {
         sendFrame(["type": "ping"])
     }
 
+    func sendPresenceActive() {
+        sendFrame(["type": "presence", "state": "active"])
+    }
+
+    func sendPresenceBackground() {
+        sendFrame(["type": "presence", "state": "background"])
+    }
+
     func sendTypingStart(conversationId: String) {
         let id = conversationId.trimmingCharacters(in: .whitespaces)
         guard !id.isEmpty else { return }
