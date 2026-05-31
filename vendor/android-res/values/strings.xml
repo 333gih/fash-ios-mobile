@@ -772,6 +772,9 @@
     <string name="share_listing_text">%1$s\n\nMở trên web:\n%2$s\n\nMở trong ứng dụng:\n%3$s</string>
     <string name="share_profile_subject">Xem shop %1$s trên Fash</string>
     <string name="share_profile_text">Shop %1$s trên Fash — khám phá tủ đồ second-hand.\n\nMở trên web:\n%2$s\n\nMở trong ứng dụng:\n%3$s</string>
+    <string name="share_profile_success">Đã chia sẻ shop.</string>
+    <string name="share_listing_success">Đã chia sẻ sản phẩm.</string>
+    <string name="share_invite_success">Đã chia sẻ lời mời.</string>
     <string name="profile_action_share">Chia sẻ shop</string>
     <string name="profile_share_shop_title">Chia sẻ shop của bạn</string>
     <string name="profile_share_shop_subtitle">Gửi link shop qua Zalo, Messenger, Instagram và mạng xã hội khác</string>

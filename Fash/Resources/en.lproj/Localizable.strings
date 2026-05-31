@@ -1934,9 +1934,12 @@
 "setup_gate_retry" = "Try again";
 "setup_gate_sign_out" = "Sign out";
 "share" = "Share";
+"share_invite_success" = "Invite shared.";
 "share_listing_subject" = "Check out this listing on Fash";
+"share_listing_success" = "Listing shared.";
 "share_listing_text" = "%1$@\n\nOpen in browser:\n%2$@\n\nOpen in app:\n%3$@";
 "share_profile_subject" = "Check out %1$@ on Fash";
+"share_profile_success" = "Shop shared.";
 "share_profile_text" = "%1$@ on Fash — explore their second-hand closet.\n\nOpen in browser:\n%2$@\n\nOpen in app:\n%3$@";
 "shipping_address_row_untitled" = "Saved address";
 "splash_footer_gen_z" = "GEN Z GENERATION";

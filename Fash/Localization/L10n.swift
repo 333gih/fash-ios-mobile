@@ -2296,13 +2296,16 @@ enum L10n {
     static var setupGateRetry: String { t("setup_gate_retry") }
     static var setupGateSignOut: String { t("setup_gate_sign_out") }
     static var share: String { t("share") }
+    static var shareInviteSuccess: String { t("share_invite_success") }
     static var shareListingSubject: String { t("share_listing_subject") }
+    static var shareListingSuccess: String { t("share_listing_success") }
     static func shareListingText(_ a1: CVarArg, _ a2: CVarArg, _ a3: CVarArg) -> String {
         String(format: t("share_listing_text"), a1, a2, a3)
     }
     static func shareProfileSubject(_ a1: CVarArg) -> String {
         String(format: t("share_profile_subject"), a1)
     }
+    static var shareProfileSuccess: String { t("share_profile_success") }
     static func shareProfileText(_ a1: CVarArg, _ a2: CVarArg, _ a3: CVarArg) -> String {
         String(format: t("share_profile_text"), a1, a2, a3)
     }

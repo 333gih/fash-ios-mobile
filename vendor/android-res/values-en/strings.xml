@@ -753,6 +753,9 @@
     <string name="share_listing_text">%1$s\n\nOpen in browser:\n%2$s\n\nOpen in app:\n%3$s</string>
     <string name="share_profile_subject">Check out %1$s on Fash</string>
     <string name="share_profile_text">%1$s on Fash — explore their second-hand closet.\n\nOpen in browser:\n%2$s\n\nOpen in app:\n%3$s</string>
+    <string name="share_profile_success">Shop shared.</string>
+    <string name="share_listing_success">Listing shared.</string>
+    <string name="share_invite_success">Invite shared.</string>
     <string name="profile_action_share">Share shop</string>
     <string name="profile_share_shop_title">Share your shop</string>
     <string name="profile_share_shop_subtitle">Send your shop link via chat apps and social networks</string>

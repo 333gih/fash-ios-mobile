@@ -1934,9 +1934,12 @@
 "setup_gate_retry" = "Thử lại";
 "setup_gate_sign_out" = "Đăng xuất";
 "share" = "Chia sẻ";
+"share_invite_success" = "Đã chia sẻ lời mời.";
 "share_listing_subject" = "Xem tin này trên Fash";
+"share_listing_success" = "Đã chia sẻ sản phẩm.";
 "share_listing_text" = "%1$@\n\nMở trên web:\n%2$@\n\nMở trong ứng dụng:\n%3$@";
 "share_profile_subject" = "Xem shop %1$@ trên Fash";
+"share_profile_success" = "Đã chia sẻ shop.";
 "share_profile_text" = "Shop %1$@ trên Fash — khám phá tủ đồ second-hand.\n\nMở trên web:\n%2$@\n\nMở trong ứng dụng:\n%3$@";
 "shipping_address_row_untitled" = "Địa chỉ đã lưu";
 "splash_footer_gen_z" = "THẾ HỆ GEN Z";
