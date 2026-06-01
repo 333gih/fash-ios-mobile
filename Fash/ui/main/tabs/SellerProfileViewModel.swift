@@ -1,6 +1,8 @@
 import Foundation
 import Observation
 
+private let sellerListingPageSize = 20
+
 @Observable
 @MainActor
 final class SellerProfileViewModel {
@@ -20,7 +22,20 @@ final class SellerProfileViewModel {
     var selectedTab = SellerProfileTab.selling.rawValue
 
     private var activeKey: String?
+    private var activeSellerId: String?
     private var loadGeneration = 0
+    private var loadedListingTabs = Set<Int>()
+    private var tabPagination: [Int: SellerTabPagination] = [:]
+    private var loadMoreTasks: [Int: Task<Void, Never>] = [:]
+
+    private struct SellerTabPagination {
+        var hasMore = true
+        var isLoadingMore = false
+        var isLoadingFirstPage = false
+        var isReloading = false
+        var fetchGeneration = 0
+        var loadMoreCooldownUntil: Date?
+    }
 
     func loadForSeller(_ username: String, deps: AppDependencies, isGuestMode: Bool, force: Bool = false) async {
         let key = username.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: "@", with: "")
@@ -40,6 +55,11 @@ final class SellerProfileViewModel {
             isFollowing = false
             selectedTab = SellerProfileTab.selling.rawValue
             hasCompletedInitialLoad = false
+            activeSellerId = nil
+            loadedListingTabs = []
+            tabPagination = [:]
+            loadMoreTasks.values.forEach { $0.cancel() }
+            loadMoreTasks = [:]
         }
         let showBlocking = profile == nil
         if showBlocking { isLoading = true } else { isRefreshing = true }
@@ -68,21 +88,33 @@ final class SellerProfileViewModel {
                 guard generation == loadGeneration else { return }
                 aestheticCatalog = tags
             }
-            await loadListings(
-                sellerId: prof.userId,
-                username: key,
-                deps: deps,
-                isGuestMode: isGuestMode,
-                generation: generation
-            )
-            await loadSellerFocus(
-                username: key,
-                deps: deps,
-                isGuestMode: isGuestMode,
-                generation: generation
-            )
-            guard generation == loadGeneration else { return }
+            activeSellerId = prof.userId.trimmingCharacters(in: .whitespaces).isEmpty ? key : prof.userId
             hasCompletedInitialLoad = true
+            let initialTab = SellerProfileTab(rawValue: selectedTab) ?? .selling
+            async let focusTask: Void = loadSellerFocus(
+                username: key,
+                deps: deps,
+                isGuestMode: isGuestMode,
+                generation: generation
+            )
+            if showBlocking {
+                await fetchListingsFirstPage(
+                    initialTab,
+                    deps: deps,
+                    isGuestMode: isGuestMode,
+                    generation: generation,
+                    force: true
+                )
+            } else {
+                await reloadListingFeedOnRefresh(
+                    activeTab: initialTab,
+                    deps: deps,
+                    isGuestMode: isGuestMode,
+                    generation: generation
+                )
+            }
+            await focusTask
+            guard generation == loadGeneration else { return }
         case .failure:
             guard generation == loadGeneration else { return }
             loadError = true
@@ -212,9 +244,44 @@ final class SellerProfileViewModel {
     }
 
     var listingsForSelectedTab: [ListingFeedItem] {
-        switch SellerProfileTab(rawValue: selectedTab) ?? .selling {
+        listings(for: SellerProfileTab(rawValue: selectedTab) ?? .selling)
+    }
+
+    func listings(for tab: SellerProfileTab) -> [ListingFeedItem] {
+        switch tab {
         case .sold: return soldListings
         case .selling: return sellingListings
+        }
+    }
+
+    func hasMoreListings(for tab: SellerProfileTab) -> Bool {
+        pagination(for: tab).hasMore
+    }
+
+    func isLoadingMoreListings(for tab: SellerProfileTab) -> Bool {
+        pagination(for: tab).isLoadingMore
+    }
+
+    func isReloadingListings(for tab: SellerProfileTab) -> Bool {
+        pagination(for: tab).isReloading
+    }
+
+    func isFirstPageLoading(for tab: SellerProfileTab) -> Bool {
+        let p = pagination(for: tab)
+        return listings(for: tab).isEmpty && (p.isLoadingFirstPage || p.isReloading)
+    }
+
+    func onTabSelected(_ tabIndex: Int, deps: AppDependencies, isGuestMode: Bool) {
+        guard let tab = SellerProfileTab(rawValue: tabIndex) else { return }
+        Task { await loadListingsForTab(tab, deps: deps, isGuestMode: isGuestMode, force: false) }
+    }
+
+    func requestLoadMore(for tab: SellerProfileTab, deps: AppDependencies, isGuestMode: Bool) {
+        guard canLoadMore(for: tab) else { return }
+        guard loadMoreTasks[tab.rawValue] == nil else { return }
+        loadMoreTasks[tab.rawValue] = Task { @MainActor in
+            defer { loadMoreTasks[tab.rawValue] = nil }
+            await loadMoreListings(for: tab, deps: deps, isGuestMode: isGuestMode)
         }
     }
 
@@ -222,57 +289,227 @@ final class SellerProfileViewModel {
         patch(id, transform: transform)
     }
 
-    private func loadListings(
-        sellerId: String,
-        username: String,
+    private func pagination(for tab: SellerProfileTab) -> SellerTabPagination {
+        tabPagination[tab.rawValue] ?? SellerTabPagination()
+    }
+
+    private func mutatePagination(for tab: SellerProfileTab, _ transform: (inout SellerTabPagination) -> Void) {
+        var state = pagination(for: tab)
+        transform(&state)
+        tabPagination[tab.rawValue] = state
+    }
+
+    private func resolvedSellerId() -> String? {
+        guard let id = activeSellerId?.trimmingCharacters(in: .whitespaces), !id.isEmpty else { return nil }
+        return id
+    }
+
+    private func canLoadMore(for tab: SellerProfileTab) -> Bool {
+        let p = pagination(for: tab)
+        return p.hasMore
+            && !p.isLoadingMore
+            && !p.isLoadingFirstPage
+            && !p.isReloading
+            && !isRefreshing
+            && !listings(for: tab).isEmpty
+    }
+
+    private func reloadListingFeedOnRefresh(
+        activeTab: SellerProfileTab,
         deps: AppDependencies,
         isGuestMode: Bool,
         generation: Int
     ) async {
-        let id = sellerId.trimmingCharacters(in: .whitespaces).isEmpty ? username : sellerId
-        async let active = fetchSellerListingsWithRetry(
-            sellerId: id,
-            status: "active",
-            deps: deps,
-            isGuestMode: isGuestMode
-        )
-        async let sold = fetchSellerListingsWithRetry(
-            sellerId: id,
-            status: "sold",
-            deps: deps,
-            isGuestMode: isGuestMode
-        )
-        guard generation == loadGeneration else { return }
-        if case .success(let list) = await active {
-            guard generation == loadGeneration else { return }
-            sellingListings = list.filter { ($0.listingStatus ?? "").lowercased() != "sold" }
+        for tab in [SellerProfileTab.selling, SellerProfileTab.sold] where tab != activeTab {
+            loadedListingTabs.remove(tab.rawValue)
+            mutatePagination(for: tab) { $0 = SellerTabPagination() }
+            setListings([], for: tab)
         }
-        if case .success(let list) = await sold {
-            guard generation == loadGeneration else { return }
-            soldListings = list
+        await fetchListingsFirstPage(
+            activeTab,
+            deps: deps,
+            isGuestMode: isGuestMode,
+            generation: generation,
+            force: true
+        )
+    }
+
+    private func loadListingsForTab(
+        _ tab: SellerProfileTab,
+        deps: AppDependencies,
+        isGuestMode: Bool,
+        force: Bool
+    ) async {
+        if !force, loadedListingTabs.contains(tab.rawValue) { return }
+        await fetchListingsFirstPage(
+            tab,
+            deps: deps,
+            isGuestMode: isGuestMode,
+            generation: loadGeneration,
+            force: force
+        )
+    }
+
+    private func fetchListingsFirstPage(
+        _ tab: SellerProfileTab,
+        deps: AppDependencies,
+        isGuestMode: Bool,
+        generation: Int,
+        force: Bool
+    ) async {
+        guard generation == loadGeneration else { return }
+        guard let sellerId = resolvedSellerId() else { return }
+
+        if force {
+            mutatePagination(for: tab) { state in
+                state.fetchGeneration += 1
+                state.hasMore = true
+            }
+        } else if loadedListingTabs.contains(tab.rawValue) {
+            return
+        }
+
+        let pageGen = pagination(for: tab).fetchGeneration
+        let hadItems = !listings(for: tab).isEmpty
+        mutatePagination(for: tab) { state in
+            if hadItems {
+                state.isReloading = true
+            } else {
+                state.isLoadingFirstPage = true
+            }
+            state.isLoadingMore = false
+        }
+
+        let result = await fetchSellerListingsPage(
+            sellerId: sellerId,
+            tab: tab,
+            offset: 0,
+            deps: deps,
+            isGuestMode: isGuestMode
+        )
+        guard generation == loadGeneration, pageGen == pagination(for: tab).fetchGeneration else { return }
+
+        mutatePagination(for: tab) { state in
+            state.isLoadingFirstPage = false
+            state.isReloading = false
+        }
+        loadedListingTabs.insert(tab.rawValue)
+
+        switch result {
+        case .success(let payload):
+            setListings(payload.items, for: tab)
+            mutatePagination(for: tab) { $0.hasMore = payload.rawCount >= sellerListingPageSize }
+            FeedListingImagePrefetch.prefetch(items: payload.items)
+        case .failure:
+            if !hadItems {
+                setListings([], for: tab)
+                mutatePagination(for: tab) { $0.hasMore = false }
+            }
         }
     }
 
-    private func fetchSellerListingsWithRetry(
-        sellerId: String,
-        status: String,
+    private func loadMoreListings(
+        for tab: SellerProfileTab,
         deps: AppDependencies,
         isGuestMode: Bool
-    ) async -> Result<[ListingFeedItem], Error> {
-        func listingsFetchAttempt() async -> Result<[ListingFeedItem], Error> {
-            await deps.listingRepository.getListingsBySeller(
+    ) async {
+        guard canLoadMore(for: tab), let sellerId = resolvedSellerId() else { return }
+        let now = Date()
+        if let until = pagination(for: tab).loadMoreCooldownUntil, now < until { return }
+        mutatePagination(for: tab) { $0.loadMoreCooldownUntil = now.addingTimeInterval(0.4) }
+
+        let pageGen = pagination(for: tab).fetchGeneration
+        let offset = listings(for: tab).count
+        guard offset > 0 else { return }
+
+        mutatePagination(for: tab) { $0.isLoadingMore = true }
+        defer { mutatePagination(for: tab) { $0.isLoadingMore = false } }
+
+        let result = await fetchSellerListingsPage(
+            sellerId: sellerId,
+            tab: tab,
+            offset: offset,
+            deps: deps,
+            isGuestMode: isGuestMode
+        )
+        guard pageGen == pagination(for: tab).fetchGeneration else { return }
+
+        switch result {
+        case .success(let payload):
+            guard payload.rawCount > 0 else {
+                mutatePagination(for: tab) { $0.hasMore = false }
+                return
+            }
+            var seen = Set(listings(for: tab).map(\.id))
+            let fresh = payload.items.filter { seen.insert($0.id).inserted }
+            if fresh.isEmpty {
+                mutatePagination(for: tab) { $0.hasMore = payload.rawCount >= sellerListingPageSize }
+                return
+            }
+            appendListings(fresh, for: tab)
+            mutatePagination(for: tab) { $0.hasMore = payload.rawCount >= sellerListingPageSize }
+            FeedListingImagePrefetch.prefetch(items: fresh)
+        case .failure:
+            break
+        }
+    }
+
+    private struct SellerListingsPagePayload {
+        let items: [ListingFeedItem]
+        let rawCount: Int
+    }
+
+    private func fetchSellerListingsPage(
+        sellerId: String,
+        tab: SellerProfileTab,
+        offset: Int,
+        deps: AppDependencies,
+        isGuestMode: Bool
+    ) async -> Result<SellerListingsPagePayload, Error> {
+        let status = tab == .sold ? "sold" : "active"
+        var result = await deps.listingRepository.getListingsBySeller(
+            sellerId: sellerId,
+            status: status,
+            limit: sellerListingPageSize,
+            offset: offset,
+            publicBrowse: isGuestMode
+        )
+        if case .failure = result {
+            try? await Task.sleep(for: .milliseconds(350))
+            result = await deps.listingRepository.getListingsBySeller(
                 sellerId: sellerId,
                 status: status,
-                limit: 50,
+                limit: sellerListingPageSize,
+                offset: offset,
                 publicBrowse: isGuestMode
             )
         }
-        var result = await listingsFetchAttempt()
-        if case .failure = result {
-            try? await Task.sleep(for: .milliseconds(350))
-            result = await listingsFetchAttempt()
+        switch result {
+        case .success(let rawPage):
+            let items: [ListingFeedItem]
+            if tab == .selling {
+                items = rawPage.filter { ($0.listingStatus ?? "").lowercased() != "sold" }
+            } else {
+                items = rawPage
+            }
+            return .success(SellerListingsPagePayload(items: items, rawCount: rawPage.count))
+        case .failure(let error):
+            return .failure(error)
         }
-        return result
+    }
+
+    private func setListings(_ items: [ListingFeedItem], for tab: SellerProfileTab) {
+        switch tab {
+        case .selling: sellingListings = items
+        case .sold: soldListings = items
+        }
+    }
+
+    private func appendListings(_ items: [ListingFeedItem], for tab: SellerProfileTab) {
+        switch tab {
+        case .selling: sellingListings.append(contentsOf: items)
+        case .sold: soldListings.append(contentsOf: items)
+        }
     }
 
     private func patch(_ id: String, transform: (ListingFeedItem) -> ListingFeedItem) {

@@ -1973,6 +1973,15 @@ enum L10n {
     static func productMoreFromSeller(_ a1: CVarArg) -> String {
         String(format: t("product_more_from_seller"), a1)
     }
+    static var productSellerNameFallback: String { t("product_seller_name_fallback") }
+    static func productRelatedCategory(_ a1: CVarArg) -> String {
+        String(format: t("product_related_category"), a1)
+    }
+    static var productRelatedCategoryFallback: String { t("product_related_category_fallback") }
+    static func productRelatedBrand(_ a1: CVarArg) -> String {
+        String(format: t("product_related_brand"), a1)
+    }
+    static var productRelatedStyle: String { t("product_related_style") }
     static var productOffersAccepted: String { t("product_offers_accepted") }
     static func productPriceDropFloor(_ a1: CVarArg) -> String {
         String(format: t("product_price_drop_floor"), a1)

@@ -50,9 +50,7 @@ struct ExploreOverlayHost: View {
                 onFeaturedSellerClick: { seller in
                     let username = seller.username.trimmingCharacters(in: .whitespaces)
                     guard !username.isEmpty else { return }
-                    deps.navigateFromListingPreview(router: router) {
-                        router.sellerShopUsername = username
-                    }
+                    deps.openSellerShop(username: username, router: router)
                 },
                 onSeeAllFeaturedSellers: {
                     onClose()

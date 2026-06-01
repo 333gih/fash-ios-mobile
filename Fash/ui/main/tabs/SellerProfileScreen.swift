@@ -30,6 +30,18 @@ struct SellerProfileScreen: View {
         viewModel.loadError && viewModel.profile == nil && !viewModel.isLoading && !viewModel.isRefreshing
     }
 
+    private var selectedSellerTab: SellerProfileTab {
+        SellerProfileTab(rawValue: viewModel.selectedTab) ?? .selling
+    }
+
+    private var showListingGridLoading: Bool {
+        viewModel.isFirstPageLoading(for: selectedSellerTab)
+    }
+
+    private var showSellerBlockingLoader: Bool {
+        viewModel.profile == nil && viewModel.isLoading && !showBlockingLoadError
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             sellerTopBar
@@ -47,9 +59,20 @@ struct SellerProfileScreen: View {
                             showQuickActions: true,
                             showStatusOverlay: true,
                             additionalBottomInset: promoBottomInset,
-                            showGridLoading: !viewModel.hasCompletedInitialLoad,
+                            showGridLoading: showListingGridLoading,
+                            hasMoreListings: viewModel.hasMoreListings(for: selectedSellerTab),
+                            isLoadingMoreListings: viewModel.isLoadingMoreListings(for: selectedSellerTab),
+                            isReloadingListings: viewModel.isReloadingListings(for: selectedSellerTab),
+                            onLoadMore: {
+                                viewModel.requestLoadMore(
+                                    for: selectedSellerTab,
+                                    deps: deps,
+                                    isGuestMode: isGuestMode
+                                )
+                            },
                             showEmptyState: viewModel.hasCompletedInitialLoad,
                             isRefreshing: viewModel.isRefreshing,
+                            lockScroll: showSellerBlockingLoader,
                             onTabsPinnedAtTopChange: { pinned in
                                 showPromoFooter = pinned
                             },
@@ -67,6 +90,18 @@ struct SellerProfileScreen: View {
                         )
                         .refreshable {
                             await viewModel.loadForSeller(username, deps: deps, isGuestMode: isGuestMode, force: true)
+                        }
+                        .allowsHitTesting(!showSellerBlockingLoader)
+
+                        if showSellerBlockingLoader {
+                            ZStack {
+                                FashColors.screen.opacity(0.72)
+                                ProgressView()
+                                    .tint(FashColors.brandPrimary)
+                                    .scaleEffect(1.1)
+                            }
+                            .ignoresSafeArea()
+                            .allowsHitTesting(true)
                         }
                     }
                 }
@@ -99,6 +134,9 @@ struct SellerProfileScreen: View {
         .onChange(of: username) { _, _ in
             showPromoFooter = false
             viewModel.selectedTab = SellerProfileTab.selling.rawValue
+        }
+        .onChange(of: viewModel.selectedTab) { _, tab in
+            viewModel.onTabSelected(tab, deps: deps, isGuestMode: isGuestMode)
         }
         .task(id: username) {
             await viewModel.loadForSeller(username, deps: deps, isGuestMode: isGuestMode)

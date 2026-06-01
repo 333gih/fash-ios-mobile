@@ -2,6 +2,7 @@ import SwiftUI
 
 /// Shared product detail full-screen — used from RootView and Explore overlay stack.
 struct FashProductDetailRouteView: View {
+    @Environment(AppDependencies.self) private var deps
     @Bindable var router: AppRouter
     let listingId: String
     var isGuestMode: Bool
@@ -25,8 +26,7 @@ struct FashProductDetailRouteView: View {
             onShare: { _, _ in },
             onListingClick: { router.selectedListingId = $0 },
             onVisitSellerShop: { username in
-                dismissProductDetail()
-                router.sellerShopUsername = username
+                deps.openSellerShop(username: username, router: router)
             },
             onRequestLogin: { router.loginStep = .email },
             onNavigateToExplore: { cat, brand, tag, query, countryId, iso in

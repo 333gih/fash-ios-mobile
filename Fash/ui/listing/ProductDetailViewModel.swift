@@ -14,12 +14,20 @@ enum ProductBottomBarMode: Equatable {
     case sold
 }
 
+private enum ProductDetailDiscoveryConstants {
+    static let sellerRailLimit = 20
+    static let relatedRailLimit = 12
+}
+
 @Observable
 @MainActor
 final class ProductDetailViewModel {
     var detail: ListingDetail?
     var sellerProfile: ProfileInfo?
     var moreFromSeller: [ListingFeedItem] = []
+    var relatedByCategory: [ListingFeedItem] = []
+    var relatedByBrand: [ListingFeedItem] = []
+    var relatedByStyle: [ListingFeedItem] = []
     var isLoading = false
     var loadError: String?
     var isFollowing = false
@@ -57,6 +65,9 @@ final class ProductDetailViewModel {
         detail = nil
         sellerProfile = nil
         moreFromSeller = []
+        relatedByCategory = []
+        relatedByBrand = []
+        relatedByStyle = []
         bottomBarMode = .normal
         buyerActiveOrder = nil
         showPurchaseGuide = false
@@ -97,6 +108,9 @@ final class ProductDetailViewModel {
         detail = nil
         sellerProfile = nil
         moreFromSeller = []
+        relatedByCategory = []
+        relatedByBrand = []
+        relatedByStyle = []
         isLoading = false
         loadError = nil
         isFollowing = false
@@ -125,16 +139,25 @@ final class ProductDetailViewModel {
 
     func toggleLike(deps: AppDependencies) async {
         guard let d = detail else { return }
-        guard deps.listingEngagement.beginLikeToggle(listingId: d.id) else { return }
-        defer { deps.listingEngagement.endLikeToggle(listingId: d.id) }
-        switch await deps.listingRepository.toggleLike(listingId: d.id) {
-        case .success(let liked):
-            let delta = (liked && !d.isLiked) ? 1 : ((!liked && d.isLiked) ? -1 : 0)
-            detail = d.copyMutating(isLiked: liked, likeCount: max(0, d.likeCount + delta))
-            if liked { deps.feedEventReporter.like(listingId: d.id, surface: "pdp") }
-            snackbarMessage = FeedEngagementFeedback.likeMessage(liked: liked)
+        await toggleLike(itemId: d.id, snapshot: nil, deps: deps, surface: "pdp")
+    }
+
+    func toggleLikeRailItem(_ item: ListingFeedItem, deps: AppDependencies) async {
+        await toggleLike(itemId: item.id, snapshot: item, deps: deps, surface: "pdp_rail")
+    }
+
+    func toggleSaveRailItem(_ item: ListingFeedItem, deps: AppDependencies) async {
+        guard deps.listingEngagement.beginSaveToggle(listingId: item.id) else { return }
+        patchRails(item.id) { _ in item.toggledSave }
+        defer { deps.listingEngagement.endSaveToggle(listingId: item.id) }
+        switch await deps.listingRepository.toggleSave(listingId: item.id, currentlySaved: item.isSaved) {
+        case .success(let saved):
+            patchRails(item.id) { _ in item.applyingSaveToggle(saved) }
+            if saved { deps.feedEventReporter.save(listingId: item.id, surface: "pdp_rail") }
+            deps.showSnackbar(FeedEngagementFeedback.saveMessage(saved: saved))
         case .failure(let error):
-            snackbarMessage = FeedEngagementFeedback.actionErrorMessage(for: error)
+            patchRails(item.id) { _ in item }
+            deps.showSnackbar(FeedEngagementFeedback.actionErrorMessage(for: error))
         }
     }
 
@@ -304,17 +327,142 @@ final class ProductDetailViewModel {
                 isFollowing = true
             }
         }
+
+        guard let detail else { return }
+        async let sellerRail = loadSellerRail(
+            sellerKey: sellerKey,
+            excludeListingId: excludeListingId,
+            publicBrowse: publicBrowse,
+            deps: deps
+        )
+        async let categoryRail = loadRelatedRail(
+            detail: detail,
+            excludeListingId: excludeListingId,
+            publicBrowse: publicBrowse,
+            deps: deps,
+            categoryId: detail.categoryId?.nilIfEmpty
+        )
+        async let brandRail = loadRelatedRail(
+            detail: detail,
+            excludeListingId: excludeListingId,
+            publicBrowse: publicBrowse,
+            deps: deps,
+            brandId: detail.brandId?.nilIfEmpty
+        )
+        let tagIds = detail.aestheticTagRefs.compactMap(\.id?.nilIfEmpty)
+        async let styleRail = loadRelatedRail(
+            detail: detail,
+            excludeListingId: excludeListingId,
+            publicBrowse: publicBrowse,
+            deps: deps,
+            aestheticTagIds: tagIds.isEmpty ? nil : tagIds
+        )
+        moreFromSeller = await sellerRail
+        relatedByCategory = await categoryRail
+        relatedByBrand = await brandRail
+        relatedByStyle = await styleRail
+    }
+
+    private func loadSellerRail(
+        sellerKey: String,
+        excludeListingId: String,
+        publicBrowse: Bool,
+        deps: AppDependencies
+    ) async -> [ListingFeedItem] {
         let moreResult = await deps.listingRepository.getListingsBySeller(
             sellerId: sellerKey,
-            limit: 5,
+            status: "active",
+            limit: ProductDetailDiscoveryConstants.sellerRailLimit,
             offset: 0,
             publicBrowse: publicBrowse
         )
-        if case .success(let list) = moreResult {
-            moreFromSeller = list.filter { $0.id.caseInsensitiveCompare(excludeListingId) != .orderedSame }.prefix(5).map { $0 }
+        guard case .success(let list) = moreResult else { return [] }
+        return list
+            .filter { ($0.listingStatus ?? "").lowercased() != "sold" }
+            .filter { $0.id.caseInsensitiveCompare(excludeListingId) != .orderedSame }
+    }
+
+    private func loadRelatedRail(
+        detail: ListingDetail,
+        excludeListingId: String,
+        publicBrowse: Bool,
+        deps: AppDependencies,
+        categoryId: String? = nil,
+        brandId: String? = nil,
+        aestheticTagIds: [String]? = nil
+    ) async -> [ListingFeedItem] {
+        if categoryId == nil, brandId == nil, aestheticTagIds == nil { return [] }
+        let result: Result<[ListingFeedItem], Error>
+        if publicBrowse {
+            result = await deps.searchRepository.browseListings(
+                categoryId: categoryId,
+                aestheticTagIds: aestheticTagIds,
+                brandId: brandId,
+                limit: ProductDetailDiscoveryConstants.relatedRailLimit,
+                offset: 0
+            )
         } else {
-            moreFromSeller = []
+            result = await deps.searchRepository.searchListings(
+                categoryId: categoryId,
+                aestheticTagIds: aestheticTagIds,
+                brandId: brandId,
+                limit: ProductDetailDiscoveryConstants.relatedRailLimit,
+                offset: 0,
+                sort: "recent"
+            )
         }
+        guard case .success(let list) = result else { return [] }
+        return list.filter { $0.id.caseInsensitiveCompare(excludeListingId) != .orderedSame }
+    }
+
+    private func toggleLike(
+        itemId: String,
+        snapshot: ListingFeedItem?,
+        deps: AppDependencies,
+        surface: String
+    ) async {
+        guard deps.listingEngagement.beginLikeToggle(listingId: itemId) else { return }
+        if let snapshot {
+            patchRails(itemId) { _ in snapshot.toggledLike }
+        }
+        defer { deps.listingEngagement.endLikeToggle(listingId: itemId) }
+        switch await deps.listingRepository.toggleLike(listingId: itemId) {
+        case .success(let liked):
+            if let snapshot {
+                patchRails(itemId) { _ in snapshot.applyingLikeToggle(liked) }
+            }
+            if let d = detail, itemId == d.id {
+                let delta = (liked && !d.isLiked) ? 1 : ((!liked && d.isLiked) ? -1 : 0)
+                detail = d.copyMutating(isLiked: liked, likeCount: max(0, d.likeCount + delta))
+            }
+            if liked { deps.feedEventReporter.like(listingId: itemId, surface: surface) }
+            let message = FeedEngagementFeedback.likeMessage(liked: liked)
+            if itemId == detail?.id {
+                snackbarMessage = message
+            } else {
+                deps.showSnackbar(message)
+            }
+        case .failure(let error):
+            if let snapshot {
+                patchRails(itemId) { _ in snapshot }
+            }
+            let message = FeedEngagementFeedback.actionErrorMessage(for: error)
+            if itemId == detail?.id {
+                snackbarMessage = message
+            } else {
+                deps.showSnackbar(message)
+            }
+        }
+    }
+
+    private func patchRails(_ id: String, transform: (ListingFeedItem) -> ListingFeedItem) {
+        func map(_ items: [ListingFeedItem]) -> [ListingFeedItem] {
+            items.map { $0.id == id ? transform($0) : $0 }
+        }
+        moreFromSeller = map(moreFromSeller)
+        relatedByCategory = map(relatedByCategory)
+        relatedByBrand = map(relatedByBrand)
+        relatedByStyle = map(relatedByStyle)
     }
 }
 

@@ -37,9 +37,7 @@ struct ListingPreviewOverlay: View {
                         onOpenSeller: {
                             let username = previewSellerUsername(preview)
                             guard !username.isEmpty else { return }
-                            deps.navigateFromListingPreview(router: router) {
-                                router.sellerShopUsername = username
-                            }
+                            deps.openSellerShop(username: username, router: router)
                         },
                         onRequestLogin: onRequestLogin
                     )
@@ -70,7 +68,9 @@ struct ListingPreviewOverlay: View {
     private func previewSellerUsername(_ preview: ExploreListingPreviewState) -> String {
         let fromDetail = preview.detail?.sellerUsername?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if !fromDetail.isEmpty { return fromDetail }
-        return preview.feedItem.sellerUsername?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let fromFeed = preview.feedItem.sellerUsername?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !fromFeed.isEmpty { return fromFeed }
+        return preview.feedItem.sellerId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     }
 
     private func toggleLike(_ preview: ExploreListingPreviewState) async {

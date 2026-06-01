@@ -1691,6 +1691,11 @@
 "product_meas_shoulders" = "Shoulders";
 "product_meas_sleeve" = "Sleeve";
 "product_more_from_seller" = "More from %1$@";
+"product_seller_name_fallback" = "this shop";
+"product_related_category" = "More in %1$@";
+"product_related_category_fallback" = "this category";
+"product_related_brand" = "More from %1$@";
+"product_related_style" = "Similar style";
 "product_offers_accepted" = "Open to offers";
 "product_price_drop_floor" = "Floor price: %1$@";
 "product_price_drop_next" = "Next drop: %1$@";

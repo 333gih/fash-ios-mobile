@@ -50,6 +50,19 @@ extension AppDependencies {
         listingPreview.close(deps: self, animated: true)
     }
 
+    /// Opens seller storefront above main chrome — closes PDP/preview and Explore overlay so RootView `fullScreenRoute` `.seller` is visible.
+    func openSellerShop(username: String, router: AppRouter, dismissExploreOverlay: Bool = true) {
+        let handle = username
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "@", with: "")
+        guard !handle.isEmpty else { return }
+        router.selectedListingId = nil
+        router.pendingListingIdAfterPreview = nil
+        listingPreview.close(deps: self, animated: true)
+        dismissExploreOverlayIfNeeded(router, when: dismissExploreOverlay)
+        router.sellerShopUsername = handle
+    }
+
     private func dismissExploreOverlayIfNeeded(_ router: AppRouter, when shouldDismiss: Bool) {
         guard shouldDismiss, router.showExploreOverlay else { return }
         router.showExploreOverlay = false

@@ -381,30 +381,6 @@ enum ProductDetailComponents {
         }
     }
 
-    static func moreFromSellerSection(
-        sellerUsername: String?,
-        items: [ListingFeedItem],
-        onListingTap: @escaping (String) -> Void
-    ) -> some View {
-        guard !items.isEmpty else { return AnyView(EmptyView()) }
-        let handle = sellerUsername.map { "@\($0)" } ?? ""
-        return AnyView(
-            VStack(alignment: .leading, spacing: 12) {
-                sectionTitle(L10n.productMoreFromSeller(handle), icon: "bag")
-                    .padding(.horizontal, 4)
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
-                        ForEach(items) { item in
-                            ListingGridCard(item: item, onTap: { onListingTap(item.id) }, imageAspectRatio: 3 / 4, compactFooter: true)
-                                .frame(width: 140)
-                        }
-                    }
-                    .padding(.horizontal, 4)
-                }
-            }
-        )
-    }
-
     static func statusBanner(mode: ProductBottomBarMode) -> some View {
         Group {
             switch mode {
