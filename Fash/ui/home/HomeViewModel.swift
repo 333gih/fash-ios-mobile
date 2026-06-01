@@ -204,13 +204,13 @@ final class HomeViewModel {
         deps: AppDependencies,
         isGuestMode: Bool
     ) async -> Result<[FeaturedSellerItem], Error> {
-        func once() async -> Result<[FeaturedSellerItem], Error> {
+        func fetchOnce() async -> Result<[FeaturedSellerItem], Error> {
             await deps.searchRepository.getFeaturedSellers(limit: 12, publicBrowse: isGuestMode)
         }
-        var result = await once()
+        var result = await fetchOnce()
         if case .failure = result {
             try? await Task.sleep(for: .milliseconds(400))
-            result = await once()
+            result = await fetchOnce()
         }
         return result
     }
