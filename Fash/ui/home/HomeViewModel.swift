@@ -354,8 +354,7 @@ final class HomeViewModel {
             defer { deps.listingEngagement.endSaveToggle(listingId: item.id) }
             switch await deps.listingRepository.toggleSave(
                 listingId: item.id,
-                currentlySaved: snapshot.isSaved,
-                repository: deps.listingRepository
+                currentlySaved: snapshot.isSaved
             ) {
             case .success(let saved):
                 patchListingInFeeds(item.id) { _ in snapshot.applyingSaveToggle(saved) }
