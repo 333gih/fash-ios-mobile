@@ -137,11 +137,14 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     @State private var tabSlideDirection: Int = 0
     /// Sticky chrome stayed pinned through rubber-band — avoids tab row flicker / “missing” tabs.
     @State private var chromePinnedLatch = false
+    @State private var scrollViewportHeight: CGFloat = 0
+    @State private var feedContentBottomY: CGFloat = .infinity
+    @State private var lastProximityLoadMoreAt: Date = .distantPast
 
     /// One id for all tabs — Android keeps one [LazyListState]; do not vary per tab (preserves scroll on swipe).
     private let listingGridScrollId = ProfileScrollIds.listingGrid
 
-    private let listingPageSize = 20
+    private static let profileScrollSpace = "profileScroll"
 
     private var masonryColumnAssignments: Binding<[String: Bool]> {
         Binding(
@@ -202,13 +205,22 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             }
             .scrollDisabled(lockScroll)
             .background {
+                GeometryReader { geo in
+                    Color.clear
+                        .onAppear { scrollViewportHeight = geo.size.height }
+                        .onChange(of: geo.size.height) { _, h in
+                            if h > 0 { scrollViewportHeight = h }
+                        }
+                }
+            }
+            .background {
                 PinnedTabScrollOffsetFixer(
                     resetToken: profileScrollResetToken,
                     clampRevision: scrollClampRevision,
                     headerHeight: headerHeight
                 )
             }
-            .coordinateSpace(name: "profileScroll")
+            .coordinateSpace(name: Self.profileScrollSpace)
             .onAppear {
                 reportedTabsPinned = false
                 chromePinnedLatch = false
@@ -218,6 +230,11 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             }
             .onPreferenceChange(ProfileScrollOffsetKey.self) { offset in
                 applyScrollOffset(offset)
+                evaluateScrollProximityLoadMore(headerMinY: offset)
+            }
+            .onPreferenceChange(FeedContentBottomYKey.self) { bottomY in
+                feedContentBottomY = bottomY
+                evaluateScrollProximityLoadMore(headerMinY: lastScrollOffset)
             }
             .onPreferenceChange(ProfileHeaderBoundsKey.self) { frame in
                 guard frame.height > 10 else { return }
@@ -232,6 +249,8 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             }
             .onChange(of: selectedTab) { oldTab, newTab in
                 guard oldTab != newTab else { return }
+                feedContentBottomY = .infinity
+                lastProximityLoadMoreAt = .distantPast
                 guard !isRefreshing, !lockScroll else { return }
                 let oldVisual = resolvedTabIndices.firstIndex(of: oldTab) ?? 0
                 let newVisual = resolvedTabIndices.firstIndex(of: newTab) ?? 0
@@ -292,6 +311,23 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
 
     private var visualTabIndex: Int {
         resolvedTabIndices.firstIndex(of: selectedTab) ?? 0
+    }
+
+    private func evaluateScrollProximityLoadMore(headerMinY: CGFloat) {
+        guard let onLoadMore else { return }
+        let now = Date()
+        guard now.timeIntervalSince(lastProximityLoadMoreAt) >= 0.45 else { return }
+        guard FeedScrollPaginationPolicy.shouldLoadMore(
+            headerMinY: headerMinY,
+            contentBottomY: feedContentBottomY,
+            viewportHeight: scrollViewportHeight,
+            hasItems: !items.isEmpty,
+            hasMore: hasMoreListings,
+            isLoadingMore: isLoadingMoreListings,
+            isLoadingFirstPage: showGridLoading
+        ) else { return }
+        lastProximityLoadMoreAt = now
+        onLoadMore()
     }
 
     private func applyScrollOffset(_ offset: CGFloat) {
@@ -410,10 +446,10 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                         FeedLoadMoreFooter(
                             enabled: hasMoreListings,
                             isLoadingMore: isLoadingMoreListings,
-                            minimumItemsForAutoLoad: listingPageSize,
-                            loadedItemCount: items.count,
+                            triggersLoadOnAppear: false,
                             onLoadMore: onLoadMore
                         )
+                        FeedScrollContentBottomReporter(coordinateSpace: Self.profileScrollSpace)
                     }
                 }
             ) { item, _ in

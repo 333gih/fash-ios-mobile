@@ -99,9 +99,21 @@ final class ProfileViewModel {
     func refreshIfStale(deps: AppDependencies) async {
         if let last = lastSuccessfulRefreshAt,
            Date().timeIntervalSince(last) < profileStaleThresholdSeconds {
+            await ensureListingsLoaded(for: currentProfileTab(), deps: deps)
             return
         }
         await refresh(deps: deps, force: false, activeTab: currentProfileTab())
+    }
+
+    /// Loads the first page for a tab when it has never succeeded, or retries when badge count implies listings exist.
+    func ensureListingsLoaded(for tab: ProfileListingTab, deps: AppDependencies) async {
+        guard !isFirstPageLoading(for: tab), !isReloadingListings(for: tab) else { return }
+        guard listings(for: tab).isEmpty else { return }
+        if loadedListingTabs.contains(tab.rawValue) {
+            guard displayCount(for: tab) > 0 else { return }
+            loadedListingTabs.remove(tab.rawValue)
+        }
+        await loadListingsForTab(tab, deps: deps, force: false)
     }
 
     func refresh(
@@ -274,12 +286,14 @@ final class ProfileViewModel {
 
     private func canLoadMore(for tab: ProfileListingTab) -> Bool {
         let p = pagination(for: tab)
+        let listed = listings(for: tab)
         return p.hasMore
+            && p.nextOffset > 0
             && !p.isLoadingMore
             && !p.isLoadingFirstPage
             && !p.isReloading
             && !isRefreshing
-            && !listings(for: tab).isEmpty
+            && !listed.isEmpty
     }
 
     private func applyProfile(_ p: ProfileInfo) {
@@ -361,10 +375,10 @@ final class ProfileViewModel {
             state.isLoadingFirstPage = false
             state.isReloading = false
         }
-        loadedListingTabs.insert(tab.rawValue)
 
         switch result {
         case .success(let page):
+            loadedListingTabs.insert(tab.rawValue)
             setListings(page.items, for: tab)
             mutatePagination(for: tab) {
                 $0.nextOffset = page.rawCount
@@ -375,6 +389,7 @@ final class ProfileViewModel {
             }
             FeedListingImagePrefetch.prefetch(items: page.items)
         case .failure:
+            loadedListingTabs.remove(tab.rawValue)
             if !hadItems {
                 setListings([], for: tab)
                 mutatePagination(for: tab) { $0.hasMore = false }

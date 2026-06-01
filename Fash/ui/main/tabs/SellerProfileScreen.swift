@@ -138,6 +138,13 @@ struct SellerProfileScreen: View {
         .onChange(of: viewModel.selectedTab) { _, tab in
             viewModel.onTabSelected(tab, deps: deps, isGuestMode: isGuestMode)
         }
+        .task(id: viewModel.selectedTab) {
+            await viewModel.ensureListingsLoaded(
+                for: selectedSellerTab,
+                deps: deps,
+                isGuestMode: isGuestMode
+            )
+        }
         .task(id: username) {
             await viewModel.loadForSeller(username, deps: deps, isGuestMode: isGuestMode)
             if case .success(let response) = await deps.advertisingRepository.getSlides(publicBrowse: isGuestMode) {

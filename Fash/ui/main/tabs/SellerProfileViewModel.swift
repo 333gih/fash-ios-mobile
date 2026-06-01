@@ -274,7 +274,19 @@ final class SellerProfileViewModel {
 
     func onTabSelected(_ tabIndex: Int, deps: AppDependencies, isGuestMode: Bool) {
         guard let tab = SellerProfileTab(rawValue: tabIndex) else { return }
-        Task { await loadListingsForTab(tab, deps: deps, isGuestMode: isGuestMode, force: false) }
+        Task { await ensureListingsLoaded(for: tab, deps: deps, isGuestMode: isGuestMode) }
+    }
+
+    func ensureListingsLoaded(
+        for tab: SellerProfileTab,
+        deps: AppDependencies,
+        isGuestMode: Bool
+    ) async {
+        guard profile != nil else { return }
+        guard !isFirstPageLoading(for: tab), !isReloadingListings(for: tab) else { return }
+        guard listings(for: tab).isEmpty else { return }
+        guard !loadedListingTabs.contains(tab.rawValue) else { return }
+        await loadListingsForTab(tab, deps: deps, isGuestMode: isGuestMode, force: false)
     }
 
     func requestLoadMore(for tab: SellerProfileTab, deps: AppDependencies, isGuestMode: Bool) {
@@ -308,6 +320,7 @@ final class SellerProfileViewModel {
     private func canLoadMore(for tab: SellerProfileTab) -> Bool {
         let p = pagination(for: tab)
         return p.hasMore
+            && p.nextOffset > 0
             && !p.isLoadingMore
             && !p.isLoadingFirstPage
             && !p.isReloading
@@ -395,10 +408,10 @@ final class SellerProfileViewModel {
             state.isLoadingFirstPage = false
             state.isReloading = false
         }
-        loadedListingTabs.insert(tab.rawValue)
 
         switch result {
         case .success(let payload):
+            loadedListingTabs.insert(tab.rawValue)
             setListings(payload.items, for: tab)
             mutatePagination(for: tab) {
                 $0.nextOffset = payload.rawCount
@@ -406,6 +419,7 @@ final class SellerProfileViewModel {
             }
             FeedListingImagePrefetch.prefetch(items: payload.items)
         case .failure:
+            loadedListingTabs.remove(tab.rawValue)
             if !hadItems {
                 setListings([], for: tab)
                 mutatePagination(for: tab) { $0.hasMore = false }

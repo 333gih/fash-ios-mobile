@@ -104,9 +104,13 @@ struct ProfileScreen: View {
         }
         .background(FashColors.screen)
         .task { await viewModel.refreshIfStale(deps: deps) }
+        .task(id: selectedTab) {
+            await viewModel.ensureListingsLoaded(for: selectedProfileTab, deps: deps)
+        }
         .onAppear {
             _ = applyProfileTabOpenRequestIfNeeded()
             applyPendingExternalGridScrollIfNeeded()
+            Task { await viewModel.ensureListingsLoaded(for: selectedProfileTab, deps: deps) }
         }
         .onChange(of: viewModel.profileTabOpenGeneration) { _, _ in
             _ = applyProfileTabOpenRequestIfNeeded()
