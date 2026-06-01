@@ -128,11 +128,11 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     @State private var masonryColumnAssignmentsByTab: [Int: [String: Bool]] = [:]
     @State private var listingInteractionEnabled = true
     @State private var tabSlideDirection: Int = 0
+    /// Sticky chrome stayed pinned through rubber-band — avoids tab row flicker / “missing” tabs.
+    @State private var chromePinnedLatch = false
 
-    /// Stable per tab — do not branch on empty/rows or SwiftUI recreates the grid and jumps scroll.
-    private var listingGridScrollId: String {
-        ProfileScrollIds.listingGrid(tab: selectedTab)
-    }
+    /// One id for all tabs — Android keeps one [LazyListState]; per-tab ids invalidate [scrollPosition] on swipe.
+    private let listingGridScrollId = ProfileScrollIds.listingGrid
 
     private var masonryColumnAssignments: Binding<[String: Bool]> {
         Binding(
@@ -202,7 +202,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             .coordinateSpace(name: "profileScroll")
             .onAppear {
                 reportedTabsPinned = false
-                headerHeight = 0
+                chromePinnedLatch = false
                 showBriefBar = false
                 showSectionTitle = false
                 lastScrollOffset = 0
@@ -226,10 +226,8 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                 let oldVisual = resolvedTabIndices.firstIndex(of: oldTab) ?? 0
                 let newVisual = resolvedTabIndices.firstIndex(of: newTab) ?? 0
                 tabSlideDirection = newVisual > oldVisual ? 1 : -1
-                profileScrollPosition = nil
-                synchronizePinnedChromeForTabSwitch()
-                // Clamp only when the new tab is shorter — do not scroll back to grid top on tab swipe.
-                scrollClampRevision += 1
+                // Preserve scroll offset (Android: same list state on tab change). Only trim stale deep offsets after layout.
+                scheduleClampAfterTabContentLayout()
             }
             .onChange(of: items.count) { oldCount, newCount in
                 guard !isRefreshing, !showGridLoading, showEmptyState else { return }
@@ -244,7 +242,12 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     }
 
     private func applyPinnedGridScroll(using scrollProxy: ScrollViewProxy) {
-        synchronizePinnedChromeForTabSwitch()
+        if headerHeight > 24 {
+            showBriefBar = true
+            showSectionTitle = true
+            chromePinnedLatch = true
+            emitTabsPinnedIfNeeded(pinned: true)
+        }
         PinnedTabScrollReset.scrollToPinnedContent(
             scrollPosition: $profileScrollPosition,
             proxy: scrollProxy,
@@ -252,20 +255,18 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             contentId: listingGridScrollId,
             followUpDelaysMs: [120]
         )
-        // Release scrollPosition anchor so listing relayout / refresh does not pull the user back to grid top.
-        Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(320))
-            profileScrollPosition = nil
-        }
     }
 
-    /// Keep compact chrome + section title visible while grid relayouts after tab swap.
-    private func synchronizePinnedChromeForTabSwitch() {
-        guard headerHeight > 24 else { return }
-        showBriefBar = true
-        showSectionTitle = true
-        lastScrollOffset = -(headerHeight - 12)
-        emitTabsPinnedIfNeeded(pinned: true)
+    /// After tab body height changes, clamp only if offset is past content end — never scroll up to pinned target.
+    private func scheduleClampAfterTabContentLayout() {
+        let tab = selectedTab
+        Task { @MainActor in
+            for delayMs in [0, 80, 180, 320] {
+                try? await Task.sleep(for: .milliseconds(delayMs))
+                guard selectedTab == tab else { return }
+                scrollClampRevision += 1
+            }
+        }
     }
 
     /// Visual tab order — seller is always selling then sold (Android `tabIndices` for storefront).
@@ -313,10 +314,26 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
 
     /// Sticky tab row pinned — Android `rememberProfilePromoFooterVisible` (`firstVisibleItemIndex > 0`).
     private func tabsPinnedAtTop(for offset: CGFloat) -> Bool {
+        let pinThreshold: CGFloat
+        let unpinThreshold: CGFloat
         if headerHeight > 24 {
-            return offset <= -(headerHeight - 12)
+            pinThreshold = -(headerHeight - 12)
+            unpinThreshold = -(headerHeight - 48)
+        } else {
+            pinThreshold = -ProfileCollapseMetrics.scrollDistance * 0.92
+            unpinThreshold = -ProfileCollapseMetrics.scrollDistance * 0.75
         }
-        return offset <= -ProfileCollapseMetrics.scrollDistance * 0.92
+        if offset <= pinThreshold {
+            chromePinnedLatch = true
+            return true
+        }
+        if chromePinnedLatch {
+            if offset > unpinThreshold {
+                chromePinnedLatch = false
+            }
+            return chromePinnedLatch
+        }
+        return false
     }
 
     private func emitTabsPinnedIfNeeded(pinned: Bool) {
@@ -327,9 +344,9 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
 
     private func refreshBriefBarVisibility(collapseProgress: CGFloat, tabsPinned: Bool) {
         // Android ProfileStickyProfileChrome hysteresis — avoid elastic-scroll flicker.
-        if tabsPinned || collapseProgress > 0.52 {
+        if tabsPinned || chromePinnedLatch || collapseProgress > 0.52 {
             if !showBriefBar { showBriefBar = true }
-        } else if collapseProgress < 0.36, !tabsPinned {
+        } else if collapseProgress < 0.36, !tabsPinned, !chromePinnedLatch {
             if showBriefBar { showBriefBar = false }
         }
     }
@@ -428,10 +445,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
 
 private enum ProfileScrollIds {
     static let expandedHeader = "profile_expanded_header"
-
-    static func listingGrid(tab: Int) -> String {
-        "profile_listing_grid_\(tab)"
-    }
+    static let listingGrid = "profile_listing_grid"
 }
 
 /// Scrollable tab row with primary underline — Android [ProfileTabSwitcher].
@@ -484,14 +498,17 @@ struct ProfileTabSwitcher: View {
             .background(FashColors.screen)
             .animation(.spring(response: 0.34, dampingFraction: 0.86), value: selectedTab)
             .onChange(of: selectedTab) { _, tab in
+                guard orderedTabIndices.contains(tab) else { return }
                 withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
                     proxy.scrollTo(tab, anchor: .center)
                 }
             }
             .onAppear {
+                guard orderedTabIndices.contains(selectedTab) else { return }
                 proxy.scrollTo(selectedTab, anchor: .center)
             }
-            .onChange(of: orderedTabIndices) { _, _ in
+            .onChange(of: orderedTabIndices) { _, indices in
+                guard indices.contains(selectedTab) else { return }
                 proxy.scrollTo(selectedTab, anchor: .center)
             }
         }
