@@ -869,7 +869,9 @@ final class ExploreViewModel {
 
     func toggleLike(_ item: ListingFeedItem, position: Int = 0, deps: AppDependencies) async {
         let snapshot = item
+        guard deps.listingEngagement.beginLikeToggle(listingId: item.id) else { return }
         patchListing(item.id) { _ in snapshot.toggledLike }
+        defer { deps.listingEngagement.endLikeToggle(listingId: item.id) }
         switch await deps.listingRepository.toggleLike(listingId: item.id) {
         case .failure(let error):
             patchListing(item.id) { _ in snapshot }
@@ -885,7 +887,9 @@ final class ExploreViewModel {
 
     func toggleSave(_ item: ListingFeedItem, position: Int = 0, deps: AppDependencies) async {
         let snapshot = item
+        guard deps.listingEngagement.beginSaveToggle(listingId: item.id) else { return }
         patchListing(item.id) { _ in snapshot.toggledSave }
+        defer { deps.listingEngagement.endSaveToggle(listingId: item.id) }
         switch await deps.listingRepository.toggleSave(listingId: item.id, currentlySaved: snapshot.isSaved) {
         case .failure(let error):
             patchListing(item.id) { _ in snapshot }

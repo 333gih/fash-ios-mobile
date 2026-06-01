@@ -159,7 +159,9 @@ final class SellerProfileViewModel {
 
     func toggleLike(_ item: ListingFeedItem, deps: AppDependencies) async {
         let snapshot = item
+        guard deps.listingEngagement.beginLikeToggle(listingId: item.id) else { return }
         patch(item.id) { _ in snapshot.toggledLike }
+        defer { deps.listingEngagement.endLikeToggle(listingId: item.id) }
         switch await deps.listingRepository.toggleLike(listingId: item.id) {
         case .success(let liked):
             patch(item.id) { _ in snapshot.applyingLikeToggle(liked) }
@@ -175,7 +177,9 @@ final class SellerProfileViewModel {
 
     func toggleSave(_ item: ListingFeedItem, deps: AppDependencies) async {
         let snapshot = item
+        guard deps.listingEngagement.beginSaveToggle(listingId: item.id) else { return }
         patch(item.id) { _ in snapshot.toggledSave }
+        defer { deps.listingEngagement.endSaveToggle(listingId: item.id) }
         switch await deps.listingRepository.toggleSave(listingId: item.id, currentlySaved: snapshot.isSaved) {
         case .success(let saved):
             patch(item.id) { _ in snapshot.applyingSaveToggle(saved) }

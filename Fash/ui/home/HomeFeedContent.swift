@@ -122,19 +122,10 @@ struct HomeFeedContent: View {
                 }
                 .onChange(of: viewModel.selectedFeedTabKey) { oldKey, newKey in
                     guard oldKey != newKey else { return }
-                    scrollClampRevision += 1
-                    applyPinnedFeedScroll(using: scrollProxy)
-                    pendingPinnedFeedScroll = viewModel.isTabLoading(viewModel.selectedFeedTab)
-                    Task { @MainActor in
-                        for delayMs in [80, 180, 320] {
-                            try? await Task.sleep(for: .milliseconds(delayMs))
-                            guard viewModel.selectedFeedTabKey == newKey else { return }
-                            scrollClampRevision += 1
-                            applyPinnedFeedScroll(using: scrollProxy)
-                        }
-                    }
+                    resetHomeFeedScrollForTabChange(using: scrollProxy, tabKey: newKey)
                 }
-                .onChange(of: viewModel.items.count) { _, _ in
+                .onChange(of: viewModel.items.count) { oldCount, newCount in
+                    guard oldCount != newCount else { return }
                     scrollClampRevision += 1
                 }
                 .onChange(of: viewModel.tabsLoading) { _, _ in
@@ -356,6 +347,24 @@ struct HomeFeedContent: View {
         case .stylePicks: return L10n.guestLoginReasonHomeStyle
         case .similarSaved: return L10n.guestLoginReasonHomeSimilar
         default: return L10n.guestLoginSheetTitle
+        }
+    }
+
+    private func resetHomeFeedScrollForTabChange(using scrollProxy: ScrollViewProxy, tabKey: String) {
+        scrollClampRevision += 1
+        homeScrollPosition = HomeScrollIds.feedContent
+        scrollProxy.scrollTo(HomeScrollIds.feedContent, anchor: .top)
+        homeScrollResetToken += 1
+        pendingPinnedFeedScroll = viewModel.isTabLoading(viewModel.selectedFeedTab)
+        Task { @MainActor in
+            for delayMs in [0, 60, 140, 280, 480, 720] {
+                try? await Task.sleep(for: .milliseconds(delayMs))
+                guard viewModel.selectedFeedTabKey == tabKey else { return }
+                scrollClampRevision += 1
+                homeScrollPosition = HomeScrollIds.feedContent
+                scrollProxy.scrollTo(HomeScrollIds.feedContent, anchor: .top)
+                homeScrollResetToken += 1
+            }
         }
     }
 

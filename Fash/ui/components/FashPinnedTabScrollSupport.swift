@@ -94,7 +94,7 @@ struct PinnedTabScrollOffsetFixer: UIViewRepresentable {
                 }
             }
 
-            let maxAttempts = mode == .pinnedReset ? 8 : 2
+            let maxAttempts = mode == .pinnedReset ? 12 : 4
             guard attempt < maxAttempts else { return }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) { [weak self] in
                 self?.applyReset(headerHeight: headerHeight, mode: mode, attempt: attempt + 1)

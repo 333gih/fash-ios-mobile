@@ -49,6 +49,7 @@ final class AppDependencies {
     let fcmTokenRegistrar: FcmTokenRegistrar
     let preferredLocaleSync: PreferredLocaleSync
     let listingPreview = ListingPreviewStore()
+    let listingEngagement = ListingEngagementCoordinator()
 
     var isGuestBrowseActive: Bool {
         get { browseSessionStore.isGuestBrowseActive }

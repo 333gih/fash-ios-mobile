@@ -38,48 +38,36 @@ struct MainNavScreen: View {
             tabContent: { tabContent },
             bottomBar: { bottomBar }
         )
-        .fullScreenCover(isPresented: $router.showNotificationScreen) {
+        .fullScreenCover(isPresented: $router.showNotificationScreen, onDismiss: {
+            router.consumePendingNotificationNavigation(deps: deps)
+            Task { await refreshInboxUnreadCount() }
+        }) {
             NotificationScreen(
                 userRepository: deps.userRepository,
                 promoSlides: homeVM.promoSlides.map(FashPromoSlideDef.fromAdvertising),
                 onPromoSlideClick: { slide, _ in router.handlePromoSlideClick(slide) },
                 detailId: router.notificationDetailId,
                 onDismiss: {
-                    router.showNotificationScreen = false
                     router.notificationDetailId = nil
-                    Task { await refreshInboxUnreadCount() }
+                    router.showNotificationScreen = false
                 },
                 onOpenOrder: { _ in
-                    router.showNotificationScreen = false
-                    router.notificationDetailId = nil
-                    router.selectedTab = .orders
+                    router.dismissNotificationsAndNavigate(.orders)
                 },
                 onOpenListing: { listingId in
-                    router.showNotificationScreen = false
-                    router.notificationDetailId = nil
-                    deps.presentListingDetail(listingId: listingId, router: router)
+                    router.dismissNotificationsAndNavigate(.listing(listingId))
                 },
                 onOpenChat: { conversationId in
-                    router.showNotificationScreen = false
-                    router.notificationDetailId = nil
-                    router.selectedTab = .chat
-                    router.selectedConversationId = conversationId
+                    router.dismissNotificationsAndNavigate(.chat(conversationId))
                 },
                 onOpenFollowConnections: { tab in
-                    router.showNotificationScreen = false
-                    router.notificationDetailId = nil
-                    router.followConnectionsInitialTab = tab
-                    router.showFollowConnections = true
+                    router.dismissNotificationsAndNavigate(.followConnections(tab))
                 },
                 onOpenExplore: {
-                    router.showNotificationScreen = false
-                    router.notificationDetailId = nil
-                    router.showExploreOverlay = true
+                    router.dismissNotificationsAndNavigate(.explore)
                 },
                 onOpenInviteFriends: {
-                    router.showNotificationScreen = false
-                    router.notificationDetailId = nil
-                    router.showInviteFriendsScreen = true
+                    router.dismissNotificationsAndNavigate(.inviteFriends)
                 }
             )
             .environment(\.locale, AppLocale.locale)
@@ -172,6 +160,7 @@ struct MainNavScreen: View {
         .animation(.easeInOut(duration: 0.22), value: deps.snackbarMessage)
         .fashInAppNotificationOverlay()
         .animation(.easeInOut(duration: 0.25), value: activePromoCampaign?.campaignId)
+        .fashEdgeBackNavigation(router: router, notificationsViewModel: notificationsVM)
         .task(id: isGuestMode) {
             guard !isGuestMode else {
                 activePromoCampaign = nil

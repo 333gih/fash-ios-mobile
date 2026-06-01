@@ -125,6 +125,8 @@ final class ProductDetailViewModel {
 
     func toggleLike(deps: AppDependencies) async {
         guard let d = detail else { return }
+        guard deps.listingEngagement.beginLikeToggle(listingId: d.id) else { return }
+        defer { deps.listingEngagement.endLikeToggle(listingId: d.id) }
         switch await deps.listingRepository.toggleLike(listingId: d.id) {
         case .success(let liked):
             let delta = (liked && !d.isLiked) ? 1 : ((!liked && d.isLiked) ? -1 : 0)
@@ -138,6 +140,8 @@ final class ProductDetailViewModel {
 
     func toggleSave(deps: AppDependencies) async -> Bool {
         guard let d = detail else { return false }
+        guard deps.listingEngagement.beginSaveToggle(listingId: d.id) else { return d.isSaved }
+        defer { deps.listingEngagement.endSaveToggle(listingId: d.id) }
         switch await deps.listingRepository.toggleSave(listingId: d.id, currentlySaved: d.isSaved) {
         case .success(let saved):
             let delta = (saved && !d.isSaved) ? 1 : ((!saved && d.isSaved) ? -1 : 0)

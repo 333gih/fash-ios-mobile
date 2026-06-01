@@ -60,6 +60,7 @@ final class AppRouter {
     // MainNav overlays
     var showNotificationScreen = false
     var notificationDetailId: String?
+    var pendingNotificationNavigation: PendingNotificationNavigation?
     var showSettingsScreen = false
     var showChangePasswordScreen = false
     var showNotificationPreferencesScreen = false

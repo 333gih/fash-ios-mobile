@@ -133,10 +133,7 @@ struct NotificationDetailScreen: View {
                 if let primary = RemoteAppPromoModels.sanitizePromoDisplayString(promo.remotePrimaryLabel),
                    promo.primaryAction != nil {
                     Button(primary) {
-                        if let router = deps.navigationRouter {
-                            AppPromoNavigation.applyPrimary(campaign: promo, router: router)
-                        }
-                        onDismiss()
+                        applyPromoPrimary(promo)
                     }
                     .font(FashTypography.labelLarge.weight(.semibold))
                     .frame(maxWidth: .infinity, minHeight: 48)
@@ -147,10 +144,7 @@ struct NotificationDetailScreen: View {
                 if let secondary = RemoteAppPromoModels.sanitizePromoDisplayString(promo.remoteSecondaryLabel),
                    promo.secondaryAction != nil {
                     Button(secondary) {
-                        if let router = deps.navigationRouter {
-                            AppPromoNavigation.applySecondary(campaign: promo, router: router)
-                        }
-                        onDismiss()
+                        applyPromoSecondary(promo)
                     }
                     .font(FashTypography.labelLarge)
                     .frame(maxWidth: .infinity)
@@ -339,6 +333,20 @@ struct NotificationDetailScreen: View {
         }
         .buttonStyle(.bordered)
         .tint(FashColors.brandPrimary)
+    }
+
+    private func applyPromoPrimary(_ promo: AppPromoCampaign) {
+        guard let router = deps.navigationRouter else { return }
+        router.dismissNotifications {
+            AppPromoNavigation.applyPrimary(campaign: promo, router: router)
+        }
+    }
+
+    private func applyPromoSecondary(_ promo: AppPromoCampaign) {
+        guard let router = deps.navigationRouter else { return }
+        router.dismissNotifications {
+            AppPromoNavigation.applySecondary(campaign: promo, router: router)
+        }
     }
 
     private func detailRow(_ label: String, _ value: String) -> some View {

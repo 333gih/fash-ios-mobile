@@ -20,6 +20,7 @@ struct RootView: View {
         FashTheme {
             ZStack {
                 rootContent
+                    .fashEdgeBackNavigation(router: router, notificationsViewModel: nil)
                 FashGlobalDialogHost()
                 if let message = deps.snackbarMessage {
                     VStack {

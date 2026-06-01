@@ -76,7 +76,9 @@ struct ListingPreviewOverlay: View {
     private func toggleLike(_ preview: ExploreListingPreviewState) async {
         guard !isGuestMode else { onRequestLogin?(); return }
         let snapshot = preview.feedItem
+        guard deps.listingEngagement.beginLikeToggle(listingId: snapshot.id) else { return }
         applyEngagementPatch(listingId: snapshot.id) { _ in snapshot.toggledLike }
+        defer { deps.listingEngagement.endLikeToggle(listingId: snapshot.id) }
         switch await deps.listingRepository.toggleLike(listingId: snapshot.id) {
         case .failure(let error):
             applyEngagementPatch(listingId: snapshot.id) { _ in snapshot }
@@ -90,7 +92,9 @@ struct ListingPreviewOverlay: View {
     private func toggleSave(_ preview: ExploreListingPreviewState) async {
         guard !isGuestMode else { onRequestLogin?(); return }
         let snapshot = preview.feedItem
+        guard deps.listingEngagement.beginSaveToggle(listingId: snapshot.id) else { return }
         applyEngagementPatch(listingId: snapshot.id) { _ in snapshot.toggledSave }
+        defer { deps.listingEngagement.endSaveToggle(listingId: snapshot.id) }
         switch await deps.listingRepository.toggleSave(
             listingId: snapshot.id,
             currentlySaved: snapshot.isSaved

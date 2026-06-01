@@ -328,8 +328,10 @@ final class HomeViewModel {
 
     func toggleLike(_ item: ListingFeedItem, surface: String, position: Int, deps: AppDependencies) {
         let snapshot = item
+        guard deps.listingEngagement.beginLikeToggle(listingId: item.id) else { return }
         patchListingInFeeds(item.id) { _ in snapshot.toggledLike }
         Task {
+            defer { deps.listingEngagement.endLikeToggle(listingId: item.id) }
             switch await deps.listingRepository.toggleLike(listingId: item.id) {
             case .success(let liked):
                 patchListingInFeeds(item.id) { _ in snapshot.applyingLikeToggle(liked) }
@@ -346,11 +348,14 @@ final class HomeViewModel {
 
     func toggleSave(_ item: ListingFeedItem, surface: String, position: Int, deps: AppDependencies, isGuestMode: Bool) {
         let snapshot = item
+        guard deps.listingEngagement.beginSaveToggle(listingId: item.id) else { return }
         patchListingInFeeds(item.id) { _ in snapshot.toggledSave }
         Task {
+            defer { deps.listingEngagement.endSaveToggle(listingId: item.id) }
             switch await deps.listingRepository.toggleSave(
                 listingId: item.id,
-                currentlySaved: snapshot.isSaved
+                currentlySaved: snapshot.isSaved,
+                repository: deps.listingRepository
             ) {
             case .success(let saved):
                 patchListingInFeeds(item.id) { _ in snapshot.applyingSaveToggle(saved) }
