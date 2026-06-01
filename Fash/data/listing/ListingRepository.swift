@@ -186,13 +186,29 @@ final class ListingRepository {
         }
     }
 
-    func getMyListings(limit: Int = 50, offset: Int = 0) async -> Result<[ListingFeedItem], Error> {
+    func getMyListings(status: String? = nil, limit: Int = 50, offset: Int = 0) async -> Result<[ListingFeedItem], Error> {
+        do {
+            var path = "api/v1/users/me/listings?limit=\(limit)&offset=\(offset)"
+            if let status = status?.trimmingCharacters(in: .whitespacesAndNewlines), !status.isEmpty {
+                let encoded = status.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? status
+                path += "&status=\(encoded)"
+            }
+            let data = try await RepositoryHttp.executeCoreGet(relativePath: path, client: client)
+            return .success(try ListingFeedJsonParser.parseFeed(data))
+        } catch {
+            return .failure(error)
+        }
+    }
+
+    func getMyListingsSummary() async -> Result<ProfileListingsSummary, Error> {
         do {
             let data = try await RepositoryHttp.executeCoreGet(
-                relativePath: "api/v1/users/me/listings?limit=\(limit)&offset=\(offset)",
+                relativePath: "api/v1/users/me/listings/summary",
                 client: client
             )
-            return .success(try ListingFeedJsonParser.parseFeed(data))
+            let obj = try RepositoryHttp.jsonObject(data)
+            let root = (obj["data"] as? [String: Any]) ?? obj
+            return .success(ProfileListingsSummary.parse(from: root))
         } catch {
             return .failure(error)
         }

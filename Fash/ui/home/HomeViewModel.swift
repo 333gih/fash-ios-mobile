@@ -670,11 +670,11 @@ final class HomeViewModel {
             return
         }
         async let ordersResult = deps.orderRepository.getBuyingOrders(limit: 50, offset: 0)
-        async let savedResult = deps.listingRepository.getWishlistSavedCount(limit: 100, offset: 0)
-        async let mineResult = deps.listingRepository.getMyListings(limit: 50, offset: 0)
+        async let summaryResult = deps.listingRepository.getMyListingsSummary()
         let orders = (try? await ordersResult.get()) ?? []
-        let saved = (try? await savedResult.get()) ?? 0
-        let inReview = ((try? await mineResult.get()) ?? []).filter { $0.isInReviewListing() }.count
+        let summary = (try? await summaryResult.get()) ?? ProfileListingsSummary()
+        let saved = summary.wishlist
+        let inReview = summary.inReview
         let delivering = orders.filter { BuyerHomeStatsConstants.deliveringStatuses.contains($0.status.lowercased()) }.count
         buyerStats = BuyerHomeStats(
             activeDeliveryOrders: delivering,

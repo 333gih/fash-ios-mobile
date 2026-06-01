@@ -34,6 +34,16 @@ struct ProfileScreen: View {
             || (viewModel.isSupplementalListingsLoading && currentItems.isEmpty)
     }
 
+    private var showProfileBlockingLoader: Bool {
+        !viewModel.hasCompletedInitialLoad && !showBlockingLoadError
+    }
+
+    private func tabBadgeCount(for index: Int) -> Int? {
+        guard let tab = ProfileListingTab(rawValue: index) else { return nil }
+        let count = viewModel.displayCount(for: tab)
+        return count > 0 ? count : nil
+    }
+
     var body: some View {
         Group {
             if showBlockingLoadError {
@@ -44,25 +54,41 @@ struct ProfileScreen: View {
                     Task { await viewModel.refresh(deps: deps) }
                 }
             } else {
-                ProfileCollapsingScrollLayout(
-                    selectedTab: $selectedTab,
-                    tabSet: .ownProfile,
-                    orderedTabIndices: viewModel.orderedProfileTabIndices,
-                    items: currentItems,
-                    showQuickActions: true,
-                    showStatusOverlay: true,
-                    suppressActiveStatusOnGrid: false,
-                    showGridLoading: showListingGridLoading,
-                    showEmptyState: viewModel.hasCompletedInitialLoad,
-                    isRefreshing: viewModel.isRefreshing,
-                    scrollToGridToken: scrollToGridToken,
-                    onListingClick: { item in handleListingTap(item) },
-                    onLike: { item in Task { await viewModel.toggleLike(item, deps: deps) } },
-                    onSave: { item in Task { await viewModel.toggleSave(item, deps: deps) } },
-                    expandedHeader: { expandedHeader },
-                    compactHeader: { compactHeader }
-                )
-                .refreshable { await viewModel.refresh(deps: deps) }
+                ZStack {
+                    ProfileCollapsingScrollLayout(
+                        selectedTab: $selectedTab,
+                        tabSet: .ownProfile,
+                        orderedTabIndices: viewModel.orderedProfileTabIndices,
+                        tabBadgeCounts: tabBadgeCount,
+                        items: currentItems,
+                        showQuickActions: true,
+                        showStatusOverlay: true,
+                        suppressActiveStatusOnGrid: false,
+                        showGridLoading: showListingGridLoading,
+                        showEmptyState: viewModel.hasCompletedInitialLoad,
+                        isRefreshing: viewModel.isRefreshing,
+                        lockScroll: showProfileBlockingLoader,
+                        scrollToGridToken: scrollToGridToken,
+                        onListingClick: { item in handleListingTap(item) },
+                        onLike: { item in Task { await viewModel.toggleLike(item, deps: deps) } },
+                        onSave: { item in Task { await viewModel.toggleSave(item, deps: deps) } },
+                        expandedHeader: { expandedHeader },
+                        compactHeader: { compactHeader }
+                    )
+                    .refreshable { await viewModel.refresh(deps: deps) }
+                    .allowsHitTesting(!showProfileBlockingLoader)
+
+                    if showProfileBlockingLoader {
+                        ZStack {
+                            FashColors.screen.opacity(0.72)
+                            ProgressView()
+                                .tint(FashColors.brandPrimary)
+                                .scaleEffect(1.1)
+                        }
+                        .ignoresSafeArea()
+                        .allowsHitTesting(true)
+                    }
+                }
             }
         }
         .background(FashColors.screen)
@@ -122,7 +148,9 @@ struct ProfileScreen: View {
 
     /// Scroll listing grid to pinned position once profile refresh finishes (parity with Android ProfileScreen).
     private func applyPendingExternalGridScrollIfNeeded() {
-        guard pendingExternalGridScroll, !viewModel.isRefreshing else { return }
+        guard pendingExternalGridScroll,
+              viewModel.hasCompletedInitialLoad,
+              !viewModel.isRefreshing else { return }
         pendingExternalGridScroll = false
         scrollToGridToken += 1
     }

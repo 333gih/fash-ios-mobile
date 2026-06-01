@@ -95,6 +95,8 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     let tabSet: ProfileListingTabSet
     /// Visual order of logical tab indices — Android `orderedTabIndices`.
     var orderedTabIndices: [Int] = ProfileListingTab.allCases.map(\.rawValue)
+    /// Optional tab badge from summary counts — `(logicalTabIndex) -> count`.
+    var tabBadgeCounts: ((Int) -> Int?)? = nil
     let items: [ListingFeedItem]
     var showQuickActions: Bool = false
     var showStatusOverlay: Bool = false
@@ -107,6 +109,8 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     var showEmptyState: Bool = true
     /// Skip scroll clamp bumps while pull-to-refresh is in flight — avoids snapping back to top.
     var isRefreshing: Bool = false
+    /// Block scroll + clamp while profile shell is still loading — prevents jump-to-top during load.
+    var lockScroll: Bool = false
     /// Increment to scroll the listing grid under pinned tabs (Home journey shortcuts).
     var scrollToGridToken: Int = 0
     /// Hero scrolled off + tabs pinned — Android `rememberProfilePromoFooterVisible` (index > 0).
@@ -191,6 +195,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                 }
                 .scrollTargetLayout()
             }
+            .scrollDisabled(lockScroll || showGridLoading)
             .scrollPosition(id: $profileScrollPosition, anchor: .top)
             .background {
                 PinnedTabScrollOffsetFixer(
@@ -235,7 +240,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                 scrollClampRevision += 1
             }
             .onChange(of: scrollToGridToken) { _, token in
-                guard token > 0 else { return }
+                guard token > 0, !lockScroll, !showGridLoading else { return }
                 applyPinnedGridScroll(using: scrollProxy)
             }
         }
@@ -365,7 +370,8 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             ProfileTabSwitcher(
                 tabSet: tabSet,
                 orderedTabIndices: resolvedTabIndices,
-                selectedTab: $selectedTab
+                selectedTab: $selectedTab,
+                tabBadgeCounts: tabBadgeCounts
             )
             if showSectionTitle {
                 Divider().opacity(0.58)
@@ -455,6 +461,7 @@ struct ProfileTabSwitcher: View {
     let tabSet: ProfileListingTabSet
     let orderedTabIndices: [Int]
     @Binding var selectedTab: Int
+    var tabBadgeCounts: ((Int) -> Int?)? = nil
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -468,7 +475,7 @@ struct ProfileTabSwitcher: View {
                             }
                         } label: {
                             VStack(spacing: 6) {
-                                Text(tabSet.title(for: logicalIndex))
+                                Text(tabLabel(for: logicalIndex))
                                     .font(FashTypography.labelLarge.weight(selected ? .bold : .regular))
                                     .foregroundStyle(selected ? FashColors.textPrimary : FashColors.textSecondary.opacity(0.75))
                                     .lineLimit(1)
@@ -512,6 +519,12 @@ struct ProfileTabSwitcher: View {
                 proxy.scrollTo(selectedTab, anchor: .center)
             }
         }
+    }
+
+    private func tabLabel(for logicalIndex: Int) -> String {
+        let title = tabSet.title(for: logicalIndex)
+        guard let count = tabBadgeCounts?(logicalIndex), count > 0 else { return title }
+        return "\(title) (\(count))"
     }
 
     private var tabMinWidth: CGFloat {

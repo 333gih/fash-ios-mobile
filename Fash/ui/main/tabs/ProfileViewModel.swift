@@ -25,9 +25,10 @@ final class ProfileViewModel {
     var isLoading = false
     var isRefreshing = false
     var loadError = false
-    /// False until the first profile + listings fetch finishes — avoids empty-state flash and scroll jumps.
+    /// False until profile + summary + first tab listings finish — blocks scroll until ready.
     var hasCompletedInitialLoad = false
     var isSupplementalListingsLoading = false
+    var tabCounts = ProfileListingsSummary()
     var profileUxPersonalization = ProfileUxPersonalization()
     var orderedProfileTabIndices: [Int] = ProfileListingTab.allCases.map(\.rawValue)
     var profileTabOpenGeneration = 0
@@ -42,6 +43,7 @@ final class ProfileViewModel {
     private var profileUxDefaultApplied = false
     private var pendingDefaultProfileTab: Int?
     private var profileTabOpenRequest: ProfileTabOpenRequest?
+    private var loadedListingTabs = Set<Int>()
 
     func listings(for tab: ProfileListingTab) -> [ListingFeedItem] {
         switch tab {
@@ -50,6 +52,20 @@ final class ProfileViewModel {
         case .rejected: return rejectedListings
         case .sold: return soldListings
         case .wishlist: return wishlistListings
+        }
+    }
+
+    /// Badge count: server summary until tab rows are loaded, then live array count.
+    func displayCount(for tab: ProfileListingTab) -> Int {
+        if loadedListingTabs.contains(tab.rawValue) {
+            return listings(for: tab).count
+        }
+        switch tab {
+        case .active: return tabCounts.active
+        case .inReview: return tabCounts.inReview
+        case .rejected: return tabCounts.rejected
+        case .sold: return tabCounts.sold
+        case .wishlist: return tabCounts.wishlist
         }
     }
 
@@ -77,19 +93,40 @@ final class ProfileViewModel {
         loadError = false
         defer { isLoading = false; isRefreshing = false }
 
+        if force {
+            loadedListingTabs = []
+            sellingListings = []
+            inReviewListings = []
+            rejectedListings = []
+            soldListings = []
+            wishlistListings = []
+        }
+
         async let profileResult = deps.userRepository.getMeProfile()
         async let tagsResult = deps.commonCatalogRepository.getAestheticTags(all: true)
+        async let summaryResult = deps.listingRepository.getMyListingsSummary()
+
         switch await profileResult {
         case .success(let p):
             applyProfile(p)
             lastSuccessfulRefreshAt = Date()
             loadError = false
+            if case .success(let summary) = await summaryResult {
+                tabCounts = summary
+                if soldCount == 0 { soldCount = summary.sold }
+                if productCount == 0 {
+                    productCount = summary.active + summary.inReview + summary.rejected
+                }
+            }
             if case .success(let tags) = await tagsResult {
                 aestheticCatalog = tags
             }
-            await loadListings(deps: deps)
-            await loadProfileUxPersonalization(deps: deps)
+            let initialTab = resolveInitialTabIndex()
+            async let uxTask: Void = loadProfileUxPersonalization(deps: deps)
+            await loadListingsForTab(ProfileListingTab(rawValue: initialTab) ?? .active, deps: deps)
             hasCompletedInitialLoad = true
+            await uxTask
+            prefetchRemainingTabs(except: initialTab, deps: deps)
         case .failure:
             loadError = true
             hasCompletedInitialLoad = true
@@ -98,19 +135,32 @@ final class ProfileViewModel {
 
     func onProfileTabSelected(_ tabIndex: Int, deps: AppDependencies) {
         deps.uxTabTracker.onTabOpened(scope: "profile", tabKey: UxPersonalizationMapping.profileTabKey(from: tabIndex))
-        if tabIndex == ProfileListingTab.wishlist.rawValue, wishlistListings.isEmpty {
-            Task { await reloadWishlist(deps: deps, showLoading: true) }
-        }
+        let tab = ProfileListingTab(rawValue: tabIndex) ?? .active
+        Task { await loadListingsForTab(tab, deps: deps) }
     }
 
     func requestWishlistTabFromHome(deps: AppDependencies) {
         requestOpenProfileTab(.wishlist, scrollToGrid: true)
-        Task { await refresh(deps: deps, force: true) }
+        Task {
+            if profile == nil {
+                await refresh(deps: deps, force: true)
+            } else {
+                await refreshIfStale(deps: deps)
+                await loadListingsForTab(.wishlist, deps: deps)
+            }
+        }
     }
 
     func requestInReviewTabFromHome(deps: AppDependencies) {
         requestOpenProfileTab(.inReview, scrollToGrid: true)
-        Task { await refresh(deps: deps, force: true) }
+        Task {
+            if profile == nil {
+                await refresh(deps: deps, force: true)
+            } else {
+                await refreshIfStale(deps: deps)
+                await loadListingsForTab(.inReview, deps: deps)
+            }
+        }
     }
 
     func consumeProfileTabOpenRequest() -> ProfileTabOpenRequest? {
@@ -147,6 +197,8 @@ final class ProfileViewModel {
         rejectedListings = []
         soldListings = []
         wishlistListings = []
+        tabCounts = ProfileListingsSummary()
+        loadedListingTabs = []
         loadError = false
         lastSuccessfulRefreshAt = nil
         hasCompletedInitialLoad = false
@@ -166,37 +218,64 @@ final class ProfileViewModel {
         soldCount = p.soldCount
     }
 
-    private func loadListings(deps: AppDependencies) async {
-        async let mineResult = deps.listingRepository.getMyListings(limit: 50, offset: 0)
-        async let wishResult = deps.listingRepository.getWishlistListings(limit: 50, offset: 0)
-        switch await mineResult {
-        case .success(let allMine):
-            sellingListings = allMine.filter { $0.isActiveListing() }
-            inReviewListings = allMine.filter { $0.isInReviewListing() }
-            rejectedListings = allMine.filter { $0.isRejectedListing() }
-            soldListings = allMine.filter { $0.isSoldListingStatus() }
-            if soldCount == 0 { soldCount = soldListings.count }
-            if productCount == 0 {
-                productCount = sellingListings.count + inReviewListings.count + rejectedListings.count
-            }
-        case .failure:
-            break
+    private func resolveInitialTabIndex() -> Int {
+        if profileTabOpenGeneration != 0, let req = profileTabOpenRequest {
+            return req.tab.rawValue
         }
-        switch await wishResult {
-        case .success(let wish):
-            wishlistListings = wish
-        case .failure:
-            break
+        if let pending = pendingDefaultProfileTab {
+            return pending
+        }
+        if let idx = UxPersonalizationMapping.profileTabIndex(from: profileUxPersonalization.defaultTabKey) {
+            return idx
+        }
+        return ProfileListingTab.active.rawValue
+    }
+
+    private func prefetchRemainingTabs(except initialTab: Int, deps: AppDependencies) {
+        Task {
+            for tab in ProfileListingTab.allCases where tab.rawValue != initialTab {
+                await loadListingsForTab(tab, deps: deps)
+            }
         }
     }
 
-    private func reloadWishlist(deps: AppDependencies, showLoading: Bool = false) async {
-        if showLoading { isSupplementalListingsLoading = true }
-        defer { if showLoading { isSupplementalListingsLoading = false } }
-        guard case .success(let wish) = await deps.listingRepository.getWishlistListings(limit: 50, offset: 0) else {
-            return
+    private func loadListingsForTab(_ tab: ProfileListingTab, deps: AppDependencies) async {
+        guard !loadedListingTabs.contains(tab.rawValue) else { return }
+        let showSpinner = hasCompletedInitialLoad && listings(for: tab).isEmpty
+        if showSpinner { isSupplementalListingsLoading = true }
+        defer {
+            if showSpinner { isSupplementalListingsLoading = false }
+            loadedListingTabs.insert(tab.rawValue)
         }
-        wishlistListings = wish
+
+        switch tab {
+        case .wishlist:
+            guard case .success(let wish) = await deps.listingRepository.getWishlistListings(limit: 50, offset: 0) else {
+                return
+            }
+            wishlistListings = wish
+        case .active:
+            guard case .success(let list) = await deps.listingRepository.getMyListings(status: "active", limit: 50, offset: 0) else {
+                return
+            }
+            sellingListings = list
+        case .inReview:
+            guard case .success(let list) = await deps.listingRepository.getMyListings(status: "in_review", limit: 50, offset: 0) else {
+                return
+            }
+            inReviewListings = list
+        case .rejected:
+            guard case .success(let list) = await deps.listingRepository.getMyListings(status: "rejected", limit: 50, offset: 0) else {
+                return
+            }
+            rejectedListings = list
+        case .sold:
+            guard case .success(let list) = await deps.listingRepository.getMyListings(status: "sold", limit: 50, offset: 0) else {
+                return
+            }
+            soldListings = list
+            if soldCount == 0 { soldCount = list.count }
+        }
     }
 
     private func loadProfileUxPersonalization(deps: AppDependencies) async {
@@ -252,11 +331,13 @@ final class ProfileViewModel {
             patchListing(item.id) { _ in snapshot.applyingSaveToggle(saved) }
             if !saved && snapshot.isSaved {
                 wishlistListings.removeAll { $0.id == item.id }
+                tabCounts.wishlist = max(0, tabCounts.wishlist - 1)
             } else if saved {
                 let patched = snapshot.applyingSaveToggle(true)
                 if !wishlistListings.contains(where: { $0.id == item.id }) {
                     wishlistListings.insert(patched, at: 0)
                 }
+                tabCounts.wishlist += 1
             }
             deps.showSnackbar(FeedEngagementFeedback.saveMessage(saved: saved))
         case .failure(let error):
@@ -273,4 +354,3 @@ final class ProfileViewModel {
         wishlistListings = wishlistListings.map { $0.id == id ? transform($0) : $0 }
     }
 }
-
