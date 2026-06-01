@@ -153,119 +153,147 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
 
     var body: some View {
         ScrollViewReader { scrollProxy in
-            ScrollView {
-                LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
-                    Section {
-                        expandedHeader()
-                            .id(ProfileScrollIds.expandedHeader)
-                            .background(
-                                GeometryReader { geo in
-                                    let frame = geo.frame(in: .named("profileScroll"))
-                                    Color.clear
-                                        .preference(key: ProfileScrollOffsetKey.self, value: frame.minY)
-                                        .preference(key: ProfileHeaderBoundsKey.self, value: frame)
-                                }
-                                .allowsHitTesting(false)
-                            )
-                    }
-                    Section {
-                        Group {
-                            profileListingGridBody
-                        }
-                        .id(listingGridScrollId)
-                        .allowsHitTesting(listingInteractionEnabled)
-                        .transition(
-                            .asymmetric(
-                                insertion: .opacity.combined(with: .offset(x: CGFloat(tabSlideDirection) * 28)),
-                                removal: .opacity.combined(with: .offset(x: CGFloat(-tabSlideDirection) * 28))
-                            )
-                        )
+            profileScrollRoot(scrollProxy: scrollProxy)
+        }
+    }
 
-                        Color.clear.frame(height: max(120, additionalBottomInset + 80))
-                    } header: {
-                        stickyChrome(scrollProxy: scrollProxy)
-                    }
+    @ViewBuilder
+    private func profileScrollRoot(scrollProxy: ScrollViewProxy) -> some View {
+        ScrollView {
+            profileLazyStack(scrollProxy: scrollProxy)
+        }
+        .scrollDisabled(lockScroll)
+        .background(profileViewportHeightReader)
+        .background {
+            PinnedTabScrollOffsetFixer(
+                resetToken: profileScrollResetToken,
+                clampRevision: scrollClampRevision,
+                headerHeight: headerHeight
+            )
+        }
+        .coordinateSpace(name: ProfileScrollIds.coordinateSpaceName)
+        .onAppear(perform: resetProfileScrollChromeState)
+        .onPreferenceChange(ProfileScrollOffsetKey.self, perform: handleProfileScrollOffset)
+        .onPreferenceChange(FeedContentBottomYKey.self, perform: handleFeedContentBottomY)
+        .onPreferenceChange(ProfileHeaderBoundsKey.self, perform: handleProfileHeaderBounds)
+        .onChange(of: resolvedTabIndices) { _, indices in
+            guard !indices.contains(selectedTab) else { return }
+            selectedTab = indices.first ?? 0
+        }
+        .onChange(of: selectedTab) { oldTab, newTab in
+            handleSelectedTabChange(from: oldTab, to: newTab)
+        }
+        .onChange(of: items.count) { oldCount, newCount in
+            guard !isRefreshing, !showGridLoading, showEmptyState else { return }
+            guard newCount < oldCount else { return }
+            scrollClampRevision += 1
+        }
+        .onChange(of: scrollToGridToken) { _, token in
+            guard token > 0, !lockScroll, !showGridLoading else { return }
+            applyPinnedGridScroll(using: scrollProxy)
+        }
+    }
+
+    private var profileViewportHeightReader: some View {
+        GeometryReader { geo in
+            Color.clear
+                .onAppear { scrollViewportHeight = geo.size.height }
+                .onChange(of: geo.size.height) { _, h in
+                    if h > 0 { scrollViewportHeight = h }
                 }
-                .fashScrollViewTabSwipe(
-                    currentIndex: visualTabIndex,
-                    tabCount: resolvedTabIndices.count,
-                    listingInteractionEnabled: $listingInteractionEnabled
-                ) { visualIndex in
-                    guard visualIndex >= 0, visualIndex < resolvedTabIndices.count else { return }
-                    let nextTab = resolvedTabIndices[visualIndex]
-                    guard nextTab != selectedTab else { return }
-                    tabSlideDirection = visualIndex > visualTabIndex ? 1 : -1
-                    withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
-                        selectedTab = nextTab
-                    }
-                }
-                .scrollTargetLayout()
+        }
+    }
+
+    @ViewBuilder
+    private func profileLazyStack(scrollProxy: ScrollViewProxy) -> some View {
+        LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+            Section {
+                expandedHeader()
+                    .id(ProfileScrollIds.expandedHeader)
+                    .background(profileHeaderOffsetReader)
             }
-            .scrollDisabled(lockScroll)
-            .background {
-                GeometryReader { geo in
-                    Color.clear
-                        .onAppear { scrollViewportHeight = geo.size.height }
-                        .onChange(of: geo.size.height) { _, h in
-                            if h > 0 { scrollViewportHeight = h }
-                        }
-                }
-            }
-            .background {
-                PinnedTabScrollOffsetFixer(
-                    resetToken: profileScrollResetToken,
-                    clampRevision: scrollClampRevision,
-                    headerHeight: headerHeight
-                )
-            }
-            .coordinateSpace(name: Self.profileScrollSpace)
-            .onAppear {
-                reportedTabsPinned = false
-                chromePinnedLatch = false
-                showBriefBar = false
-                showSectionTitle = false
-                lastScrollOffset = 0
-            }
-            .onPreferenceChange(ProfileScrollOffsetKey.self) { offset in
-                applyScrollOffset(offset)
-                evaluateScrollProximityLoadMore(headerMinY: offset)
-            }
-            .onPreferenceChange(FeedContentBottomYKey.self) { bottomY in
-                feedContentBottomY = bottomY
-                evaluateScrollProximityLoadMore(headerMinY: lastScrollOffset)
-            }
-            .onPreferenceChange(ProfileHeaderBoundsKey.self) { frame in
-                guard frame.height > 10 else { return }
-                let nextHeight = frame.height
-                guard abs(nextHeight - headerHeight) > 0.5 else { return }
-                headerHeight = nextHeight
-                applyScrollOffset(frame.minY)
-            }
-            .onChange(of: resolvedTabIndices) { _, indices in
-                guard !indices.contains(selectedTab) else { return }
-                selectedTab = indices.first ?? 0
-            }
-            .onChange(of: selectedTab) { oldTab, newTab in
-                guard oldTab != newTab else { return }
-                feedContentBottomY = .infinity
-                lastProximityLoadMoreAt = .distantPast
-                guard !isRefreshing, !lockScroll else { return }
-                let oldVisual = resolvedTabIndices.firstIndex(of: oldTab) ?? 0
-                let newVisual = resolvedTabIndices.firstIndex(of: newTab) ?? 0
-                tabSlideDirection = newVisual > oldVisual ? 1 : -1
-                // Preserve scroll offset (Android: same list state on tab change). Only trim stale deep offsets after layout.
-                scheduleClampAfterTabContentLayout()
-            }
-            .onChange(of: items.count) { oldCount, newCount in
-                guard !isRefreshing, !showGridLoading, showEmptyState else { return }
-                guard newCount < oldCount else { return }
-                scrollClampRevision += 1
-            }
-            .onChange(of: scrollToGridToken) { _, token in
-                guard token > 0, !lockScroll, !showGridLoading else { return }
-                applyPinnedGridScroll(using: scrollProxy)
+            Section {
+                profileListingGridSection
+                Color.clear.frame(height: max(120, additionalBottomInset + 80))
+            } header: {
+                stickyChrome(scrollProxy: scrollProxy)
             }
         }
+        .fashScrollViewTabSwipe(
+            currentIndex: visualTabIndex,
+            tabCount: resolvedTabIndices.count,
+            listingInteractionEnabled: $listingInteractionEnabled
+        ) { visualIndex in
+            guard visualIndex >= 0, visualIndex < resolvedTabIndices.count else { return }
+            let nextTab = resolvedTabIndices[visualIndex]
+            guard nextTab != selectedTab else { return }
+            tabSlideDirection = visualIndex > visualTabIndex ? 1 : -1
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+                selectedTab = nextTab
+            }
+        }
+        .scrollTargetLayout()
+    }
+
+    private var profileHeaderOffsetReader: some View {
+        GeometryReader { geo in
+            let frame = geo.frame(in: .named(ProfileScrollIds.coordinateSpaceName))
+            Color.clear
+                .preference(key: ProfileScrollOffsetKey.self, value: frame.minY)
+                .preference(key: ProfileHeaderBoundsKey.self, value: frame)
+        }
+        .allowsHitTesting(false)
+    }
+
+    private var profileListingGridSection: some View {
+        Group {
+            profileListingGridBody
+        }
+        .id(listingGridScrollId)
+        .allowsHitTesting(listingInteractionEnabled)
+        .transition(
+            .asymmetric(
+                insertion: .opacity.combined(with: .offset(x: CGFloat(tabSlideDirection) * 28)),
+                removal: .opacity.combined(with: .offset(x: CGFloat(-tabSlideDirection) * 28))
+            )
+        )
+    }
+
+    private func resetProfileScrollChromeState() {
+        reportedTabsPinned = false
+        chromePinnedLatch = false
+        showBriefBar = false
+        showSectionTitle = false
+        lastScrollOffset = 0
+    }
+
+    private func handleProfileScrollOffset(_ offset: CGFloat) {
+        applyScrollOffset(offset)
+        evaluateScrollProximityLoadMore(headerMinY: offset)
+    }
+
+    private func handleFeedContentBottomY(_ bottomY: CGFloat) {
+        feedContentBottomY = bottomY
+        evaluateScrollProximityLoadMore(headerMinY: lastScrollOffset)
+    }
+
+    private func handleProfileHeaderBounds(_ frame: CGRect) {
+        guard frame.height > 10 else { return }
+        let nextHeight = frame.height
+        guard abs(nextHeight - headerHeight) > 0.5 else { return }
+        headerHeight = nextHeight
+        applyScrollOffset(frame.minY)
+    }
+
+    private func handleSelectedTabChange(from oldTab: Int, to newTab: Int) {
+        guard oldTab != newTab else { return }
+        feedContentBottomY = .infinity
+        lastProximityLoadMoreAt = .distantPast
+        guard !isRefreshing, !lockScroll else { return }
+        let oldVisual = resolvedTabIndices.firstIndex(of: oldTab) ?? 0
+        let newVisual = resolvedTabIndices.firstIndex(of: newTab) ?? 0
+        tabSlideDirection = newVisual > oldVisual ? 1 : -1
+        scheduleClampAfterTabContentLayout()
     }
 
     private func applyPinnedGridScroll(using scrollProxy: ScrollViewProxy) {
@@ -430,6 +458,19 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     }
 
     @ViewBuilder
+    private var profilePaginationFooter: some View {
+        if hasMoreListings || isLoadingMoreListings, let onLoadMore {
+            FeedLoadMoreFooter(
+                enabled: hasMoreListings,
+                isLoadingMore: isLoadingMoreListings,
+                triggersLoadOnAppear: false,
+                onLoadMore: onLoadMore
+            )
+            FeedScrollContentBottomReporter(coordinateSpace: ProfileScrollIds.coordinateSpaceName)
+        }
+    }
+
+    @ViewBuilder
     private var profileListingGridBody: some View {
         if showGridLoading {
             profileListingLoadingBlock
@@ -439,17 +480,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             ListingStaggeredMasonryView(
                 items: items,
                 columnAssignments: masonryColumnAssignments,
-                footer: {
-                    if hasMoreListings || isLoadingMoreListings, let onLoadMore {
-                        FeedLoadMoreFooter(
-                            enabled: hasMoreListings,
-                            isLoadingMore: isLoadingMoreListings,
-                            triggersLoadOnAppear: false,
-                            onLoadMore: onLoadMore
-                        )
-                        FeedScrollContentBottomReporter(coordinateSpace: Self.profileScrollSpace)
-                    }
-                }
+                footer: { profilePaginationFooter }
             ) { item, _ in
                 ListingGridCard(
                     item: item,
