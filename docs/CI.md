@@ -169,8 +169,11 @@ Script map sang GitHub Secrets:
 | `IOS_PROVISIONING_PROFILE_PATH` → base64 | `IOS_PROVISIONING_PROFILE_BASE64` |
 | `APP_STORE_CONNECT_*` | cùng tên |
 | `GOOGLE_SERVICE_INFO_PLIST_PATH` → base64 | `GOOGLE_SERVICE_INFO_PLIST_BASE64` |
+| `GOOGLE_SERVICE_INFO_DEV_PLIST_PATH` → base64 (tuỳ chọn) | `GOOGLE_SERVICE_INFO_DEV_PLIST_BASE64` |
 
-Plist phải là bản **prod** (`BUNDLE_ID` = `com.pc.fash-ios-mobile`). CI decode vào `Fash/GoogleService-Info.plist` trước khi archive **Fash-Prod** — bật FCM/push trên TestFlight.
+Plist **prod** (`BUNDLE_ID` = `com.pc.fash-ios-mobile`) bắt buộc cho **Fash-Prod** / TestFlight — thiếu secret thì job **fail** (không còn build IPA im lặng không có FCM). CI decode vào `Fash/GoogleService-Info.plist` trước `xcodegen`. Sau export, `scripts/ci_verify_ipa_push.sh` kiểm tra plist trong `.app` và `aps-environment` trong entitlements đã ký.
+
+Provisioning profile phải có **Push Notifications**; job chạy `ci_verify_provisioning_push.sh` trước archive.
 
 ### Cách 2 — Dán thủ công trên GitHub
 
@@ -196,7 +199,8 @@ Plist phải là bản **prod** (`BUNDLE_ID` = `com.pc.fash-ios-mobile`). CI dec
 
 | Secret | Mô tả |
 |---|---|
-| `GOOGLE_SERVICE_INFO_PLIST_BASE64` | `GoogleService-Info.plist` prod, encode base64 |
+| `GOOGLE_SERVICE_INFO_PLIST_BASE64` | `GoogleService-Info.plist` prod (`com.pc.fash-ios-mobile`), base64 — **bắt buộc** Fash-Prod |
+| `GOOGLE_SERVICE_INFO_DEV_PLIST_BASE64` | Plist dev (`com.pc.fash-ios-mobile.dev`) — chỉ khi archive **Fash-Dev** |
 
 Sau khi thêm secrets:
 

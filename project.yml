@@ -29,7 +29,7 @@ settings:
     SWIFT_VERSION: "5.9"
     TARGETED_DEVICE_FAMILY: "1"
     MARKETING_VERSION: "1.0.17"
-    CURRENT_PROJECT_VERSION: "123"
+    CURRENT_PROJECT_VERSION: "124"
     DEVELOPMENT_TEAM: ""
     CODE_SIGN_STYLE: Automatic
     INFOPLIST_FILE: Fash/Info.plist
@@ -57,9 +57,13 @@ targets:
         excludes:
           - "**/.DS_Store"
           - "**/*.md"
+          # Firebase config: optional Copy Bundle Resource (CI decodes before xcodegen; local may omit).
+          - "GoogleService-Info.plist"
           # Fonts are copied via resources; .lproj must stay in sources for Xcode localization groups.
           - "Resources/Fonts/**"
     resources:
+      - path: Fash/GoogleService-Info.plist
+        optional: true
       - path: Fash/Resources/Fonts
         excludes:
           - "**/*.md"

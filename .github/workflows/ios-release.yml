@@ -105,20 +105,31 @@ jobs:
           echo "Release target: ${MARKETING} (${BUILD})"
 
       - name: Install GoogleService-Info.plist (FCM)
-        if: env.SCHEME == 'Fash-Prod'
         env:
-          PLIST_B64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_BASE64 }}
+          PLIST_PROD_B64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_BASE64 }}
+          PLIST_DEV_B64: ${{ secrets.GOOGLE_SERVICE_INFO_DEV_PLIST_BASE64 }}
         run: |
           set -euo pipefail
-          if [[ -z "${PLIST_B64:-}" ]]; then
-            echo "::warning::GOOGLE_SERVICE_INFO_PLIST_BASE64 not set — FCM/push disabled in this IPA (see docs/CI.md)"
-            exit 0
+          if [[ "${SCHEME}" == "Fash-Prod" ]]; then
+            EXPECTED_BUNDLE="com.pc.fash-ios-mobile"
+            PLIST_B64="${PLIST_PROD_B64:-}"
+            if [[ -z "${PLIST_B64}" ]]; then
+              echo "::error::GOOGLE_SERVICE_INFO_PLIST_BASE64 is required for Fash-Prod (TestFlight FCM). See docs/CI.md § FCM."
+              exit 1
+            fi
+          else
+            EXPECTED_BUNDLE="com.pc.fash-ios-mobile.dev"
+            PLIST_B64="${PLIST_DEV_B64:-}"
+            if [[ -z "${PLIST_B64}" ]]; then
+              echo "::warning::GOOGLE_SERVICE_INFO_DEV_PLIST_BASE64 not set — FCM disabled for Fash-Dev IPA"
+              exit 0
+            fi
           fi
           echo "${PLIST_B64}" | base64 --decode > Fash/GoogleService-Info.plist
           BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :BUNDLE_ID' Fash/GoogleService-Info.plist)"
           echo "Installed GoogleService-Info.plist (BUNDLE_ID=${BUNDLE_ID})"
-          if [[ "${BUNDLE_ID}" != "com.pc.fash-ios-mobile" ]]; then
-            echo "::error::GoogleService-Info.plist BUNDLE_ID must be com.pc.fash-ios-mobile for Fash-Prod (got ${BUNDLE_ID})"
+          if [[ "${BUNDLE_ID}" != "${EXPECTED_BUNDLE}" ]]; then
+            echo "::error::GoogleService-Info.plist BUNDLE_ID must be ${EXPECTED_BUNDLE} for ${SCHEME} (got ${BUNDLE_ID})"
             exit 1
           fi
 
@@ -142,6 +153,19 @@ jobs:
           mkdir -p "${HOME}/Library/MobileDevice/Provisioning Profiles"
           cp "${PP_PATH}" "${HOME}/Library/MobileDevice/Provisioning Profiles/${UUID}.mobileprovision"
           echo "Installed provisioning profile UUID=${UUID}"
+
+      - name: Verify provisioning profile includes Push
+        env:
+          PROFILE_B64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          set -euo pipefail
+          PP_PATH="${RUNNER_TEMP}/fash.mobileprovision"
+          echo "${PROFILE_B64}" | base64 --decode > "${PP_PATH}"
+          if [[ "${SCHEME}" == "Fash-Prod" ]]; then
+            bash scripts/ci_verify_provisioning_push.sh "${PP_PATH}" "com.pc.fash-ios-mobile"
+          else
+            bash scripts/ci_verify_provisioning_push.sh "${PP_PATH}" "com.pc.fash-ios-mobile.dev"
+          fi
 
       - name: Archive (iphoneos)
         id: archive
@@ -225,6 +249,20 @@ jobs:
       - name: Verify IPA version matches project.yml
         if: env.SCHEME == 'Fash-Prod'
         run: bash scripts/ci_verify_ipa_version.sh build/Fash.ipa
+
+      - name: Verify IPA FCM bundle (plist + aps-environment)
+        run: |
+          set -euo pipefail
+          if [[ "${SCHEME}" == "Fash-Prod" ]]; then
+            bash scripts/ci_verify_ipa_push.sh build/Fash.ipa production
+          else
+            # Dev IPA: only verify push when dev Firebase plist secret was provided
+            if [[ -f Fash/GoogleService-Info.plist ]]; then
+              bash scripts/ci_verify_ipa_push.sh build/Fash.ipa development
+            else
+              echo "Skipping FCM IPA verify (no GoogleService-Info.plist for Fash-Dev)"
+            fi
+          fi
 
       - name: Verify IPA contains vi/en Localizable.strings
         if: env.SCHEME == 'Fash-Prod'
