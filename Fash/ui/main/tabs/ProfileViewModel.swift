@@ -2,6 +2,7 @@ import Foundation
 import Observation
 
 private let profileStaleThresholdSeconds: TimeInterval = 60
+private let profileListingPageSize = 20
 
 struct ProfileTabOpenRequest: Equatable {
     let tab: ProfileListingTab
@@ -25,9 +26,8 @@ final class ProfileViewModel {
     var isLoading = false
     var isRefreshing = false
     var loadError = false
-    /// False until profile + summary + first tab listings finish — blocks scroll until ready.
+    /// Profile shell + summary ready — listing grid may still load first page.
     var hasCompletedInitialLoad = false
-    var isSupplementalListingsLoading = false
     var tabCounts = ProfileListingsSummary()
     var profileUxPersonalization = ProfileUxPersonalization()
     var orderedProfileTabIndices: [Int] = ProfileListingTab.allCases.map(\.rawValue)
@@ -44,6 +44,9 @@ final class ProfileViewModel {
     private var pendingDefaultProfileTab: Int?
     private var profileTabOpenRequest: ProfileTabOpenRequest?
     private var loadedListingTabs = Set<Int>()
+    private var lastSelectedProfileTab = ProfileListingTab.active.rawValue
+    private var tabPagination: [Int: ProfileTabPagination] = [:]
+    private var loadMoreTasks: [Int: Task<Void, Never>] = [:]
 
     func listings(for tab: ProfileListingTab) -> [ListingFeedItem] {
         switch tab {
@@ -55,7 +58,7 @@ final class ProfileViewModel {
         }
     }
 
-    /// Badge count from server summary (not `listings.count` — capped at 50 per fetch).
+    /// Badge count from server summary (not `listings.count` — paginated fetches).
     func displayCount(for tab: ProfileListingTab) -> Int {
         switch tab {
         case .active: return tabCounts.active
@@ -66,20 +69,53 @@ final class ProfileViewModel {
         }
     }
 
+    func hasMoreListings(for tab: ProfileListingTab) -> Bool {
+        pagination(for: tab).hasMore
+    }
+
+    func isLoadingMoreListings(for tab: ProfileListingTab) -> Bool {
+        pagination(for: tab).isLoadingMore
+    }
+
+    func isReloadingListings(for tab: ProfileListingTab) -> Bool {
+        pagination(for: tab).isReloading
+    }
+
+    /// First page in flight while grid is still empty (Explore-style skeleton).
+    func isFirstPageLoading(for tab: ProfileListingTab) -> Bool {
+        let p = pagination(for: tab)
+        return listings(for: tab).isEmpty && (p.isLoadingFirstPage || p.isReloading)
+    }
+
+    func requestLoadMore(for tab: ProfileListingTab, deps: AppDependencies) {
+        guard canLoadMore(for: tab) else { return }
+        guard loadMoreTasks[tab.rawValue] == nil else { return }
+        loadMoreTasks[tab.rawValue] = Task { @MainActor in
+            defer { loadMoreTasks[tab.rawValue] = nil }
+            await loadMoreListings(for: tab, deps: deps)
+        }
+    }
+
     func refreshIfStale(deps: AppDependencies) async {
         if let last = lastSuccessfulRefreshAt,
            Date().timeIntervalSince(last) < profileStaleThresholdSeconds {
             return
         }
-        await refresh(deps: deps, force: false)
+        await refresh(deps: deps, force: false, activeTab: currentProfileTab())
     }
 
-    func refresh(deps: AppDependencies, force: Bool = true) async {
+    func refresh(
+        deps: AppDependencies,
+        force: Bool = true,
+        activeTab: ProfileListingTab? = nil
+    ) async {
         if !force,
            let last = lastSuccessfulRefreshAt,
            Date().timeIntervalSince(last) < profileStaleThresholdSeconds {
             return
         }
+        let tab = activeTab ?? currentProfileTab()
+        lastSelectedProfileTab = tab.rawValue
         let showBlocking = profile == nil
         if showBlocking {
             hasCompletedInitialLoad = false
@@ -109,13 +145,17 @@ final class ProfileViewModel {
                 aestheticCatalog = tags
             }
             async let uxTask: Void = loadProfileUxPersonalization(deps: deps)
-            if hasCompletedInitialLoad {
-                await reloadAllListingTabs(deps: deps)
-            } else {
+            hasCompletedInitialLoad = true
+            if showBlocking {
                 let initialTab = resolveInitialTabIndex()
-                await loadListingsForTab(ProfileListingTab(rawValue: initialTab) ?? .active, deps: deps, force: true)
-                hasCompletedInitialLoad = true
-                prefetchRemainingTabs(except: initialTab, deps: deps)
+                lastSelectedProfileTab = initialTab
+                await fetchListingsFirstPage(
+                    ProfileListingTab(rawValue: initialTab) ?? .active,
+                    deps: deps,
+                    force: true
+                )
+            } else {
+                await reloadListingFeedOnRefresh(activeTab: tab, deps: deps)
             }
             await uxTask
         case .failure:
@@ -125,6 +165,7 @@ final class ProfileViewModel {
     }
 
     func onProfileTabSelected(_ tabIndex: Int, deps: AppDependencies) {
+        lastSelectedProfileTab = tabIndex
         deps.uxTabTracker.onTabOpened(scope: "profile", tabKey: UxPersonalizationMapping.profileTabKey(from: tabIndex))
         let tab = ProfileListingTab(rawValue: tabIndex) ?? .active
         Task { await loadListingsForTab(tab, deps: deps, force: false) }
@@ -134,10 +175,10 @@ final class ProfileViewModel {
         requestOpenProfileTab(.wishlist, scrollToGrid: true)
         Task {
             if profile == nil {
-                await refresh(deps: deps, force: true)
+                await refresh(deps: deps, force: true, activeTab: .wishlist)
             } else {
                 await refreshIfStale(deps: deps)
-                await loadListingsForTab(.wishlist, deps: deps, force: true)
+                await fetchListingsFirstPage(.wishlist, deps: deps, force: true)
             }
         }
     }
@@ -146,10 +187,10 @@ final class ProfileViewModel {
         requestOpenProfileTab(.inReview, scrollToGrid: true)
         Task {
             if profile == nil {
-                await refresh(deps: deps, force: true)
+                await refresh(deps: deps, force: true, activeTab: .inReview)
             } else {
                 await refreshIfStale(deps: deps)
-                await loadListingsForTab(.inReview, deps: deps, force: true)
+                await fetchListingsFirstPage(.inReview, deps: deps, force: true)
             }
         }
     }
@@ -190,10 +231,48 @@ final class ProfileViewModel {
         wishlistListings = []
         tabCounts = ProfileListingsSummary()
         loadedListingTabs = []
+        tabPagination = [:]
+        loadMoreTasks.values.forEach { $0.cancel() }
+        loadMoreTasks = [:]
         loadError = false
         lastSuccessfulRefreshAt = nil
         hasCompletedInitialLoad = false
-        isSupplementalListingsLoading = false
+        lastSelectedProfileTab = ProfileListingTab.active.rawValue
+    }
+
+    // MARK: - Private
+
+    private struct ProfileTabPagination {
+        var hasMore = true
+        var isLoadingMore = false
+        var isLoadingFirstPage = false
+        var isReloading = false
+        var fetchGeneration = 0
+        var loadMoreCooldownUntil: Date?
+    }
+
+    private func pagination(for tab: ProfileListingTab) -> ProfileTabPagination {
+        tabPagination[tab.rawValue] ?? ProfileTabPagination()
+    }
+
+    private func mutatePagination(for tab: ProfileListingTab, _ transform: (inout ProfileTabPagination) -> Void) {
+        var state = pagination(for: tab)
+        transform(&state)
+        tabPagination[tab.rawValue] = state
+    }
+
+    private func currentProfileTab() -> ProfileListingTab {
+        ProfileListingTab(rawValue: lastSelectedProfileTab) ?? .active
+    }
+
+    private func canLoadMore(for tab: ProfileListingTab) -> Bool {
+        let p = pagination(for: tab)
+        return p.hasMore
+            && !p.isLoadingMore
+            && !p.isLoadingFirstPage
+            && !p.isReloading
+            && !isRefreshing
+            && !listings(for: tab).isEmpty
     }
 
     private func applyProfile(_ p: ProfileInfo) {
@@ -228,56 +307,161 @@ final class ProfileViewModel {
         return ProfileListingTab.active.rawValue
     }
 
-    private func prefetchRemainingTabs(except initialTab: Int, deps: AppDependencies) {
-        Task {
-            for tab in ProfileListingTab.allCases where tab.rawValue != initialTab {
-                await loadListingsForTab(tab, deps: deps, force: false)
-            }
+    private func reloadListingFeedOnRefresh(activeTab: ProfileListingTab, deps: AppDependencies) async {
+        for tab in ProfileListingTab.allCases where tab != activeTab {
+            loadedListingTabs.remove(tab.rawValue)
+            mutatePagination(for: tab) { $0 = ProfileTabPagination() }
+            setListings([], for: tab)
         }
-    }
-
-    private func reloadAllListingTabs(deps: AppDependencies) async {
-        for tab in ProfileListingTab.allCases {
-            await loadListingsForTab(tab, deps: deps, force: true)
-        }
+        await fetchListingsFirstPage(activeTab, deps: deps, force: true)
     }
 
     private func loadListingsForTab(_ tab: ProfileListingTab, deps: AppDependencies, force: Bool = false) async {
         if !force, loadedListingTabs.contains(tab.rawValue) { return }
-        let showSpinner = hasCompletedInitialLoad && listings(for: tab).isEmpty && !isRefreshing
-        if showSpinner { isSupplementalListingsLoading = true }
-        defer {
-            if showSpinner { isSupplementalListingsLoading = false }
-            loadedListingTabs.insert(tab.rawValue)
+        await fetchListingsFirstPage(tab, deps: deps, force: force)
+    }
+
+    private func fetchListingsFirstPage(
+        _ tab: ProfileListingTab,
+        deps: AppDependencies,
+        force: Bool
+    ) async {
+        if force {
+            mutatePagination(for: tab) { state in
+                state.fetchGeneration += 1
+                state.hasMore = true
+            }
+        } else if loadedListingTabs.contains(tab.rawValue) {
+            return
         }
 
+        let generation = pagination(for: tab).fetchGeneration
+        let hadItems = !listings(for: tab).isEmpty
+        mutatePagination(for: tab) { state in
+            if hadItems {
+                state.isReloading = true
+            } else {
+                state.isLoadingFirstPage = true
+            }
+            state.isLoadingMore = false
+        }
+
+        let result = await fetchListingsPage(tab: tab, offset: 0, deps: deps)
+        guard generation == pagination(for: tab).fetchGeneration else { return }
+
+        mutatePagination(for: tab) { state in
+            state.isLoadingFirstPage = false
+            state.isReloading = false
+        }
+        loadedListingTabs.insert(tab.rawValue)
+
+        switch result {
+        case .success(let page):
+            setListings(page, for: tab)
+            mutatePagination(for: tab) { $0.hasMore = page.count >= profileListingPageSize }
+            if tab == .sold, soldCount == 0, tabCounts.sold > 0 {
+                soldCount = tabCounts.sold
+            }
+            FeedListingImagePrefetch.prefetch(items: page)
+        case .failure:
+            if !hadItems {
+                setListings([], for: tab)
+                mutatePagination(for: tab) { $0.hasMore = false }
+            }
+        }
+    }
+
+    private func loadMoreListings(for tab: ProfileListingTab, deps: AppDependencies) async {
+        guard canLoadMore(for: tab) else { return }
+        let now = Date()
+        if let until = pagination(for: tab).loadMoreCooldownUntil, now < until { return }
+        mutatePagination(for: tab) { $0.loadMoreCooldownUntil = now.addingTimeInterval(0.4) }
+
+        let generation = pagination(for: tab).fetchGeneration
+        let offset = listings(for: tab).count
+        guard offset > 0 else { return }
+
+        mutatePagination(for: tab) { $0.isLoadingMore = true }
+        defer { mutatePagination(for: tab) { $0.isLoadingMore = false } }
+
+        let result = await fetchListingsPage(tab: tab, offset: offset, deps: deps)
+        guard generation == pagination(for: tab).fetchGeneration else { return }
+
+        switch result {
+        case .success(let page):
+            guard !page.isEmpty else {
+                mutatePagination(for: tab) { $0.hasMore = false }
+                return
+            }
+            var seen = Set(listings(for: tab).map(\.id))
+            let fresh = page.filter { seen.insert($0.id).inserted }
+            if fresh.isEmpty {
+                mutatePagination(for: tab) { $0.hasMore = page.count >= profileListingPageSize }
+                return
+            }
+            appendListings(fresh, for: tab)
+            mutatePagination(for: tab) { $0.hasMore = page.count >= profileListingPageSize }
+            FeedListingImagePrefetch.prefetch(items: fresh)
+        case .failure:
+            break
+        }
+    }
+
+    private func fetchListingsPage(
+        tab: ProfileListingTab,
+        offset: Int,
+        deps: AppDependencies
+    ) async -> Result<[ListingFeedItem], Error> {
         switch tab {
         case .wishlist:
-            guard case .success(let wish) = await deps.listingRepository.getWishlistListings(limit: 50, offset: 0) else {
-                return
-            }
-            wishlistListings = wish
+            return await deps.listingRepository.getWishlistListings(
+                limit: profileListingPageSize,
+                offset: offset
+            )
         case .active:
-            guard case .success(let list) = await deps.listingRepository.getMyListings(status: "active", limit: 50, offset: 0) else {
-                return
-            }
-            sellingListings = list
+            return await deps.listingRepository.getMyListings(
+                status: "active",
+                limit: profileListingPageSize,
+                offset: offset
+            )
         case .inReview:
-            guard case .success(let list) = await deps.listingRepository.getMyListings(status: "in_review", limit: 50, offset: 0) else {
-                return
-            }
-            inReviewListings = list
+            return await deps.listingRepository.getMyListings(
+                status: "in_review",
+                limit: profileListingPageSize,
+                offset: offset
+            )
         case .rejected:
-            guard case .success(let list) = await deps.listingRepository.getMyListings(status: "rejected", limit: 50, offset: 0) else {
-                return
-            }
-            rejectedListings = list
+            return await deps.listingRepository.getMyListings(
+                status: "rejected",
+                limit: profileListingPageSize,
+                offset: offset
+            )
         case .sold:
-            guard case .success(let list) = await deps.listingRepository.getMyListings(status: "sold", limit: 50, offset: 0) else {
-                return
-            }
-            soldListings = list
-            if soldCount == 0 { soldCount = list.count }
+            return await deps.listingRepository.getMyListings(
+                status: "sold",
+                limit: profileListingPageSize,
+                offset: offset
+            )
+        }
+    }
+
+    private func setListings(_ items: [ListingFeedItem], for tab: ProfileListingTab) {
+        switch tab {
+        case .active: sellingListings = items
+        case .inReview: inReviewListings = items
+        case .rejected: rejectedListings = items
+        case .sold: soldListings = items
+        case .wishlist: wishlistListings = items
+        }
+    }
+
+    private func appendListings(_ items: [ListingFeedItem], for tab: ProfileListingTab) {
+        switch tab {
+        case .active: sellingListings.append(contentsOf: items)
+        case .inReview: inReviewListings.append(contentsOf: items)
+        case .rejected: rejectedListings.append(contentsOf: items)
+        case .sold: soldListings.append(contentsOf: items)
+        case .wishlist: wishlistListings.append(contentsOf: items)
         }
     }
 

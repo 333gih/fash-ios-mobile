@@ -103,8 +103,12 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     /// When true, hide "active"/"inactive" chips (seller storefront); own profile passes false.
     var suppressActiveStatusOnGrid: Bool = true
     var additionalBottomInset: CGFloat = 0
-    /// Center spinner until API returns — no skeleton grid (avoids scroll relayout jumps).
+    /// Skeleton grid (Explore-style) while the first page loads.
     var showGridLoading: Bool = false
+    var hasMoreListings: Bool = false
+    var isLoadingMoreListings: Bool = false
+    var isReloadingListings: Bool = false
+    var onLoadMore: (() -> Void)? = nil
     /// When false, empty listings are hidden (still loading).
     var showEmptyState: Bool = true
     /// Skip scroll clamp bumps while pull-to-refresh is in flight — avoids snapping back to top.
@@ -401,7 +405,16 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         } else if !items.isEmpty {
             ListingStaggeredMasonryView(
                 items: items,
-                columnAssignments: masonryColumnAssignments
+                columnAssignments: masonryColumnAssignments,
+                footer: {
+                    if hasMoreListings || isLoadingMoreListings, let onLoadMore {
+                        FeedLoadMoreFooter(
+                            enabled: hasMoreListings,
+                            isLoadingMore: isLoadingMoreListings,
+                            onLoadMore: onLoadMore
+                        )
+                    }
+                }
             ) { item, _ in
                 ListingGridCard(
                     item: item,
@@ -416,18 +429,23 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                 )
             }
             .padding(.top, 4)
+            .overlay(alignment: .top) {
+                if isReloadingListings, !isRefreshing {
+                    ProgressView()
+                        .tint(FashColors.brandPrimary)
+                        .scaleEffect(1.05)
+                        .frame(maxWidth: .infinity, alignment: .top)
+                        .padding(.top, spacing.spacing4)
+                        .allowsHitTesting(false)
+                }
+            }
         }
     }
 
     private var profileListingLoadingBlock: some View {
-        VStack {
-            Spacer(minLength: 0)
-            ProgressView()
-                .tint(FashColors.brandPrimary)
-            Spacer(minLength: 0)
-        }
-        .frame(maxWidth: .infinity, minHeight: 280)
-        .padding(.vertical, 24)
+        FashSkeleton.listingGrid()
+            .padding(.top, 4)
+            .padding(.bottom, 24)
     }
 
     private var emptyBlock: some View {

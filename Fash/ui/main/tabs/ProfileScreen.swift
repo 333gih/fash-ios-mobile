@@ -29,13 +29,16 @@ struct ProfileScreen: View {
         viewModel.loadError && viewModel.profile == nil && !viewModel.isLoading && !viewModel.isRefreshing
     }
 
+    private var selectedProfileTab: ProfileListingTab {
+        ProfileListingTab(rawValue: selectedTab) ?? .active
+    }
+
     private var showListingGridLoading: Bool {
-        !viewModel.hasCompletedInitialLoad
-            || (viewModel.isSupplementalListingsLoading && currentItems.isEmpty)
+        viewModel.isFirstPageLoading(for: selectedProfileTab)
     }
 
     private var showProfileBlockingLoader: Bool {
-        !viewModel.hasCompletedInitialLoad && !showBlockingLoadError
+        viewModel.profile == nil && viewModel.isLoading && !showBlockingLoadError
     }
 
     private func tabBadgeCount(for index: Int) -> Int? {
@@ -65,6 +68,12 @@ struct ProfileScreen: View {
                         showStatusOverlay: true,
                         suppressActiveStatusOnGrid: false,
                         showGridLoading: showListingGridLoading,
+                        hasMoreListings: viewModel.hasMoreListings(for: selectedProfileTab),
+                        isLoadingMoreListings: viewModel.isLoadingMoreListings(for: selectedProfileTab),
+                        isReloadingListings: viewModel.isReloadingListings(for: selectedProfileTab),
+                        onLoadMore: {
+                            viewModel.requestLoadMore(for: selectedProfileTab, deps: deps)
+                        },
                         showEmptyState: viewModel.hasCompletedInitialLoad,
                         isRefreshing: viewModel.isRefreshing,
                         lockScroll: showProfileBlockingLoader,
@@ -75,7 +84,9 @@ struct ProfileScreen: View {
                         expandedHeader: { expandedHeader },
                         compactHeader: { compactHeader }
                     )
-                    .refreshable { await viewModel.refresh(deps: deps) }
+                    .refreshable {
+                        await viewModel.refresh(deps: deps, activeTab: selectedProfileTab)
+                    }
                     .allowsHitTesting(!showProfileBlockingLoader)
 
                     if showProfileBlockingLoader {
@@ -121,7 +132,7 @@ struct ProfileScreen: View {
     }
 
     private var currentItems: [ListingFeedItem] {
-        viewModel.listings(for: ProfileListingTab(rawValue: selectedTab) ?? .active)
+        viewModel.listings(for: selectedProfileTab)
     }
 
     /// Selling / in-review / rejected / sold → edit listing; wishlist → PDP (Android Profile `onListingClick`).
