@@ -746,6 +746,11 @@
     <string name="product_brand">Thương hiệu</string>
     <string name="product_material">Chất liệu</string>
     <string name="product_more_from_seller">Thêm từ %1$s</string>
+    <string name="product_seller_name_fallback">cửa hàng này</string>
+    <string name="product_related_category">Thêm trong %1$s</string>
+    <string name="product_related_category_fallback">danh mục này</string>
+    <string name="product_related_brand">Thêm từ %1$s</string>
+    <string name="product_related_style">Cùng phong cách</string>
     <string name="product_stat_views">Lượt xem</string>
     <string name="product_stat_likes">Thích</string>
     <string name="product_stat_saves">Lưu</string>

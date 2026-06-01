@@ -727,6 +727,11 @@
     <string name="product_brand">Brand</string>
     <string name="product_material">Material</string>
     <string name="product_more_from_seller">More from %1$s</string>
+    <string name="product_seller_name_fallback">this shop</string>
+    <string name="product_related_category">More in %1$s</string>
+    <string name="product_related_category_fallback">this category</string>
+    <string name="product_related_brand">More from %1$s</string>
+    <string name="product_related_style">Similar style</string>
     <string name="product_stat_views">Views</string>
     <string name="product_stat_likes">Likes</string>
     <string name="product_stat_saves">Saves</string>
