@@ -144,8 +144,6 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     /// One id for all tabs — Android keeps one [LazyListState]; do not vary per tab (preserves scroll on swipe).
     private let listingGridScrollId = ProfileScrollIds.listingGrid
 
-    private static let profileScrollSpace = "profileScroll"
-
     private var masonryColumnAssignments: Binding<[String: Bool]> {
         Binding(
             get: { masonryColumnAssignmentsByTab[selectedTab] ?? [:] },
@@ -508,6 +506,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
 private enum ProfileScrollIds {
     static let expandedHeader = "profile_expanded_header"
     static let listingGrid = "profile_listing_grid"
+    static let coordinateSpaceName = "profileScroll"
 }
 
 /// Scrollable tab row with primary underline — Android [ProfileTabSwitcher].
