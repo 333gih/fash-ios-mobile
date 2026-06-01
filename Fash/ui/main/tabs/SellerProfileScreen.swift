@@ -45,9 +45,9 @@ struct SellerProfileScreen: View {
                             items: viewModel.listingsForSelectedTab,
                             showQuickActions: true,
                             showStatusOverlay: true,
+                            additionalBottomInset: promoBottomInset,
                             showGridLoading: viewModel.profile == nil && (viewModel.isLoading || viewModel.isRefreshing),
                             isRefreshing: viewModel.isRefreshing,
-                            additionalBottomInset: promoBottomInset,
                             onTabsPinnedAtTopChange: { pinned in
                                 showPromoFooter = pinned
                             },
