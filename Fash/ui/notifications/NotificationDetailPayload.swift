@@ -28,7 +28,12 @@ enum NotificationDetailPayload {
 
         var lines: [FriendlyLine] = []
         func str(_ keys: String...) -> String? {
-            NotificationNavigation.firstStringFromDataCi(data, keys)
+            for key in keys {
+                if let value = NotificationNavigation.firstStringFromDataCi(data, key) {
+                    return value
+                }
+            }
+            return nil
         }
         func addText(_ label: String, _ value: LineValue) {
             lines.append(.text(label: label, value: value))

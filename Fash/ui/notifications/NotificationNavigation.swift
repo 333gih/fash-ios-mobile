@@ -61,7 +61,10 @@ enum NotificationNavigation {
         )
 
         let wantsChat = nav == "chat" || screen == "chat"
-        let chatId = (wantsChat ? conversationId : nil)?.flatMap { $0.isEmpty ? nil : $0 }
+        let chatId: String? = {
+            guard wantsChat, let id = conversationId, !id.isEmpty else { return nil }
+            return id
+        }()
 
         return NotificationDetailActions(
             orderId: orderId,
