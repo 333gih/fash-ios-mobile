@@ -55,11 +55,8 @@ final class ProfileViewModel {
         }
     }
 
-    /// Badge count: server summary until tab rows are loaded, then live array count.
+    /// Badge count from server summary (not `listings.count` — capped at 50 per fetch).
     func displayCount(for tab: ProfileListingTab) -> Int {
-        if loadedListingTabs.contains(tab.rawValue) {
-            return listings(for: tab).count
-        }
         switch tab {
         case .active: return tabCounts.active
         case .inReview: return tabCounts.inReview
@@ -93,15 +90,6 @@ final class ProfileViewModel {
         loadError = false
         defer { isLoading = false; isRefreshing = false }
 
-        if force {
-            loadedListingTabs = []
-            sellingListings = []
-            inReviewListings = []
-            rejectedListings = []
-            soldListings = []
-            wishlistListings = []
-        }
-
         async let profileResult = deps.userRepository.getMeProfile()
         async let tagsResult = deps.commonCatalogRepository.getAestheticTags(all: true)
         async let summaryResult = deps.listingRepository.getMyListingsSummary()
@@ -113,20 +101,23 @@ final class ProfileViewModel {
             loadError = false
             if case .success(let summary) = await summaryResult {
                 tabCounts = summary
-                if soldCount == 0 { soldCount = summary.sold }
-                if productCount == 0 {
-                    productCount = summary.active + summary.inReview + summary.rejected
-                }
+            } else if !hasCompletedInitialLoad {
+                tabCounts = ProfileListingsSummary()
             }
+            applyProfileListingMetricsFromSummary()
             if case .success(let tags) = await tagsResult {
                 aestheticCatalog = tags
             }
-            let initialTab = resolveInitialTabIndex()
             async let uxTask: Void = loadProfileUxPersonalization(deps: deps)
-            await loadListingsForTab(ProfileListingTab(rawValue: initialTab) ?? .active, deps: deps)
-            hasCompletedInitialLoad = true
+            if hasCompletedInitialLoad {
+                await reloadAllListingTabs(deps: deps)
+            } else {
+                let initialTab = resolveInitialTabIndex()
+                await loadListingsForTab(ProfileListingTab(rawValue: initialTab) ?? .active, deps: deps, force: true)
+                hasCompletedInitialLoad = true
+                prefetchRemainingTabs(except: initialTab, deps: deps)
+            }
             await uxTask
-            prefetchRemainingTabs(except: initialTab, deps: deps)
         case .failure:
             loadError = true
             hasCompletedInitialLoad = true
@@ -136,7 +127,7 @@ final class ProfileViewModel {
     func onProfileTabSelected(_ tabIndex: Int, deps: AppDependencies) {
         deps.uxTabTracker.onTabOpened(scope: "profile", tabKey: UxPersonalizationMapping.profileTabKey(from: tabIndex))
         let tab = ProfileListingTab(rawValue: tabIndex) ?? .active
-        Task { await loadListingsForTab(tab, deps: deps) }
+        Task { await loadListingsForTab(tab, deps: deps, force: false) }
     }
 
     func requestWishlistTabFromHome(deps: AppDependencies) {
@@ -146,7 +137,7 @@ final class ProfileViewModel {
                 await refresh(deps: deps, force: true)
             } else {
                 await refreshIfStale(deps: deps)
-                await loadListingsForTab(.wishlist, deps: deps)
+                await loadListingsForTab(.wishlist, deps: deps, force: true)
             }
         }
     }
@@ -158,7 +149,7 @@ final class ProfileViewModel {
                 await refresh(deps: deps, force: true)
             } else {
                 await refreshIfStale(deps: deps)
-                await loadListingsForTab(.inReview, deps: deps)
+                await loadListingsForTab(.inReview, deps: deps, force: true)
             }
         }
     }
@@ -218,6 +209,12 @@ final class ProfileViewModel {
         soldCount = p.soldCount
     }
 
+    private func applyProfileListingMetricsFromSummary() {
+        if tabCounts.sold > 0 { soldCount = tabCounts.sold }
+        let listed = tabCounts.active + tabCounts.inReview + tabCounts.rejected
+        if listed > 0 { productCount = listed }
+    }
+
     private func resolveInitialTabIndex() -> Int {
         if profileTabOpenGeneration != 0, let req = profileTabOpenRequest {
             return req.tab.rawValue
@@ -234,14 +231,20 @@ final class ProfileViewModel {
     private func prefetchRemainingTabs(except initialTab: Int, deps: AppDependencies) {
         Task {
             for tab in ProfileListingTab.allCases where tab.rawValue != initialTab {
-                await loadListingsForTab(tab, deps: deps)
+                await loadListingsForTab(tab, deps: deps, force: false)
             }
         }
     }
 
-    private func loadListingsForTab(_ tab: ProfileListingTab, deps: AppDependencies) async {
-        guard !loadedListingTabs.contains(tab.rawValue) else { return }
-        let showSpinner = hasCompletedInitialLoad && listings(for: tab).isEmpty
+    private func reloadAllListingTabs(deps: AppDependencies) async {
+        for tab in ProfileListingTab.allCases {
+            await loadListingsForTab(tab, deps: deps, force: true)
+        }
+    }
+
+    private func loadListingsForTab(_ tab: ProfileListingTab, deps: AppDependencies, force: Bool = false) async {
+        if !force, loadedListingTabs.contains(tab.rawValue) { return }
+        let showSpinner = hasCompletedInitialLoad && listings(for: tab).isEmpty && !isRefreshing
         if showSpinner { isSupplementalListingsLoading = true }
         defer {
             if showSpinner { isSupplementalListingsLoading = false }

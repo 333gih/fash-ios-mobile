@@ -195,7 +195,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                 }
                 .scrollTargetLayout()
             }
-            .scrollDisabled(lockScroll || showGridLoading)
+            .scrollDisabled(lockScroll)
             .scrollPosition(id: $profileScrollPosition, anchor: .top)
             .background {
                 PinnedTabScrollOffsetFixer(
@@ -228,6 +228,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             }
             .onChange(of: selectedTab) { oldTab, newTab in
                 guard oldTab != newTab else { return }
+                guard !isRefreshing, !lockScroll else { return }
                 let oldVisual = resolvedTabIndices.firstIndex(of: oldTab) ?? 0
                 let newVisual = resolvedTabIndices.firstIndex(of: newTab) ?? 0
                 tabSlideDirection = newVisual > oldVisual ? 1 : -1

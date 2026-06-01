@@ -239,18 +239,14 @@ final class HomeViewModel {
     }
 
     func pullToRefresh(deps: AppDependencies, isGuestMode: Bool = false) async {
-        requestScrollHomeToTop()
         isRefreshing = true
-        defer {
-            isRefreshing = false
-            requestScrollHomeToTop()
-        }
-        invalidateAllTabFeeds()
+        defer { isRefreshing = false }
+        // Stale-while-revalidate: do not call invalidateAllTabFeeds() — that empties `items` and zeros journey stats UI mid-refresh.
         if !isGuestMode {
             async let ux: Void = loadUxPersonalization(deps: deps, isGuestMode: isGuestMode)
             async let sections: Bool = prefetchRecommendationSections(deps: deps, isGuestMode: isGuestMode)
-            async let stats = loadBuyerHomeStats(deps: deps, isGuestMode: isGuestMode)
-            async let sizing = refreshSizingBannerState(deps: deps, isGuestMode: isGuestMode)
+            async let stats: Void = loadBuyerHomeStats(deps: deps, isGuestMode: isGuestMode)
+            async let sizing: Void = refreshSizingBannerState(deps: deps, isGuestMode: isGuestMode)
             _ = await (ux, sections, stats, sizing)
         }
         async let sellers: Void = loadFeaturedSellers(deps: deps, isGuestMode: isGuestMode)
@@ -259,7 +255,7 @@ final class HomeViewModel {
         if case .success(let slides) = await slidesResult {
             promoSlides = slides.items
         }
-        ensureTabLoaded(selectedFeedTab, deps: deps, isGuestMode: isGuestMode, force: true)
+        await reloadFeedTab(selectedFeedTab, deps: deps, isGuestMode: isGuestMode)
         prefetchAdjacentTabs(around: selectedFeedTab, deps: deps, isGuestMode: isGuestMode)
         lastSuccessfulRefreshAt = Date()
     }
@@ -524,12 +520,24 @@ final class HomeViewModel {
         return await loadRecommendationSections(deps: deps, isGuestMode: isGuestMode, force: false)
     }
 
-    private func loadHuntTodayTab(deps: AppDependencies, isGuestMode: Bool, force: Bool) async -> Bool {
-        if force {
-            sections.huntToday = []
-            loadedTabs.remove(HomeFeedTabKeys.huntToday)
-            if selectedFeedTab == .huntToday { syncItemsForSelectedTab() }
+    private func reloadFeedTab(_ tab: HomeFeedTab, deps: AppDependencies, isGuestMode: Bool) async {
+        tabLoadTasks[tab.rawValue]?.cancel()
+        setTabLoading(tab, true)
+        setTabError(tab, false)
+        let ok = await loadTab(tab, deps: deps, isGuestMode: isGuestMode, force: true)
+        if ok {
+            loadedTabs.insert(tab.rawValue)
+            if HomeFeedTab.recommendationSectionTabs.contains(tab) {
+                HomeFeedTab.recommendationSectionTabs.forEach { loadedTabs.insert($0.rawValue) }
+            }
+        } else {
+            setTabError(tab, true)
         }
+        setTabLoading(tab, false)
+        tabLoadTasks[tab.rawValue] = nil
+    }
+
+    private func loadHuntTodayTab(deps: AppDependencies, isGuestMode: Bool, force: Bool) async -> Bool {
         if !force && loadedTabs.contains(HomeFeedTabKeys.huntToday) { return true }
         if !isGuestMode && recommendationSectionsFetched && !sections.huntToday.isEmpty {
             if selectedFeedTab == .huntToday { syncItemsForSelectedTab() }
@@ -550,12 +558,6 @@ final class HomeViewModel {
 
     private func loadFollowingTab(deps: AppDependencies, isGuestMode: Bool, force: Bool) async -> Bool {
         if isGuestMode { return true }
-        if force {
-            followingItems = []
-            followingHasMore = false
-            loadedTabs.remove(HomeFeedTabKeys.following)
-            if selectedFeedTab == .following { syncItemsForSelectedTab() }
-        }
         if !force && loadedTabs.contains(HomeFeedTabKeys.following) && !followingItems.isEmpty { return true }
         let result = await fetchHomeFeedWithRetry(deps: deps)
         guard case .success(let feed) = result else { return false }
@@ -569,13 +571,6 @@ final class HomeViewModel {
         if !force && recommendationSectionsFetched { return true }
         if force {
             recommendationSectionsFetched = false
-            HomeFeedTab.recommendationSectionTabs.forEach { loadedTabs.remove($0.rawValue) }
-            sections.forYou = []
-            sections.stylePicks = []
-            sections.similarToSaved = []
-            if HomeFeedTab.recommendationSectionTabs.contains(selectedFeedTab) {
-                syncItemsForSelectedTab()
-            }
         }
         let styleLimit = sectionLimit(for: .stylePicks, fallback: 12)
         let similarLimit = sectionLimit(for: .similarSaved, fallback: 12)
@@ -617,7 +612,9 @@ final class HomeViewModel {
     private func syncItemsForSelectedTab() {
         let tab = selectedFeedTab
         guard loadedTabs.contains(tab.rawValue), !tabsLoading.contains(tab.rawValue) else {
-            items = []
+            if !isRefreshing {
+                items = []
+            }
             return
         }
         items = itemsForTab(tab)
@@ -669,13 +666,25 @@ final class HomeViewModel {
             buyerStats = BuyerHomeStats()
             return
         }
+        let previous = buyerStats
         async let ordersResult = deps.orderRepository.getBuyingOrders(limit: 50, offset: 0)
         async let summaryResult = deps.listingRepository.getMyListingsSummary()
         let orders = (try? await ordersResult.get()) ?? []
-        let summary = (try? await summaryResult.get()) ?? ProfileListingsSummary()
-        let saved = summary.wishlist
-        let inReview = summary.inReview
         let delivering = orders.filter { BuyerHomeStatsConstants.deliveringStatuses.contains($0.status.lowercased()) }.count
+
+        var saved = previous.savedListingsCount
+        var inReview = previous.listingsInReviewCount
+        if case .success(let summary) = await summaryResult {
+            saved = summary.wishlist
+            inReview = summary.inReview
+        } else {
+            async let wishCount = deps.listingRepository.getWishlistSavedCount(limit: 1, offset: 0)
+            async let inReviewList = deps.listingRepository.getMyListings(status: "in_review", limit: 50, offset: 0)
+            if case .success(let count) = await wishCount { saved = count }
+            if case .success(let list) = await inReviewList {
+                inReview = list.filter { $0.isInReviewListing() }.count
+            }
+        }
         buyerStats = BuyerHomeStats(
             activeDeliveryOrders: delivering,
             savedListingsCount: saved,
