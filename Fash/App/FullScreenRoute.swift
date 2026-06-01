@@ -53,8 +53,16 @@ enum FullScreenRoute: Identifiable {
 }
 
 extension AppRouter {
+    /// Listing id shown on top of Explore overlay — `ExploreOverlayHost` presents PDP; RootView skips duplicate cover.
+    var exploreOverlayListingId: String? {
+        guard showExploreOverlay else { return nil }
+        let id = selectedListingId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return id.isEmpty ? nil : id
+    }
+
     /// Priority matches Android MainActivity overlay back stack (outermost first).
     var fullScreenRoute: FullScreenRoute? {
+        if exploreOverlayListingId != nil { return nil }
         if let id = selectedListingId { return .listing(id) }
         if let user = sellerShopUsername { return .seller(user) }
         if let editId = editListingId { return .editListing(editId) }

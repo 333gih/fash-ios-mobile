@@ -218,6 +218,10 @@ final class SellerProfileViewModel {
         }
     }
 
+    func patchListingEngagement(_ id: String, transform: (ListingFeedItem) -> ListingFeedItem) {
+        patch(id, transform: transform)
+    }
+
     private func loadListings(
         sellerId: String,
         username: String,

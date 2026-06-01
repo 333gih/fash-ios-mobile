@@ -1,5 +1,10 @@
 import SwiftUI
 
+/// Identifiable wrapper for PDP `fullScreenCover` while Explore overlay is open.
+private struct ExploreListingDetailCover: Identifiable {
+    let id: String
+}
+
 /// Full-screen Explore from Home search — Android `ExploreOverlayHost`.
 struct ExploreOverlayHost: View {
     @Environment(AppDependencies.self) private var deps
@@ -17,6 +22,7 @@ struct ExploreOverlayHost: View {
     @State private var marketplaceControlsMaxY: CGFloat = .infinity
 
     var body: some View {
+        @Bindable var listingPreview = deps.listingPreview
         VStack(spacing: 0) {
             ExploreTopBar(
                 viewModel: viewModel,
@@ -65,13 +71,22 @@ struct ExploreOverlayHost: View {
         }
         .overlay(alignment: .bottom) {
             ListingPreviewOverlay(
-                listingPreview: deps.listingPreview,
+                listingPreview: listingPreview,
                 router: router,
                 isGuestMode: isGuestMode,
                 onRequestLogin: { onRequestSignIn?(L10n.guestLoginReasonBuy) },
                 onFeedEngagementPatch: { id, transform in
                     viewModel.patchListingEngagement(id, transform: transform)
                 }
+            )
+            .zIndex(20)
+        }
+        .fullScreenCover(item: exploreListingCoverBinding) { cover in
+            FashProductDetailRouteView(
+                router: router,
+                listingId: cover.id,
+                isGuestMode: isGuestMode,
+                dismissExploreOverlayOnClose: false
             )
         }
         .onAppear {
@@ -89,6 +104,16 @@ struct ExploreOverlayHost: View {
             await viewModel.loadFilterCatalogIfNeeded(deps: deps)
             await viewModel.onExploreOpened(deps: deps, isGuestMode: isGuestMode)
         }
+    }
+
+    private var exploreListingCoverBinding: Binding<ExploreListingDetailCover?> {
+        Binding(
+            get: {
+                guard let id = router.exploreOverlayListingId else { return nil }
+                return ExploreListingDetailCover(id: id)
+            },
+            set: { router.selectedListingId = $0?.id }
+        )
     }
 
     private func syncScrollChrome() {

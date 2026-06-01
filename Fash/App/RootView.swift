@@ -132,47 +132,25 @@ struct RootView: View {
     private func fullScreenContent(_ route: FullScreenRoute) -> some View {
         switch route {
         case .listing(let id):
-            ProductDetailScreen(
+            FashProductDetailRouteView(
+                router: router,
                 listingId: id,
-                isGuestMode: router.isGuestMode,
-                onDismiss: { router.selectedListingId = nil },
-                onBuyNow: { router.selectedCheckoutListingId = $0 },
-                onContinueOrder: { orderId in
-                    router.selectedListingId = nil
-                    router.selectedOrderId = orderId
-                },
-                onChat: { convId in
-                    router.selectedListingId = nil
-                    router.selectedConversationId = convId
-                },
-                onShare: { _, _ in },
-                onListingClick: { listingId in
-                    router.selectedListingId = listingId
-                },
-                onVisitSellerShop: { username in
-                    router.selectedListingId = nil
-                    router.sellerShopUsername = username
-                },
-                onRequestLogin: { router.loginStep = .email },
-                onNavigateToExplore: { cat, brand, tag, query, countryId, iso in
-                    router.selectedListingId = nil
-                    router.pendingExploreProfileFilter = ExploreProfileFilterRequest(
-                        categoryId: cat,
-                        brandId: brand,
-                        aestheticTagId: tag,
-                        searchQuery: query,
-                        countryId: countryId,
-                        countryIso2: iso
-                    )
-                }
+                isGuestMode: router.isGuestMode
             )
         case .seller(let user):
             SellerProfileScreen(
+                router: router,
                 username: user,
                 isGuestMode: router.isGuestMode,
                 onDismiss: { router.sellerShopUsername = nil },
-                onListingClick: { id in
-                    deps.presentListingDetail(listingId: id, router: router)
+                onListingClick: { item in
+                    deps.presentListingPreview(
+                        item: item,
+                        router: router,
+                        publicBrowse: router.isGuestMode,
+                        surface: "seller_shop",
+                        position: 0
+                    )
                 },
                 onNavigateToExploreFromProfile: { cat, brand, tag, q, countryId, iso in
                     router.sellerShopUsername = nil

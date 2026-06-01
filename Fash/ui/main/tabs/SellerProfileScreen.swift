@@ -3,10 +3,11 @@ import SwiftUI
 struct SellerProfileScreen: View {
     @Environment(\.fashSpacing) private var spacing
     @Environment(AppDependencies.self) private var deps
+    @Bindable var router: AppRouter
     let username: String
     var isGuestMode: Bool = false
     var onDismiss: () -> Void
-    var onListingClick: (String) -> Void = { _ in }
+    var onListingClick: (ListingFeedItem) -> Void = { _ in }
     var onRequestSignIn: (() -> Void)? = nil
     var onNavigateToExploreFromProfile: (
         _ categoryId: String?,
@@ -52,7 +53,7 @@ struct SellerProfileScreen: View {
                             onTabsPinnedAtTopChange: { pinned in
                                 showPromoFooter = pinned
                             },
-                            onListingClick: { item in onListingClick(item.id) },
+                            onListingClick: { item in onListingClick(item) },
                             onLike: { item in
                                 if isGuestMode { onRequestSignIn?() }
                                 else { Task { await viewModel.toggleLike(item, deps: deps) } }
@@ -81,6 +82,17 @@ struct SellerProfileScreen: View {
                     .allowsHitTesting(showPromoFooter)
                     .accessibilityHidden(!showPromoFooter)
                 }
+
+                ListingPreviewOverlay(
+                    listingPreview: deps.listingPreview,
+                    router: router,
+                    isGuestMode: isGuestMode,
+                    onRequestLogin: { onRequestSignIn?() },
+                    onFeedEngagementPatch: { id, transform in
+                        viewModel.patchListingEngagement(id, transform: transform)
+                    }
+                )
+                .zIndex(30)
             }
         }
         .background(FashColors.screen)
