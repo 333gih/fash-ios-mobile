@@ -121,7 +121,8 @@ final class PushNotificationCoordinator: NSObject {
 extension PushNotificationCoordinator: MessagingDelegate {
     nonisolated func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
         guard let fcmToken, !fcmToken.isEmpty else { return }
-        PushDiagnostics.info("MessagingDelegate token refresh (prefix=\(PushNotificationCoordinator.tokenLogPrefix(fcmToken)))")
+        let prefix = String(fcmToken.prefix(8)) + "…"
+        PushDiagnostics.info("MessagingDelegate token refresh (prefix=\(prefix))")
         Task { @MainActor in
             await AppDependencies.shared.fcmTokenRegistrar.registerDeviceToken(fcmToken)
         }
