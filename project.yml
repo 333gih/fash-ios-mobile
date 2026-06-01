@@ -29,7 +29,7 @@ settings:
     SWIFT_VERSION: "5.9"
     TARGETED_DEVICE_FAMILY: "1"
     MARKETING_VERSION: "1.0.17"
-    CURRENT_PROJECT_VERSION: "126"
+    CURRENT_PROJECT_VERSION: "127"
     DEVELOPMENT_TEAM: ""
     CODE_SIGN_STYLE: Automatic
     INFOPLIST_FILE: Fash/Info.plist
@@ -107,7 +107,7 @@ targets:
         ProdDebug:
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: PROD DEBUG
           PRODUCT_BUNDLE_IDENTIFIER: com.pc.fash-ios-mobile
-          CODE_SIGN_ENTITLEMENTS: Fash/Fash-Dev.entitlements
+          CODE_SIGN_ENTITLEMENTS: Fash/Fash-Prod.entitlements
         ProdRelease:
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: PROD
           PRODUCT_BUNDLE_IDENTIFIER: com.pc.fash-ios-mobile

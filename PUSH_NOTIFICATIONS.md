@@ -82,5 +82,9 @@ Test trên **thiết bị thật**. Simulator hỗ trợ push hạn chế.
 | Chỉ Android nhận | `device_platform: ios`; FCM iOS token |
 | Out app không thấy push | Server **không gửi FCM** khi `presence:user:{id}` còn (WS online). iOS ngắt WS khi `scenePhase == .background`; hoặc **kill app** rồi test lại |
 | Build 104+ vẫn không push | Firebase Console → APNs **.p8** cho app `com.pc.fash-ios-mobile`; kiểm tra token iOS trong DB `fcm_tokens` |
+| TestFlight vẫn không push | Console.app filter `subsystem:com.pc.fash-ios-mobile category:Push` — phải thấy `APNs token set (type=production)` và `FcmTokenRegistrar: registerFcm: backend OK` |
+| `FirebaseAppDelegateProxyEnabled` = NO | App phải gọi `setAPNSToken` + `appDidReceiveMessage` trong `AppDelegate` (đã có trong repo) |
+
+**APNs token type:** app `com.pc.fash-ios-mobile` (TestFlight) luôn dùng **production**; chỉ `com.pc.fash-ios-mobile.dev` dùng sandbox.
 
 Env dùng chung Android: `AUTH_SERVICE_BASE_URL`, `AUTH_FCM_REGISTER_PATH`.

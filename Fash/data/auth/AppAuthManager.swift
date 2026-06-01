@@ -22,6 +22,10 @@ final class AppAuthManager {
 
     func onSessionSaved() {
         isAuthenticated = true
+        Task {
+            await PushNotificationCoordinator.shared.requestAuthorizationAndRegisterForRemoteNotifications()
+            await PushNotificationCoordinator.shared.registerCurrentTokenIfSession()
+        }
     }
 
     func onSessionCleared(reason: String? = nil) {

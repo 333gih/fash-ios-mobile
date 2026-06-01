@@ -74,20 +74,14 @@ final class FcmTokenRegistrar {
     }
 
     private func logD(_ message: String) {
-        #if DEBUG
-        print("[FcmTokenRegistrar] \(message)")
-        #endif
+        PushDiagnostics.info("FcmTokenRegistrar: \(message)")
     }
 
     private func logW(_ message: String) {
-        #if DEBUG
-        print("[FcmTokenRegistrar] WARN \(message)")
-        #endif
+        PushDiagnostics.warning("FcmTokenRegistrar: \(message)")
     }
 
     private func logE(_ message: String) {
-        #if DEBUG
-        print("[FcmTokenRegistrar] ERROR \(message)")
-        #endif
+        PushDiagnostics.error("FcmTokenRegistrar: \(message)")
     }
 }

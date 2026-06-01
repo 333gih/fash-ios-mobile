@@ -17,13 +17,41 @@ final class PushNotificationCoordinator: NSObject {
 
     static func configureFirebaseIfNeeded() {
         guard isFirebaseConfigured else {
-            #if DEBUG
-            print("[Push] GoogleService-Info.plist missing — FCM disabled (see PUSH_NOTIFICATIONS.md)")
-            #endif
+            PushDiagnostics.warning("GoogleService-Info.plist missing — FCM disabled")
             return
         }
         if FirebaseApp.app() == nil {
             FirebaseApp.configure()
+            PushDiagnostics.info("Firebase configured")
+        }
+    }
+
+    /// Sandbox only for the dev bundle id; TestFlight/App Store prod bundle always uses production APNs.
+    static func apnsTokenTypeForCurrentBuild() -> MessagingAPNSTokenType {
+        let bundleId = Bundle.main.bundleIdentifier ?? ""
+        if bundleId.hasSuffix(".dev") {
+            return .sandbox
+        }
+        return .prod
+    }
+
+    static func applyAPNSToken(_ deviceToken: Data) {
+        guard isFirebaseConfigured else { return }
+        let type = apnsTokenTypeForCurrentBuild()
+        Messaging.messaging().setAPNSToken(deviceToken, type: type)
+        PushDiagnostics.info("APNs token set (type=\(type == .prod ? "production" : "sandbox"))")
+    }
+
+    /// If the user already granted permission, register with APNs on cold start (before login UI).
+    func syncRemoteNotificationRegistrationOnLaunch() async {
+        guard Self.isFirebaseConfigured else { return }
+        let settings = await UNUserNotificationCenter.current().notificationSettings()
+        switch settings.authorizationStatus {
+        case .authorized, .provisional, .ephemeral:
+            await UIApplication.shared.registerForRemoteNotifications()
+            PushDiagnostics.info("registerForRemoteNotifications (authorization already granted)")
+        default:
+            break
         }
     }
 
@@ -31,18 +59,23 @@ final class PushNotificationCoordinator: NSObject {
     func registerCurrentTokenIfSession() async {
         guard Self.isFirebaseConfigured else { return }
         guard AppDependencies.shared.authSessionStore.read() != nil else { return }
-        for attempt in 0..<4 {
+        for attempt in 0..<6 {
             if let token = await Self.fetchFCMToken(), !token.isEmpty {
+                PushDiagnostics.info("FCM token ready (prefix=\(Self.tokenLogPrefix(token)))")
                 await AppDependencies.shared.fcmTokenRegistrar.registerDeviceToken(token)
                 return
             }
-            if attempt < 3 {
-                try? await Task.sleep(for: .milliseconds(400 * (attempt + 1)))
+            if attempt < 5 {
+                try? await Task.sleep(for: .milliseconds(500 * (attempt + 1)))
             }
         }
-        #if DEBUG
-        print("[Push] registerCurrentTokenIfSession: FCM token unavailable after retries (APNs / Firebase?)")
-        #endif
+        PushDiagnostics.error("FCM token unavailable after retries — check APNs token type, permission, and Firebase APNs key")
+    }
+
+    private static func tokenLogPrefix(_ token: String) -> String {
+        let t = token.trimmingCharacters(in: .whitespaces)
+        guard t.count > 12 else { return t }
+        return String(t.prefix(8)) + "…"
     }
 
     /// Requests notification permission and registers with APNs (required before FCM token on real device).
@@ -56,27 +89,21 @@ final class PushNotificationCoordinator: NSObject {
         let center = UNUserNotificationCenter.current()
         do {
             let granted = try await center.requestAuthorization(options: [.alert, .badge, .sound])
-            #if DEBUG
-            print("[Push] notification authorization granted=\(granted)")
-            #endif
+            PushDiagnostics.info("notification authorization granted=\(granted)")
             if granted {
                 await UIApplication.shared.registerForRemoteNotifications()
             }
         } catch {
-            #if DEBUG
-            print("[Push] authorization request failed: \(error.localizedDescription)")
-            #endif
+            PushDiagnostics.error("authorization request failed: \(error.localizedDescription)")
         }
     }
 
     static func fetchFCMToken() async -> String? {
         await withCheckedContinuation { continuation in
             Messaging.messaging().token { token, error in
-                #if DEBUG
                 if let error {
-                    print("[Push] FCM token fetch failed: \(error.localizedDescription)")
+                    PushDiagnostics.error("FCM token fetch failed: \(error.localizedDescription)")
                 }
-                #endif
                 continuation.resume(returning: token)
             }
         }
@@ -94,6 +121,7 @@ final class PushNotificationCoordinator: NSObject {
 extension PushNotificationCoordinator: MessagingDelegate {
     nonisolated func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
         guard let fcmToken, !fcmToken.isEmpty else { return }
+        PushDiagnostics.info("MessagingDelegate token refresh (prefix=\(PushNotificationCoordinator.tokenLogPrefix(fcmToken)))")
         Task { @MainActor in
             await AppDependencies.shared.fcmTokenRegistrar.registerDeviceToken(fcmToken)
         }
