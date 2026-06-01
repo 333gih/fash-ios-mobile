@@ -30,6 +30,7 @@ final class SellerProfileViewModel {
 
     private struct SellerTabPagination {
         var hasMore = true
+        var nextOffset = 0
         var isLoadingMore = false
         var isLoadingFirstPage = false
         var isReloading = false
@@ -364,6 +365,7 @@ final class SellerProfileViewModel {
             mutatePagination(for: tab) { state in
                 state.fetchGeneration += 1
                 state.hasMore = true
+                state.nextOffset = 0
             }
         } else if loadedListingTabs.contains(tab.rawValue) {
             return
@@ -398,7 +400,10 @@ final class SellerProfileViewModel {
         switch result {
         case .success(let payload):
             setListings(payload.items, for: tab)
-            mutatePagination(for: tab) { $0.hasMore = payload.rawCount >= sellerListingPageSize }
+            mutatePagination(for: tab) {
+                $0.nextOffset = payload.rawCount
+                $0.hasMore = payload.rawCount >= sellerListingPageSize
+            }
             FeedListingImagePrefetch.prefetch(items: payload.items)
         case .failure:
             if !hadItems {
@@ -419,7 +424,7 @@ final class SellerProfileViewModel {
         mutatePagination(for: tab) { $0.loadMoreCooldownUntil = now.addingTimeInterval(0.4) }
 
         let pageGen = pagination(for: tab).fetchGeneration
-        let offset = listings(for: tab).count
+        let offset = pagination(for: tab).nextOffset
         guard offset > 0 else { return }
 
         mutatePagination(for: tab) { $0.isLoadingMore = true }
@@ -442,13 +447,14 @@ final class SellerProfileViewModel {
             }
             var seen = Set(listings(for: tab).map(\.id))
             let fresh = payload.items.filter { seen.insert($0.id).inserted }
-            if fresh.isEmpty {
-                mutatePagination(for: tab) { $0.hasMore = payload.rawCount >= sellerListingPageSize }
-                return
+            if !fresh.isEmpty {
+                appendListings(fresh, for: tab)
+                FeedListingImagePrefetch.prefetch(items: fresh)
             }
-            appendListings(fresh, for: tab)
-            mutatePagination(for: tab) { $0.hasMore = payload.rawCount >= sellerListingPageSize }
-            FeedListingImagePrefetch.prefetch(items: fresh)
+            mutatePagination(for: tab) { state in
+                state.nextOffset += payload.rawCount
+                state.hasMore = payload.rawCount >= sellerListingPageSize
+            }
         case .failure:
             break
         }

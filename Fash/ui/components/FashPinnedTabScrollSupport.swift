@@ -104,6 +104,26 @@ struct PinnedTabScrollOffsetFixer: UIViewRepresentable {
 }
 
 enum PinnedTabScrollReset {
+    /// Programmatic scroll without binding `scrollPosition` (avoids jump-to-top when feed appends).
+    @MainActor
+    static func scrollToPinnedContent<ID: Hashable>(
+        proxy: ScrollViewProxy,
+        resetToken: Binding<Int>,
+        contentId: ID,
+        followUpDelaysMs: [Int] = [60, 140, 260]
+    ) {
+        proxy.scrollTo(contentId, anchor: .top)
+        resetToken.wrappedValue += 1
+
+        guard !followUpDelaysMs.isEmpty else { return }
+        Task { @MainActor in
+            for delayMs in followUpDelaysMs {
+                try? await Task.sleep(for: .milliseconds(delayMs))
+                proxy.scrollTo(contentId, anchor: .top)
+            }
+        }
+    }
+
     @MainActor
     static func scrollToPinnedContent<ID: Hashable>(
         scrollPosition: Binding<ID?>,
@@ -113,17 +133,12 @@ enum PinnedTabScrollReset {
         followUpDelaysMs: [Int] = [60, 140, 260]
     ) {
         scrollPosition.wrappedValue = contentId
-        proxy.scrollTo(contentId, anchor: .top)
-        resetToken.wrappedValue += 1
-
-        guard !followUpDelaysMs.isEmpty else { return }
-        Task { @MainActor in
-            for delayMs in followUpDelaysMs {
-                try? await Task.sleep(for: .milliseconds(delayMs))
-                scrollPosition.wrappedValue = contentId
-                proxy.scrollTo(contentId, anchor: .top)
-            }
-        }
+        scrollToPinnedContent(
+            proxy: proxy,
+            resetToken: resetToken,
+            contentId: contentId,
+            followUpDelaysMs: followUpDelaysMs
+        )
     }
 }
 

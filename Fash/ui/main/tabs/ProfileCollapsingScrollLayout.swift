@@ -130,7 +130,6 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     @State private var showBriefBar = false
     @State private var showSectionTitle = false
     @State private var lastScrollOffset: CGFloat = 0
-    @State private var profileScrollPosition: String?
     @State private var profileScrollResetToken = 0
     @State private var scrollClampRevision = 0
     @State private var masonryColumnAssignmentsByTab: [Int: [String: Bool]] = [:]
@@ -139,8 +138,10 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     /// Sticky chrome stayed pinned through rubber-band — avoids tab row flicker / “missing” tabs.
     @State private var chromePinnedLatch = false
 
-    /// One id for all tabs — Android keeps one [LazyListState]; per-tab ids invalidate [scrollPosition] on swipe.
+    /// One id for all tabs — Android keeps one [LazyListState]; do not vary per tab (preserves scroll on swipe).
     private let listingGridScrollId = ProfileScrollIds.listingGrid
+
+    private let listingPageSize = 20
 
     private var masonryColumnAssignments: Binding<[String: Bool]> {
         Binding(
@@ -200,7 +201,6 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                 .scrollTargetLayout()
             }
             .scrollDisabled(lockScroll)
-            .scrollPosition(id: $profileScrollPosition, anchor: .top)
             .background {
                 PinnedTabScrollOffsetFixer(
                     resetToken: profileScrollResetToken,
@@ -259,7 +259,6 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             emitTabsPinnedIfNeeded(pinned: true)
         }
         PinnedTabScrollReset.scrollToPinnedContent(
-            scrollPosition: $profileScrollPosition,
             proxy: scrollProxy,
             resetToken: $profileScrollResetToken,
             contentId: listingGridScrollId,
@@ -411,6 +410,8 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                         FeedLoadMoreFooter(
                             enabled: hasMoreListings,
                             isLoadingMore: isLoadingMoreListings,
+                            minimumItemsForAutoLoad: listingPageSize,
+                            loadedItemCount: items.count,
                             onLoadMore: onLoadMore
                         )
                     }

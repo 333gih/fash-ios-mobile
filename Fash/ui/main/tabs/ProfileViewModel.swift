@@ -242,8 +242,15 @@ final class ProfileViewModel {
 
     // MARK: - Private
 
+    private struct ListingPagePayload {
+        let items: [ListingFeedItem]
+        let rawCount: Int
+    }
+
     private struct ProfileTabPagination {
         var hasMore = true
+        /// Next API offset (advance by raw page size, not deduped display count).
+        var nextOffset = 0
         var isLoadingMore = false
         var isLoadingFirstPage = false
         var isReloading = false
@@ -330,6 +337,7 @@ final class ProfileViewModel {
             mutatePagination(for: tab) { state in
                 state.fetchGeneration += 1
                 state.hasMore = true
+                state.nextOffset = 0
             }
         } else if loadedListingTabs.contains(tab.rawValue) {
             return
@@ -357,12 +365,15 @@ final class ProfileViewModel {
 
         switch result {
         case .success(let page):
-            setListings(page, for: tab)
-            mutatePagination(for: tab) { $0.hasMore = page.count >= profileListingPageSize }
+            setListings(page.items, for: tab)
+            mutatePagination(for: tab) {
+                $0.nextOffset = page.rawCount
+                $0.hasMore = page.rawCount >= profileListingPageSize
+            }
             if tab == .sold, soldCount == 0, tabCounts.sold > 0 {
                 soldCount = tabCounts.sold
             }
-            FeedListingImagePrefetch.prefetch(items: page)
+            FeedListingImagePrefetch.prefetch(items: page.items)
         case .failure:
             if !hadItems {
                 setListings([], for: tab)
@@ -378,7 +389,7 @@ final class ProfileViewModel {
         mutatePagination(for: tab) { $0.loadMoreCooldownUntil = now.addingTimeInterval(0.4) }
 
         let generation = pagination(for: tab).fetchGeneration
-        let offset = listings(for: tab).count
+        let offset = pagination(for: tab).nextOffset
         guard offset > 0 else { return }
 
         mutatePagination(for: tab) { $0.isLoadingMore = true }
@@ -389,19 +400,20 @@ final class ProfileViewModel {
 
         switch result {
         case .success(let page):
-            guard !page.isEmpty else {
+            guard page.rawCount > 0 else {
                 mutatePagination(for: tab) { $0.hasMore = false }
                 return
             }
             var seen = Set(listings(for: tab).map(\.id))
-            let fresh = page.filter { seen.insert($0.id).inserted }
-            if fresh.isEmpty {
-                mutatePagination(for: tab) { $0.hasMore = page.count >= profileListingPageSize }
-                return
+            let fresh = page.items.filter { seen.insert($0.id).inserted }
+            if !fresh.isEmpty {
+                appendListings(fresh, for: tab)
+                FeedListingImagePrefetch.prefetch(items: fresh)
             }
-            appendListings(fresh, for: tab)
-            mutatePagination(for: tab) { $0.hasMore = page.count >= profileListingPageSize }
-            FeedListingImagePrefetch.prefetch(items: fresh)
+            mutatePagination(for: tab) { state in
+                state.nextOffset += page.rawCount
+                state.hasMore = page.rawCount >= profileListingPageSize
+            }
         case .failure:
             break
         }
@@ -411,37 +423,44 @@ final class ProfileViewModel {
         tab: ProfileListingTab,
         offset: Int,
         deps: AppDependencies
-    ) async -> Result<[ListingFeedItem], Error> {
+    ) async -> Result<ListingPagePayload, Error> {
+        let result: Result<[ListingFeedItem], Error>
         switch tab {
         case .wishlist:
-            return await deps.listingRepository.getWishlistListings(
+            result = await deps.listingRepository.getWishlistListings(
                 limit: profileListingPageSize,
                 offset: offset
             )
         case .active:
-            return await deps.listingRepository.getMyListings(
+            result = await deps.listingRepository.getMyListings(
                 status: "active",
                 limit: profileListingPageSize,
                 offset: offset
             )
         case .inReview:
-            return await deps.listingRepository.getMyListings(
+            result = await deps.listingRepository.getMyListings(
                 status: "in_review",
                 limit: profileListingPageSize,
                 offset: offset
             )
         case .rejected:
-            return await deps.listingRepository.getMyListings(
+            result = await deps.listingRepository.getMyListings(
                 status: "rejected",
                 limit: profileListingPageSize,
                 offset: offset
             )
         case .sold:
-            return await deps.listingRepository.getMyListings(
+            result = await deps.listingRepository.getMyListings(
                 status: "sold",
                 limit: profileListingPageSize,
                 offset: offset
             )
+        }
+        switch result {
+        case .success(let items):
+            return .success(ListingPagePayload(items: items, rawCount: items.count))
+        case .failure(let error):
+            return .failure(error)
         }
     }
 
