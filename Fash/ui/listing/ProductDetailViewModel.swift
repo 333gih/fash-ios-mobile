@@ -406,9 +406,9 @@ final class ProductDetailViewModel {
                 categoryId: categoryId,
                 aestheticTagIds: aestheticTagIds,
                 brandId: brandId,
+                sort: "recent",
                 limit: ProductDetailDiscoveryConstants.relatedRailLimit,
-                offset: 0,
-                sort: "recent"
+                offset: 0
             )
         }
         guard case .success(let list) = result else { return [] }
