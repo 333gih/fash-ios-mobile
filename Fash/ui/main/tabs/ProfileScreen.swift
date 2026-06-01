@@ -78,6 +78,8 @@ struct ProfileScreen: View {
                         isRefreshing: viewModel.isRefreshing,
                         lockScroll: showProfileBlockingLoader,
                         scrollToGridToken: scrollToGridToken,
+                        scrollToListingId: viewModel.focusListingId,
+                        scrollToListingToken: viewModel.focusListingScrollToken,
                         onListingClick: { item in handleListingTap(item) },
                         onLike: selectedProfileTab == .wishlist
                             ? { item in Task { await viewModel.toggleLike(item, deps: deps) } }
@@ -85,8 +87,6 @@ struct ProfileScreen: View {
                         onSave: selectedProfileTab == .wishlist
                             ? { item in Task { await viewModel.toggleSave(item, deps: deps) } }
                             : nil,
-                        scrollToListingId: viewModel.focusListingId,
-                        scrollToListingToken: viewModel.focusListingScrollToken,
                         expandedHeader: { expandedHeader },
                         compactHeader: { compactHeader }
                     )
