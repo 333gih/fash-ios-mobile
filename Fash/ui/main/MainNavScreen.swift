@@ -466,6 +466,10 @@ struct MainNavScreen: View {
                     onEditListingClick: { id in
                         router.selectedListingId = nil
                         deps.listingPreview.close(deps: deps)
+                        router.profileEditReturn = ProfileEditReturnContext(
+                            tab: profileVM.lastSelectedProfileTab,
+                            listingId: id
+                        )
                         router.editListingId = id
                     },
                     onNavigateToExploreFromProfile: scheduleExploreFromProfile

@@ -50,6 +50,10 @@ final class EditListingViewModel {
         return hasFormChanges(detail: d, form: form, baselineTags: baselineTagIds)
     }
 
+    func reportShare(listingId: String, title: String, deps: AppDependencies) {
+        deps.feedEventReporter.share(listingId: listingId, surface: "edit_listing")
+    }
+
     func load(listingId: String, deps: AppDependencies) async {
         let id = listingId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !id.isEmpty else {

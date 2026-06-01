@@ -1,11 +1,39 @@
 import SwiftUI
 
-struct FashScreenScaffold<Content: View>: View {
+struct FashScreenScaffold<Content: View, Trailing: View>: View {
     @Environment(\.fashSpacing) private var spacing
     let title: String
     var showBack = false
     var onBack: (() -> Void)?
+    @ViewBuilder var trailing: () -> Trailing
     @ViewBuilder let content: () -> Content
+
+    init(
+        title: String,
+        showBack: Bool = false,
+        onBack: (() -> Void)? = nil,
+        @ViewBuilder content: @escaping () -> Content
+    ) where Trailing == EmptyView {
+        self.title = title
+        self.showBack = showBack
+        self.onBack = onBack
+        self.trailing = { EmptyView() }
+        self.content = content
+    }
+
+    init(
+        title: String,
+        showBack: Bool = false,
+        onBack: (() -> Void)? = nil,
+        @ViewBuilder trailing: @escaping () -> Trailing,
+        @ViewBuilder content: @escaping () -> Content
+    ) {
+        self.title = title
+        self.showBack = showBack
+        self.onBack = onBack
+        self.trailing = trailing
+        self.content = content
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -18,6 +46,7 @@ struct FashScreenScaffold<Content: View>: View {
                     .fontWeight(.bold)
                     .foregroundStyle(FashColors.textPrimary)
                 Spacer(minLength: 0)
+                trailing()
             }
             .padding(.leading, showBack ? FashBackButton.leadingScreenInset : spacing.editorialStart)
             .padding(.trailing, spacing.editorialEnd)

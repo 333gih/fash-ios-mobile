@@ -10,6 +10,8 @@ struct ProductDetailMasonryRail: View {
     let onListingTap: (String) -> Void
     var onLike: ((ListingFeedItem) -> Void)?
     var onSave: ((ListingFeedItem) -> Void)?
+    /// When true, omit outer padding — parent hub provides the card chrome.
+    var embedInHub: Bool = false
 
     @State private var columnAssignments: [String: Bool] = [:]
 
@@ -19,7 +21,7 @@ struct ProductDetailMasonryRail: View {
         } else {
             VStack(alignment: .leading, spacing: spacing.spacing2) {
                 ProductDetailComponents.sectionTitle(title, icon: systemImage)
-                    .padding(.horizontal, spacing.editorialStart)
+                    .padding(.horizontal, embedInHub ? spacing.spacing2 : spacing.editorialStart)
                 ListingStaggeredMasonryView(
                     items: items,
                     columnAssignments: $columnAssignments
@@ -37,9 +39,9 @@ struct ProductDetailMasonryRail: View {
                         onSave: onSave.map { handler in { handler(item) } }
                     )
                 }
-                .padding(.horizontal, spacing.editorialStart)
+                .padding(.horizontal, embedInHub ? spacing.spacing2 : spacing.editorialStart)
             }
-            .padding(.top, spacing.spacing2)
+            .padding(.top, embedInHub ? 0 : spacing.spacing2)
         }
     }
 }

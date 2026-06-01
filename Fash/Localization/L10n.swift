@@ -1982,6 +1982,8 @@ enum L10n {
         String(format: t("product_related_brand"), a1)
     }
     static var productRelatedStyle: String { t("product_related_style") }
+    static var productDiscoveryHubTitle: String { t("product_discovery_hub_title") }
+    static var productDiscoveryHubSubtitle: String { t("product_discovery_hub_subtitle") }
     static var productOffersAccepted: String { t("product_offers_accepted") }
     static func productPriceDropFloor(_ a1: CVarArg) -> String {
         String(format: t("product_price_drop_floor"), a1)

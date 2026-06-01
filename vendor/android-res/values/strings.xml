@@ -751,6 +751,8 @@
     <string name="product_related_category_fallback">danh mục này</string>
     <string name="product_related_brand">Thêm từ %1$s</string>
     <string name="product_related_style">Cùng phong cách</string>
+    <string name="product_discovery_hub_title">Gợi ý tương tự sản phẩm này</string>
+    <string name="product_discovery_hub_subtitle">Các tin cùng shop, danh mục, thương hiệu hoặc phong cách — cuộn liền mạch trong một khối.</string>
     <string name="product_stat_views">Lượt xem</string>
     <string name="product_stat_likes">Thích</string>
     <string name="product_stat_saves">Lưu</string>

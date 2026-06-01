@@ -166,8 +166,19 @@ struct RootView: View {
             )
         case .editListing(let id):
             EditListingScreen(listingId: id, onDismiss: {
+                let returnCtx = router.profileEditReturn
                 router.editListingId = nil
-                Task { await profileVM.refresh(deps: deps, force: true) }
+                router.profileEditReturn = nil
+                if let returnCtx {
+                    let tab = ProfileListingTab(rawValue: returnCtx.tab) ?? .active
+                    Task {
+                        await profileVM.completeEditReturn(
+                            tab: tab,
+                            listingId: returnCtx.listingId,
+                            deps: deps
+                        )
+                    }
+                }
             })
         case .editProfile:
             EditProfileScreen(onDismiss: { router.showEditProfile = false })

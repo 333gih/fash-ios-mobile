@@ -9,9 +9,28 @@ struct EditListingScreen: View {
 
     @State private var viewModel = EditListingViewModel()
     @State private var showDeleteDialog = false
+    @State private var sharePayload: EditListingSharePayload?
 
     var body: some View {
-        OverlayScreenHost(title: L10n.editListingScreenTitle, onDismiss: onDismiss) {
+        OverlayScreenHost(title: L10n.editListingScreenTitle, onDismiss: onDismiss, trailing: {
+            if viewModel.detail != nil {
+                Button {
+                    guard let d = viewModel.detail else { return }
+                    viewModel.reportShare(listingId: d.id, title: d.title, deps: deps)
+                    let web = AppEnvironment.listingShareURL(listingId: d.id)
+                    let fashUri = ListingDeepLinks.fashListingURL(listingId: d.id)?.absoluteString ?? ""
+                    let title = d.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        ? L10n.productDetailTitle
+                        : d.title
+                    sharePayload = EditListingSharePayload(items: [L10n.shareListingSubject, L10n.shareListingText(title, web, fashUri)])
+                } label: {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(FashColors.brandPrimary)
+                        .frame(width: 44, height: 44)
+                }
+            }
+        }) {
             Group {
                 if viewModel.isLoading && viewModel.detail == nil {
                     ProgressView()
@@ -35,6 +54,15 @@ struct EditListingScreen: View {
         }
         .onChange(of: viewModel.shouldDismissAfterDelete) { _, dismiss in
             if dismiss { onDismiss() }
+        }
+        .sheet(item: $sharePayload) { payload in
+            ActivityShareSheet(items: payload.items) { completed in
+                FashActivityShare.showSuccessIfNeeded(
+                    completed,
+                    message: L10n.shareListingSuccess,
+                    deps: deps
+                )
+            }
         }
         .alert(L10n.editListingDeleteTitle, isPresented: $showDeleteDialog) {
             Button(L10n.editListingDeleteConfirm, role: .destructive) {
@@ -482,6 +510,11 @@ struct EditListingScreen: View {
             }
         )
     }
+}
+
+private struct EditListingSharePayload: Identifiable {
+    let id = UUID()
+    let items: [Any]
 }
 
 private let editListingGenderOptions: [(String, String)] = [

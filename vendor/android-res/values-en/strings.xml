@@ -732,6 +732,8 @@
     <string name="product_related_category_fallback">this category</string>
     <string name="product_related_brand">More from %1$s</string>
     <string name="product_related_style">Similar style</string>
+    <string name="product_discovery_hub_title">More like this item</string>
+    <string name="product_discovery_hub_subtitle">These picks share the same shop, category, brand, or style — scroll through one connected feed.</string>
     <string name="product_stat_views">Views</string>
     <string name="product_stat_likes">Likes</string>
     <string name="product_stat_saves">Saves</string>

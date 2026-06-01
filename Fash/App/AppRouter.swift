@@ -22,6 +22,11 @@ enum LoginStep {
     case otp
 }
 
+struct ProfileEditReturnContext: Equatable {
+    let tab: Int
+    let listingId: String
+}
+
 struct ExploreProfileFilterRequest: Equatable {
     var categoryId: String?
     var brandId: String?
@@ -70,6 +75,7 @@ final class AppRouter {
     var selectedListingId: String?
     var sellerShopUsername: String?
     var editListingId: String?
+    var profileEditReturn: ProfileEditReturnContext?
     var showEditProfile = false
     var selectedConversationId: String?
     var selectedOrderId: String?

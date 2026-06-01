@@ -44,9 +44,11 @@ final class ProfileViewModel {
     private var pendingDefaultProfileTab: Int?
     private var profileTabOpenRequest: ProfileTabOpenRequest?
     private var loadedListingTabs = Set<Int>()
-    private var lastSelectedProfileTab = ProfileListingTab.active.rawValue
+    private(set) var lastSelectedProfileTab = ProfileListingTab.active.rawValue
     private var tabPagination: [Int: ProfileTabPagination] = [:]
     private var loadMoreTasks: [Int: Task<Void, Never>] = [:]
+    var focusListingScrollToken = 0
+    private(set) var focusListingId: String?
 
     func listings(for tab: ProfileListingTab) -> [ListingFeedItem] {
         switch tab {
@@ -106,6 +108,20 @@ final class ProfileViewModel {
     }
 
     /// Loads the first page for a tab when it has never succeeded, or retries when badge count implies listings exist.
+    func prepareEditReturn(tab: ProfileListingTab, listingId: String) {
+        lastSelectedProfileTab = tab.rawValue
+        focusListingId = listingId
+    }
+
+    /// After closing edit — refresh active tab only and scroll back to the edited listing.
+    func completeEditReturn(tab: ProfileListingTab, listingId: String, deps: AppDependencies) async {
+        lastSelectedProfileTab = tab.rawValue
+        focusListingId = listingId
+        loadedListingTabs.remove(tab.rawValue)
+        await fetchListingsFirstPage(tab, deps: deps, force: true)
+        focusListingScrollToken += 1
+    }
+
     func ensureListingsLoaded(for tab: ProfileListingTab, deps: AppDependencies) async {
         guard !isFirstPageLoading(for: tab), !isReloadingListings(for: tab) else { return }
         guard listings(for: tab).isEmpty else { return }

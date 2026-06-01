@@ -138,7 +138,19 @@ struct ProductDetailScreen: View {
                         onNavigateToExplore(nil, nil, tag.id, tag.label, nil, nil)
                     }
                     .padding(.horizontal, spacing.editorialStart)
-                    discoveryRails(detail: detail)
+                    ProductDetailDiscoveryHub(
+                        current: detail,
+                        sellerLabel: sellerShopLabel(from: detail),
+                        sellerItems: viewModel.moreFromSeller,
+                        categoryLabel: detail.category?.nilIfEmpty ?? detail.parentCategoryName?.nilIfEmpty,
+                        categoryItems: viewModel.relatedByCategory,
+                        brandLabel: detail.brand?.nilIfEmpty,
+                        brandItems: viewModel.relatedByBrand,
+                        styleItems: viewModel.relatedByStyle,
+                        onListingTap: onListingClick,
+                        onLike: { item in guestGate { Task { await viewModel.toggleLikeRailItem(item, deps: deps) } } },
+                        onSave: { item in guestGate { Task { await viewModel.toggleSaveRailItem(item, deps: deps) } } }
+                    )
                     if showSaveNudge {
                         saveNudge
                             .padding(.horizontal, spacing.editorialStart)
@@ -272,52 +284,10 @@ struct ProductDetailScreen: View {
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
-    @ViewBuilder
-    private func discoveryRails(detail: ListingDetail) -> some View {
-        let sellerLabel = detail.sellerUsername?.nilIfEmpty
+    private func sellerShopLabel(from detail: ListingDetail) -> String {
+        detail.sellerUsername?.nilIfEmpty
             ?? detail.sellerDisplayName?.nilIfEmpty
             ?? L10n.productSellerNameFallback
-        ProductDetailMasonryRail(
-            title: L10n.productMoreFromSeller(sellerLabel),
-            systemImage: "bag.fill",
-            items: viewModel.moreFromSeller,
-            onListingTap: onListingClick,
-            onLike: { item in guestGate { Task { await viewModel.toggleLikeRailItem(item, deps: deps) } } },
-            onSave: { item in guestGate { Task { await viewModel.toggleSaveRailItem(item, deps: deps) } } }
-        )
-        if !viewModel.relatedByCategory.isEmpty {
-            let categoryLabel = detail.category?.nilIfEmpty
-                ?? detail.parentCategoryName?.nilIfEmpty
-                ?? L10n.productRelatedCategoryFallback
-            ProductDetailMasonryRail(
-                title: L10n.productRelatedCategory(categoryLabel),
-                systemImage: "square.grid.2x2",
-                items: viewModel.relatedByCategory,
-                onListingTap: onListingClick,
-                onLike: { item in guestGate { Task { await viewModel.toggleLikeRailItem(item, deps: deps) } } },
-                onSave: { item in guestGate { Task { await viewModel.toggleSaveRailItem(item, deps: deps) } } }
-            )
-        }
-        if !viewModel.relatedByBrand.isEmpty, let brandLabel = detail.brand?.nilIfEmpty {
-            ProductDetailMasonryRail(
-                title: L10n.productRelatedBrand(brandLabel),
-                systemImage: "tag.fill",
-                items: viewModel.relatedByBrand,
-                onListingTap: onListingClick,
-                onLike: { item in guestGate { Task { await viewModel.toggleLikeRailItem(item, deps: deps) } } },
-                onSave: { item in guestGate { Task { await viewModel.toggleSaveRailItem(item, deps: deps) } } }
-            )
-        }
-        if !viewModel.relatedByStyle.isEmpty {
-            ProductDetailMasonryRail(
-                title: L10n.productRelatedStyle,
-                systemImage: "sparkles",
-                items: viewModel.relatedByStyle,
-                onListingTap: onListingClick,
-                onLike: { item in guestGate { Task { await viewModel.toggleLikeRailItem(item, deps: deps) } } },
-                onSave: { item in guestGate { Task { await viewModel.toggleSaveRailItem(item, deps: deps) } } }
-            )
-        }
     }
 
     private func guestGate(_ action: () -> Void) {

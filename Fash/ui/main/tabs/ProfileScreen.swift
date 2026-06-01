@@ -64,7 +64,7 @@ struct ProfileScreen: View {
                         orderedTabIndices: viewModel.orderedProfileTabIndices,
                         tabBadgeCounts: tabBadgeCount,
                         items: currentItems,
-                        showQuickActions: true,
+                        showQuickActions: selectedProfileTab == .wishlist,
                         showStatusOverlay: true,
                         suppressActiveStatusOnGrid: false,
                         showGridLoading: showListingGridLoading,
@@ -79,8 +79,14 @@ struct ProfileScreen: View {
                         lockScroll: showProfileBlockingLoader,
                         scrollToGridToken: scrollToGridToken,
                         onListingClick: { item in handleListingTap(item) },
-                        onLike: { item in Task { await viewModel.toggleLike(item, deps: deps) } },
-                        onSave: { item in Task { await viewModel.toggleSave(item, deps: deps) } },
+                        onLike: selectedProfileTab == .wishlist
+                            ? { item in Task { await viewModel.toggleLike(item, deps: deps) } }
+                            : nil,
+                        onSave: selectedProfileTab == .wishlist
+                            ? { item in Task { await viewModel.toggleSave(item, deps: deps) } }
+                            : nil,
+                        scrollToListingId: viewModel.focusListingId,
+                        scrollToListingToken: viewModel.focusListingScrollToken,
                         expandedHeader: { expandedHeader },
                         compactHeader: { compactHeader }
                     )
@@ -145,6 +151,7 @@ struct ProfileScreen: View {
         case .wishlist:
             onListingClick(item.id, item.sellerId)
         case .active, .inReview, .rejected, .sold:
+            viewModel.prepareEditReturn(tab: selectedProfileTab, listingId: item.id)
             onEditListingClick(item.id)
         }
     }

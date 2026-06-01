@@ -1696,6 +1696,8 @@
 "product_related_category_fallback" = "danh mục này";
 "product_related_brand" = "Thêm từ %1$@";
 "product_related_style" = "Cùng phong cách";
+"product_discovery_hub_title" = "Gợi ý tương tự sản phẩm này";
+"product_discovery_hub_subtitle" = "Các tin cùng shop, danh mục, thương hiệu hoặc phong cách — cuộn liền mạch trong một khối.";
 "product_offers_accepted" = "Chấp nhận trả giá";
 "product_price_drop_floor" = "Giá sàn: %1$@";
 "product_price_drop_next" = "Lần giảm tiếp: %1$@";

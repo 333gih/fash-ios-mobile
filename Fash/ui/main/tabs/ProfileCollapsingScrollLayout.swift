@@ -117,6 +117,8 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     var lockScroll: Bool = false
     /// Increment to scroll the listing grid under pinned tabs (Home journey shortcuts).
     var scrollToGridToken: Int = 0
+    var scrollToListingId: String? = nil
+    var scrollToListingToken: Int = 0
     /// Hero scrolled off + tabs pinned — Android `rememberProfilePromoFooterVisible` (index > 0).
     var onTabsPinnedAtTopChange: ((Bool) -> Void)? = nil
     var onListingClick: (ListingFeedItem) -> Void
@@ -191,6 +193,25 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         .onChange(of: scrollToGridToken) { _, token in
             guard token > 0, !lockScroll, !showGridLoading else { return }
             applyPinnedGridScroll(using: scrollProxy)
+        }
+        .onChange(of: scrollToListingToken) { _, token in
+            guard token > 0, !lockScroll, !showGridLoading else { return }
+            scrollToFocusedListing(using: scrollProxy)
+        }
+    }
+
+    private func scrollToFocusedListing(using scrollProxy: ScrollViewProxy) {
+        guard let listingId = scrollToListingId?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !listingId.isEmpty else { return }
+        Task { @MainActor in
+            for delayMs in [0, 80, 200, 400] {
+                try? await Task.sleep(for: .milliseconds(delayMs))
+                var transaction = Transaction()
+                transaction.disablesAnimations = delayMs == 0
+                withTransaction(transaction) {
+                    scrollProxy.scrollTo(listingId, anchor: .center)
+                }
+            }
         }
     }
 
@@ -493,6 +514,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                     onLike: onLike.map { h in { h(item) } },
                     onSave: onSave.map { h in { h(item) } }
                 )
+                .id(item.id)
             }
             .padding(.top, 4)
             .overlay(alignment: .top) {
