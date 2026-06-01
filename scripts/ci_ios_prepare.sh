@@ -24,6 +24,16 @@ xcodegen --version
 echo "==> Generate Xcode project"
 xcodegen generate
 
+if [[ -f Fash/GoogleService-Info.plist ]]; then
+  if ! grep -q 'GoogleService-Info.plist' Fash.xcodeproj/project.pbxproj 2>/dev/null \
+     && ! grep -q 'Embed GoogleService-Info.plist' Fash.xcodeproj/project.pbxproj 2>/dev/null; then
+    # preBuild/postCompile script name in pbxproj
+    echo "error: GoogleService-Info.plist exists but is not referenced in Xcode project (preBuild script missing?)." >&2
+    exit 1
+  fi
+  echo "GoogleService-Info.plist present — FCM embed script configured"
+fi
+
 if grep -qE 'README\.md.*in Resources|path = .*README\.md' Fash.xcodeproj/project.pbxproj 2>/dev/null; then
   echo "error: README.md must not be a Copy Bundle Resource (breaks archive)." >&2
   grep 'README\.md' Fash.xcodeproj/project.pbxproj || true

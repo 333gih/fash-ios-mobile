@@ -29,7 +29,7 @@ settings:
     SWIFT_VERSION: "5.9"
     TARGETED_DEVICE_FAMILY: "1"
     MARKETING_VERSION: "1.0.17"
-    CURRENT_PROJECT_VERSION: "124"
+    CURRENT_PROJECT_VERSION: "125"
     DEVELOPMENT_TEAM: ""
     CODE_SIGN_STYLE: Automatic
     INFOPLIST_FILE: Fash/Info.plist
@@ -64,9 +64,22 @@ targets:
     resources:
       - path: Fash/GoogleService-Info.plist
         optional: true
+        buildPhase: resources
       - path: Fash/Resources/Fonts
         excludes:
           - "**/*.md"
+    # Gitignored plist may be omitted by XcodeGen Copy Bundle Resources; copy after compile into .app (CI/TestFlight FCM).
+    postCompileScripts:
+      - name: Embed GoogleService-Info.plist
+        basedOnDependencyAnalysis: false
+        script: |
+          PLIST="${SRCROOT}/Fash/GoogleService-Info.plist"
+          if [ ! -f "${PLIST}" ]; then
+            exit 0
+          fi
+          DEST="${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}"
+          mkdir -p "${DEST}"
+          cp "${PLIST}" "${DEST}/GoogleService-Info.plist"
     dependencies:
       - package: Kingfisher
       - package: GoogleSignIn
