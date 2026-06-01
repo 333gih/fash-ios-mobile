@@ -122,8 +122,17 @@ struct HomeFeedContent: View {
                 }
                 .onChange(of: viewModel.selectedFeedTabKey) { oldKey, newKey in
                     guard oldKey != newKey else { return }
+                    scrollClampRevision += 1
                     applyPinnedFeedScroll(using: scrollProxy)
                     pendingPinnedFeedScroll = viewModel.isTabLoading(viewModel.selectedFeedTab)
+                    Task { @MainActor in
+                        for delayMs in [80, 180, 320] {
+                            try? await Task.sleep(for: .milliseconds(delayMs))
+                            guard viewModel.selectedFeedTabKey == newKey else { return }
+                            scrollClampRevision += 1
+                            applyPinnedFeedScroll(using: scrollProxy)
+                        }
+                    }
                 }
                 .onChange(of: viewModel.items.count) { _, _ in
                     scrollClampRevision += 1

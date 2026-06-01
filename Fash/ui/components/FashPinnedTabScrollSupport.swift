@@ -81,10 +81,12 @@ struct PinnedTabScrollOffsetFixer: UIViewRepresentable {
             )
             let currentY = scrollView.contentOffset.y
 
+            let safeTarget = min(pinnedTarget, maxOffset)
+
             switch mode {
             case .pinnedReset:
-                if abs(currentY - pinnedTarget) > 1.5 || currentY > maxOffset + 1.5 {
-                    scrollView.setContentOffset(CGPoint(x: 0, y: pinnedTarget), animated: false)
+                if abs(currentY - safeTarget) > 1.5 {
+                    scrollView.setContentOffset(CGPoint(x: 0, y: safeTarget), animated: false)
                 }
             case .clampOnly:
                 if currentY > maxOffset + 1.5 {

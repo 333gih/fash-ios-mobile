@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MainNavScreen: View {
     @Environment(AppDependencies.self) private var deps
+    @Environment(\.scenePhase) private var scenePhase
     @Bindable var router: AppRouter
     @Bindable var homeVM: HomeViewModel
     @Bindable var exploreVM: ExploreViewModel
@@ -18,6 +19,7 @@ struct MainNavScreen: View {
     @State private var prevInboxUnreadCount = 0
     @State private var activePromoCampaign: AppPromoCampaign?
     @State private var accountSwitchPrompt: AccountSwitchPrompt?
+    @State private var promoOpenCountTracked = false
 
     private var isPostListingFlow: Bool { router.selectedTab == .post }
 
@@ -62,6 +64,22 @@ struct MainNavScreen: View {
                     router.notificationDetailId = nil
                     router.selectedTab = .chat
                     router.selectedConversationId = conversationId
+                },
+                onOpenFollowConnections: { tab in
+                    router.showNotificationScreen = false
+                    router.notificationDetailId = nil
+                    router.followConnectionsInitialTab = tab
+                    router.showFollowConnections = true
+                },
+                onOpenExplore: {
+                    router.showNotificationScreen = false
+                    router.notificationDetailId = nil
+                    router.showExploreOverlay = true
+                },
+                onOpenInviteFriends: {
+                    router.showNotificationScreen = false
+                    router.notificationDetailId = nil
+                    router.showInviteFriendsScreen = true
                 }
             )
             .environment(\.locale, AppLocale.locale)
@@ -170,17 +188,11 @@ struct MainNavScreen: View {
         }
         .task(id: "promoOnAppOpen-\(isGuestMode)") {
             guard !isGuestMode else { return }
-            try? await Task.sleep(for: .milliseconds(550))
-            guard router.selectedConversationId == nil else { return }
-            if let promo = await AppPromoOnAppOpenLoader.syncAndResolve(
-                deps: deps,
-                isGuestMode: isGuestMode,
-                blockBecauseOtherUi: false,
-                incrementOpenCount: true
-            ) {
-                activePromoCampaign = promo
-                AppPromoCampaignStore.recordShow(promo)
-            }
+            await tryPresentAppOpenPromo(incrementOpenCount: true)
+        }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active, !isGuestMode else { return }
+            Task { await tryPresentAppOpenPromo(incrementOpenCount: !promoOpenCountTracked) }
         }
         .onChange(of: deps.appPromoCatalogRefreshGeneration) { _, _ in
             guard !isGuestMode, activePromoCampaign == nil, router.selectedConversationId == nil else { return }
@@ -513,6 +525,30 @@ struct MainNavScreen: View {
         } else {
             router.selectedTab = tab
         }
+    }
+
+    private func tryPresentAppOpenPromo(incrementOpenCount: Bool) async {
+        guard !isGuestMode, activePromoCampaign == nil, router.selectedConversationId == nil else { return }
+        try? await Task.sleep(for: .milliseconds(550))
+        guard activePromoCampaign == nil, router.selectedConversationId == nil else { return }
+        if incrementOpenCount {
+            promoOpenCountTracked = true
+        }
+        if let promo = await AppPromoOnAppOpenLoader.syncAndResolve(
+            deps: deps,
+            isGuestMode: isGuestMode,
+            blockBecauseOtherUi: false,
+            incrementOpenCount: incrementOpenCount
+        ) {
+            activePromoCampaign = promo
+            AppPromoCampaignStore.recordShow(promo)
+            return
+        }
+        AppPromoPresenter.pollQueuedPromoIfEligible(
+            active: &activePromoCampaign,
+            isGuestMode: isGuestMode,
+            selectedConversationId: router.selectedConversationId
+        )
     }
 
     private func dismissActivePromo() {

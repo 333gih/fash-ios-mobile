@@ -11,6 +11,9 @@ struct NotificationScreen: View {
     var onOpenOrder: (String) -> Void = { _ in }
     var onOpenListing: (String) -> Void = { _ in }
     var onOpenChat: (String) -> Void = { _ in }
+    var onOpenFollowConnections: (Int) -> Void = { _ in }
+    var onOpenExplore: () -> Void = {}
+    var onOpenInviteFriends: () -> Void = {}
 
     init(
         userRepository: UserRepository,
@@ -20,7 +23,10 @@ struct NotificationScreen: View {
         onDismiss: @escaping () -> Void,
         onOpenOrder: @escaping (String) -> Void = { _ in },
         onOpenListing: @escaping (String) -> Void = { _ in },
-        onOpenChat: @escaping (String) -> Void = { _ in }
+        onOpenChat: @escaping (String) -> Void = { _ in },
+        onOpenFollowConnections: @escaping (Int) -> Void = { _ in },
+        onOpenExplore: @escaping () -> Void = {},
+        onOpenInviteFriends: @escaping () -> Void = {}
     ) {
         _viewModel = State(initialValue: NotificationsViewModel(userRepository: userRepository))
         self.promoSlides = promoSlides
@@ -30,6 +36,9 @@ struct NotificationScreen: View {
         self.onOpenOrder = onOpenOrder
         self.onOpenListing = onOpenListing
         self.onOpenChat = onOpenChat
+        self.onOpenFollowConnections = onOpenFollowConnections
+        self.onOpenExplore = onOpenExplore
+        self.onOpenInviteFriends = onOpenInviteFriends
     }
 
     private var showPromoFooter: Bool {
@@ -65,7 +74,9 @@ struct NotificationScreen: View {
                             .accessibilityLabel(L10n.cdBack)
                         }
                     }
-                    if viewModel.selectedGroup != nil {
+                    if viewModel.selectedGroup != nil,
+                       viewModel.selectedDetailId == nil,
+                       detailId == nil {
                         ToolbarItem(placement: .topBarTrailing) {
                             Button(L10n.notificationMarkAllRead) {
                                 Task { await viewModel.markAllRead() }
@@ -107,8 +118,11 @@ struct NotificationScreen: View {
                     if self.detailId != nil { onDismiss() }
                 },
                 onOpenOrder: onOpenOrder,
-                onOpenListing: onOpenListing,
-                onOpenChat: onOpenChat
+                onOpenListing: { listingId, _ in onOpenListing(listingId) },
+                onOpenChat: onOpenChat,
+                onOpenFollowConnections: onOpenFollowConnections,
+                onOpenExplore: onOpenExplore,
+                onOpenInviteFriends: onOpenInviteFriends
             )
         } else {
             ProgressView()
