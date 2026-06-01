@@ -25,13 +25,13 @@ struct ProfileScreen: View {
     /// Home journey → wishlist / in-review: pin grid after refresh settles (Android `pendingExternalGridScroll`).
     @State private var pendingExternalGridScroll = false
 
+    private var showBlockingLoadError: Bool {
+        viewModel.loadError && viewModel.profile == nil && !viewModel.isLoading && !viewModel.isRefreshing
+    }
+
     var body: some View {
         Group {
-            if viewModel.isLoading && viewModel.profile == nil {
-                ProgressView()
-                    .tint(FashColors.brandPrimary)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if viewModel.loadError && viewModel.profile == nil {
+            if showBlockingLoadError {
                 FashEmptyStateView(
                     title: L10n.profileLoadError,
                     actionTitle: L10n.feedRetry
@@ -47,6 +47,8 @@ struct ProfileScreen: View {
                     showQuickActions: true,
                     showStatusOverlay: true,
                     suppressActiveStatusOnGrid: false,
+                    showGridLoading: viewModel.profile == nil && (viewModel.isLoading || viewModel.isRefreshing),
+                    isRefreshing: viewModel.isRefreshing,
                     scrollToGridToken: scrollToGridToken,
                     onListingClick: { item in handleListingTap(item) },
                     onLike: { item in Task { await viewModel.toggleLike(item, deps: deps) } },

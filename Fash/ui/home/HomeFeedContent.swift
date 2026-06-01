@@ -170,7 +170,9 @@ struct HomeFeedContent: View {
                 )
             }
 
-            if !viewModel.featuredSellers.isEmpty {
+            if viewModel.featuredSellersLoading {
+                HomeRecommendedSellersSkeleton()
+            } else if !viewModel.featuredSellers.isEmpty {
                 HomeRecommendedSellersSection(
                     sellers: viewModel.featuredSellers,
                     onSellerClick: onFeaturedSellerClick,

@@ -12,6 +12,7 @@ final class SellerProfileViewModel {
     var sellingListings: [ListingFeedItem] = []
     var soldListings: [ListingFeedItem] = []
     var isLoading = false
+    var isRefreshing = false
     var loadError = false
     var isFollowing = false
     var followInFlight = false
@@ -20,10 +21,10 @@ final class SellerProfileViewModel {
     private var activeKey: String?
     private var loadGeneration = 0
 
-    func loadForSeller(_ username: String, deps: AppDependencies, isGuestMode: Bool) async {
+    func loadForSeller(_ username: String, deps: AppDependencies, isGuestMode: Bool, force: Bool = false) async {
         let key = username.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: "@", with: "")
         guard !key.isEmpty else { return }
-        if key == activeKey, profile != nil { return }
+        if !force, key == activeKey, profile != nil { return }
 
         loadGeneration += 1
         let generation = loadGeneration
@@ -39,10 +40,11 @@ final class SellerProfileViewModel {
             selectedTab = SellerProfileTab.selling.rawValue
         }
         let showBlocking = profile == nil
-        if showBlocking { isLoading = true }
+        if showBlocking { isLoading = true } else { isRefreshing = true }
         defer {
-            if generation == loadGeneration, showBlocking {
+            if generation == loadGeneration {
                 isLoading = false
+                isRefreshing = false
             }
         }
         loadError = false

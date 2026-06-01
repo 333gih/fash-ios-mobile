@@ -101,6 +101,10 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     /// When true, hide "active"/"inactive" chips (seller storefront); own profile passes false.
     var suppressActiveStatusOnGrid: Bool = true
     var additionalBottomInset: CGFloat = 0
+    /// Shimmer grid while profile/listings are still loading (keeps scroll mounted for pull-to-refresh).
+    var showGridLoading: Bool = false
+    /// Skip scroll clamp bumps while pull-to-refresh is in flight — avoids snapping back to top.
+    var isRefreshing: Bool = false
     /// Increment to scroll the listing grid under pinned tabs (Home journey shortcuts).
     var scrollToGridToken: Int = 0
     /// Hero scrolled off + tabs pinned — Android `rememberProfilePromoFooterVisible` (index > 0).
@@ -226,6 +230,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                 scrollClampRevision += 1
             }
             .onChange(of: items.count) { _, _ in
+                guard !isRefreshing, !showGridLoading else { return }
                 scrollClampRevision += 1
             }
             .onChange(of: scrollToGridToken) { _, token in
@@ -333,12 +338,9 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                 compactHeader()
                     .contentShape(Rectangle())
                     .onTapGesture {
-                        withAnimation(.easeInOut(duration: 0.28)) {
-                            scrollProxy.scrollTo(ProfileScrollIds.expandedHeader, anchor: .top)
-                        }
+                        scrollProxy.scrollTo(ProfileScrollIds.expandedHeader, anchor: .top)
                     }
                 Divider().opacity(0.45)
-                .transition(.opacity.combined(with: .move(edge: .top)))
             }
             ProfileTabSwitcher(
                 tabSet: tabSet,
@@ -353,7 +355,6 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, spacing.editorialStart)
                     .padding(.vertical, 8)
-                    .transition(.opacity)
             }
         }
         .background(FashColors.screen)
@@ -362,13 +363,13 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             radius: 3,
             y: 1
         )
-        .animation(.easeInOut(duration: 0.24), value: showBriefBar)
-        .animation(.easeInOut(duration: 0.2), value: showSectionTitle)
     }
 
     @ViewBuilder
     private var profileListingGridBody: some View {
-        if items.isEmpty {
+        if showGridLoading {
+            FashSkeleton.listingGrid()
+        } else if items.isEmpty {
             emptyBlock
         } else {
             ListingStaggeredMasonryView(

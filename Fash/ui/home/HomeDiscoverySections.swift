@@ -87,3 +87,40 @@ private struct HomeCompactSellerStory: View {
         .buttonStyle(.plain)
     }
 }
+
+/// Horizontal avatar shimmer while featured sellers load — keeps Home header height stable.
+struct HomeRecommendedSellersSkeleton: View {
+    @Environment(\.fashSpacing) private var spacing
+
+    var body: some View {
+        let edgeStart = spacing.editorialStart
+        let edgeEnd = spacing.editorialEnd
+        VStack(alignment: .leading, spacing: spacing.spacing1) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 6) {
+                    FashSkeleton.box(width: 160, height: 16, cornerRadius: 4)
+                    FashSkeleton.box(width: 220, height: 12, cornerRadius: 4)
+                }
+                Spacer(minLength: 8)
+                FashSkeleton.box(width: 56, height: 14, cornerRadius: 4)
+            }
+            .padding(.leading, edgeStart)
+            .padding(.trailing, edgeEnd)
+            .padding(.top, spacing.spacing2)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: spacing.spacing3) {
+                    ForEach(0..<6, id: \.self) { _ in
+                        VStack(spacing: 4) {
+                            FashSkeleton.box(width: 60, height: 60, cornerRadius: 30)
+                            FashSkeleton.box(width: 48, height: 10, cornerRadius: 4)
+                        }
+                    }
+                }
+                .padding(.leading, edgeStart)
+                .padding(.trailing, edgeEnd)
+                .padding(.bottom, spacing.spacing4)
+            }
+        }
+    }
+}

@@ -16,6 +16,7 @@ final class HomeViewModel {
     var errorMessage: String?
     var selectedFeedTabKey = HomeFeedTabKeys.huntToday
     var featuredSellers: [FeaturedSellerItem] = []
+    var featuredSellersLoading = false
     var promoSlides: [AppAdvertisingSlideItem] = []
     var homeUxPersonalization = HomeUxPersonalization()
     var tabsLoading: Set<String> = []
@@ -65,6 +66,7 @@ final class HomeViewModel {
         items = []
         errorMessage = nil
         featuredSellers = []
+        featuredSellersLoading = false
         followingItems = []
         followingHasMore = false
         buyerStats = BuyerHomeStats()
@@ -127,6 +129,9 @@ final class HomeViewModel {
         if skipIfFresh, isLaunchShellFresh {
             normalizeSelectedFeedTab(isGuestMode: isGuestMode, deps: deps)
             ensureTabLoaded(selectedFeedTab, deps: deps, isGuestMode: isGuestMode)
+            if featuredSellers.isEmpty, !featuredSellersLoading {
+                await loadFeaturedSellers(deps: deps, isGuestMode: isGuestMode)
+            }
             return
         }
         isShellLoading = true
@@ -149,6 +154,9 @@ final class HomeViewModel {
         isGuestMode: Bool,
         launchProgress: LaunchWaitingProgress? = nil
     ) async {
+        async let sellersTask: Void = loadFeaturedSellers(deps: deps, isGuestMode: isGuestMode)
+        async let slidesResult = deps.advertisingRepository.getSlides(publicBrowse: isGuestMode)
+
         if !isGuestMode {
             async let ux: Void = {
                 await loadUxPersonalization(deps: deps, isGuestMode: isGuestMode)
@@ -166,14 +174,9 @@ final class HomeViewModel {
                 await refreshSizingBannerState(deps: deps, isGuestMode: isGuestMode)
                 await MainActor.run { launchProgress?.completeHomeStep() }
             }()
-            _ = await (ux, sections, stats, sizing)
-        }
-
-        async let sellersResult = deps.searchRepository.getFeaturedSellers(limit: 12, publicBrowse: isGuestMode)
-        async let slidesResult = deps.advertisingRepository.getSlides(publicBrowse: isGuestMode)
-
-        if case .success(let sellers) = await sellersResult {
-            featuredSellers = sellers
+            _ = await (ux, sections, stats, sizing, sellersTask)
+        } else {
+            await sellersTask
         }
         launchProgress?.completeHomeStep()
 
@@ -184,6 +187,32 @@ final class HomeViewModel {
 
         prefetchAdjacentTabs(around: selectedFeedTab, deps: deps, isGuestMode: isGuestMode)
         launchProgress?.completeHomeStep()
+    }
+
+    func loadFeaturedSellers(deps: AppDependencies, isGuestMode: Bool) async {
+        featuredSellersLoading = true
+        defer { featuredSellersLoading = false }
+        switch await fetchFeaturedSellersWithRetry(deps: deps, isGuestMode: isGuestMode) {
+        case .success(let sellers):
+            featuredSellers = sellers
+        case .failure:
+            break
+        }
+    }
+
+    private func fetchFeaturedSellersWithRetry(
+        deps: AppDependencies,
+        isGuestMode: Bool
+    ) async -> Result<[FeaturedSellerItem], Error> {
+        func once() async -> Result<[FeaturedSellerItem], Error> {
+            await deps.searchRepository.getFeaturedSellers(limit: 12, publicBrowse: isGuestMode)
+        }
+        var result = await once()
+        if case .failure = result {
+            try? await Task.sleep(for: .milliseconds(400))
+            result = await once()
+        }
+        return result
     }
 
     private func awaitSelectedFeedTab(
@@ -224,11 +253,9 @@ final class HomeViewModel {
             async let sizing = refreshSizingBannerState(deps: deps, isGuestMode: isGuestMode)
             _ = await (ux, sections, stats, sizing)
         }
-        async let sellersResult = deps.searchRepository.getFeaturedSellers(limit: 12, publicBrowse: isGuestMode)
+        async let sellers: Void = loadFeaturedSellers(deps: deps, isGuestMode: isGuestMode)
         async let slidesResult = deps.advertisingRepository.getSlides(publicBrowse: isGuestMode)
-        if case .success(let sellers) = await sellersResult {
-            featuredSellers = sellers
-        }
+        _ = await sellers
         if case .success(let slides) = await slidesResult {
             promoSlides = slides.items
         }

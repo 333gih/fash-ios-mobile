@@ -136,6 +136,7 @@ final class ChatDetailViewModel {
                 forConversationId: conversationId,
                 userRepository: deps.userRepository
             )
+            deps.requestInboxUnreadRefresh()
         }
     }
 

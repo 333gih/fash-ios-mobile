@@ -31,7 +31,9 @@ final class NotificationsViewModel {
     }
 
     func refreshUnreadSummary() async {
-        unreadCount = (try? await userRepository.getMyNotificationsUnreadCount().get()) ?? 0
+        if case .success(let count) = await userRepository.getMyNotificationsUnreadCount() {
+            unreadCount = count
+        }
     }
 
     func refresh() async {

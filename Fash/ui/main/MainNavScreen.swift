@@ -237,7 +237,9 @@ struct MainNavScreen: View {
                 notificationsVM = NotificationsViewModel(userRepository: deps.userRepository)
             }
             if !isGuestMode {
-                await refreshInboxUnreadCount()
+                async let inbox: Void = refreshInboxUnreadCount()
+                async let chatUnread: Void = chatVM.refreshUnreadCount(deps: deps)
+                _ = await (inbox, chatUnread)
                 startRealtimeServices()
             } else {
                 stopRealtimeServices()
@@ -259,7 +261,9 @@ struct MainNavScreen: View {
                 router.selectedTab = .home
             } else {
                 Task {
-                    await refreshInboxUnreadCount()
+                    async let inbox: Void = refreshInboxUnreadCount()
+                    async let chatUnread: Void = chatVM.refreshUnreadCount(deps: deps)
+                    _ = await (inbox, chatUnread)
                     startRealtimeServices()
                 }
             }
