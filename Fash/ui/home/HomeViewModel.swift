@@ -241,21 +241,24 @@ final class HomeViewModel {
     func pullToRefresh(deps: AppDependencies, isGuestMode: Bool = false) async {
         isRefreshing = true
         defer { isRefreshing = false }
-        // Stale-while-revalidate: do not call invalidateAllTabFeeds() — that empties `items` and zeros journey stats UI mid-refresh.
-        if !isGuestMode {
-            async let ux: Void = loadUxPersonalization(deps: deps, isGuestMode: isGuestMode)
-            async let sections: Bool = prefetchRecommendationSections(deps: deps, isGuestMode: isGuestMode)
-            async let stats: Void = loadBuyerHomeStats(deps: deps, isGuestMode: isGuestMode)
-            async let sizing: Void = refreshSizingBannerState(deps: deps, isGuestMode: isGuestMode)
-            _ = await (ux, sections, stats, sizing)
-        }
+        let tabToReload = selectedFeedTab
+        // Stale-while-revalidate: keep current `items` visible; refresh feed + chrome without re-applying UX default tab.
+        async let feedReload: Void = reloadFeedTab(tabToReload, deps: deps, isGuestMode: isGuestMode)
         async let sellers: Void = loadFeaturedSellers(deps: deps, isGuestMode: isGuestMode)
         async let slidesResult = deps.advertisingRepository.getSlides(publicBrowse: isGuestMode)
+        if !isGuestMode {
+            async let stats: Void = loadBuyerHomeStats(deps: deps, isGuestMode: isGuestMode)
+            async let sizing: Void = refreshSizingBannerState(deps: deps, isGuestMode: isGuestMode)
+            _ = await (stats, sizing)
+        }
+        await feedReload
         _ = await sellers
         if case .success(let slides) = await slidesResult {
             promoSlides = slides.items
         }
-        await reloadFeedTab(selectedFeedTab, deps: deps, isGuestMode: isGuestMode)
+        if tabToReload == selectedFeedTab {
+            syncItemsForSelectedTab()
+        }
         prefetchAdjacentTabs(around: selectedFeedTab, deps: deps, isGuestMode: isGuestMode)
         lastSuccessfulRefreshAt = Date()
     }
@@ -522,18 +525,26 @@ final class HomeViewModel {
 
     private func reloadFeedTab(_ tab: HomeFeedTab, deps: AppDependencies, isGuestMode: Bool) async {
         tabLoadTasks[tab.rawValue]?.cancel()
-        setTabLoading(tab, true)
-        setTabError(tab, false)
+        let showTabSpinner = !isRefreshing
+        if showTabSpinner {
+            setTabLoading(tab, true)
+            setTabError(tab, false)
+        }
         let ok = await loadTab(tab, deps: deps, isGuestMode: isGuestMode, force: true)
         if ok {
             loadedTabs.insert(tab.rawValue)
             if HomeFeedTab.recommendationSectionTabs.contains(tab) {
                 HomeFeedTab.recommendationSectionTabs.forEach { loadedTabs.insert($0.rawValue) }
             }
-        } else {
+            if tab == selectedFeedTab {
+                syncItemsForSelectedTab()
+            }
+        } else if showTabSpinner {
             setTabError(tab, true)
         }
-        setTabLoading(tab, false)
+        if showTabSpinner {
+            setTabLoading(tab, false)
+        }
         tabLoadTasks[tab.rawValue] = nil
     }
 

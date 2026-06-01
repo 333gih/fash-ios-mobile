@@ -89,6 +89,7 @@ struct ExploreOverlayHost: View {
                 dismissExploreOverlayOnClose: false
             )
         }
+        .fashSnackbarOverlay()
         .onAppear {
             topBarCompact = false
             showPinnedMarketplaceChrome = false

@@ -134,6 +134,7 @@ struct MainNavScreen: View {
                 onRequestSignIn: { reason in onRequestSignIn?(reason) }
             )
             .environment(\.locale, AppLocale.locale)
+            .fashSnackbarOverlay()
             .fashInAppNotificationOverlay()
         }
         .onChange(of: router.showExploreOverlay) { wasShowing, isShowing in

@@ -101,8 +101,15 @@ struct HomeFeedContent: View {
                         listingInteractionEnabled: $listingInteractionEnabled
                     ) { index in
                         tabSlideDirection = index > selectedTabIndex ? 1 : -1
-                        withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+                        let selectTab = {
                             viewModel.selectFeedTab(tabs[index], deps: deps, isGuestMode: isGuestMode)
+                        }
+                        if viewModel.isRefreshing {
+                            selectTab()
+                        } else {
+                            withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+                                selectTab()
+                            }
                         }
                     }
                 }
@@ -204,8 +211,15 @@ struct HomeFeedContent: View {
                        let newIdx = tabs.firstIndex(of: tab), oldIdx != newIdx {
                         tabSlideDirection = newIdx > oldIdx ? 1 : -1
                     }
-                    withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+                    let selectTab = {
                         viewModel.selectFeedTab(tab, deps: deps, isGuestMode: isGuestMode)
+                    }
+                    if viewModel.isRefreshing {
+                        selectTab()
+                    } else {
+                        withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+                            selectTab()
+                        }
                     }
                 }
             )
@@ -223,11 +237,14 @@ struct HomeFeedContent: View {
         }
         .id(viewModel.selectedFeedTabKey)
         .allowsHitTesting(listingInteractionEnabled)
+        .animation(viewModel.isRefreshing ? nil : .spring(response: 0.34, dampingFraction: 0.86), value: viewModel.selectedFeedTabKey)
         .transition(
-            .asymmetric(
-                insertion: .opacity.combined(with: .offset(x: CGFloat(tabSlideDirection) * 28)),
-                removal: .opacity.combined(with: .offset(x: CGFloat(-tabSlideDirection) * 28))
-            )
+            viewModel.isRefreshing
+                ? .opacity
+                : .asymmetric(
+                    insertion: .opacity.combined(with: .offset(x: CGFloat(tabSlideDirection) * 28)),
+                    removal: .opacity.combined(with: .offset(x: CGFloat(-tabSlideDirection) * 28))
+                )
         )
     }
 
@@ -359,10 +376,12 @@ struct HomeFeedContent: View {
         scrollProxy.scrollTo(HomeScrollIds.feedContent, anchor: .top)
         homeScrollResetToken += 1
         pendingPinnedFeedScroll = viewModel.isTabLoading(viewModel.selectedFeedTab)
+        guard !viewModel.isRefreshing else { return }
         Task { @MainActor in
-            for delayMs in [0, 60, 140, 280, 480, 720] {
+            for delayMs in [60, 140, 280] {
                 try? await Task.sleep(for: .milliseconds(delayMs))
                 guard viewModel.selectedFeedTabKey == tabKey else { return }
+                guard !viewModel.isRefreshing else { return }
                 scrollClampRevision += 1
                 homeScrollPosition = HomeScrollIds.feedContent
                 scrollProxy.scrollTo(HomeScrollIds.feedContent, anchor: .top)
