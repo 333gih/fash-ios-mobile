@@ -85,6 +85,7 @@ struct RootView: View {
                     await PushNotificationCoordinator.shared.registerCurrentTokenIfSession()
                     deps.requestInboxUnreadRefresh()
                     deps.requestChatInboxRefresh()
+                    deps.requestAppPromoCatalogRefresh()
                 }
             default:
                 break
@@ -429,6 +430,9 @@ struct RootView: View {
             isGuestMode: router.isGuestMode,
             progress: launchProgress
         )
+        if !router.isGuestMode {
+            await AppPromoOnAppOpenLoader.fetchAndEnqueue(deps: deps)
+        }
         router.loginStep = nil
         router.onboardingStep = nil
     }

@@ -65,6 +65,8 @@ final class AppDependencies {
     var inboxOpenRequestGeneration: Int = 0
     var inboxUnreadRefreshGeneration: Int = 0
     var chatInboxRefreshGeneration: Int = 0
+    /// Bumped when app returns to foreground — MainNav re-pulls on_app_open promo catalog.
+    var appPromoCatalogRefreshGeneration: Int = 0
     var inboxUnreadCount: Int = 0
     private(set) var chatUnreadTotal: Int = 0
     private(set) var chatUnreadSnapshotGeneration: Int = 0
@@ -276,6 +278,10 @@ final class AppDependencies {
             guard !Task.isCancelled else { return }
             chatInboxRefreshGeneration += 1
         }
+    }
+
+    func requestAppPromoCatalogRefresh() {
+        appPromoCatalogRefreshGeneration += 1
     }
 
     func updateChatUnreadSnapshot(total: Int, perConversation: [String: Int]) {

@@ -13,6 +13,8 @@ struct RemoteAppPromoPayload: Equatable {
     let secondaryAction: AppPromoButtonAction?
     let priority: Int
     let scheduleType: String?
+    let maxShowsPerUser: Int?
+    let cooldownHours: Int?
 }
 
 enum RemoteAppPromoModels {
@@ -58,7 +60,9 @@ enum RemoteAppPromoModels {
             secondaryButtonLabel: secondaryLabel,
             secondaryAction: secondaryAction,
             priority: optInt(json, "priority"),
-            scheduleType: optStringOrNull(json, "schedule_type", "scheduleType")
+            scheduleType: optStringOrNull(json, "schedule_type", "scheduleType"),
+            maxShowsPerUser: optIntOrNull(json, "max_shows_per_user", "maxShowsPerUser"),
+            cooldownHours: optIntOrNull(json, "cooldown_hours", "cooldownHours")
         )
     }
 
@@ -76,7 +80,9 @@ enum RemoteAppPromoModels {
             primaryAction: payload.primaryAction,
             secondaryAction: payload.secondaryAction,
             priority: payload.priority,
-            scheduleType: payload.scheduleType
+            scheduleType: payload.scheduleType,
+            maxShowsPerUser: payload.maxShowsPerUser,
+            cooldownHours: payload.cooldownHours
         )
     }
 
@@ -120,6 +126,16 @@ enum RemoteAppPromoModels {
             if let s = obj[key] as? String, let n = Int(s) { return n }
         }
         return 0
+    }
+
+    private static func optIntOrNull(_ obj: [String: Any], _ keys: String...) -> Int? {
+        for key in keys {
+            if obj[key] is NSNull { return nil }
+            if let n = obj[key] as? Int { return n }
+            if let n = obj[key] as? NSNumber { return n.intValue }
+            if let s = obj[key] as? String, let n = Int(s) { return n }
+        }
+        return nil
     }
 }
 

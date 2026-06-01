@@ -172,14 +172,24 @@ struct MainNavScreen: View {
             guard !isGuestMode else { return }
             try? await Task.sleep(for: .milliseconds(550))
             guard router.selectedConversationId == nil else { return }
-            _ = AppPromoCampaignStore.incrementAppOpenCount()
-            if case .success(let campaigns) = await deps.appPromoInterstitialRepository.fetchActiveCampaigns() {
-                for campaign in campaigns where campaign.scheduleType == "on_app_open" || campaign.scheduleType == nil {
-                    AppPromoPendingQueue.enqueue(campaign)
-                }
+            if let promo = await AppPromoOnAppOpenLoader.syncAndResolve(
+                deps: deps,
+                isGuestMode: isGuestMode,
+                blockBecauseOtherUi: false,
+                incrementOpenCount: true
+            ) {
+                activePromoCampaign = promo
+                AppPromoCampaignStore.recordShow(promo)
             }
-            if let remote = AppPromoPendingQueue.pollHighest(), !AppPromoCampaignStore.isDismissed(remote) {
-                activePromoCampaign = remote
+        }
+        .onChange(of: deps.appPromoCatalogRefreshGeneration) { _, _ in
+            guard !isGuestMode, activePromoCampaign == nil, router.selectedConversationId == nil else { return }
+            Task {
+                await AppPromoOnAppOpenLoader.fetchAndEnqueue(deps: deps)
+                if let promo = AppPromoOnAppOpenLoader.resolvePresentable() {
+                    activePromoCampaign = promo
+                    AppPromoCampaignStore.recordShow(promo)
+                }
             }
         }
         .onChange(of: router.selectedConversationId) { _, conversationId in
@@ -519,8 +529,11 @@ struct MainNavScreen: View {
     }
 
     private func handlePromoSecondary(_ campaign: AppPromoCampaign) {
-        AppPromoCampaignStore.markDismissed(campaign)
-        AppPromoNavigation.applySecondary(campaign: campaign, router: router)
+        if campaign.isRemote {
+            AppPromoNavigation.applySecondary(campaign: campaign, router: router)
+        } else {
+            AppPromoCampaignStore.markDismissed(campaign)
+        }
         activePromoCampaign = nil
     }
 

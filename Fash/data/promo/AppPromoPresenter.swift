@@ -10,8 +10,9 @@ enum AppPromoPresenter {
     ) {
         AppPromoPendingQueue.enqueue(promo)
         guard !isGuestMode, selectedConversationId == nil else { return }
-        guard !AppPromoCampaignStore.isDismissed(promo) else { return }
+        guard AppPromoCampaignStore.canShow(promo) else { return }
         active = promo
+        AppPromoCampaignStore.recordShow(promo)
     }
 
     static func pollQueuedPromoIfEligible(
@@ -21,7 +22,8 @@ enum AppPromoPresenter {
     ) {
         guard !isGuestMode, selectedConversationId == nil, active == nil else { return }
         guard let remote = AppPromoPendingQueue.peekHighest(),
-              !AppPromoCampaignStore.isDismissed(remote) else { return }
+              AppPromoCampaignStore.canShow(remote) else { return }
         active = remote
+        AppPromoCampaignStore.recordShow(remote)
     }
 }

@@ -27,6 +27,9 @@ struct AppPromoCampaign: Equatable, Identifiable {
     var secondaryAction: AppPromoButtonAction?
     var priority: Int = 0
     var scheduleType: String?
+    /// From admin CMS — client enforces per user (see [AppPromoCampaignStore.canShow]).
+    var maxShowsPerUser: Int?
+    var cooldownHours: Int?
 
     var id: String { campaignId }
     var isRemote: Bool { kind == .remote }
