@@ -15,11 +15,10 @@ enum ProductBottomBarMode: Equatable {
 }
 
 enum ProductDetailDiscoveryConstants {
-    /// API fetch caps for PDP discovery.
-    static let sellerRailLimit = 8
-    static let relatedRailLimit = 6
-    /// Max cards shown per rail on PDP (keeps scroll height reasonable).
-    static let railDisplayLimit = 6
+    static let sellerRailLimit = 10
+    static let relatedRailLimit = 8
+    /// Merged Pinterest grid on PDP (deduped across seller / category / brand / style).
+    static let mergedDiscoveryLimit = 24
 }
 
 @Observable
@@ -31,6 +30,8 @@ final class ProductDetailViewModel {
     var relatedByCategory: [ListingFeedItem] = []
     var relatedByBrand: [ListingFeedItem] = []
     var relatedByStyle: [ListingFeedItem] = []
+    /// Single Explore-style masonry feed with per-card relation badge.
+    var discoveryFeed: [ProductDiscoveryFeedEntry] = []
     var isLoading = false
     var loadError: String?
     var isFollowing = false
@@ -71,6 +72,7 @@ final class ProductDetailViewModel {
         relatedByCategory = []
         relatedByBrand = []
         relatedByStyle = []
+        discoveryFeed = []
         bottomBarMode = .normal
         buyerActiveOrder = nil
         showPurchaseGuide = false
@@ -114,6 +116,7 @@ final class ProductDetailViewModel {
         relatedByCategory = []
         relatedByBrand = []
         relatedByStyle = []
+        discoveryFeed = []
         isLoading = false
         loadError = nil
         isFollowing = false
@@ -364,6 +367,19 @@ final class ProductDetailViewModel {
         relatedByCategory = await categoryRail
         relatedByBrand = await brandRail
         relatedByStyle = await styleRail
+        let sellerBadge = detail.sellerUsername?.nilIfEmpty.map { "@\($0)" }
+            ?? detail.sellerDisplayName?.nilIfEmpty
+            ?? L10n.productRelationBadgeSeller
+        discoveryFeed = ProductDiscoveryFeedBuilder.merge(
+            detail: detail,
+            sellerLabel: sellerBadge,
+            sellerItems: moreFromSeller,
+            categoryLabel: detail.category?.nilIfEmpty ?? detail.parentCategoryName?.nilIfEmpty,
+            categoryItems: relatedByCategory,
+            brandLabel: detail.brand?.nilIfEmpty,
+            brandItems: relatedByBrand,
+            styleItems: relatedByStyle
+        )
     }
 
     private func loadSellerRail(
@@ -466,6 +482,14 @@ final class ProductDetailViewModel {
         relatedByCategory = map(relatedByCategory)
         relatedByBrand = map(relatedByBrand)
         relatedByStyle = map(relatedByStyle)
+        discoveryFeed = discoveryFeed.map { entry in
+            guard entry.item.id == id else { return entry }
+            return ProductDiscoveryFeedEntry(
+                item: transform(entry.item),
+                relation: entry.relation,
+                relationLabel: entry.relationLabel
+            )
+        }
     }
 }
 

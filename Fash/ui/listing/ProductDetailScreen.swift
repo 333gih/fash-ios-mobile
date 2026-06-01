@@ -140,13 +140,7 @@ struct ProductDetailScreen: View {
                     .padding(.horizontal, spacing.editorialStart)
                     ProductDetailDiscoveryHub(
                         current: detail,
-                        sellerLabel: sellerShopLabel(from: detail),
-                        sellerItems: viewModel.moreFromSeller,
-                        categoryLabel: detail.category?.nilIfEmpty ?? detail.parentCategoryName?.nilIfEmpty,
-                        categoryItems: viewModel.relatedByCategory,
-                        brandLabel: detail.brand?.nilIfEmpty,
-                        brandItems: viewModel.relatedByBrand,
-                        styleItems: viewModel.relatedByStyle,
+                        entries: viewModel.discoveryFeed,
                         onListingTap: onListingClick,
                         onLike: { item in guestGate { Task { await viewModel.toggleLikeRailItem(item, deps: deps) } } },
                         onSave: { item in guestGate { Task { await viewModel.toggleSaveRailItem(item, deps: deps) } } }

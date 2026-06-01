@@ -10,6 +10,8 @@ struct ListingGridCard: View {
     var compactFooter: Bool = false
     var showQuickActions: Bool = false
     var statusOverlayLabel: String? = nil
+    /// PDP discovery — why this listing is related (e.g. shop, category name).
+    var relationBadgeLabel: String? = nil
     var onLike: (() -> Void)? = nil
     var onSave: (() -> Void)? = nil
 
@@ -229,8 +231,21 @@ struct ListingGridCard: View {
     @ViewBuilder
     private var topLeadingOverlay: some View {
         let status = statusOverlayLabel?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        if item.imageUrls.count > 1 || !status.isEmpty {
+        let relation = relationBadgeLabel?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if item.imageUrls.count > 1 || !status.isEmpty || !relation.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
+                if !relation.isEmpty {
+                    Text(relation)
+                        .font(FashTypography.labelSmall.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 4)
+                        .background(FashColors.brandPrimary.opacity(0.88))
+                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                        .accessibilityLabel(L10n.productRelationBadgeA11y(relation))
+                }
                 if item.imageUrls.count > 1 {
                     HStack(spacing: 4) {
                         Image(systemName: "photo.on.rectangle")

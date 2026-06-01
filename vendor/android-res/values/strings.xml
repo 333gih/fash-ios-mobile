@@ -752,7 +752,13 @@
     <string name="product_related_brand">Thêm từ %1$s</string>
     <string name="product_related_style">Cùng phong cách</string>
     <string name="product_discovery_hub_title">Gợi ý tương tự sản phẩm này</string>
-    <string name="product_discovery_hub_subtitle">Các tin cùng shop, danh mục, thương hiệu hoặc phong cách — cuộn liền mạch trong một khối.</string>
+    <string name="product_discovery_hub_subtitle">Gợi ý xếp 2 cột như Khám phá — nhãn trên ảnh cho biết vì sao tin liên quan.</string>
+    <string name="product_relation_badge_seller">Cùng shop</string>
+    <string name="product_relation_legend_seller">Cùng shop</string>
+    <string name="product_relation_legend_category">Cùng danh mục</string>
+    <string name="product_relation_legend_brand">Cùng thương hiệu</string>
+    <string name="product_relation_legend_style">Cùng phong cách</string>
+    <string name="product_relation_badge_a11y">Liên quan: %1$s</string>
     <string name="product_stat_views">Lượt xem</string>
     <string name="product_stat_likes">Thích</string>
     <string name="product_stat_saves">Lưu</string>

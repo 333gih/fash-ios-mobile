@@ -1697,7 +1697,13 @@
 "product_related_brand" = "Thêm từ %1$@";
 "product_related_style" = "Cùng phong cách";
 "product_discovery_hub_title" = "Gợi ý tương tự sản phẩm này";
-"product_discovery_hub_subtitle" = "Các tin cùng shop, danh mục, thương hiệu hoặc phong cách — cuộn liền mạch trong một khối.";
+"product_discovery_hub_subtitle" = "Gợi ý xếp 2 cột như Khám phá — nhãn trên ảnh cho biết vì sao tin liên quan.";
+"product_relation_badge_seller" = "Cùng shop";
+"product_relation_legend_seller" = "Cùng shop";
+"product_relation_legend_category" = "Cùng danh mục";
+"product_relation_legend_brand" = "Cùng thương hiệu";
+"product_relation_legend_style" = "Cùng phong cách";
+"product_relation_badge_a11y" = "Liên quan: %1$@";
 "product_offers_accepted" = "Chấp nhận trả giá";
 "product_price_drop_floor" = "Giá sàn: %1$@";
 "product_price_drop_next" = "Lần giảm tiếp: %1$@";

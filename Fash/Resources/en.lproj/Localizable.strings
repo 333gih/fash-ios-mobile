@@ -1697,7 +1697,13 @@
 "product_related_brand" = "More from %1$@";
 "product_related_style" = "Similar style";
 "product_discovery_hub_title" = "More like this item";
-"product_discovery_hub_subtitle" = "These picks share the same shop, category, brand, or style — scroll through one connected feed.";
+"product_discovery_hub_subtitle" = "Explore-style two-column picks — each card label shows why it is related.";
+"product_relation_badge_seller" = "Same shop";
+"product_relation_legend_seller" = "Same shop";
+"product_relation_legend_category" = "Same category";
+"product_relation_legend_brand" = "Same brand";
+"product_relation_legend_style" = "Similar style";
+"product_relation_badge_a11y" = "Related: %1$@";
 "product_offers_accepted" = "Open to offers";
 "product_price_drop_floor" = "Floor price: %1$@";
 "product_price_drop_next" = "Next drop: %1$@";

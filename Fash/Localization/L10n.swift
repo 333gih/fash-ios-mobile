@@ -1984,6 +1984,14 @@ enum L10n {
     static var productRelatedStyle: String { t("product_related_style") }
     static var productDiscoveryHubTitle: String { t("product_discovery_hub_title") }
     static var productDiscoveryHubSubtitle: String { t("product_discovery_hub_subtitle") }
+    static var productRelationBadgeSeller: String { t("product_relation_badge_seller") }
+    static var productRelationLegendSeller: String { t("product_relation_legend_seller") }
+    static var productRelationLegendCategory: String { t("product_relation_legend_category") }
+    static var productRelationLegendBrand: String { t("product_relation_legend_brand") }
+    static var productRelationLegendStyle: String { t("product_relation_legend_style") }
+    static func productRelationBadgeA11y(_ label: String) -> String {
+        String(format: t("product_relation_badge_a11y"), label)
+    }
     static var productOffersAccepted: String { t("product_offers_accepted") }
     static func productPriceDropFloor(_ a1: CVarArg) -> String {
         String(format: t("product_price_drop_floor"), a1)
