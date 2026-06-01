@@ -101,8 +101,10 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     /// When true, hide "active"/"inactive" chips (seller storefront); own profile passes false.
     var suppressActiveStatusOnGrid: Bool = true
     var additionalBottomInset: CGFloat = 0
-    /// Shimmer grid while profile/listings are still loading (keeps scroll mounted for pull-to-refresh).
+    /// Center spinner until API returns — no skeleton grid (avoids scroll relayout jumps).
     var showGridLoading: Bool = false
+    /// When false, empty listings are hidden (still loading).
+    var showEmptyState: Bool = true
     /// Skip scroll clamp bumps while pull-to-refresh is in flight — avoids snapping back to top.
     var isRefreshing: Bool = false
     /// Increment to scroll the listing grid under pinned tabs (Home journey shortcuts).
@@ -229,8 +231,9 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                 // Clamp only when the new tab is shorter — do not scroll back to grid top on tab swipe.
                 scrollClampRevision += 1
             }
-            .onChange(of: items.count) { _, _ in
-                guard !isRefreshing, !showGridLoading else { return }
+            .onChange(of: items.count) { oldCount, newCount in
+                guard !isRefreshing, !showGridLoading, showEmptyState else { return }
+                guard newCount < oldCount else { return }
                 scrollClampRevision += 1
             }
             .onChange(of: scrollToGridToken) { _, token in
@@ -368,10 +371,10 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     @ViewBuilder
     private var profileListingGridBody: some View {
         if showGridLoading {
-            FashSkeleton.listingGrid()
-        } else if items.isEmpty {
+            profileListingLoadingBlock
+        } else if items.isEmpty, showEmptyState {
             emptyBlock
-        } else {
+        } else if !items.isEmpty {
             ListingStaggeredMasonryView(
                 items: items,
                 columnAssignments: masonryColumnAssignments
@@ -390,6 +393,17 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             }
             .padding(.top, 4)
         }
+    }
+
+    private var profileListingLoadingBlock: some View {
+        VStack {
+            Spacer(minLength: 0)
+            ProgressView()
+                .tint(FashColors.brandPrimary)
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, minHeight: 280)
+        .padding(.vertical, 24)
     }
 
     private var emptyBlock: some View {

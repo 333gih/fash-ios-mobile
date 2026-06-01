@@ -14,6 +14,7 @@ final class SellerProfileViewModel {
     var isLoading = false
     var isRefreshing = false
     var loadError = false
+    var hasCompletedInitialLoad = false
     var isFollowing = false
     var followInFlight = false
     var selectedTab = SellerProfileTab.selling.rawValue
@@ -38,6 +39,7 @@ final class SellerProfileViewModel {
             sellerFocus = nil
             isFollowing = false
             selectedTab = SellerProfileTab.selling.rawValue
+            hasCompletedInitialLoad = false
         }
         let showBlocking = profile == nil
         if showBlocking { isLoading = true } else { isRefreshing = true }
@@ -79,9 +81,12 @@ final class SellerProfileViewModel {
                 isGuestMode: isGuestMode,
                 generation: generation
             )
+            guard generation == loadGeneration else { return }
+            hasCompletedInitialLoad = true
         case .failure:
             guard generation == loadGeneration else { return }
             loadError = true
+            hasCompletedInitialLoad = true
         }
     }
 

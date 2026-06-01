@@ -430,6 +430,9 @@ final class HomeViewModel {
         tabLoadTasks[tab.rawValue] = Task {
             setTabLoading(tab, true)
             setTabError(tab, false)
+            if tab == selectedFeedTab {
+                syncItemsForSelectedTab()
+            }
             let ok = await loadTab(tab, deps: deps, isGuestMode: isGuestMode, force: force)
             if ok {
                 loadedTabs.insert(tab.rawValue)
@@ -522,6 +525,11 @@ final class HomeViewModel {
     }
 
     private func loadHuntTodayTab(deps: AppDependencies, isGuestMode: Bool, force: Bool) async -> Bool {
+        if force {
+            sections.huntToday = []
+            loadedTabs.remove(HomeFeedTabKeys.huntToday)
+            if selectedFeedTab == .huntToday { syncItemsForSelectedTab() }
+        }
         if !force && loadedTabs.contains(HomeFeedTabKeys.huntToday) { return true }
         if !isGuestMode && recommendationSectionsFetched && !sections.huntToday.isEmpty {
             if selectedFeedTab == .huntToday { syncItemsForSelectedTab() }
@@ -542,6 +550,12 @@ final class HomeViewModel {
 
     private func loadFollowingTab(deps: AppDependencies, isGuestMode: Bool, force: Bool) async -> Bool {
         if isGuestMode { return true }
+        if force {
+            followingItems = []
+            followingHasMore = false
+            loadedTabs.remove(HomeFeedTabKeys.following)
+            if selectedFeedTab == .following { syncItemsForSelectedTab() }
+        }
         if !force && loadedTabs.contains(HomeFeedTabKeys.following) && !followingItems.isEmpty { return true }
         let result = await fetchHomeFeedWithRetry(deps: deps)
         guard case .success(let feed) = result else { return false }
@@ -553,6 +567,16 @@ final class HomeViewModel {
 
     private func loadRecommendationSections(deps: AppDependencies, isGuestMode: Bool, force: Bool) async -> Bool {
         if !force && recommendationSectionsFetched { return true }
+        if force {
+            recommendationSectionsFetched = false
+            HomeFeedTab.recommendationSectionTabs.forEach { loadedTabs.remove($0.rawValue) }
+            sections.forYou = []
+            sections.stylePicks = []
+            sections.similarToSaved = []
+            if HomeFeedTab.recommendationSectionTabs.contains(selectedFeedTab) {
+                syncItemsForSelectedTab()
+            }
+        }
         let styleLimit = sectionLimit(for: .stylePicks, fallback: 12)
         let similarLimit = sectionLimit(for: .similarSaved, fallback: 12)
         let result = await deps.recommendationRepository.homeSections(
@@ -591,7 +615,12 @@ final class HomeViewModel {
     }
 
     private func syncItemsForSelectedTab() {
-        items = itemsForTab(selectedFeedTab)
+        let tab = selectedFeedTab
+        guard loadedTabs.contains(tab.rawValue), !tabsLoading.contains(tab.rawValue) else {
+            items = []
+            return
+        }
+        items = itemsForTab(tab)
         if !items.isEmpty {
             errorMessage = nil
             FeedListingImagePrefetch.prefetch(items: items)

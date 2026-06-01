@@ -126,6 +126,8 @@ struct HomeFeedContent: View {
                 }
                 .onChange(of: viewModel.items.count) { oldCount, newCount in
                     guard oldCount != newCount else { return }
+                    guard newCount < oldCount else { return }
+                    guard !viewModel.isTabLoading(viewModel.selectedFeedTab) else { return }
                     scrollClampRevision += 1
                 }
                 .onChange(of: viewModel.tabsLoading) { _, _ in

@@ -29,6 +29,11 @@ struct ProfileScreen: View {
         viewModel.loadError && viewModel.profile == nil && !viewModel.isLoading && !viewModel.isRefreshing
     }
 
+    private var showListingGridLoading: Bool {
+        !viewModel.hasCompletedInitialLoad
+            || (viewModel.isSupplementalListingsLoading && currentItems.isEmpty)
+    }
+
     var body: some View {
         Group {
             if showBlockingLoadError {
@@ -47,7 +52,8 @@ struct ProfileScreen: View {
                     showQuickActions: true,
                     showStatusOverlay: true,
                     suppressActiveStatusOnGrid: false,
-                    showGridLoading: viewModel.profile == nil && (viewModel.isLoading || viewModel.isRefreshing),
+                    showGridLoading: showListingGridLoading,
+                    showEmptyState: viewModel.hasCompletedInitialLoad,
                     isRefreshing: viewModel.isRefreshing,
                     scrollToGridToken: scrollToGridToken,
                     onListingClick: { item in handleListingTap(item) },

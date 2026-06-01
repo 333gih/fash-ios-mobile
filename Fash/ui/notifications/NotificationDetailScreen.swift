@@ -45,17 +45,21 @@ struct NotificationDetailScreen: View {
     }
 
     var body: some View {
-        ScrollView {
+        ScrollView(.vertical) {
             VStack(alignment: .leading, spacing: 16) {
                 mediaSection
                 badgeSection
                 Text(displayTitle)
                     .font(FashTypography.titleMedium.weight(.semibold))
                     .foregroundStyle(FashColors.textPrimary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
                 if !displayBody.isEmpty {
                     Text(displayBody)
                         .font(FashTypography.bodyLarge)
                         .foregroundStyle(FashColors.textPrimary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 promoCtaSection
                 richDetailSection
@@ -66,8 +70,10 @@ struct NotificationDetailScreen: View {
                 metadataSection
                 friendlyPayloadSection
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(20)
         }
+        .scrollBounceBehavior(.basedOnSize, axes: .vertical)
         .background(FashColors.screen)
         .navigationTitle(L10n.notificationDetailTitle)
         .navigationBarTitleDisplayMode(.inline)
@@ -87,30 +93,38 @@ struct NotificationDetailScreen: View {
         if let promo = promoCampaign {
             let urls = promo.remoteImageUrls.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
             if urls.count == 1 {
-                FashAsyncImage(url: urls[0])
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 220)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                boundedNotificationHeroImage(url: urls[0], height: 220)
             } else if urls.count > 1 {
                 TabView(selection: $promoGalleryIndex) {
                     ForEach(Array(urls.enumerated()), id: \.offset) { index, raw in
-                        FashAsyncImage(url: raw)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 220)
-                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        boundedNotificationHeroImage(url: raw, height: 220)
                             .tag(index)
                     }
                 }
+                .frame(maxWidth: .infinity)
                 .frame(height: 220)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .tabViewStyle(.page(indexDisplayMode: .automatic))
                 .accessibilityLabel(L10n.notificationDetailPromoGalleryCd(promoGalleryIndex + 1, urls.count))
             }
         } else if let raw = actions.imageUrl {
-            FashAsyncImage(url: raw)
-                .frame(maxWidth: .infinity)
-                .frame(height: 200)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            boundedNotificationHeroImage(url: raw, height: 200)
         }
+    }
+
+    /// Wide promo banners must not expand the scroll view horizontally (intrinsic image width).
+    private func boundedNotificationHeroImage(url: String, height: CGFloat) -> some View {
+        RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .fill(FashColors.surfaceContainerHigh)
+            .frame(maxWidth: .infinity)
+            .frame(height: height)
+            .overlay {
+                FashAsyncImage(url: url, contentMode: .fill)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipped()
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     @ViewBuilder
@@ -280,8 +294,9 @@ struct NotificationDetailScreen: View {
                         Text(rawPayloadDump)
                             .font(.system(.caption, design: .monospaced))
                             .foregroundStyle(FashColors.textSecondary)
-                            .padding(12)
                             .frame(maxWidth: .infinity, alignment: .leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(12)
                             .background(FashColors.surfaceContainer)
                             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     }
@@ -307,10 +322,14 @@ struct NotificationDetailScreen: View {
                     Text(text)
                         .font(FashTypography.bodyMedium)
                         .foregroundStyle(FashColors.textPrimary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .fixedSize(horizontal: false, vertical: true)
                 case .titleWithId(let title, let id):
                     Text(L10n.notificationDataTitleWithId(title, id))
                         .font(FashTypography.bodyMedium)
                         .foregroundStyle(FashColors.textPrimary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
         case .nav(let label, let rawNav):
@@ -321,6 +340,8 @@ struct NotificationDetailScreen: View {
                 Text(NotificationDetailPayload.navTargetDisplay(rawNav))
                     .font(FashTypography.bodyMedium)
                     .foregroundStyle(FashColors.textPrimary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -357,6 +378,9 @@ struct NotificationDetailScreen: View {
             Text(value)
                 .font(FashTypography.bodyMedium)
                 .foregroundStyle(FashColors.textPrimary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

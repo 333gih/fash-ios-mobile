@@ -72,7 +72,7 @@ extension Color {
 @Observable
 final class FashThemeState {
     static let shared = FashThemeState()
-    var isDark = false
+    var isDark = true
     var lightAppearance: FashLightAppearance = .editorial
 }
 

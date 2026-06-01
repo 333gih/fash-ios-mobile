@@ -27,9 +27,8 @@ struct SettingsScreen: View {
                         get: { deps.themePreference.mode },
                         set: { deps.themePreference.mode = $0; deps.themePreference.persist() }
                     )) {
-                        Text(L10n.settingsThemeSystem).tag(AppThemeMode.system)
-                        Text(L10n.settingsThemeLight).tag(AppThemeMode.light)
                         Text(L10n.settingsThemeDark).tag(AppThemeMode.dark)
+                        Text(L10n.settingsThemeLight).tag(AppThemeMode.light)
                     }
                 }
                 Section(L10n.settingsSectionShopping) {

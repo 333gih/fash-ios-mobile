@@ -25,6 +25,9 @@ final class ProfileViewModel {
     var isLoading = false
     var isRefreshing = false
     var loadError = false
+    /// False until the first profile + listings fetch finishes — avoids empty-state flash and scroll jumps.
+    var hasCompletedInitialLoad = false
+    var isSupplementalListingsLoading = false
     var profileUxPersonalization = ProfileUxPersonalization()
     var orderedProfileTabIndices: [Int] = ProfileListingTab.allCases.map(\.rawValue)
     var profileTabOpenGeneration = 0
@@ -65,7 +68,12 @@ final class ProfileViewModel {
             return
         }
         let showBlocking = profile == nil
-        if showBlocking { isLoading = true } else { isRefreshing = true }
+        if showBlocking {
+            hasCompletedInitialLoad = false
+            isLoading = true
+        } else {
+            isRefreshing = true
+        }
         loadError = false
         defer { isLoading = false; isRefreshing = false }
 
@@ -81,15 +89,17 @@ final class ProfileViewModel {
             }
             await loadListings(deps: deps)
             await loadProfileUxPersonalization(deps: deps)
+            hasCompletedInitialLoad = true
         case .failure:
             loadError = true
+            hasCompletedInitialLoad = true
         }
     }
 
     func onProfileTabSelected(_ tabIndex: Int, deps: AppDependencies) {
         deps.uxTabTracker.onTabOpened(scope: "profile", tabKey: UxPersonalizationMapping.profileTabKey(from: tabIndex))
         if tabIndex == ProfileListingTab.wishlist.rawValue, wishlistListings.isEmpty {
-            Task { await reloadWishlist(deps: deps) }
+            Task { await reloadWishlist(deps: deps, showLoading: true) }
         }
     }
 
@@ -139,6 +149,8 @@ final class ProfileViewModel {
         wishlistListings = []
         loadError = false
         lastSuccessfulRefreshAt = nil
+        hasCompletedInitialLoad = false
+        isSupplementalListingsLoading = false
     }
 
     private func applyProfile(_ p: ProfileInfo) {
@@ -178,7 +190,9 @@ final class ProfileViewModel {
         }
     }
 
-    private func reloadWishlist(deps: AppDependencies) async {
+    private func reloadWishlist(deps: AppDependencies, showLoading: Bool = false) async {
+        if showLoading { isSupplementalListingsLoading = true }
+        defer { if showLoading { isSupplementalListingsLoading = false } }
         guard case .success(let wish) = await deps.listingRepository.getWishlistListings(limit: 50, offset: 0) else {
             return
         }
