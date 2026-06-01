@@ -804,11 +804,16 @@ struct FlowLayout: Layout {
     }
 
     private func arrange(proposal: ProposedViewSize, subviews: Subviews) -> (size: CGSize, origins: [CGPoint]) {
-        let maxWidth = proposal.width ?? .infinity
+        let fallbackWidth = UIScreen.main.bounds.width - 48
+        let maxWidth: CGFloat = {
+            guard let w = proposal.width, w.isFinite, w > 0 else { return fallbackWidth }
+            return w
+        }()
         var x: CGFloat = 0
         var y: CGFloat = 0
         var rowHeight: CGFloat = 0
         var origins: [CGPoint] = []
+        var contentWidth: CGFloat = 0
         for subview in subviews {
             let size = subview.sizeThatFits(.unspecified)
             if x + size.width > maxWidth, x > 0 {
@@ -818,9 +823,12 @@ struct FlowLayout: Layout {
             }
             origins.append(CGPoint(x: x, y: y))
             rowHeight = max(rowHeight, size.height)
+            contentWidth = max(contentWidth, x + size.width)
             x += size.width + spacing
         }
-        return (CGSize(width: maxWidth, height: y + rowHeight), origins)
+        let height = y + rowHeight
+        let width = contentWidth > 0 ? min(maxWidth, contentWidth) : maxWidth
+        return (CGSize(width: width, height: height), origins)
     }
 }
 

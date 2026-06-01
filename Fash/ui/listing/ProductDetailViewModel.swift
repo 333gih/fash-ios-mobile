@@ -14,9 +14,12 @@ enum ProductBottomBarMode: Equatable {
     case sold
 }
 
-private enum ProductDetailDiscoveryConstants {
-    static let sellerRailLimit = 20
-    static let relatedRailLimit = 12
+enum ProductDetailDiscoveryConstants {
+    /// API fetch caps for PDP discovery.
+    static let sellerRailLimit = 8
+    static let relatedRailLimit = 6
+    /// Max cards shown per rail on PDP (keeps scroll height reasonable).
+    static let railDisplayLimit = 6
 }
 
 @Observable

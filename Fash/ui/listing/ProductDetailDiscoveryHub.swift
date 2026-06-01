@@ -42,6 +42,7 @@ struct ProductDetailDiscoveryHub: View {
                 .foregroundStyle(FashColors.textSecondary)
             relationChips
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, spacing.editorialStart)
     }
 
@@ -63,6 +64,7 @@ struct ProductDetailDiscoveryHub: View {
                 }
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func relationChip(text: String, systemImage: String) -> some View {
@@ -135,6 +137,7 @@ struct ProductDetailDiscoveryHub: View {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(FashColors.outlineMuted.opacity(0.35), lineWidth: 1)
         )
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, spacing.editorialStart)
     }
 
@@ -149,7 +152,7 @@ struct ProductDetailDiscoveryHub: View {
             if showsTopDivider {
                 Divider().opacity(0.45).padding(.horizontal, spacing.spacing2)
             }
-            ProductDetailMasonryRail(
+            ProductDetailCompactRail(
                 title: title,
                 systemImage: icon,
                 items: items,
