@@ -3,9 +3,10 @@ import UIKit
 
 /// Left-edge horizontal swipe to navigate back — closes overlays first, then returns to Home tab.
 struct FashEdgeBackNavigation: UIViewRepresentable {
+    var isEnabled: Bool = true
     let onBack: () -> Void
 
-    func makeCoordinator() -> Coordinator { Coordinator(onBack: onBack) }
+    func makeCoordinator() -> Coordinator { Coordinator(isEnabled: isEnabled, onBack: onBack) }
 
     func makeUIView(context: Context) -> EdgeBackAnchorView {
         let view = EdgeBackAnchorView()
@@ -14,12 +15,17 @@ struct FashEdgeBackNavigation: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: EdgeBackAnchorView, context: Context) {
+        context.coordinator.isEnabled = isEnabled
         uiView.coordinator = context.coordinator
     }
 
     final class Coordinator {
+        var isEnabled: Bool
         let onBack: () -> Void
-        init(onBack: @escaping () -> Void) { self.onBack = onBack }
+        init(isEnabled: Bool, onBack: @escaping () -> Void) {
+            self.isEnabled = isEnabled
+            self.onBack = onBack
+        }
     }
 
     final class EdgeBackAnchorView: UIView {
@@ -44,6 +50,7 @@ struct FashEdgeBackNavigation: UIViewRepresentable {
         }
 
         @objc private func handleEdgePan(_ recognizer: UIScreenEdgePanGestureRecognizer) {
+            guard coordinator?.isEnabled == true else { return }
             guard recognizer.state == .ended else { return }
             let translation = recognizer.translation(in: recognizer.view).x
             let velocity = recognizer.velocity(in: recognizer.view).x
@@ -54,11 +61,15 @@ struct FashEdgeBackNavigation: UIViewRepresentable {
 }
 
 extension FashEdgeBackNavigation.EdgeBackAnchorView: UIGestureRecognizerDelegate {
+    func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        coordinator?.isEnabled == true
+    }
+
     func gestureRecognizer(
         _ gestureRecognizer: UIGestureRecognizer,
         shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
     ) -> Bool {
-        false
+        otherGestureRecognizer is UIScreenEdgePanGestureRecognizer
     }
 }
 
@@ -110,10 +121,11 @@ extension AppRouter {
 extension View {
     func fashEdgeBackNavigation(
         router: AppRouter,
-        notificationsViewModel: NotificationsViewModel?
+        notificationsViewModel: NotificationsViewModel?,
+        isEnabled: Bool = true
     ) -> some View {
         background {
-            FashEdgeBackNavigation {
+            FashEdgeBackNavigation(isEnabled: isEnabled) {
                 _ = router.handleEdgeBack(notificationsViewModel: notificationsViewModel)
             }
             .frame(width: 0, height: 0)

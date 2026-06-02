@@ -161,7 +161,11 @@ struct MainNavScreen: View {
         .animation(.easeInOut(duration: 0.22), value: deps.snackbarMessage)
         .fashInAppNotificationOverlay()
         .animation(.easeInOut(duration: 0.25), value: activePromoCampaign?.campaignId)
-        .fashEdgeBackNavigation(router: router, notificationsViewModel: notificationsVM)
+        .fashEdgeBackNavigation(
+            router: router,
+            notificationsViewModel: notificationsVM,
+            isEnabled: router.listingDetailPath.isEmpty
+        )
         .task(id: isGuestMode) {
             guard !isGuestMode else {
                 activePromoCampaign = nil

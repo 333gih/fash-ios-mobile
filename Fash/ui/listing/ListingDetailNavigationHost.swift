@@ -29,5 +29,6 @@ struct ListingDetailNavigationHost: View {
             onListingClick: { router.pushListingDetail($0) },
             onDismissEntireFlow: { router.closeListingDetailFlow(dismissExplore: dismissExploreOverlayOnClose) }
         )
+        .navigationBarBackButtonHidden(true)
     }
 }
