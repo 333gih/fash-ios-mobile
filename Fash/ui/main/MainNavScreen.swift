@@ -2,7 +2,6 @@ import SwiftUI
 
 struct MainNavScreen: View {
     @Environment(AppDependencies.self) private var deps
-    @Environment(\.scenePhase) private var scenePhase
     @Bindable var router: AppRouter
     @Bindable var homeVM: HomeViewModel
     @Bindable var exploreVM: ExploreViewModel
@@ -183,10 +182,6 @@ struct MainNavScreen: View {
         .task(id: "promoOnAppOpen-\(isGuestMode)") {
             guard !isGuestMode else { return }
             await tryPresentAppOpenPromo(incrementOpenCount: true)
-        }
-        .onChange(of: scenePhase) { _, phase in
-            guard phase == .active, !isGuestMode else { return }
-            Task { await tryPresentAppOpenPromo(incrementOpenCount: !promoOpenCountTracked) }
         }
         .onChange(of: deps.appPromoCatalogRefreshGeneration) { _, _ in
             guard !isGuestMode, activePromoCampaign == nil, router.selectedConversationId == nil else { return }
