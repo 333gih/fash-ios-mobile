@@ -40,6 +40,7 @@ enum HomeFeedTabKeys {
     static let following = "following"
     static let stylePicks = "style_picks"
     static let similarSaved = "similar_saved"
+    static let seasonalNearYou = "seasonal_near_you"
 }
 
 enum ProfileTabKeys {

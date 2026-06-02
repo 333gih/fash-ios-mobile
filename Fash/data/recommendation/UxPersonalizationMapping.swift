@@ -8,6 +8,7 @@ enum UxPersonalizationMapping {
         case HomeFeedTabKeys.following: return .following
         case HomeFeedTabKeys.stylePicks: return .stylePicks
         case HomeFeedTabKeys.similarSaved: return .similarSaved
+        case HomeFeedTabKeys.seasonalNearYou: return .seasonalNearYou
         default: return nil
         }
     }
@@ -19,6 +20,7 @@ enum UxPersonalizationMapping {
         case .following: return HomeFeedTabKeys.following
         case .stylePicks: return HomeFeedTabKeys.stylePicks
         case .similarSaved: return HomeFeedTabKeys.similarSaved
+        case .seasonalNearYou: return HomeFeedTabKeys.seasonalNearYou
         }
     }
 
@@ -31,7 +33,7 @@ enum UxPersonalizationMapping {
     }
 
     static var recommendationSectionTabs: Set<HomeFeedTab> {
-        [.forYou, .stylePicks, .similarSaved]
+        HomeFeedTab.recommendationSectionTabs
     }
 
     static func profileTabIndex(from key: String) -> Int? {
