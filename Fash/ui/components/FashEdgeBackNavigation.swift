@@ -17,6 +17,7 @@ struct FashEdgeBackNavigation: UIViewRepresentable {
     func updateUIView(_ uiView: EdgeBackAnchorView, context: Context) {
         context.coordinator.isEnabled = isEnabled
         uiView.coordinator = context.coordinator
+        uiView.setPanEnabled(isEnabled)
     }
 
     final class Coordinator {
@@ -38,6 +39,7 @@ struct FashEdgeBackNavigation: UIViewRepresentable {
             let pan = UIScreenEdgePanGestureRecognizer(target: self, action: #selector(handleEdgePan(_:)))
             pan.edges = .left
             pan.delegate = self
+            pan.isEnabled = coordinator?.isEnabled ?? true
             window.addGestureRecognizer(pan)
             panRecognizer = pan
         }
@@ -56,6 +58,10 @@ struct FashEdgeBackNavigation: UIViewRepresentable {
             let velocity = recognizer.velocity(in: recognizer.view).x
             guard translation > 72 || velocity > 520 else { return }
             coordinator?.onBack()
+        }
+
+        func setPanEnabled(_ enabled: Bool) {
+            panRecognizer?.isEnabled = enabled
         }
     }
 }
