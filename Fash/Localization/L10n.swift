@@ -1955,6 +1955,8 @@ enum L10n {
     static var productContinueCheckout: String { t("product_continue_checkout") }
     static var productDetailError: String { t("product_detail_error") }
     static var productDetailTitle: String { t("product_detail_title") }
+    static var productDiscoveryHubSubtitle: String { t("product_discovery_hub_subtitle") }
+    static var productDiscoveryHubTitle: String { t("product_discovery_hub_title") }
     static func productFromCountry(_ a1: CVarArg) -> String {
         String(format: t("product_from_country"), a1)
     }
@@ -1973,25 +1975,6 @@ enum L10n {
     static func productMoreFromSeller(_ a1: CVarArg) -> String {
         String(format: t("product_more_from_seller"), a1)
     }
-    static var productSellerNameFallback: String { t("product_seller_name_fallback") }
-    static func productRelatedCategory(_ a1: CVarArg) -> String {
-        String(format: t("product_related_category"), a1)
-    }
-    static var productRelatedCategoryFallback: String { t("product_related_category_fallback") }
-    static func productRelatedBrand(_ a1: CVarArg) -> String {
-        String(format: t("product_related_brand"), a1)
-    }
-    static var productRelatedStyle: String { t("product_related_style") }
-    static var productDiscoveryHubTitle: String { t("product_discovery_hub_title") }
-    static var productDiscoveryHubSubtitle: String { t("product_discovery_hub_subtitle") }
-    static var productRelationBadgeSeller: String { t("product_relation_badge_seller") }
-    static var productRelationLegendSeller: String { t("product_relation_legend_seller") }
-    static var productRelationLegendCategory: String { t("product_relation_legend_category") }
-    static var productRelationLegendBrand: String { t("product_relation_legend_brand") }
-    static var productRelationLegendStyle: String { t("product_relation_legend_style") }
-    static func productRelationBadgeA11y(_ label: String) -> String {
-        String(format: t("product_relation_badge_a11y"), label)
-    }
     static var productOffersAccepted: String { t("product_offers_accepted") }
     static func productPriceDropFloor(_ a1: CVarArg) -> String {
         String(format: t("product_price_drop_floor"), a1)
@@ -2007,6 +1990,22 @@ enum L10n {
     static var productPurchaseGuideBodyNoBuyNow: String { t("product_purchase_guide_body_no_buy_now") }
     static var productPurchaseGuideGotIt: String { t("product_purchase_guide_got_it") }
     static var productPurchaseGuideTitle: String { t("product_purchase_guide_title") }
+    static func productRelatedBrand(_ a1: CVarArg) -> String {
+        String(format: t("product_related_brand"), a1)
+    }
+    static func productRelatedCategory(_ a1: CVarArg) -> String {
+        String(format: t("product_related_category"), a1)
+    }
+    static var productRelatedCategoryFallback: String { t("product_related_category_fallback") }
+    static var productRelatedStyle: String { t("product_related_style") }
+    static func productRelationBadgeA11y(_ a1: CVarArg) -> String {
+        String(format: t("product_relation_badge_a11y"), a1)
+    }
+    static var productRelationBadgeSeller: String { t("product_relation_badge_seller") }
+    static var productRelationLegendBrand: String { t("product_relation_legend_brand") }
+    static var productRelationLegendCategory: String { t("product_relation_legend_category") }
+    static var productRelationLegendSeller: String { t("product_relation_legend_seller") }
+    static var productRelationLegendStyle: String { t("product_relation_legend_style") }
     static var productReservedBuyer: String { t("product_reserved_buyer") }
     static func productReservedBuyerContinue(_ a1: CVarArg) -> String {
         String(format: t("product_reserved_buyer_continue"), a1)
@@ -2072,6 +2071,7 @@ enum L10n {
     }
     static var profileActionShare: String { t("profile_action_share") }
     static var profileCdBriefScrollToTop: String { t("profile_cd_brief_scroll_to_top") }
+    static var profileCompletedSales: String { t("profile_completed_sales") }
     static var profileEdit: String { t("profile_edit") }
     static var profileEmptyInReviewSubtitle: String { t("profile_empty_in_review_subtitle") }
     static var profileEmptyInReviewTitle: String { t("profile_empty_in_review_title") }
@@ -2129,6 +2129,10 @@ enum L10n {
     static var profileSellerFollowCtaHint: String { t("profile_seller_follow_cta_hint") }
     static var profileSellerRatingPending: String { t("profile_seller_rating_pending") }
     static var profileSellerRatingPendingHint: String { t("profile_seller_rating_pending_hint") }
+    static func profileSellerTrustCompletedSales(_ a1: CVarArg) -> String {
+        String(format: t("profile_seller_trust_completed_sales"), a1)
+    }
+    static var profileSellerTrustCompletedSalesHint: String { t("profile_seller_trust_completed_sales_hint") }
     static func profileSellerTrustReviewsCount(_ a1: CVarArg) -> String {
         String(format: t("profile_seller_trust_reviews_count"), a1)
     }

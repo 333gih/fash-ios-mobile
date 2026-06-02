@@ -326,7 +326,6 @@ final class ProfileViewModel {
     }
 
     private func applyProfileListingMetricsFromSummary() {
-        if tabCounts.sold > 0 { soldCount = tabCounts.sold }
         let listed = tabCounts.active + tabCounts.inReview + tabCounts.rejected
         if listed > 0 { productCount = listed }
     }
@@ -399,9 +398,6 @@ final class ProfileViewModel {
             mutatePagination(for: tab) {
                 $0.nextOffset = page.rawCount
                 $0.hasMore = page.rawCount >= profileListingPageSize
-            }
-            if tab == .sold, soldCount == 0, tabCounts.sold > 0 {
-                soldCount = tabCounts.sold
             }
             FeedListingImagePrefetch.prefetch(items: page.items)
         case .failure:

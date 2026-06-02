@@ -212,7 +212,7 @@ final class UserRepository {
             referenceMeasurementShoulders: optDoubleIfPresent(obj, "reference_measurement_shoulders"),
             referenceMeasurementSleeveLength: optDoubleIfPresent(obj, "reference_measurement_sleeve_length"),
             gender: RepositoryHttp.optString(obj, "gender", "Gender").trimmingCharacters(in: .whitespaces).lowercased(),
-            soldCount: RepositoryHttp.optInt(obj, "sold_count", "SoldCount"),
+            soldCount: parseCompletedSaleCount(obj),
             rating: rating,
             reviewCount: reviewCountOpt,
             verified: (obj["verified"] as? Bool) ?? (obj["Verified"] as? Bool) ?? false,
@@ -313,6 +313,17 @@ final class UserRepository {
             return v > 0 ? v : nil
         }
         return nil
+    }
+
+    /// Completed marketplace sales (`delivered_confirmed` orders + deduped completed deals).
+    private func parseCompletedSaleCount(_ obj: [String: Any]) -> Int {
+        let keys = ["completed_sale_count", "CompletedSaleCount", "sold_count", "SoldCount"]
+        for key in keys {
+            if obj[key] != nil {
+                return max(0, RepositoryHttp.optInt(obj, key))
+            }
+        }
+        return 0
     }
 
     private func parseAestheticTagsField(_ obj: [String: Any]) -> ([String], [AestheticTagPutItem]) {

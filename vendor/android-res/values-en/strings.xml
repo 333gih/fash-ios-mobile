@@ -727,7 +727,6 @@
     <string name="product_brand">Brand</string>
     <string name="product_material">Material</string>
     <string name="product_more_from_seller">More from %1$s</string>
-    <string name="product_seller_name_fallback">this shop</string>
     <string name="product_related_category">More in %1$s</string>
     <string name="product_related_category_fallback">this category</string>
     <string name="product_related_brand">More from %1$s</string>
@@ -1025,6 +1024,9 @@
     <string name="follow_list_empty_followers_tip_2">Share your shop or listings so more buyers can find you.</string>
     <string name="profile_products">Products</string>
     <string name="profile_sold">Sold</string>
+    <string name="profile_completed_sales">Sales</string>
+    <string name="profile_seller_trust_completed_sales">%1$d completed sales</string>
+    <string name="profile_seller_trust_completed_sales_hint">Successful orders confirmed in the app</string>
     <string name="profile_rating_format">%1$.1f (%2$d reviews)</string>
     <string name="profile_rating_score_only">%1$.1f</string>
     <string name="profile_rating_none_seller">No ratings yet</string>

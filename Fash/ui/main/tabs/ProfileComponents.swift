@@ -256,7 +256,7 @@ struct ProfileOwnMetricsCard: View {
                     statDivider
                     statCell("\(profile.productCount)", L10n.profileProducts)
                     statDivider
-                    statCell("\(profile.soldCount)", L10n.profileSold)
+                    statCell(ProfileFormatting.formatCount(profile.soldCount), L10n.profileCompletedSales)
                 }
                 .padding(.vertical, 6)
                 if showTrustFooter(profile) {
@@ -275,7 +275,7 @@ struct ProfileOwnMetricsCard: View {
 
     private func showTrustFooter(_ p: ProfileInfo) -> Bool {
         let hasRating = (p.rating ?? 0) > 0
-        return hasRating || p.productCount > 0 || (p.reputationPoints ?? 0) > 0 || p.hasFastDelivery
+        return hasRating || p.productCount > 0 || p.soldCount > 0 || (p.reputationPoints ?? 0) > 0 || p.hasFastDelivery
     }
 
     private func statCell(_ value: String, _ label: String, action: (() -> Void)? = nil) -> some View {
@@ -318,7 +318,7 @@ struct SellerProfileMetricsCard: View {
                     statDivider
                     statCell("\(profile.productCount)", L10n.profileProducts)
                     statDivider
-                    statCell("\(profile.soldCount)", L10n.profileSold)
+                    statCell(ProfileFormatting.formatCount(profile.soldCount), L10n.profileCompletedSales)
                 }
                 .padding(.vertical, 6)
                 ProfileSellerTrustLine(profile: profile)
@@ -372,6 +372,12 @@ struct ProfileOwnTrustFooter: View {
                             .font(FashTypography.bodySmall)
                             .foregroundStyle(FashColors.textSecondary)
                     }
+                } else if profile.soldCount > 0 {
+                    Text(L10n.profileSellerTrustCompletedSales(profile.soldCount))
+                        .font(FashTypography.bodyMedium.weight(.medium))
+                    Text(L10n.profileSellerTrustCompletedSalesHint)
+                        .font(FashTypography.bodySmall)
+                        .foregroundStyle(FashColors.textSecondary)
                 } else if profile.productCount > 0 {
                     Text(L10n.profileSellerRatingPending)
                         .font(FashTypography.bodyMedium.weight(.medium))
@@ -409,7 +415,8 @@ struct ProfileSellerTrustLine: View {
     var body: some View {
         let hasRating = (profile.rating ?? 0) > 0
         let hasShop = profile.productCount > 0
-        if !hasRating && !hasShop && profile.reputationPoints == nil && !profile.hasFastDelivery {
+        let completedSales = profile.soldCount
+        if !hasRating && !hasShop && completedSales == 0 && profile.reputationPoints == nil && !profile.hasFastDelivery {
             EmptyView()
         } else {
             HStack(alignment: .center, spacing: 10) {
@@ -423,7 +430,19 @@ struct ProfileSellerTrustLine: View {
                             Text(L10n.profileSellerTrustReviewsCount(c))
                                 .font(FashTypography.bodySmall)
                                 .foregroundStyle(FashColors.textSecondary)
+                        } else if completedSales > 0 {
+                            Text(L10n.profileSellerTrustCompletedSales(completedSales))
+                                .font(FashTypography.bodySmall)
+                                .foregroundStyle(FashColors.textSecondary)
                         }
+                    }
+                } else if completedSales > 0 {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(L10n.profileSellerTrustCompletedSales(completedSales))
+                            .font(FashTypography.bodyMedium.weight(.semibold))
+                        Text(L10n.profileSellerTrustCompletedSalesHint)
+                            .font(FashTypography.bodySmall)
+                            .foregroundStyle(FashColors.textSecondary)
                     }
                 } else if hasShop {
                     Text(L10n.profileSellerRatingPending)

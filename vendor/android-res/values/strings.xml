@@ -746,7 +746,6 @@
     <string name="product_brand">Thương hiệu</string>
     <string name="product_material">Chất liệu</string>
     <string name="product_more_from_seller">Thêm từ %1$s</string>
-    <string name="product_seller_name_fallback">cửa hàng này</string>
     <string name="product_related_category">Thêm trong %1$s</string>
     <string name="product_related_category_fallback">danh mục này</string>
     <string name="product_related_brand">Thêm từ %1$s</string>
@@ -1048,6 +1047,9 @@
     <string name="follow_list_empty_followers_tip_2">Chia sẻ shop hoặc tin đăng để nhiều người tìm thấy bạn hơn.</string>
     <string name="profile_products">Sản phẩm</string>
     <string name="profile_sold">Đã bán</string>
+    <string name="profile_completed_sales">Giao dịch</string>
+    <string name="profile_seller_trust_completed_sales">%1$d giao dịch thành công</string>
+    <string name="profile_seller_trust_completed_sales_hint">Đơn đã xác nhận giao hàng trong app</string>
     <string name="profile_rating_format">%1$.1f (%2$d đánh giá)</string>
     <string name="profile_rating_score_only">%1$.1f</string>
     <string name="profile_rating_none_seller">Gian hàng chưa có đánh giá</string>
