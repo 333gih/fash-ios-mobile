@@ -17,7 +17,6 @@ struct FashProductDetailRouteView: View {
             listingId: listingId,
             isGuestMode: isGuestMode,
             onDismiss: onDismiss,
-            showTopBar: false,
             onBuyNow: { router.selectedCheckoutListingId = $0 },
             onContinueOrder: { orderId in
                 onDismissEntireFlow()
@@ -32,6 +31,7 @@ struct FashProductDetailRouteView: View {
             onVisitSellerShop: { username in
                 deps.openSellerShop(username: username, router: router)
             },
+            showTopBar: false,
             onRequestLogin: { router.loginStep = .email },
             onNavigateToExplore: { cat, brand, tag, query, countryId, iso in
                 onDismissEntireFlow()
