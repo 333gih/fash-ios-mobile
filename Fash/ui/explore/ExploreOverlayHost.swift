@@ -1,8 +1,10 @@
 import SwiftUI
 
-/// Identifiable wrapper for PDP `fullScreenCover` while Explore overlay is open.
-private struct ExploreListingDetailCover: Identifiable {
-    let id: String
+/// Stable identity for PDP `fullScreenCover` while Explore is open (listing id changes via NavigationStack).
+private enum ExploreListingDetailCover: Identifiable {
+    case flow
+
+    var id: String { "explore-listing-flow" }
 }
 
 /// Full-screen Explore from Home search — Android `ExploreOverlayHost`.
@@ -79,13 +81,15 @@ struct ExploreOverlayHost: View {
             )
             .zIndex(20)
         }
-        .fullScreenCover(item: exploreListingCoverBinding) { cover in
-            FashProductDetailRouteView(
-                router: router,
-                listingId: cover.id,
-                isGuestMode: isGuestMode,
-                dismissExploreOverlayOnClose: false
-            )
+        .fullScreenCover(item: exploreListingCoverBinding) { _ in
+            if let rootId = router.listingDetailRootId {
+                ListingDetailNavigationHost(
+                    router: router,
+                    rootListingId: rootId,
+                    isGuestMode: isGuestMode,
+                    dismissExploreOverlayOnClose: false
+                )
+            }
         }
         .fashSnackbarOverlay()
         .onAppear {
@@ -108,10 +112,13 @@ struct ExploreOverlayHost: View {
     private var exploreListingCoverBinding: Binding<ExploreListingDetailCover?> {
         Binding(
             get: {
-                guard let id = router.exploreOverlayListingId else { return nil }
-                return ExploreListingDetailCover(id: id)
+                router.exploreOverlayListingId != nil ? .flow : nil
             },
-            set: { router.selectedListingId = $0?.id }
+            set: { newValue in
+                if newValue == nil {
+                    router.closeListingDetailFlow()
+                }
+            }
         )
     }
 

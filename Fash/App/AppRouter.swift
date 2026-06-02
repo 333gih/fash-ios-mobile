@@ -72,7 +72,19 @@ final class AppRouter {
     var featureTourActive = false
 
     // Full-screen overlays
-    var selectedListingId: String?
+    /// Root listing for PDP full-screen flow (`listingDetailPath` stacks related picks).
+    var listingDetailRootId: String?
+    var listingDetailPath: [String] = []
+    var selectedListingId: String? {
+        get { listingDetailRootId }
+        set {
+            if let id = newValue?.trimmingCharacters(in: .whitespacesAndNewlines), !id.isEmpty {
+                openListingDetailFlow(rootId: id)
+            } else {
+                closeListingDetailFlow()
+            }
+        }
+    }
     var sellerShopUsername: String?
     var editListingId: String?
     var profileEditReturn: ProfileEditReturnContext?
@@ -100,7 +112,7 @@ final class AppRouter {
     var pendingListingIdAfterPreview: String?
 
     var hasBlockingOverlay: Bool {
-        selectedListingId != nil
+        listingDetailRootId != nil
             || sellerShopUsername != nil
             || editListingId != nil
             || showEditProfile
@@ -146,6 +158,45 @@ final class AppRouter {
         if showEditProfile { showEditProfile = false; return }
         if editListingId != nil { editListingId = nil; return }
         if sellerShopUsername != nil { sellerShopUsername = nil; return }
-        if selectedListingId != nil { selectedListingId = nil; return }
+        if listingDetailRootId != nil {
+            popListingDetail()
+            return
+        }
+    }
+
+    func openListingDetailFlow(rootId: String) {
+        let id = rootId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !id.isEmpty else { return }
+        listingDetailRootId = id
+        listingDetailPath = []
+    }
+
+    func pushListingDetail(_ listingId: String) {
+        let id = listingId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !id.isEmpty else { return }
+        guard listingDetailRootId != nil else {
+            openListingDetailFlow(rootId: id)
+            return
+        }
+        if listingDetailRootId?.caseInsensitiveCompare(id) == .orderedSame { return }
+        if listingDetailPath.contains(where: { $0.caseInsensitiveCompare(id) == .orderedSame }) { return }
+        listingDetailPath.append(id)
+    }
+
+    func popListingDetail() {
+        if !listingDetailPath.isEmpty {
+            listingDetailPath.removeLast()
+            return
+        }
+        closeListingDetailFlow()
+    }
+
+    func closeListingDetailFlow(dismissExplore: Bool = false) {
+        listingDetailRootId = nil
+        listingDetailPath = []
+        if dismissExplore || showExploreOverlay {
+            showExploreOverlay = false
+            exploreSearchExpanded = false
+        }
     }
 }

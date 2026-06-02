@@ -1,7 +1,7 @@
 import SwiftUI
 
 enum FullScreenRoute: Identifiable {
-    case listing(String)
+    case listingFlow(String)
     case seller(String)
     case editListing(String)
     case editProfile
@@ -26,7 +26,7 @@ enum FullScreenRoute: Identifiable {
 
     var id: String {
         switch self {
-        case .listing(let id): return "listing-\(id)"
+        case .listingFlow: return "listing-flow"
         case .seller(let u): return "seller-\(u)"
         case .editListing(let id): return "edit-listing-\(id)"
         case .editProfile: return "editProfile"
@@ -63,7 +63,7 @@ extension AppRouter {
     /// Priority matches Android MainActivity overlay back stack (outermost first).
     var fullScreenRoute: FullScreenRoute? {
         if exploreOverlayListingId != nil { return nil }
-        if let id = selectedListingId { return .listing(id) }
+        if let root = listingDetailRootId { return .listingFlow(root) }
         if let user = sellerShopUsername { return .seller(user) }
         if let editId = editListingId { return .editListing(editId) }
         if showEditProfile { return .editProfile }

@@ -141,6 +141,7 @@ struct ProductDetailScreen: View {
                     ProductDetailDiscoveryHub(
                         current: detail,
                         entries: viewModel.discoveryFeed,
+                        isLoading: viewModel.isDiscoveryLoading,
                         onListingTap: onListingClick,
                         onLike: { item in guestGate { Task { await viewModel.toggleLikeRailItem(item, deps: deps) } } },
                         onSave: { item in guestGate { Task { await viewModel.toggleSaveRailItem(item, deps: deps) } } }

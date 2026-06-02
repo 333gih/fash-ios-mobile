@@ -131,10 +131,10 @@ struct RootView: View {
     @ViewBuilder
     private func fullScreenContent(_ route: FullScreenRoute) -> some View {
         switch route {
-        case .listing(let id):
-            FashProductDetailRouteView(
+        case .listingFlow(let rootId):
+            ListingDetailNavigationHost(
                 router: router,
-                listingId: id,
+                rootListingId: rootId,
                 isGuestMode: router.isGuestMode
             )
         case .seller(let user):

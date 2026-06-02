@@ -6,31 +6,34 @@ struct FashProductDetailRouteView: View {
     @Bindable var router: AppRouter
     let listingId: String
     var isGuestMode: Bool
-    /// When true, closing PDP also dismisses the Explore overlay (e.g. opened from Khám phá).
+    /// When true, closing the entire PDP flow also dismisses the Explore overlay.
     var dismissExploreOverlayOnClose: Bool = false
+    var onDismiss: () -> Void = {}
+    var onListingClick: (String) -> Void = { _ in }
+    var onDismissEntireFlow: () -> Void = {}
 
     var body: some View {
         ProductDetailScreen(
             listingId: listingId,
             isGuestMode: isGuestMode,
-            onDismiss: dismissProductDetail,
+            onDismiss: onDismiss,
             onBuyNow: { router.selectedCheckoutListingId = $0 },
             onContinueOrder: { orderId in
-                dismissProductDetail()
+                onDismissEntireFlow()
                 router.selectedOrderId = orderId
             },
             onChat: { convId in
-                dismissProductDetail()
+                onDismissEntireFlow()
                 router.selectedConversationId = convId
             },
             onShare: { _, _ in },
-            onListingClick: { router.selectedListingId = $0 },
+            onListingClick: onListingClick,
             onVisitSellerShop: { username in
                 deps.openSellerShop(username: username, router: router)
             },
             onRequestLogin: { router.loginStep = .email },
             onNavigateToExplore: { cat, brand, tag, query, countryId, iso in
-                dismissProductDetail()
+                onDismissEntireFlow()
                 router.pendingExploreProfileFilter = ExploreProfileFilterRequest(
                     categoryId: cat,
                     brandId: brand,
@@ -41,13 +44,5 @@ struct FashProductDetailRouteView: View {
                 )
             }
         )
-    }
-
-    private func dismissProductDetail() {
-        router.selectedListingId = nil
-        if dismissExploreOverlayOnClose {
-            router.showExploreOverlay = false
-            router.exploreSearchExpanded = false
-        }
     }
 }

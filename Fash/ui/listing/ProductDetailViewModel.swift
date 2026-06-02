@@ -32,6 +32,8 @@ final class ProductDetailViewModel {
     var relatedByStyle: [ListingFeedItem] = []
     /// Single Explore-style masonry feed with per-card relation badge.
     var discoveryFeed: [ProductDiscoveryFeedEntry] = []
+    /// True while seller/category/brand/style rails load after main detail is shown.
+    var isDiscoveryLoading = false
     var isLoading = false
     var loadError: String?
     var isFollowing = false
@@ -73,6 +75,7 @@ final class ProductDetailViewModel {
         relatedByBrand = []
         relatedByStyle = []
         discoveryFeed = []
+        isDiscoveryLoading = false
         bottomBarMode = .normal
         buyerActiveOrder = nil
         showPurchaseGuide = false
@@ -87,8 +90,11 @@ final class ProductDetailViewModel {
             detail = d
             isFollowing = d.sellerIsFollowing ?? false
             applyBottomModeFromDetail(d, listingId: id, deps: deps)
+            isDiscoveryLoading = true
             if let sid = d.sellerId?.nilIfEmpty ?? d.sellerUsername?.nilIfEmpty {
                 await loadSellerAndMore(sellerKey: sid, excludeListingId: id, publicBrowse: guestBrowse, deps: deps)
+            } else {
+                isDiscoveryLoading = false
             }
             if !guestBrowse {
                 _ = await deps.listingRepository.recordView(listingId: id)
@@ -97,6 +103,7 @@ final class ProductDetailViewModel {
             }
         case .failure(let error):
             loadError = FashErrorPresentation.userMessage(for: error)
+            isDiscoveryLoading = false
         }
         isLoading = false
     }
@@ -334,7 +341,12 @@ final class ProductDetailViewModel {
             }
         }
 
-        guard let detail else { return }
+        guard let detail else {
+            isDiscoveryLoading = false
+            return
+        }
+        isDiscoveryLoading = true
+        defer { isDiscoveryLoading = false }
         async let sellerRail = loadSellerRail(
             sellerKey: sellerKey,
             excludeListingId: excludeListingId,

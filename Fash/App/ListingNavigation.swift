@@ -33,7 +33,7 @@ extension AppDependencies {
         let shouldDismissExplore = dismissExploreOverlay ?? !router.showExploreOverlay
         dismissExploreOverlayIfNeeded(router, when: shouldDismissExplore)
         router.pendingListingIdAfterPreview = nil
-        router.selectedListingId = id
+        router.openListingDetailFlow(rootId: id)
         listingPreview.close(deps: self, animated: true)
     }
 
@@ -56,7 +56,7 @@ extension AppDependencies {
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .replacingOccurrences(of: "@", with: "")
         guard !handle.isEmpty else { return }
-        router.selectedListingId = nil
+        router.closeListingDetailFlow()
         router.pendingListingIdAfterPreview = nil
         listingPreview.close(deps: self, animated: true)
         dismissExploreOverlayIfNeeded(router, when: dismissExploreOverlay)

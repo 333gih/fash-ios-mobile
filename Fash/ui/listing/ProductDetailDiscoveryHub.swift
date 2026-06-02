@@ -6,6 +6,7 @@ struct ProductDetailDiscoveryHub: View {
 
     let current: ListingDetail
     let entries: [ProductDiscoveryFeedEntry]
+    var isLoading: Bool = false
     let onListingTap: (String) -> Void
     var onLike: ((ListingFeedItem) -> Void)?
     var onSave: ((ListingFeedItem) -> Void)?
@@ -13,7 +14,13 @@ struct ProductDetailDiscoveryHub: View {
     @State private var columnAssignments: [String: Bool] = [:]
 
     var body: some View {
-        if entries.isEmpty {
+        if isLoading {
+            VStack(alignment: .leading, spacing: spacing.spacing2) {
+                hubHeader
+                FashSkeleton.listingGrid(rows: 2, staggered: true)
+            }
+            .padding(.top, spacing.spacing2)
+        } else if entries.isEmpty {
             EmptyView()
         } else {
             VStack(alignment: .leading, spacing: spacing.spacing2) {
