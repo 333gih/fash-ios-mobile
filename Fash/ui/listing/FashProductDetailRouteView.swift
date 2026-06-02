@@ -17,6 +17,7 @@ struct FashProductDetailRouteView: View {
             listingId: listingId,
             isGuestMode: isGuestMode,
             onDismiss: onDismiss,
+            showTopBar: false,
             onBuyNow: { router.selectedCheckoutListingId = $0 },
             onContinueOrder: { orderId in
                 onDismissEntireFlow()

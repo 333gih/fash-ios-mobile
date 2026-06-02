@@ -178,8 +178,16 @@ final class AppRouter {
             openListingDetailFlow(rootId: id)
             return
         }
-        if listingDetailRootId?.caseInsensitiveCompare(id) == .orderedSame { return }
-        if listingDetailPath.contains(where: { $0.caseInsensitiveCompare(id) == .orderedSame }) { return }
+        if listingDetailRootId?.caseInsensitiveCompare(id) == .orderedSame {
+            // Re-selecting the flow root pops back to the first PDP.
+            listingDetailPath = []
+            return
+        }
+        if let existingIndex = listingDetailPath.firstIndex(where: { $0.caseInsensitiveCompare(id) == .orderedSame }) {
+            // If the tapped item already exists in stack, pop back to it.
+            listingDetailPath = Array(listingDetailPath.prefix(existingIndex + 1))
+            return
+        }
         listingDetailPath.append(id)
     }
 

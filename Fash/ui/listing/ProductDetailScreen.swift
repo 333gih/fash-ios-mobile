@@ -13,6 +13,7 @@ struct ProductDetailScreen: View {
     var onShare: (String, String) -> Void = { _, _ in }
     var onListingClick: (String) -> Void = { _ in }
     var onVisitSellerShop: (String) -> Void = { _ in }
+    var showTopBar: Bool = true
     var onRequestLogin: () -> Void = {}
     var onNavigateToExplore: (
         _ categoryId: String?,
@@ -33,7 +34,9 @@ struct ProductDetailScreen: View {
     var body: some View {
         ZStack(alignment: .top) {
             content
-            topBar
+            if showTopBar {
+                topBar
+            }
         }
         .background(FashColors.screen)
         .safeAreaInset(edge: .bottom) { bottomBar }
@@ -152,7 +155,7 @@ struct ProductDetailScreen: View {
                     }
                     Spacer(minLength: 100)
                 }
-                .padding(.top, 56)
+                .padding(.top, showTopBar ? 56 : 0)
             }
         }
     }
