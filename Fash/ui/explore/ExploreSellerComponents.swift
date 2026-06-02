@@ -268,15 +268,22 @@ struct ExploreInterestChipsRow: View {
 struct ExploreActivePersonalFilterChips: View {
     @Environment(\.fashSpacing) private var spacing
     var sizingActive: Bool
+    var seasonContextLabel: String? = nil
     var onClearSizing: () -> Void
     var onOpenFilters: () -> Void
 
     var body: some View {
-        if !sizingActive { EmptyView() } else {
+        let season = seasonContextLabel?.trimmingCharacters(in: .whitespaces)
+        if !sizingActive && (season == nil || season?.isEmpty == true) {
+            EmptyView()
+        } else {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     if sizingActive {
                         filterPill(L10n.exploreFilterSummarySizingMatch, onClear: onClearSizing)
+                    }
+                    if let season, !season.isEmpty {
+                        seasonPill(season)
                     }
                     Button(L10n.exploreFiltersShow, action: onOpenFilters)
                         .font(FashTypography.labelMedium)
@@ -285,6 +292,17 @@ struct ExploreActivePersonalFilterChips: View {
                 .padding(.horizontal, spacing.editorialStart)
             }
         }
+    }
+
+    private func seasonPill(_ label: String) -> some View {
+        Text(label)
+            .font(FashTypography.labelMedium)
+            .foregroundStyle(FashColors.textSecondary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(FashColors.surfaceMuted.opacity(0.65))
+            .clipShape(Capsule())
+            .lineLimit(1)
     }
 
     private func filterPill(_ label: String, onClear: @escaping () -> Void) -> some View {

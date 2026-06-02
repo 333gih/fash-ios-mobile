@@ -106,6 +106,12 @@
 "brand_header_suffix_post" = "Post";
 "brand_header_suffix_profile" = "Profile";
 "brand_wordmark" = "FASH.";
+"home_seasonal_near_you_title" = "Hợp mùa gần bạn";
+"home_guest_tab_seasonal_title" = "Gợi ý theo mùa";
+"home_guest_tab_seasonal_body" = "Đăng nhập để xem đồ phù hợp mùa và khu vực của bạn.";
+"shopping_context_chip" = "Gợi ý: %@";
+"home_tab_empty_seasonal_title" = "Chưa có gợi ý theo mùa";
+"home_tab_empty_seasonal_subtitle" = "Thêm địa chỉ hoặc chọn khu vực săn đồ để nhận gợi ý phù hợp mùa.";
 "browse_location_chip" = "Khu vực: %1$@";
 "browse_location_pick" = "Chọn khu vực";
 "browse_location_picker_apply" = "Áp dụng khu vực";

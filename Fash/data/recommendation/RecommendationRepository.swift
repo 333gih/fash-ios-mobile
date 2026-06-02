@@ -6,6 +6,8 @@ struct HomeRecommendationSections: Equatable {
     var stylePicks: [ListingFeedItem] = []
     var continueBrowsing: [ListingFeedItem] = []
     var similarToSaved: [ListingFeedItem] = []
+    var seasonalNearYou: [ListingFeedItem] = []
+    var shoppingContext: ShoppingContext?
 }
 
 /// Personalized discovery — Android [RecommendationRepository].
@@ -136,7 +138,9 @@ final class RecommendationRepository {
                 forYou: ListingFeedJsonParser.parseItemsArray(payload["for_you"] as? [[String: Any]]),
                 stylePicks: ListingFeedJsonParser.parseItemsArray(payload["style_picks"] as? [[String: Any]]),
                 continueBrowsing: ListingFeedJsonParser.parseItemsArray(payload["continue_browsing"] as? [[String: Any]]),
-                similarToSaved: ListingFeedJsonParser.parseItemsArray(payload["similar_to_saved"] as? [[String: Any]])
+                similarToSaved: ListingFeedJsonParser.parseItemsArray(payload["similar_to_saved"] as? [[String: Any]]),
+                seasonalNearYou: ListingFeedJsonParser.parseItemsArray(payload["seasonal_near_you"] as? [[String: Any]]),
+                shoppingContext: ShoppingContext.fromDict(payload["shopping_context"] as? [String: Any])
             ))
         } catch {
             return .failure(error)
@@ -182,6 +186,29 @@ final class RecommendationRepository {
                 )
             }
             return .success(())
+        } catch {
+            return .failure(error)
+        }
+    }
+
+    func shoppingContext(publicBrowse: Bool) async -> Result<ShoppingContext, Error> {
+        do {
+            let data: Data
+            if publicBrowse {
+                data = try await RepositoryHttp.executeGet(
+                    urlString: PublicBrowseHttp.publicApiPath("browse/recommendations/context"),
+                    client: client,
+                    publicBrowse: true
+                )
+            } else {
+                data = try await RepositoryHttp.executeCoreGet(
+                    relativePath: "api/v1/recommendations/context",
+                    client: client
+                )
+            }
+            let root = try RepositoryHttp.jsonObject(data)
+            let payload = (root["data"] as? [String: Any]) ?? root
+            return .success(ShoppingContext.fromDict(payload) ?? ShoppingContext())
         } catch {
             return .failure(error)
         }

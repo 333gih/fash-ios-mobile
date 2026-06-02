@@ -231,9 +231,10 @@ struct ExploreScreen: View {
 
     private var listingsLeadingRows: some View {
         VStack(spacing: spacing.spacing2) {
-            if viewModel.isSizingFilterActive {
+            if viewModel.isSizingFilterActive || viewModel.shoppingContext?.chipLabel() != nil {
                 ExploreActivePersonalFilterChips(
-                    sizingActive: true,
+                    sizingActive: viewModel.isSizingFilterActive,
+                    seasonContextLabel: viewModel.shoppingContext?.chipLabel(),
                     onClearSizing: {
                         viewModel.setSizingModeFilter(nil)
                         Task {

@@ -472,7 +472,7 @@ final class HomeViewModel {
             return await loadHuntTodayTab(deps: deps, isGuestMode: isGuestMode, force: force)
         case .following:
             return await loadFollowingTab(deps: deps, isGuestMode: isGuestMode, force: force)
-        case .forYou, .stylePicks, .similarSaved:
+        case .forYou, .stylePicks, .similarSaved, .seasonalNearYou:
             return await loadRecommendationSections(deps: deps, isGuestMode: isGuestMode, force: force)
         }
     }
@@ -600,6 +600,8 @@ final class HomeViewModel {
         sections.forYou = loaded.forYou
         sections.stylePicks = loaded.stylePicks
         sections.similarToSaved = loaded.similarToSaved
+        sections.seasonalNearYou = loaded.seasonalNearYou
+        sections.shoppingContext = loaded.shoppingContext ?? sections.shoppingContext
         recommendationSectionsFetched = true
         syncItemsForSelectedTab()
         return true
@@ -640,9 +642,14 @@ final class HomeViewModel {
         case .forYou: return sections.forYou
         case .stylePicks: return sections.stylePicks
         case .similarSaved: return sections.similarToSaved
+        case .seasonalNearYou: return sections.seasonalNearYou
         case .following: return followingItems
         case .huntToday: return sections.huntToday
         }
+    }
+
+    var shoppingContextChip: String? {
+        sections.shoppingContext?.chipLabel()
     }
 
     private func setTabLoading(_ tab: HomeFeedTab, _ loading: Bool) {

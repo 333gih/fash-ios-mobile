@@ -164,6 +164,14 @@ struct HomeFeedContent: View {
     @ViewBuilder
     private var homeScrollAwayHeader: some View {
         VStack(spacing: 0) {
+            if let chip = viewModel.shoppingContextChip {
+                Text(L10n.shoppingContextChip(chip))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.bottom, 4)
+            }
+
             if showJourneyRow {
                 BuyerHomeJourneyCompactBar(
                     stats: viewModel.buyerStats,

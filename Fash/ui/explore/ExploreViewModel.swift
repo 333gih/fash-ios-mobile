@@ -65,6 +65,7 @@ final class ExploreViewModel {
     var brands: [CommonBrandDto] = []
     var countries: [CommonCountryDto] = []
     var filterCatalogLoading = false
+    var shoppingContext: ShoppingContext?
 
     private var listingsFetchGeneration = 0
     private(set) var listingsFeedEpoch = 0
@@ -331,7 +332,8 @@ final class ExploreViewModel {
         await loadFilterCatalogIfNeeded(deps: deps)
         async let featured: Void = loadFeaturedSellers(deps: deps, isGuestMode: isGuestMode)
         async let chips: Void = loadQuickInterestChips(deps: deps)
-        _ = await (featured, chips)
+        async let context: Void = refreshShoppingContext(deps: deps, isGuestMode: isGuestMode)
+        _ = await (featured, chips, context)
         if primarySection == .sellers {
             await refreshSellerBrowse(deps: deps, isGuestMode: isGuestMode)
         } else {
@@ -356,10 +358,17 @@ final class ExploreViewModel {
     }
 
     private func reloadExploreContent(deps: AppDependencies, isGuestMode: Bool) async {
+        await refreshShoppingContext(deps: deps, isGuestMode: isGuestMode)
         if primarySection == .sellers {
             await refreshSellerBrowse(deps: deps, isGuestMode: isGuestMode)
         } else {
             await fetchListingsFirstPage(deps: deps, isGuestMode: isGuestMode)
+        }
+    }
+
+    private func refreshShoppingContext(deps: AppDependencies, isGuestMode: Bool) async {
+        if case .success(let ctx) = await deps.recommendationRepository.shoppingContext(publicBrowse: isGuestMode) {
+            shoppingContext = ctx
         }
     }
 

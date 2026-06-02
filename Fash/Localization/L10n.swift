@@ -1123,6 +1123,14 @@ enum L10n {
     static var homeSectionRecentlyViewedTitle: String { t("home_section_recently_viewed_title") }
     static var homeSectionRecommendedSellersSubtitle: String { t("home_section_recommended_sellers_subtitle") }
     static var homeSectionRecommendedSellersTitle: String { t("home_section_recommended_sellers_title") }
+    static var homeSeasonalNearYouTitle: String { t("home_seasonal_near_you_title") }
+    static var homeGuestTabSeasonalTitle: String { t("home_guest_tab_seasonal_title") }
+    static var homeGuestTabSeasonalBody: String { t("home_guest_tab_seasonal_body") }
+    static func shoppingContextChip(_ label: String) -> String {
+        String(format: t("shopping_context_chip"), label)
+    }
+    static var homeTabEmptySeasonalTitle: String { t("home_tab_empty_seasonal_title") }
+    static var homeTabEmptySeasonalSubtitle: String { t("home_tab_empty_seasonal_subtitle") }
     static var homeSectionSimilarToSavedSubtitle: String { t("home_section_similar_to_saved_subtitle") }
     static var homeSectionSimilarToSavedTitle: String { t("home_section_similar_to_saved_title") }
     static var homeSectionTrendingStylesSubtitle: String { t("home_section_trending_styles_subtitle") }

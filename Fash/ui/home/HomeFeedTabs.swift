@@ -7,6 +7,7 @@ enum HomeFeedTab: String, CaseIterable, Identifiable {
     case following = "following"
     case stylePicks = "style_picks"
     case similarSaved = "similar_saved"
+    case seasonalNearYou = "seasonal_near_you"
 
     var id: String { rawValue }
 
@@ -17,6 +18,7 @@ enum HomeFeedTab: String, CaseIterable, Identifiable {
         case .following: return L10n.homeTopSectionTitle
         case .stylePicks: return L10n.homeStylePicksTitle
         case .similarSaved: return L10n.homeSectionSimilarToSavedTitle
+        case .seasonalNearYou: return L10n.homeSeasonalNearYouTitle
         }
     }
 
@@ -34,11 +36,12 @@ enum HomeFeedTab: String, CaseIterable, Identifiable {
         case .following: return "home"
         case .stylePicks: return "style_picks"
         case .similarSaved: return "similar_to_saved"
+        case .seasonalNearYou: return "seasonal_near_you"
         }
     }
 
     static var recommendationSectionTabs: Set<HomeFeedTab> {
-        [.forYou, .stylePicks, .similarSaved]
+        [.forYou, .stylePicks, .similarSaved, .seasonalNearYou]
     }
 
     var guestTitle: String {
@@ -47,6 +50,7 @@ enum HomeFeedTab: String, CaseIterable, Identifiable {
         case .following: return L10n.homeGuestTabFollowingTitle
         case .stylePicks: return L10n.homeGuestTabStyleTitle
         case .similarSaved: return L10n.homeGuestTabSimilarTitle
+        case .seasonalNearYou: return L10n.homeGuestTabSeasonalTitle
         default: return L10n.guestLoginSheetTitle
         }
     }
@@ -57,6 +61,7 @@ enum HomeFeedTab: String, CaseIterable, Identifiable {
         case .following: return L10n.homeGuestTabFollowingBody
         case .stylePicks: return L10n.homeGuestTabStyleBody
         case .similarSaved: return L10n.homeGuestTabSimilarBody
+        case .seasonalNearYou: return L10n.homeGuestTabSeasonalBody
         default: return L10n.guestLoginSheetPrivacyNote
         }
     }
@@ -71,6 +76,7 @@ enum HomeFeedTab: String, CaseIterable, Identifiable {
         case .forYou: return L10n.homeTabEmptyForYouTitle
         case .stylePicks: return L10n.homeTabEmptyStyleTitle
         case .similarSaved: return L10n.homeTabEmptySimilarTitle
+        case .seasonalNearYou: return L10n.homeTabEmptySeasonalTitle
         case .following: return L10n.homeTabEmptyFollowingTitle
         }
     }
@@ -81,6 +87,7 @@ enum HomeFeedTab: String, CaseIterable, Identifiable {
         case .forYou: return L10n.homeTabEmptyForYouSubtitle
         case .stylePicks: return L10n.homeTabEmptyStyleSubtitle
         case .similarSaved: return L10n.homeTabEmptySimilarSubtitle
+        case .seasonalNearYou: return L10n.homeTabEmptySeasonalSubtitle
         case .following: return L10n.homeTabEmptyFollowingSubtitle
         }
     }
