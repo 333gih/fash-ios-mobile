@@ -300,7 +300,7 @@ struct ExploreActivePersonalFilterChips: View {
             .foregroundStyle(FashColors.textSecondary)
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
-            .background(FashColors.surfaceMuted.opacity(0.65))
+            .background(FashColors.surfaceVariant.opacity(0.65))
             .clipShape(Capsule())
             .lineLimit(1)
     }
