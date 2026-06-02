@@ -106,12 +106,6 @@
 "brand_header_suffix_post" = "Post";
 "brand_header_suffix_profile" = "Profile";
 "brand_wordmark" = "FASH.";
-"home_seasonal_near_you_title" = "Seasonal near you";
-"home_guest_tab_seasonal_title" = "Seasonal picks";
-"home_guest_tab_seasonal_body" = "Sign in to see items matched to your area and season.";
-"shopping_context_chip" = "For you: %@";
-"home_tab_empty_seasonal_title" = "No seasonal picks yet";
-"home_tab_empty_seasonal_subtitle" = "Add an address or set your browse area for season-aware suggestions.";
 "browse_location_chip" = "Area: %1$@";
 "browse_location_pick" = "Choose area";
 "browse_location_picker_apply" = "Apply area";
@@ -925,6 +919,8 @@
 "home_guest_tab_following_title" = "From shops you follow";
 "home_guest_tab_for_you_body" = "Sign in for picks tailored to your taste and browsing history.";
 "home_guest_tab_for_you_title" = "For you";
+"home_guest_tab_seasonal_body" = "Sign in to see items matched to your area and season.";
+"home_guest_tab_seasonal_title" = "Seasonal picks";
 "home_guest_tab_sign_in" = "Sign in";
 "home_guest_tab_sign_in_cd" = "Sign in to unlock this feed";
 "home_guest_tab_similar_body" = "Save favorites — Fash suggests more items in the same style.";
@@ -955,6 +951,7 @@
 "home_quick_explore" = "Explore";
 "home_quick_orders" = "Orders";
 "home_quick_sell" = "Sell";
+"home_seasonal_near_you_title" = "Seasonal near you";
 "home_section_editorial_subtitle" = "Short reads on outfits, pre-loved finds, and safer buying — tap a card to jump to related picks in Explore.";
 "home_section_editorial_title" = "Guides";
 "home_section_for_you_subtitle" = "Based on your recent activity";
@@ -982,6 +979,8 @@
 "home_tab_empty_for_you_title" = "No picks yet";
 "home_tab_empty_hunt_subtitle" = "Check back soon — new listings are added all the time.";
 "home_tab_empty_hunt_title" = "Nothing trending yet";
+"home_tab_empty_seasonal_subtitle" = "Add an address or set your browse area for season-aware suggestions.";
+"home_tab_empty_seasonal_title" = "No seasonal picks yet";
 "home_tab_empty_similar_subtitle" = "Save a few favorites — Fash will suggest items in the same vibe.";
 "home_tab_empty_similar_title" = "Nothing similar yet";
 "home_tab_empty_style_subtitle" = "Set your style in profile or save listings you like.";
@@ -1963,6 +1962,7 @@
 "share_profile_success" = "Shop shared.";
 "share_profile_text" = "%1$@ on Fash — explore their second-hand closet.\n\nOpen in browser:\n%2$@\n\nOpen in app:\n%3$@";
 "shipping_address_row_untitled" = "Saved address";
+"shopping_context_chip" = "For you: %1$@";
 "splash_footer_gen_z" = "GEN Z GENERATION";
 "splash_logo_cd" = "Fash logo";
 "splash_wordmark" = "FASH";

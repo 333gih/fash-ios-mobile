@@ -919,6 +919,8 @@
 "home_guest_tab_following_title" = "Từ shop bạn theo dõi";
 "home_guest_tab_for_you_body" = "Đăng nhập để Fash gợi ý đồ phù hợp gu và hoạt động lướt/lưu của bạn.";
 "home_guest_tab_for_you_title" = "Gợi ý riêng cho bạn";
+"home_guest_tab_seasonal_body" = "Đăng nhập để xem đồ phù hợp mùa và khu vực của bạn.";
+"home_guest_tab_seasonal_title" = "Gợi ý theo mùa";
 "home_guest_tab_sign_in" = "Đăng nhập";
 "home_guest_tab_sign_in_cd" = "Đăng nhập để mở feed này";
 "home_guest_tab_similar_body" = "Lưu tin yêu thích — Fash gợi ý thêm đồ cùng phong cách.";
@@ -949,6 +951,7 @@
 "home_quick_explore" = "Khám phá";
 "home_quick_orders" = "Đơn hàng";
 "home_quick_sell" = "Đăng bán";
+"home_seasonal_near_you_title" = "Hợp mùa gần bạn";
 "home_section_editorial_subtitle" = "Bài viết ngắn: phối đồ, chọn đồ đã qua sử dụng và gợi ý an toàn khi mua bán.";
 "home_section_editorial_title" = "Cẩm nang";
 "home_section_for_you_subtitle" = "Dựa trên hoạt động gần đây";
@@ -976,6 +979,8 @@
 "home_tab_empty_for_you_title" = "Chưa có gợi ý";
 "home_tab_empty_hunt_subtitle" = "Quay lại sau — đồ mới được cập nhật liên tục trên Fash.";
 "home_tab_empty_hunt_title" = "Chưa có tin hot";
+"home_tab_empty_seasonal_subtitle" = "Thêm địa chỉ hoặc chọn khu vực săn đồ để nhận gợi ý phù hợp mùa.";
+"home_tab_empty_seasonal_title" = "Chưa có gợi ý theo mùa";
 "home_tab_empty_similar_subtitle" = "Lưu vài tin yêu thích — Fash sẽ gợi ý đồ cùng vibe.";
 "home_tab_empty_similar_title" = "Chưa có món tương tự";
 "home_tab_empty_style_subtitle" = "Chọn phong cách trong hồ sơ hoặc lưu tin bạn thích.";
@@ -1957,6 +1962,7 @@
 "share_profile_success" = "Đã chia sẻ shop.";
 "share_profile_text" = "Shop %1$@ trên Fash — khám phá tủ đồ second-hand.\n\nMở trên web:\n%2$@\n\nMở trong ứng dụng:\n%3$@";
 "shipping_address_row_untitled" = "Địa chỉ đã lưu";
+"shopping_context_chip" = "Gợi ý: %1$@";
 "splash_footer_gen_z" = "THẾ HỆ GEN Z";
 "splash_logo_cd" = "Logo Fash";
 "splash_wordmark" = "FASH";

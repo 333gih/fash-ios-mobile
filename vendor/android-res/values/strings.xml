@@ -364,6 +364,8 @@
     <string name="home_tab_empty_style_subtitle">Chọn phong cách trong hồ sơ hoặc lưu tin bạn thích.</string>
     <string name="home_tab_empty_similar_title">Chưa có món tương tự</string>
     <string name="home_tab_empty_similar_subtitle">Lưu vài tin yêu thích — Fash sẽ gợi ý đồ cùng vibe.</string>
+    <string name="home_tab_empty_seasonal_title">Chưa có gợi ý theo mùa</string>
+    <string name="home_tab_empty_seasonal_subtitle">Thêm địa chỉ hoặc chọn khu vực săn đồ để nhận gợi ý phù hợp mùa.</string>
     <string name="home_feed_empty_cta_featured">Xem shop nổi bật</string>
     <string name="home_section_editorial_title">Cẩm nang</string>
     <string name="home_section_editorial_subtitle">Bài viết ngắn: phối đồ, chọn đồ đã qua sử dụng và gợi ý an toàn khi mua bán.</string>
@@ -2017,6 +2019,10 @@
     <string name="listing_badge_saved_count">%1$d lượt lưu</string>
 
     <!-- Phase 1: New home sections -->
+    <string name="home_seasonal_near_you_title">Hợp mùa gần bạn</string>
+    <string name="home_guest_tab_seasonal_title">Gợi ý theo mùa</string>
+    <string name="home_guest_tab_seasonal_body">Đăng nhập để xem đồ phù hợp mùa và khu vực của bạn.</string>
+    <string name="shopping_context_chip">Gợi ý: %1$s</string>
     <string name="home_section_similar_to_saved_title">Tương tự món đã lưu</string>
     <string name="home_section_similar_to_saved_subtitle">Vì bạn đã lưu đồ phong cách này</string>
     <string name="home_section_trending_styles_title">Style đang hot</string>

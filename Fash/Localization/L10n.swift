@@ -1085,6 +1085,8 @@ enum L10n {
     static var homeGuestTabFollowingTitle: String { t("home_guest_tab_following_title") }
     static var homeGuestTabForYouBody: String { t("home_guest_tab_for_you_body") }
     static var homeGuestTabForYouTitle: String { t("home_guest_tab_for_you_title") }
+    static var homeGuestTabSeasonalBody: String { t("home_guest_tab_seasonal_body") }
+    static var homeGuestTabSeasonalTitle: String { t("home_guest_tab_seasonal_title") }
     static var homeGuestTabSignIn: String { t("home_guest_tab_sign_in") }
     static var homeGuestTabSignInCd: String { t("home_guest_tab_sign_in_cd") }
     static var homeGuestTabSimilarBody: String { t("home_guest_tab_similar_body") }
@@ -1115,6 +1117,7 @@ enum L10n {
     static var homeQuickExplore: String { t("home_quick_explore") }
     static var homeQuickOrders: String { t("home_quick_orders") }
     static var homeQuickSell: String { t("home_quick_sell") }
+    static var homeSeasonalNearYouTitle: String { t("home_seasonal_near_you_title") }
     static var homeSectionEditorialSubtitle: String { t("home_section_editorial_subtitle") }
     static var homeSectionEditorialTitle: String { t("home_section_editorial_title") }
     static var homeSectionForYouSubtitle: String { t("home_section_for_you_subtitle") }
@@ -1123,14 +1126,6 @@ enum L10n {
     static var homeSectionRecentlyViewedTitle: String { t("home_section_recently_viewed_title") }
     static var homeSectionRecommendedSellersSubtitle: String { t("home_section_recommended_sellers_subtitle") }
     static var homeSectionRecommendedSellersTitle: String { t("home_section_recommended_sellers_title") }
-    static var homeSeasonalNearYouTitle: String { t("home_seasonal_near_you_title") }
-    static var homeGuestTabSeasonalTitle: String { t("home_guest_tab_seasonal_title") }
-    static var homeGuestTabSeasonalBody: String { t("home_guest_tab_seasonal_body") }
-    static func shoppingContextChip(_ label: String) -> String {
-        String(format: t("shopping_context_chip"), label)
-    }
-    static var homeTabEmptySeasonalTitle: String { t("home_tab_empty_seasonal_title") }
-    static var homeTabEmptySeasonalSubtitle: String { t("home_tab_empty_seasonal_subtitle") }
     static var homeSectionSimilarToSavedSubtitle: String { t("home_section_similar_to_saved_subtitle") }
     static var homeSectionSimilarToSavedTitle: String { t("home_section_similar_to_saved_title") }
     static var homeSectionTrendingStylesSubtitle: String { t("home_section_trending_styles_subtitle") }
@@ -1150,6 +1145,8 @@ enum L10n {
     static var homeTabEmptyForYouTitle: String { t("home_tab_empty_for_you_title") }
     static var homeTabEmptyHuntSubtitle: String { t("home_tab_empty_hunt_subtitle") }
     static var homeTabEmptyHuntTitle: String { t("home_tab_empty_hunt_title") }
+    static var homeTabEmptySeasonalSubtitle: String { t("home_tab_empty_seasonal_subtitle") }
+    static var homeTabEmptySeasonalTitle: String { t("home_tab_empty_seasonal_title") }
     static var homeTabEmptySimilarSubtitle: String { t("home_tab_empty_similar_subtitle") }
     static var homeTabEmptySimilarTitle: String { t("home_tab_empty_similar_title") }
     static var homeTabEmptyStyleSubtitle: String { t("home_tab_empty_style_subtitle") }
@@ -2341,6 +2338,9 @@ enum L10n {
         String(format: t("share_profile_text"), a1, a2, a3)
     }
     static var shippingAddressRowUntitled: String { t("shipping_address_row_untitled") }
+    static func shoppingContextChip(_ a1: CVarArg) -> String {
+        String(format: t("shopping_context_chip"), a1)
+    }
     static var splashFooterGenZ: String { t("splash_footer_gen_z") }
     static var splashLogoCd: String { t("splash_logo_cd") }
     static var splashWordmark: String { t("splash_wordmark") }

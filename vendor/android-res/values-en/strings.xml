@@ -1924,6 +1924,12 @@
     <string name="home_guest_tab_style_body">Set your style in profile — Fash filters listings to match your vibe.</string>
     <string name="home_guest_tab_similar_title">Similar to saved</string>
     <string name="home_guest_tab_similar_body">Save favorites — Fash suggests more items in the same style.</string>
+    <string name="home_seasonal_near_you_title">Seasonal near you</string>
+    <string name="home_guest_tab_seasonal_title">Seasonal picks</string>
+    <string name="home_guest_tab_seasonal_body">Sign in to see items matched to your area and season.</string>
+    <string name="shopping_context_chip">For you: %1$s</string>
+    <string name="home_tab_empty_seasonal_title">No seasonal picks yet</string>
+    <string name="home_tab_empty_seasonal_subtitle">Add an address or set your browse area for season-aware suggestions.</string>
     <string name="home_guest_tab_sign_in">Sign in</string>
     <string name="home_guest_tab_sign_in_cd">Sign in to unlock this feed</string>
     <string name="guest_tab_profile_title">Your account</string>
