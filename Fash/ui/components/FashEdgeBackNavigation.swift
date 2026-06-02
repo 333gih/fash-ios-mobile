@@ -61,10 +61,6 @@ struct FashEdgeBackNavigation: UIViewRepresentable {
 }
 
 extension FashEdgeBackNavigation.EdgeBackAnchorView: UIGestureRecognizerDelegate {
-    func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-        coordinator?.isEnabled == true
-    }
-
     func gestureRecognizer(
         _ gestureRecognizer: UIGestureRecognizer,
         shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
