@@ -281,7 +281,7 @@ struct ProductDetailScreen: View {
     private func sellerShopLabel(from detail: ListingDetail) -> String {
         detail.sellerUsername?.nilIfEmpty
             ?? detail.sellerDisplayName?.nilIfEmpty
-            ?? L10n.productSellerNameFallback
+            ?? L10n.explorePreviewSellerUsernameFallback
     }
 
     private func guestGate(_ action: () -> Void) {
