@@ -225,6 +225,10 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         }
     }
 
+    private var profileTabSwipeEnabled: Bool {
+        resolvedTabIndices.count > 1
+    }
+
     @ViewBuilder
     private func profileLazyStack(scrollProxy: ScrollViewProxy) -> some View {
         LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
@@ -235,25 +239,38 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             }
             Section {
                 profileListingGridSection
+                    .profileTabSwipe(
+                        enabled: profileTabSwipeEnabled,
+                        currentIndex: visualTabIndex,
+                        tabCount: resolvedTabIndices.count,
+                        listingInteractionEnabled: $listingInteractionEnabled
+                    ) { visualIndex in
+                        commitProfileTabSwipe(toVisualIndex: visualIndex)
+                    }
                 Color.clear.frame(height: max(120, additionalBottomInset + 80))
             } header: {
                 stickyChrome(scrollProxy: scrollProxy)
-            }
-        }
-        .fashScrollViewTabSwipe(
-            currentIndex: visualTabIndex,
-            tabCount: resolvedTabIndices.count,
-            listingInteractionEnabled: $listingInteractionEnabled
-        ) { visualIndex in
-            guard visualIndex >= 0, visualIndex < resolvedTabIndices.count else { return }
-            let nextTab = resolvedTabIndices[visualIndex]
-            guard nextTab != selectedTab else { return }
-            tabSlideDirection = visualIndex > visualTabIndex ? 1 : -1
-            withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
-                selectedTab = nextTab
+                    .profileTabSwipe(
+                        enabled: profileTabSwipeEnabled,
+                        currentIndex: visualTabIndex,
+                        tabCount: resolvedTabIndices.count,
+                        listingInteractionEnabled: $listingInteractionEnabled
+                    ) { visualIndex in
+                        commitProfileTabSwipe(toVisualIndex: visualIndex)
+                    }
             }
         }
         .scrollTargetLayout()
+    }
+
+    private func commitProfileTabSwipe(toVisualIndex visualIndex: Int) {
+        guard visualIndex >= 0, visualIndex < resolvedTabIndices.count else { return }
+        let nextTab = resolvedTabIndices[visualIndex]
+        guard nextTab != selectedTab else { return }
+        tabSlideDirection = visualIndex > visualTabIndex ? 1 : -1
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+            selectedTab = nextTab
+        }
     }
 
     private var profileHeaderOffsetReader: some View {
