@@ -8,7 +8,6 @@ struct SellerProfileScreen: View {
     var isGuestMode: Bool = false
     var onDismiss: () -> Void
     var onListingClick: (ListingFeedItem) -> Void = { _ in }
-    var onRequestSignIn: ((String) -> Void)? = nil
     var onNavigateToExploreFromProfile: (
         _ categoryId: String?,
         _ brandId: String?,
@@ -21,6 +20,8 @@ struct SellerProfileScreen: View {
     @State private var viewModel = SellerProfileViewModel()
     @State private var promoSlides: [FashPromoSlideDef] = []
     @State private var showPromoFooter = false
+    @State private var showGuestLoginSheet = false
+    @State private var guestLoginReason: String?
 
     private var promoBottomInset: CGFloat {
         showPromoFooter && !promoSlides.isEmpty ? FashStickyPromoDockHeight : 0
@@ -78,11 +79,11 @@ struct SellerProfileScreen: View {
                             },
                             onListingClick: { item in onListingClick(item) },
                             onLike: { item in
-                                if isGuestMode { onRequestSignIn?(L10n.guestLoginReasonLike) }
+                                if isGuestMode { presentGuestSignIn(L10n.guestLoginReasonLike) }
                                 else { Task { await viewModel.toggleLike(item, deps: deps) } }
                             },
                             onSave: { item in
-                                if isGuestMode { onRequestSignIn?(L10n.guestLoginReasonSaved) }
+                                if isGuestMode { presentGuestSignIn(L10n.guestLoginReasonSaved) }
                                 else { Task { await viewModel.toggleSave(item, deps: deps) } }
                             },
                             expandedHeader: { expandedHeader },
@@ -122,7 +123,7 @@ struct SellerProfileScreen: View {
                     listingPreview: deps.listingPreview,
                     router: router,
                     isGuestMode: isGuestMode,
-                    onRequestLogin: { onRequestSignIn?(L10n.guestLoginReasonBuy) },
+                    onRequestLogin: isGuestMode ? { presentGuestSignIn(L10n.guestLoginReasonBuy) } : nil
                     onFeedEngagementPatch: { id, transform in
                         viewModel.patchListingEngagement(id, transform: transform)
                     }
@@ -151,6 +152,16 @@ struct SellerProfileScreen: View {
                 promoSlides = response.items.map(FashPromoSlideDef.fromAdvertising)
             }
         }
+        .guestLoginSheet(
+            isPresented: $showGuestLoginSheet,
+            reason: guestLoginReason,
+            router: router
+        )
+    }
+
+    private func presentGuestSignIn(reason: String) {
+        guestLoginReason = reason
+        showGuestLoginSheet = true
     }
 
     private var sellerTopBar: some View {
@@ -206,7 +217,7 @@ struct SellerProfileScreen: View {
                 isFollowing: viewModel.isFollowing && !isGuestMode,
                 inFlight: viewModel.followInFlight,
                 onToggle: {
-                    if isGuestMode { onRequestSignIn?(L10n.guestLoginReasonFollow) }
+                    if isGuestMode { presentGuestSignIn(L10n.guestLoginReasonFollow) }
                     else { Task { await viewModel.toggleFollow(deps: deps, isGuestMode: isGuestMode) } }
                 }
             )

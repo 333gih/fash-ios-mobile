@@ -7,10 +7,11 @@ struct ListingDetailNavigationHost: View {
     @Bindable var router: AppRouter
     let rootListingId: String
     var isGuestMode: Bool
-    var onRequestSignIn: ((String) -> Void)? = nil
     var dismissExploreOverlayOnClose: Bool = false
     @State private var shareItems: [Any] = []
     @State private var showShareSheet = false
+    @State private var showGuestLoginSheet = false
+    @State private var guestLoginReason: String?
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -33,6 +34,16 @@ struct ListingDetailNavigationHost: View {
                 )
             }
         }
+        .guestLoginSheet(
+            isPresented: $showGuestLoginSheet,
+            reason: guestLoginReason,
+            router: router
+        )
+    }
+
+    private func presentGuestSignIn(reason: String) {
+        guestLoginReason = reason
+        showGuestLoginSheet = true
     }
 
     private var currentListingId: String {
@@ -75,7 +86,7 @@ struct ListingDetailNavigationHost: View {
             router: router,
             listingId: listingId,
             isGuestMode: isGuestMode,
-            onRequestSignIn: onRequestSignIn,
+            onRequestSignIn: isGuestMode ? presentGuestSignIn : nil,
             dismissExploreOverlayOnClose: dismissExploreOverlayOnClose,
             onDismiss: { router.popListingDetail() },
             onListingClick: { router.pushListingDetail($0) },

@@ -16,9 +16,9 @@ struct ExploreOverlayHost: View {
     var expandSearchOnAppear: Bool = false
     var promoSlides: [FashPromoSlideDef] = []
     var onClose: () -> Void
-    var onRequestSignIn: ((String) -> Void)? = nil
-
     @State private var topBarCompact = false
+    @State private var showGuestLoginSheet = false
+    @State private var guestLoginReason: String?
     @State private var showPinnedMarketplaceChrome = false
     @State private var headerScrollMinY: CGFloat = 0
     @State private var marketplaceControlsMaxY: CGFloat = .infinity
@@ -58,7 +58,7 @@ struct ExploreOverlayHost: View {
                     onClose()
                     router.showFeaturedSellersAll = true
                 },
-                onRequestSignIn: onRequestSignIn,
+                onRequestSignIn: isGuestMode ? presentGuestSignIn : nil,
                 hostManagesStickyChrome: true
             )
         }
@@ -74,7 +74,7 @@ struct ExploreOverlayHost: View {
                 listingPreview: listingPreview,
                 router: router,
                 isGuestMode: isGuestMode,
-                onRequestLogin: { onRequestSignIn?(L10n.guestLoginReasonBuy) },
+                onRequestLogin: isGuestMode ? { presentGuestSignIn(L10n.guestLoginReasonBuy) } : nil
                 onFeedEngagementPatch: { id, transform in
                     viewModel.patchListingEngagement(id, transform: transform)
                 }
@@ -87,12 +87,16 @@ struct ExploreOverlayHost: View {
                     router: router,
                     rootListingId: rootId,
                     isGuestMode: isGuestMode,
-                    onRequestSignIn: onRequestSignIn,
                     dismissExploreOverlayOnClose: false
                 )
             }
         }
         .fashSnackbarOverlay()
+        .guestLoginSheet(
+            isPresented: $showGuestLoginSheet,
+            reason: guestLoginReason,
+            router: router
+        )
         .onAppear {
             topBarCompact = false
             showPinnedMarketplaceChrome = false
@@ -121,6 +125,11 @@ struct ExploreOverlayHost: View {
                 }
             }
         )
+    }
+
+    private func presentGuestSignIn(reason: String) {
+        guestLoginReason = reason
+        showGuestLoginSheet = true
     }
 
     private func syncScrollChrome() {

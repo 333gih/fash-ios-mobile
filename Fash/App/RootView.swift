@@ -50,7 +50,6 @@ struct RootView: View {
                         router.showExploreOverlay = false
                         router.exploreSearchExpanded = false
                     },
-                    onRequestSignIn: router.isGuestMode ? presentGuestSignIn : nil
                 )
                 .environment(\.locale, AppLocale.locale)
                 .fashSnackbarOverlay()
@@ -175,8 +174,7 @@ struct RootView: View {
             ListingDetailNavigationHost(
                 router: router,
                 rootListingId: rootId,
-                isGuestMode: router.isGuestMode,
-                onRequestSignIn: router.isGuestMode ? presentGuestSignIn : nil
+                isGuestMode: router.isGuestMode
             )
         case .seller(let user):
             SellerProfileScreen(
@@ -193,7 +191,6 @@ struct RootView: View {
                         position: 0
                     )
                 },
-                onRequestSignIn: router.isGuestMode ? presentGuestSignIn : nil,
                 onNavigateToExploreFromProfile: { cat, brand, tag, q, countryId, iso in
                     deps.scheduleExploreFromSellerProfile(
                         router: router,

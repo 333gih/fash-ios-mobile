@@ -25,3 +25,36 @@ struct GuestLoginSheet: View {
         .presentationDetents([.medium])
     }
 }
+
+/// Presents guest login above the current stack (e.g. PDP `fullScreenCover`) — RootView-level sheets sit underneath.
+struct GuestLoginSheetModifier: ViewModifier {
+    @Environment(AppDependencies.self) private var deps
+    @Bindable var router: AppRouter
+    @Binding var isPresented: Bool
+    let reason: String?
+
+    func body(content: Content) -> some View {
+        content.sheet(isPresented: $isPresented) {
+            GuestLoginSheet(
+                reason: reason,
+                onSignIn: {
+                    isPresented = false
+                    deps.isGuestBrowseActive = false
+                    router.isGuestMode = false
+                    router.loginStep = .email
+                },
+                onContinueBrowsing: { isPresented = false }
+            )
+        }
+    }
+}
+
+extension View {
+    func guestLoginSheet(
+        isPresented: Binding<Bool>,
+        reason: String?,
+        router: AppRouter
+    ) -> some View {
+        modifier(GuestLoginSheetModifier(isPresented: isPresented, reason: reason, router: router))
+    }
+}
