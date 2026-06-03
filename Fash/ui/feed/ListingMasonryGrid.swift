@@ -368,10 +368,13 @@ struct ListingMasonryColumnFeed<Content: View>: View {
     private func masonryColumn(_ column: [(index: Int, item: ListingFeedItem)]) -> some View {
         VStack(spacing: gap) {
             ForEach(column, id: \.item.id) { entry in
-                let tileHeight = ListingMasonryGrid.tileHeight(columnWidth: columnWidth, item: entry.item)
                 content(entry.item, entry.index)
                     .environment(\.listingMasonryColumnWidth, columnWidth)
-                    .frame(width: columnWidth, height: tileHeight, alignment: .top)
+                    .frame(
+                        width: columnWidth,
+                        height: ListingMasonryGrid.tileHeight(columnWidth: columnWidth, item: entry.item),
+                        alignment: .top
+                    )
             }
         }
         .frame(width: columnWidth, alignment: .top)

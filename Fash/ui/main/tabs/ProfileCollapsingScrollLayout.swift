@@ -268,7 +268,6 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                     }
             }
         }
-        .scrollTargetLayout()
     }
 
     private func commitProfileTabSwipe(toVisualIndex visualIndex: Int) {
@@ -302,14 +301,30 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     }
 
     private var profileMasonryEstimatedHeight: CGFloat {
-        guard !items.isEmpty, !profileMasonryLayout.isEmpty else { return 0 }
+        guard !items.isEmpty else { return 0 }
+        var assignments = masonryColumnAssignmentsByTab[selectedTab] ?? [:]
+        let width = profileMasonryContainerWidth > 1
+            ? profileMasonryContainerWidth
+            : UIScreen.main.bounds.width
+        let columnWidth = ListingMasonryGrid.feedGridColumnWidth(
+            containerWidth: width,
+            spacing: spacing
+        )
+        let gap = spacing.spacing2
+        let layout = ListingMasonryGrid.makeStableColumnLayout(
+            items: items,
+            columnWidth: columnWidth,
+            verticalGap: gap,
+            assignedIsRightColumn: &assignments
+        )
+        guard !layout.isEmpty else { return 0 }
         let grid = ListingMasonryGrid.estimatedGridHeight(
-            layout: profileMasonryLayout,
-            columnWidth: profileMasonryColumnWidth,
-            verticalGap: spacing.spacing2
+            layout: layout,
+            columnWidth: columnWidth,
+            verticalGap: gap
         )
         let footer: CGFloat = (hasMoreListings || isLoadingMoreListings) ? 88 : 12
-        return grid + footer
+        return grid + footer + 4
     }
 
     @ViewBuilder
@@ -577,15 +592,20 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         } else if items.isEmpty, showEmptyState {
             emptyBlock
         } else if !items.isEmpty {
+            let gridHeight = profileMasonryEstimatedHeight
             VStack(spacing: 0) {
-                ListingMasonryColumnFeed(layout: profileMasonryLayout) { item, index in
+                ListingStaggeredMasonryView(
+                    items: items,
+                    columnAssignments: masonryColumnAssignments,
+                    eagerLayout: true,
+                    footer: { profilePaginationFooter }
+                ) { item, index in
                     profileListingGridCard(item: item, index: index)
                 }
-                profilePaginationFooter
             }
             .padding(.top, 4)
+            .frame(height: gridHeight > 0 ? gridHeight : nil, alignment: .top)
             .fixedSize(horizontal: false, vertical: true)
-            .frame(minHeight: profileMasonryEstimatedHeight, alignment: .top)
             .background {
                 GeometryReader { proxy in
                     Color.clear.preference(

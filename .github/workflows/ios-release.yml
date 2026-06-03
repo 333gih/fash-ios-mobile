@@ -37,9 +37,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Fails in ~3s with "payments have failed / spending limit" → fix GitHub Billing (not Xcode).
+  # https://github.com/settings/billing
   release:
     name: Archive & export IPA
     runs-on: macos-26
+    timeout-minutes: 45
     env:
       SCHEME: ${{ github.event_name == 'workflow_dispatch' && inputs.scheme || 'Fash-Prod' }}
       BUILD_CONFIGURATION: ${{ (github.event_name == 'workflow_dispatch' && inputs.scheme || 'Fash-Prod') == 'Fash-Prod' && 'ProdRelease' || 'DevRelease' }}
