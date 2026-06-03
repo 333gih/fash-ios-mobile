@@ -310,18 +310,17 @@ jobs:
       - name: Upload to TestFlight
         id: upload-testflight
         if: env.SCHEME == 'Fash-Prod' && env.UPLOAD_TESTFLIGHT == 'true'
-        uses: apple-actions/upload-testflight-build@v3
-        with:
-          app-path: build/Fash.ipa
-          issuer-id: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
-          api-key-id: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
-          api-private-key: ${{ secrets.APP_STORE_CONNECT_API_PRIVATE_KEY }}
+        env:
+          ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          API_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_API_PRIVATE_KEY }}
+        run: bash scripts/ci_upload_testflight.sh build/Fash.ipa
 
       - name: Release summary
         if: always() && steps.app_version.outcome == 'success'
         env:
           UPLOAD_TESTFLIGHT: ${{ env.UPLOAD_TESTFLIGHT }}
-          UPLOAD_OUTCOME: ${{ steps.upload-testflight.outcome }}
+          UPLOAD_OUTCOME: ${{ steps.upload-testflight.outputs.upload_outcome || steps.upload-testflight.outcome }}
         run: |
           echo "### iOS release" >> "${GITHUB_STEP_SUMMARY}"
           echo "- Version: **${{ steps.app_version.outputs.marketing }} (${{ steps.app_version.outputs.build }})**" >> "${GITHUB_STEP_SUMMARY}"
@@ -338,6 +337,8 @@ jobs:
             echo "- TestFlight upload: **${UPLOAD_OUTCOME}**" >> "${GITHUB_STEP_SUMMARY}"
             if [[ "${UPLOAD_OUTCOME}" == "success" ]]; then
               echo "- App Store Connect → TestFlight → **${{ steps.app_version.outputs.marketing }} (${{ steps.app_version.outputs.build }})** (processing ~5–30 min)" >> "${GITHUB_STEP_SUMMARY}"
+            elif [[ "${UPLOAD_OUTCOME}" == "rate_limited" ]]; then
+              echo "- TestFlight: **rate limited (90382)** — archive OK, IPA artifact \`fash-ios-ipa-${{ env.SCHEME }}-${{ github.run_number }}\`. Re-run workflow after ~24h." >> "${GITHUB_STEP_SUMMARY}"
             elif [[ "${UPLOAD_OUTCOME}" == "failure" ]]; then
               echo "- Expand step **Upload to TestFlight** for errors (API key, compliance, duplicate build, …)" >> "${GITHUB_STEP_SUMMARY}"
             fi
