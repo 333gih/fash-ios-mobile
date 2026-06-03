@@ -49,6 +49,12 @@ final class ProfileViewModel {
     private var loadMoreTasks: [Int: Task<Void, Never>] = [:]
     var focusListingScrollToken = 0
     private(set) var focusListingId: String?
+    /// Bottom-nav re-tap — scroll profile list to top (Android `scrollProfileToTop`).
+    private(set) var profileScrollToTopToken = 0
+
+    func requestScrollProfileToTop() {
+        profileScrollToTopToken &+= 1
+    }
 
     func listings(for tab: ProfileListingTab) -> [ListingFeedItem] {
         switch tab {
@@ -149,6 +155,7 @@ final class ProfileViewModel {
             hasCompletedInitialLoad = false
             isLoading = true
         } else {
+            requestScrollProfileToTop()
             isRefreshing = true
         }
         loadError = false

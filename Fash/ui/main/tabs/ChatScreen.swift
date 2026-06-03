@@ -8,6 +8,8 @@ struct ChatScreen: View {
     var onPromoSlideClick: (FashPromoSlideDef, Int) -> Void = { _, _ in }
     var onConversationTap: (String) -> Void
 
+    @State private var chatScrollTopId = UUID()
+
     private var showGroupedInbox: Bool {
         viewModel.sellerHasActiveListings && viewModel.sellerInboxGroupMode == .byProduct
     }
@@ -63,6 +65,9 @@ struct ChatScreen: View {
         .background(FashColors.screen)
         .task { await viewModel.loadConversationsWhenNeeded(deps: deps) }
         .refreshable { await viewModel.pullToRefresh(deps: deps) }
+        .onChange(of: viewModel.chatScrollToTopToken) { _, _ in
+            chatScrollTopId = UUID()
+        }
     }
 
     @ViewBuilder
@@ -88,46 +93,57 @@ struct ChatScreen: View {
     }
 
     private var flatList: some View {
-        ScrollView {
-            LazyVStack(spacing: 8) {
-                ForEach(viewModel.conversations) { item in
-                    ChatConversationRow(
-                        item: item,
-                        formatTimestamp: viewModel.formatTimestamp,
-                        previewLine: viewModel.conversationPreviewLine(item),
-                        previewIsPlaceholder: viewModel.conversationPreviewIsPlaceholder(item),
-                        onClick: { onConversationTap(item.conversationId) }
-                    )
-                }
+        chatInboxScrollList {
+            ForEach(viewModel.conversations) { item in
+                ChatConversationRow(
+                    item: item,
+                    formatTimestamp: viewModel.formatTimestamp,
+                    previewLine: viewModel.conversationPreviewLine(item),
+                    previewIsPlaceholder: viewModel.conversationPreviewIsPlaceholder(item),
+                    onClick: { onConversationTap(item.conversationId) }
+                )
             }
-            .padding(.bottom, 8)
         }
     }
 
     private var groupedList: some View {
-        ScrollView {
-            LazyVStack(spacing: 8) {
-                ForEach(viewModel.displayGroups) { group in
-                    ChatListingGroupHeader(
-                        group: group,
-                        expanded: viewModel.expandedGroupListingIds.contains(group.listingId),
-                        formatPrice: viewModel.formatPriceVnd,
-                        onToggle: { viewModel.toggleListingGroupExpanded(group.listingId) }
-                    )
-                    if viewModel.expandedGroupListingIds.contains(group.listingId) {
-                        ForEach(group.conversations) { item in
-                            ChatConversationRow(
-                                item: item,
-                                formatTimestamp: viewModel.formatTimestamp,
-                                previewLine: viewModel.conversationPreviewLine(item),
-                                previewIsPlaceholder: viewModel.conversationPreviewIsPlaceholder(item),
-                                onClick: { onConversationTap(item.conversationId) }
-                            )
-                        }
+        chatInboxScrollList {
+            ForEach(viewModel.displayGroups) { group in
+                ChatListingGroupHeader(
+                    group: group,
+                    expanded: viewModel.expandedGroupListingIds.contains(group.listingId),
+                    formatPrice: viewModel.formatPriceVnd,
+                    onToggle: { viewModel.toggleListingGroupExpanded(group.listingId) }
+                )
+                if viewModel.expandedGroupListingIds.contains(group.listingId) {
+                    ForEach(group.conversations) { item in
+                        ChatConversationRow(
+                            item: item,
+                            formatTimestamp: viewModel.formatTimestamp,
+                            previewLine: viewModel.conversationPreviewLine(item),
+                            previewIsPlaceholder: viewModel.conversationPreviewIsPlaceholder(item),
+                            onClick: { onConversationTap(item.conversationId) }
+                        )
                     }
                 }
             }
-            .padding(.bottom, 8)
+        }
+    }
+
+    private func chatInboxScrollList<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                Color.clear.frame(height: 0).id(chatScrollTopId)
+                LazyVStack(spacing: 8, content: content)
+                    .padding(.bottom, 8)
+            }
+            .onChange(of: viewModel.chatScrollToTopToken) { _, _ in
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction) {
+                    proxy.scrollTo(chatScrollTopId, anchor: .top)
+                }
+            }
         }
     }
 }

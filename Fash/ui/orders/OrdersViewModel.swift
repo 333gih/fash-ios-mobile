@@ -6,6 +6,11 @@ import Observation
 final class OrdersViewModel {
     var isLoading = false
     var isRefreshing = false
+    private(set) var ordersScrollToTopToken = 0
+
+    func requestScrollOrdersToTop() {
+        ordersScrollToTopToken &+= 1
+    }
     var errorMessage: String?
     var buyingOrders: [OrderItem] = []
     var sellingOrders: [OrderItem] = []
@@ -59,6 +64,7 @@ final class OrdersViewModel {
     }
 
     func pullToRefresh(deps: AppDependencies) async {
+        requestScrollOrdersToTop()
         isRefreshing = true
         defer { isRefreshing = false }
         await fetchOrders(deps: deps)

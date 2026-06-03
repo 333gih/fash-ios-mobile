@@ -4,6 +4,7 @@ struct OrdersScreen: View {
     @Environment(\.fashSpacing) private var spacing
     @Environment(AppDependencies.self) private var deps
     @State private var internalViewModel = OrdersViewModel()
+    @State private var ordersScrollTopId = UUID()
     var viewModel: OrdersViewModel? = nil
     var embeddedInMainNav: Bool = false
     var promoSlides: [FashPromoSlideDef] = []
@@ -32,6 +33,9 @@ struct OrdersScreen: View {
         }
         .task { await activeVM.refresh(deps: deps) }
         .refreshable { await activeVM.pullToRefresh(deps: deps) }
+        .onChange(of: activeVM.ordersScrollToTopToken) { _, _ in
+            ordersScrollTopId = UUID()
+        }
     }
 
     @ViewBuilder
@@ -80,22 +84,32 @@ struct OrdersScreen: View {
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else {
-                        ScrollView {
-                            LazyVStack(spacing: 12) {
-                                ForEach(activeVM.filteredOrders) { order in
-                                    OrderListCard(
-                                        order: order,
-                                        showReviewButton: activeVM.selectedRole == .buying,
-                                        isConfirming: activeVM.confirmingOrderId == order.orderId,
-                                        onConfirm: {
-                                            Task { await activeVM.confirmReceipt(orderId: order.orderId, deps: deps) }
-                                        },
-                                        onTap: { onSelectOrder(order.orderId) }
-                                    )
+                        ScrollViewReader { proxy in
+                            ScrollView {
+                                Color.clear.frame(height: 0).id(ordersScrollTopId)
+                                LazyVStack(spacing: 12) {
+                                    ForEach(activeVM.filteredOrders) { order in
+                                        OrderListCard(
+                                            order: order,
+                                            showReviewButton: activeVM.selectedRole == .buying,
+                                            isConfirming: activeVM.confirmingOrderId == order.orderId,
+                                            onConfirm: {
+                                                Task { await activeVM.confirmReceipt(orderId: order.orderId, deps: deps) }
+                                            },
+                                            onTap: { onSelectOrder(order.orderId) }
+                                        )
+                                    }
+                                }
+                                .padding(.horizontal, spacing.editorialStart)
+                                .padding(.vertical, 16)
+                            }
+                            .onChange(of: activeVM.ordersScrollToTopToken) { _, _ in
+                                var transaction = Transaction()
+                                transaction.disablesAnimations = true
+                                withTransaction(transaction) {
+                                    proxy.scrollTo(ordersScrollTopId, anchor: .top)
                                 }
                             }
-                            .padding(.horizontal, spacing.editorialStart)
-                            .padding(.vertical, 16)
                         }
                     }
                 }

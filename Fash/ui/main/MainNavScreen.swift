@@ -478,21 +478,33 @@ struct MainNavScreen: View {
                     router.selectedTab = tab
                 }
             },
+            isTabNavLoading: { tab in
+                guard router.selectedTab == tab else { return false }
+                switch tab {
+                case .home: return homeVM.isRefreshing
+                case .orders: return ordersVM.isRefreshing || ordersVM.isLoading
+                case .chat: return chatVM.isRefreshing
+                case .profile: return profileVM.isRefreshing || profileVM.isLoading
+                case .post: return postVM.navReselectLoading
+                }
+            },
             onTabReselected: { tab in
                 Task {
                     switch tab {
                     case .home:
+                        homeVM.requestScrollHomeToTop()
                         await homeVM.pullToRefresh(deps: deps, isGuestMode: isGuestMode)
                     case .orders:
+                        ordersVM.requestScrollOrdersToTop()
                         await ordersVM.pullToRefresh(deps: deps)
                     case .chat:
+                        chatVM.requestScrollChatToTop()
                         await chatVM.pullToRefresh(deps: deps)
                     case .profile:
+                        profileVM.requestScrollProfileToTop()
                         await profileVM.refresh(deps: deps)
                     case .post:
                         await postVM.reloadOnNavReselect(deps: deps)
-                    default:
-                        break
                     }
                 }
             }

@@ -117,6 +117,8 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     var lockScroll: Bool = false
     /// Increment to scroll the listing grid under pinned tabs (Home journey shortcuts).
     var scrollToGridToken: Int = 0
+    /// Bottom-nav re-tap — scroll to profile top (expanded header).
+    var scrollToTopToken: Int = 0
     var scrollToListingId: String? = nil
     var scrollToListingToken: Int = 0
     /// Hero scrolled off + tabs pinned — Android `rememberProfilePromoFooterVisible` (index > 0).
@@ -193,6 +195,10 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         .onChange(of: scrollToGridToken) { _, token in
             guard token > 0, !lockScroll, !showGridLoading else { return }
             applyPinnedGridScroll(using: scrollProxy)
+        }
+        .onChange(of: scrollToTopToken) { _, token in
+            guard token > 0, !lockScroll else { return }
+            applyScrollToTop(using: scrollProxy)
         }
         .onChange(of: scrollToListingToken) { _, token in
             guard token > 0, !lockScroll, !showGridLoading else { return }
@@ -332,6 +338,19 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         let newVisual = resolvedTabIndices.firstIndex(of: newTab) ?? 0
         tabSlideDirection = newVisual > oldVisual ? 1 : -1
         scheduleClampAfterTabContentLayout()
+    }
+
+    private func applyScrollToTop(using scrollProxy: ScrollViewProxy) {
+        resetProfileScrollChromeState()
+        chromePinnedLatch = false
+        emitTabsPinnedIfNeeded(pinned: false)
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            scrollProxy.scrollTo(ProfileScrollIds.expandedHeader, anchor: .top)
+        }
+        profileScrollResetToken += 1
+        scrollClampRevision += 1
     }
 
     private func applyPinnedGridScroll(using scrollProxy: ScrollViewProxy) {

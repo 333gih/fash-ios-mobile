@@ -239,6 +239,7 @@ final class HomeViewModel {
     }
 
     func pullToRefresh(deps: AppDependencies, isGuestMode: Bool = false) async {
+        requestScrollHomeToTop()
         isRefreshing = true
         defer { isRefreshing = false }
         let tabToReload = selectedFeedTab

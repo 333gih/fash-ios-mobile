@@ -78,6 +78,7 @@ struct ProfileScreen: View {
                         isRefreshing: viewModel.isRefreshing,
                         lockScroll: showProfileBlockingLoader,
                         scrollToGridToken: scrollToGridToken,
+                        scrollToTopToken: viewModel.profileScrollToTopToken,
                         scrollToListingId: viewModel.focusListingId,
                         scrollToListingToken: viewModel.focusListingScrollToken,
                         onListingClick: { item in handleListingTap(item) },

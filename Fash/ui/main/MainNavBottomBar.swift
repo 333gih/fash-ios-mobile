@@ -7,6 +7,8 @@ struct MainNavBottomBar: View {
     var isPostListingFlow: Bool = false
     var onTabChange: (MainTab) -> Void
     var onTabReselected: ((MainTab) -> Void)? = nil
+    /// Re-tap on the active tab — show spinner on that tab icon while reload runs.
+    var isTabNavLoading: ((MainTab) -> Bool)? = nil
 
     /// Total bar content height (divider + row); use for overlay insets (~58pt + safe area).
     static let contentHeight: CGFloat = 58
@@ -67,13 +69,20 @@ struct MainNavBottomBar: View {
                             .frame(width: 52, height: iconSlotHeight)
                     }
                     ZStack(alignment: .topTrailing) {
-                        Image(systemName: icon(for: tab, selected: selected))
-                            .font(.system(size: iconSize, weight: selected ? .semibold : .regular))
-                            .foregroundStyle(tint)
-                            .symbolRenderingMode(.hierarchical)
-                            .frame(width: iconSize, height: iconSize)
+                        if isTabNavLoading?(tab) == true {
+                            ProgressView()
+                                .controlSize(.small)
+                                .tint(FashColors.brandPrimary)
+                                .frame(width: iconSize, height: iconSize)
+                        } else {
+                            Image(systemName: icon(for: tab, selected: selected))
+                                .font(.system(size: iconSize, weight: selected ? .semibold : .regular))
+                                .foregroundStyle(tint)
+                                .symbolRenderingMode(.hierarchical)
+                                .frame(width: iconSize, height: iconSize)
+                        }
 
-                        if tab == .chat, chatUnreadCount > 0 {
+                        if tab == .chat, chatUnreadCount > 0, isTabNavLoading?(tab) != true {
                             Text(chatUnreadCount > 99 ? "99+" : "\(chatUnreadCount)")
                                 .font(.system(size: 9, weight: .bold))
                                 .foregroundStyle(FashColors.readableOnBrandPrimary)
@@ -118,9 +127,15 @@ struct MainNavBottomBar: View {
                         radius: selected ? 6 : 4,
                         y: 2
                     )
-                Image(systemName: "plus")
-                    .font(.system(size: fabIconSize, weight: .semibold))
-                    .foregroundStyle(FashColors.readableOnBrandPrimary)
+                if isTabNavLoading?(.post) == true {
+                    ProgressView()
+                        .controlSize(.small)
+                        .tint(FashColors.readableOnBrandPrimary)
+                } else {
+                    Image(systemName: "plus")
+                        .font(.system(size: fabIconSize, weight: .semibold))
+                        .foregroundStyle(FashColors.readableOnBrandPrimary)
+                }
             }
             .frame(maxWidth: .infinity)
             .frame(minHeight: rowMinHeight)

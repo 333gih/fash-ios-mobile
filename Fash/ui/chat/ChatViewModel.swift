@@ -29,6 +29,11 @@ final class ChatViewModel {
 
     var isLoading = false
     var isRefreshing = false
+    private(set) var chatScrollToTopToken = 0
+
+    func requestScrollChatToTop() {
+        chatScrollToTopToken &+= 1
+    }
     var loadError = false
     var unreadTotal = 0
 
@@ -102,6 +107,7 @@ final class ChatViewModel {
 
     func pullToRefresh(deps: AppDependencies) async {
         myUserId = deps.chatRepository.currentUserId
+        requestScrollChatToTop()
         isRefreshing = true
         defer { isRefreshing = false }
         await silentRefreshConversations(deps: deps)
