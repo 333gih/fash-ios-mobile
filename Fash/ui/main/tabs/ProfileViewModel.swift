@@ -2,7 +2,9 @@ import Foundation
 import Observation
 
 private let profileStaleThresholdSeconds: TimeInterval = 60
+/// Per-tab pagination for wishlist overflow; own listings use [profileListingBulkLimit] like Android.
 private let profileListingPageSize = 20
+private let profileListingBulkLimit = 50
 
 struct ProfileTabOpenRequest: Equatable {
     let tab: ProfileListingTab
@@ -44,6 +46,7 @@ final class ProfileViewModel {
     private var pendingDefaultProfileTab: Int?
     private var profileTabOpenRequest: ProfileTabOpenRequest?
     private var loadedListingTabs = Set<Int>()
+    private var bulkMineListingsLoaded = false
     private(set) var lastSelectedProfileTab = ProfileListingTab.active.rawValue
     private var tabPagination: [Int: ProfileTabPagination] = [:]
     private var loadMoreTasks: [Int: Task<Void, Never>] = [:]
@@ -123,13 +126,19 @@ final class ProfileViewModel {
     func completeEditReturn(tab: ProfileListingTab, listingId: String, deps: AppDependencies) async {
         lastSelectedProfileTab = tab.rawValue
         focusListingId = listingId
+        bulkMineListingsLoaded = false
         loadedListingTabs.remove(tab.rawValue)
-        await fetchListingsFirstPage(tab, deps: deps, force: true)
+        if tab == .wishlist {
+            await fetchListingsFirstPage(tab, deps: deps, force: true)
+        } else {
+            await fetchBulkProfileListings(deps: deps)
+        }
         focusListingScrollToken += 1
     }
 
     func ensureListingsLoaded(for tab: ProfileListingTab, deps: AppDependencies) async {
         guard !isFirstPageLoading(for: tab), !isReloadingListings(for: tab) else { return }
+        if tab != .wishlist, bulkMineListingsLoaded { return }
         guard listings(for: tab).isEmpty else { return }
         if loadedListingTabs.contains(tab.rawValue) {
             guard displayCount(for: tab) > 0 else { return }
@@ -184,11 +193,7 @@ final class ProfileViewModel {
             if showBlocking {
                 let initialTab = resolveInitialTabIndex()
                 lastSelectedProfileTab = initialTab
-                await fetchListingsFirstPage(
-                    ProfileListingTab(rawValue: initialTab) ?? .active,
-                    deps: deps,
-                    force: true
-                )
+                await fetchBulkProfileListings(deps: deps)
             } else {
                 await reloadListingFeedOnRefresh(activeTab: tab, deps: deps)
             }
@@ -225,7 +230,8 @@ final class ProfileViewModel {
                 await refresh(deps: deps, force: true, activeTab: .inReview)
             } else {
                 await refreshIfStale(deps: deps)
-                await fetchListingsFirstPage(.inReview, deps: deps, force: true)
+                bulkMineListingsLoaded = false
+                await fetchBulkProfileListings(deps: deps)
             }
         }
     }
@@ -266,6 +272,7 @@ final class ProfileViewModel {
         wishlistListings = []
         tabCounts = ProfileListingsSummary()
         loadedListingTabs = []
+        bulkMineListingsLoaded = false
         tabPagination = [:]
         loadMoreTasks.values.forEach { $0.cancel() }
         loadMoreTasks = [:]
@@ -351,17 +358,107 @@ final class ProfileViewModel {
     }
 
     private func reloadListingFeedOnRefresh(activeTab: ProfileListingTab, deps: AppDependencies) async {
-        for tab in ProfileListingTab.allCases where tab != activeTab {
+        _ = activeTab
+        bulkMineListingsLoaded = false
+        for tab in ProfileListingTab.allCases {
             loadedListingTabs.remove(tab.rawValue)
             mutatePagination(for: tab) { $0 = ProfileTabPagination() }
             setListings([], for: tab)
         }
-        await fetchListingsFirstPage(activeTab, deps: deps, force: true)
+        await fetchBulkProfileListings(deps: deps)
     }
 
     private func loadListingsForTab(_ tab: ProfileListingTab, deps: AppDependencies, force: Bool = false) async {
+        if tab != .wishlist {
+            if bulkMineListingsLoaded, !force { return }
+            await fetchBulkProfileListings(deps: deps)
+            return
+        }
         if !force, loadedListingTabs.contains(tab.rawValue) { return }
         await fetchListingsFirstPage(tab, deps: deps, force: force)
+    }
+
+    /// Android `ProfileViewModel.fetchProfileAndListings` — one `getMyListings(50)` split client-side.
+    private func fetchBulkProfileListings(deps: AppDependencies) async {
+        let hadMine = bulkMineListingsLoaded
+        let hadWishlist = loadedListingTabs.contains(ProfileListingTab.wishlist.rawValue)
+        if !hadMine {
+            for tab in [ProfileListingTab.active, .inReview, .rejected, .sold] {
+                mutatePagination(for: tab) { state in
+                    if listings(for: tab).isEmpty {
+                        state.isLoadingFirstPage = true
+                    } else {
+                        state.isReloading = true
+                    }
+                    state.isLoadingMore = false
+                }
+            }
+        }
+        if !hadWishlist {
+            mutatePagination(for: .wishlist) { state in
+                if wishlistListings.isEmpty {
+                    state.isLoadingFirstPage = true
+                } else {
+                    state.isReloading = true
+                }
+                state.isLoadingMore = false
+            }
+        }
+
+        async let mineResult = deps.listingRepository.getMyListings(
+            limit: profileListingBulkLimit,
+            offset: 0
+        )
+        async let wishResult = deps.listingRepository.getWishlistListings(
+            limit: profileListingBulkLimit,
+            offset: 0
+        )
+
+        if case .success(let allMine) = await mineResult {
+            applyBulkMineListings(allMine)
+            FeedListingImagePrefetch.prefetch(items: allMine)
+        } else if !hadMine {
+            applyBulkMineListings([])
+        }
+
+        if case .success(let wish) = await wishResult {
+            setListings(wish, for: .wishlist)
+            loadedListingTabs.insert(ProfileListingTab.wishlist.rawValue)
+            mutatePagination(for: .wishlist) {
+                $0.isLoadingFirstPage = false
+                $0.isReloading = false
+                $0.isLoadingMore = false
+                $0.nextOffset = wish.count
+                $0.hasMore = wish.count >= profileListingBulkLimit
+            }
+            FeedListingImagePrefetch.prefetch(items: wish)
+        } else if !hadWishlist {
+            setListings([], for: .wishlist)
+            loadedListingTabs.remove(ProfileListingTab.wishlist.rawValue)
+            mutatePagination(for: .wishlist) {
+                $0.isLoadingFirstPage = false
+                $0.isReloading = false
+                $0.hasMore = false
+            }
+        }
+    }
+
+    private func applyBulkMineListings(_ all: [ListingFeedItem]) {
+        sellingListings = all.filter { $0.isActiveListing() }
+        inReviewListings = all.filter { $0.isInReviewListing() }
+        rejectedListings = all.filter { $0.isRejectedListing() }
+        soldListings = all.filter { $0.isSoldListingStatus() }
+        bulkMineListingsLoaded = true
+        for tab in [ProfileListingTab.active, .inReview, .rejected, .sold] {
+            loadedListingTabs.insert(tab.rawValue)
+            mutatePagination(for: tab) {
+                $0.isLoadingFirstPage = false
+                $0.isReloading = false
+                $0.isLoadingMore = false
+                $0.nextOffset = listings(for: tab).count
+                $0.hasMore = false
+            }
+        }
     }
 
     private func fetchListingsFirstPage(
@@ -417,6 +514,7 @@ final class ProfileViewModel {
     }
 
     private func loadMoreListings(for tab: ProfileListingTab, deps: AppDependencies) async {
+        guard tab == .wishlist else { return }
         guard canLoadMore(for: tab) else { return }
         let now = Date()
         if let until = pagination(for: tab).loadMoreCooldownUntil, now < until { return }

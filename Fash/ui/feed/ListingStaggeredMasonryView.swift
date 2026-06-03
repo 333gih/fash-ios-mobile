@@ -6,6 +6,8 @@ struct ListingStaggeredMasonryView<Cell: View, Footer: View>: View {
 
     let items: [ListingFeedItem]
     @Binding var columnAssignments: [String: Bool]
+    /// Profile grid lives inside a parent `ScrollView` — `LazyVStack` only materializes tiles while scrolling (looks like one card). Home/Explore keep lazy columns.
+    var eagerLayout: Bool = false
     @ViewBuilder var footer: () -> Footer
     @ViewBuilder let cellContent: (ListingFeedItem, Int) -> Cell
 
@@ -15,11 +17,13 @@ struct ListingStaggeredMasonryView<Cell: View, Footer: View>: View {
     init(
         items: [ListingFeedItem],
         columnAssignments: Binding<[String: Bool]>,
+        eagerLayout: Bool = false,
         @ViewBuilder footer: @escaping () -> Footer = { EmptyView() },
         @ViewBuilder cellContent: @escaping (ListingFeedItem, Int) -> Cell
     ) {
         self.items = items
         self._columnAssignments = columnAssignments
+        self.eagerLayout = eagerLayout
         self.footer = footer
         self.cellContent = cellContent
     }
@@ -114,9 +118,19 @@ struct ListingStaggeredMasonryView<Cell: View, Footer: View>: View {
 
     @ViewBuilder
     private func pinterestColumn(_ entries: [(index: Int, item: ListingFeedItem)]) -> some View {
-        LazyVStack(spacing: gap) {
-            ForEach(entries, id: \.item.masonryCellId) { entry in
-                masonryTile(entry)
+        Group {
+            if eagerLayout {
+                VStack(spacing: gap) {
+                    ForEach(entries, id: \.item.masonryCellId) { entry in
+                        masonryTile(entry)
+                    }
+                }
+            } else {
+                LazyVStack(spacing: gap) {
+                    ForEach(entries, id: \.item.masonryCellId) { entry in
+                        masonryTile(entry)
+                    }
+                }
             }
         }
         .frame(width: columnWidth, alignment: .top)
@@ -140,11 +154,13 @@ extension ListingStaggeredMasonryView where Footer == EmptyView {
     init(
         items: [ListingFeedItem],
         columnAssignments: Binding<[String: Bool]>,
+        eagerLayout: Bool = false,
         @ViewBuilder cellContent: @escaping (ListingFeedItem, Int) -> Cell
     ) {
         self.init(
             items: items,
             columnAssignments: columnAssignments,
+            eagerLayout: eagerLayout,
             footer: { EmptyView() },
             cellContent: cellContent
         )

@@ -537,6 +537,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             ListingStaggeredMasonryView(
                 items: items,
                 columnAssignments: masonryColumnAssignments,
+                eagerLayout: true,
                 footer: { profilePaginationFooter }
             ) { item, _ in
                 ListingGridCard(
