@@ -1029,6 +1029,8 @@
 "listing_status_rejected" = "Rejected";
 "listing_status_reserved" = "Reserved";
 "listing_status_sold" = "Sold";
+"login_apple" = "Sign in with Apple";
+"login_apple_error" = "Apple sign-in failed.";
 "login_continue_without_account" = "Continue without signing in";
 "login_email_icon_cd" = "Email";
 "login_email_invalid" = "Please enter a valid email address.";
@@ -1562,6 +1564,7 @@
 "post_fill_mode_profile_gender" = "Target: %1$@";
 "post_fill_mode_profile_size" = "Reference size: %1$@";
 "post_fill_mode_profile_tags" = "Style: %1$@";
+"post_fill_mode_recommendation_notice" = "Complete size, style, and season context so For You and seasonal rails match you better.\nProfile pre-fill or manual entry both work — you can edit on later steps.";
 "post_fill_mode_subtitle" = "Choose how you want to fill in listing details. You can still edit everything before posting.";
 "post_fill_mode_title" = "How to fill in details";
 "post_floor_price" = "Floor price (VND)";
@@ -1578,6 +1581,7 @@
 "post_hint_shipping" = "Optional. Pick a saved address; ID is sent when your address book is synced with the server.";
 "post_hint_style_tags_step" = "Optional: pick up to 5 style tags. They help discovery and are separate from category.";
 "post_hint_title_desc" = "Title 3–60 characters. Description up to 500.";
+"post_hint_wear_season" = "Pick seasons/regions that fit, or enable year-round wear when it applies anytime.";
 "post_listing_color_hint" = "Helps buyers filter by color and improves recommendations.";
 "post_listing_details_intro" = "Pick a condition, then write a clear title and description so buyers know what they are getting.";
 "post_listing_photo_slots_unavailable" = "No photo steps loaded for this category. Pick a leaf category in the previous step or try again.";
@@ -1655,6 +1659,8 @@
 "post_step_shipping" = "Ship-from address";
 "post_step_style_only" = "Style tags";
 "post_step_text" = "Title & description";
+"post_step_wear_season" = "Season & region fit";
+"post_step_wear_season_subtitle" = "Helps buyers and seasonal picks surface this item (optional).";
 "post_style_tags_no_matches" = "No tags match your search. Try other words or clear the field.";
 "post_unit_cm" = "cm";
 "post_unit_in" = "in";
@@ -1671,6 +1677,10 @@
 "post_validation_tags_max" = "At most 5 style tags.";
 "post_validation_title_long" = "Title must be at most 60 characters.";
 "post_validation_title_short" = "Title must be at least 3 characters.";
+"post_wear_climate_zones" = "Climate zones";
+"post_wear_macro_regions" = "Regions";
+"post_wear_season_keys" = "Suitable seasons";
+"post_wear_year_round" = "Year-round wear";
 "product_action_follow_seller" = "Follow";
 "product_action_following_seller" = "Following";
 "product_action_like" = "Like";
@@ -1756,6 +1766,7 @@
 "product_status_active_cd" = "Active listing";
 "product_total_payment" = "Total payment";
 "product_visit_shop" = "View shop";
+"product_wear_season_label" = "Season fit";
 "profile_account_email" = "Email: %1$@";
 "profile_account_phone" = "Phone: %1$@";
 "profile_action_share" = "Share shop";
@@ -1963,15 +1974,6 @@
 "share_profile_text" = "%1$@ on Fash — explore their second-hand closet.\n\nOpen in browser:\n%2$@\n\nOpen in app:\n%3$@";
 "shipping_address_row_untitled" = "Saved address";
 "shopping_context_chip" = "%1$@";
-"post_step_wear_season" = "Season & region fit";
-"post_step_wear_season_subtitle" = "Helps buyers and seasonal picks surface this item (optional).";
-"post_hint_wear_season" = "Pick seasons/regions that fit, or enable year-round wear when it applies anytime.";
-"post_wear_year_round" = "Year-round wear";
-"post_wear_season_keys" = "Suitable seasons";
-"post_wear_climate_zones" = "Climate zones";
-"post_wear_macro_regions" = "Regions";
-"product_wear_season_label" = "Season fit";
-"post_fill_mode_recommendation_notice" = "Complete size, style, and season context so For You and seasonal rails match you better.\nProfile pre-fill or manual entry both work — you can edit on later steps.";
 "splash_footer_gen_z" = "GEN Z GENERATION";
 "splash_logo_cd" = "Fash logo";
 "splash_wordmark" = "FASH";

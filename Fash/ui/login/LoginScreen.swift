@@ -118,6 +118,14 @@ struct LoginScreen: View {
                             )
                             .padding(.top, 10)
 
+                            LoginSocialOutlineButton(
+                                icon: AnyView(AppleBrandIcon()),
+                                label: L10n.loginApple,
+                                enabled: !formLockedForSocial,
+                                action: handleAppleTap
+                            )
+                            .padding(.top, 8)
+
                             Button(action: onGuestBrowse) {
                                 Text(L10n.loginContinueWithoutAccount)
                                     .font(FashTypography.labelLarge)
@@ -200,6 +208,14 @@ struct LoginScreen: View {
         }
         Task {
             if await viewModel.performGoogleSignIn(sessionStore: deps.authSessionStore) {
+                onSocialLoginVerified()
+            }
+        }
+    }
+
+    private func handleAppleTap() {
+        Task {
+            if await viewModel.performAppleSignIn(sessionStore: deps.authSessionStore) {
                 onSocialLoginVerified()
             }
         }

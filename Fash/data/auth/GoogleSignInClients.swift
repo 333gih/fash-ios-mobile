@@ -12,25 +12,40 @@ enum GoogleSignInClients {
     }
 
     private static var webClientId: String {
-        AppEnvironment.googleWebClientId.trimmingCharacters(in: .whitespacesAndNewlines)
+        resolved(AppEnvironment.googleWebClientId)
     }
 
-    private static var iosClientId: String {
-        AppEnvironment.googleIosClientId.trimmingCharacters(in: .whitespacesAndNewlines)
+    /// Build-time env (`GOOGLE_IOS_CLIENT_ID`) or `CLIENT_ID` from bundled GoogleService-Info.plist.
+    static var resolvedIosClientId: String {
+        let fromEnv = resolved(AppEnvironment.googleIosClientId)
+        if !fromEnv.isEmpty { return fromEnv }
+        return resolved(GoogleServiceInfoOAuth.clientId)
+    }
+
+    static func reversedUrlScheme(from iosClientId: String) -> String {
+        let trimmed = iosClientId.trimmingCharacters(in: .whitespacesAndNewlines)
+        let suffix = ".apps.googleusercontent.com"
+        guard !trimmed.isEmpty, trimmed.hasSuffix(suffix) else { return "" }
+        let prefix = String(trimmed.dropLast(suffix.count))
+        return "com.googleusercontent.apps.\(prefix)"
     }
 
     static func isConfigured() -> Bool {
         let web = webClientId
-        let ios = iosClientId
+        let ios = resolvedIosClientId
         guard !web.isEmpty, !ios.isEmpty else { return false }
         if web.uppercased().hasPrefix("YOUR_") || ios.uppercased().hasPrefix("YOUR_") { return false }
         return true
     }
 
+    private static func resolved(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     static func configureIfNeeded() {
         guard isConfigured() else { return }
         GIDSignIn.sharedInstance.configuration = GIDConfiguration(
-            clientID: iosClientId,
+            clientID: resolvedIosClientId,
             serverClientID: webClientId
         )
     }

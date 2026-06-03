@@ -58,6 +58,32 @@ def swift_escape(s: str) -> str:
     return s.replace("\\", "\\\\").replace('"', '\\"')
 
 
+def read_google_ios_client_id_from_plist(flavor: str) -> str:
+    """CLIENT_ID from Fash/GoogleService-Info*.plist when env GOOGLE_IOS_CLIENT_ID is empty."""
+    name = "GoogleService-Info-Dev" if flavor == "dev" else "GoogleService-Info"
+    path = ROOT / "Fash" / f"{name}.plist"
+    if not path.is_file():
+        return ""
+    try:
+        import plistlib
+
+        data = plistlib.loads(path.read_bytes())
+        if isinstance(data, dict):
+            value = data.get("CLIENT_ID")
+            if isinstance(value, str):
+                return value.strip()
+    except Exception:
+        return ""
+    return ""
+
+
+def resolve_google_ios_client_id(env: dict[str, str], flavor: str) -> str:
+    explicit = env.get("GOOGLE_IOS_CLIENT_ID", "").strip()
+    if explicit:
+        return explicit
+    return read_google_ios_client_id_from_plist(flavor)
+
+
 def google_reversed_url_scheme(ios_client_id: str) -> str:
     trimmed = ios_client_id.strip()
     suffix = ".apps.googleusercontent.com"
@@ -71,6 +97,7 @@ def xcconfig(env: dict[str, str], flavor: str) -> str:
     auth_prefix = env.get("AUTH_API_USE_LANGUAGE_PREFIX") or env.get("CORE_API_USE_LANGUAGE_PREFIX", "true")
     core_prefix = env.get("CORE_API_USE_LANGUAGE_PREFIX", "true")
     bundle = "com.pc.fash-ios-mobile.dev" if flavor == "dev" else "com.pc.fash-ios-mobile"
+    google_ios_client_id = resolve_google_ios_client_id(env, flavor)
     lines = [
         f"// Generated from env/{flavor}.env",
         f"FASH_ENVIRONMENT_NAME = {env.get('ENVIRONMENT_NAME', flavor)}",
@@ -88,8 +115,8 @@ def xcconfig(env: dict[str, str], flavor: str) -> str:
         f"FASH_CORE_API_USE_LANGUAGE_PREFIX = {bool_str(core_prefix)}",
         f"FASH_AUTH_API_USE_LANGUAGE_PREFIX = {bool_str(auth_prefix)}",
         f"FASH_GOOGLE_WEB_CLIENT_ID = {env.get('GOOGLE_WEB_CLIENT_ID', '')}",
-        f"FASH_GOOGLE_IOS_CLIENT_ID = {env.get('GOOGLE_IOS_CLIENT_ID', '')}",
-        f"FASH_GOOGLE_URL_SCHEME = {google_reversed_url_scheme(env.get('GOOGLE_IOS_CLIENT_ID', ''))}",
+        f"FASH_GOOGLE_IOS_CLIENT_ID = {google_ios_client_id}",
+        f"FASH_GOOGLE_URL_SCHEME = {google_reversed_url_scheme(google_ios_client_id)}",
         f"FASH_FACEBOOK_APP_ID = {env.get('FACEBOOK_APP_ID', '')}",
         f"FASH_FACEBOOK_CLIENT_TOKEN = {env.get('FACEBOOK_CLIENT_TOKEN', '')}",
         f"FASH_FACEBOOK_LOGIN_ENABLED = {bool_str(env.get('FACEBOOK_LOGIN_ENABLED', 'false'))}",
@@ -113,6 +140,7 @@ def xcconfig(env: dict[str, str], flavor: str) -> str:
 
 def swift_build_config(env: dict[str, str], flavor: str) -> str:
     bundle = "com.pc.fash-ios-mobile.dev" if flavor == "dev" else "com.pc.fash-ios-mobile"
+    google_ios_client_id = resolve_google_ios_client_id(env, flavor)
     string_keys = [
         ("environmentName", env.get("ENVIRONMENT_NAME", flavor)),
         ("flavor", flavor),
@@ -125,8 +153,8 @@ def swift_build_config(env: dict[str, str], flavor: str) -> str:
         ("authApplicationId", env.get("AUTH_APPLICATION_ID", "web")),
         ("authClientSecret", env.get("AUTH_CLIENT_SECRET", "")),
         ("googleWebClientId", env.get("GOOGLE_WEB_CLIENT_ID", "")),
-        ("googleIosClientId", env.get("GOOGLE_IOS_CLIENT_ID", "")),
-        ("googleUrlScheme", google_reversed_url_scheme(env.get("GOOGLE_IOS_CLIENT_ID", ""))),
+        ("googleIosClientId", google_ios_client_id),
+        ("googleUrlScheme", google_reversed_url_scheme(google_ios_client_id)),
         ("facebookAppId", env.get("FACEBOOK_APP_ID", "")),
         ("facebookClientToken", env.get("FACEBOOK_CLIENT_TOKEN", "")),
         ("listingShareBaseURL", env.get("LISTING_SHARE_BASE_URL", "https://fash.app/p/l")),

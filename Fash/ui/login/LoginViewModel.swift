@@ -93,6 +93,20 @@ final class LoginViewModel {
         }
     }
 
+    func performAppleSignIn(sessionStore: AuthSessionStore) async -> Bool {
+        isSocialLoading = true
+        defer { isSocialLoading = false }
+        do {
+            let identityToken = try await AppleSignInClients.signIn()
+            return await completeSocialLogin(provider: "apple", token: identityToken, sessionStore: sessionStore, fallback: L10n.loginAppleError)
+        } catch AppleSignInClients.SignInError.cancelled {
+            return false
+        } catch {
+            errorMessage = L10n.loginAppleError
+            return false
+        }
+    }
+
     func performGoogleSignIn(sessionStore: AuthSessionStore) async -> Bool {
         guard Self.isGoogleConfigured() else {
             errorMessage = L10n.loginGoogleNotConfigured
@@ -106,7 +120,7 @@ final class LoginViewModel {
         defer { isSocialLoading = false }
         do {
             let idToken = try await GoogleSignInClients.signIn(presenting: presenter)
-            return await completeSocialLogin(idToken: idToken, sessionStore: sessionStore)
+            return await completeSocialLogin(provider: "google", token: idToken, sessionStore: sessionStore, fallback: L10n.loginGoogleError)
         } catch GoogleSignInClients.SignInError.cancelled {
             return false
         } catch {
@@ -121,8 +135,13 @@ final class LoginViewModel {
         errorMessage = L10n.loginGoogleNotConfigured
     }
 
-    private func completeSocialLogin(idToken: String, sessionStore: AuthSessionStore) async -> Bool {
-        let result = await auth.socialLogin(provider: "google", providerToken: idToken)
+    private func completeSocialLogin(
+        provider: String,
+        token: String,
+        sessionStore: AuthSessionStore,
+        fallback: String
+    ) async -> Bool {
+        let result = await auth.socialLogin(provider: provider, providerToken: token)
         switch result {
         case .success(let session):
             sessionStore.save(session)
@@ -130,7 +149,7 @@ final class LoginViewModel {
             AppDependencies.shared.authManager.onSessionSaved()
             return true
         case .failure(let error):
-            errorMessage = authFailureMessage(error, otpContext: false, fallback: L10n.loginGoogleError)
+            errorMessage = authFailureMessage(error, otpContext: false, fallback: fallback)
             return false
         }
     }

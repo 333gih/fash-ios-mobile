@@ -1029,6 +1029,8 @@
 "listing_status_rejected" = "Từ chối";
 "listing_status_reserved" = "Giữ chỗ";
 "listing_status_sold" = "Đã bán";
+"login_apple" = "Đăng nhập với Apple";
+"login_apple_error" = "Đăng nhập Apple không thành công.";
 "login_continue_without_account" = "Tiếp tục xem không đăng nhập";
 "login_email_icon_cd" = "Email";
 "login_email_invalid" = "Vui lòng nhập email hợp lệ.";
@@ -1562,6 +1564,7 @@
 "post_fill_mode_profile_gender" = "Đối tượng: %1$@";
 "post_fill_mode_profile_size" = "Size tham chiếu: %1$@";
 "post_fill_mode_profile_tags" = "Style: %1$@";
+"post_fill_mode_recommendation_notice" = "Điền đủ size, phong cách, mùa và khu vực giúp gợi ý For You / theo mùa chính xác hơn.\nChọn \\\"theo hồ sơ\\\" hoặc nhập thủ công đều được — bạn có thể sửa ở các bước sau.";
 "post_fill_mode_subtitle" = "Chọn cách bạn muốn điền thông tin sản phẩm. Bạn vẫn có thể chỉnh sửa mọi mục trước khi đăng.";
 "post_fill_mode_title" = "Cách điền thông tin";
 "post_floor_price" = "Giá sàn (VNĐ)";
@@ -1578,6 +1581,7 @@
 "post_hint_shipping" = "Không bắt buộc. Chọn địa chỉ đã lưu; ID gửi lên máy chủ khi đồng bộ.";
 "post_hint_style_tags_step" = "Không bắt buộc: chọn tối đa 5 thẻ phong cách. Hỗ trợ tìm kiếm, tách với danh mục.";
 "post_hint_title_desc" = "Tiêu đề 3–60 ký tự. Mô tả tối đa 500 ký tự.";
+"post_hint_wear_season" = "Chọn mùa/khu vực phù hợp hoặc bật \\\"mặc quanh năm\\\" nếu item dùng được mọi lúc.";
 "post_listing_color_hint" = "Giúp người mua lọc theo màu và cải thiện đề xuất.";
 "post_listing_details_intro" = "Chọn tình trạng, rồi viết tiêu đề và mô tả rõ ràng để người mua hiểu sản phẩm.";
 "post_listing_photo_slots_unavailable" = "Chưa có bước chụp ảnh cho danh mục này. Hãy chọn danh mục lá ở bước trước hoặc thử lại.";
@@ -1655,6 +1659,8 @@
 "post_step_shipping" = "Địa chỉ gửi hàng";
 "post_step_style_only" = "Thẻ phong cách";
 "post_step_text" = "Tiêu đề & mô tả";
+"post_step_wear_season" = "Hợp mùa & khu vực";
+"post_step_wear_season_subtitle" = "Giúp người mua và gợi ý theo mùa tìm đúng sản phẩm hơn (không bắt buộc).";
 "post_style_tags_no_matches" = "Không có thẻ phù hợp. Thử từ khác hoặc xóa ô tìm.";
 "post_unit_cm" = "cm";
 "post_unit_in" = "inch";
@@ -1671,6 +1677,10 @@
 "post_validation_tags_max" = "Tối đa 5 thẻ phong cách.";
 "post_validation_title_long" = "Tiêu đề tối đa 60 ký tự.";
 "post_validation_title_short" = "Tiêu đề cần ít nhất 3 ký tự.";
+"post_wear_climate_zones" = "Khí hậu";
+"post_wear_macro_regions" = "Vùng miền";
+"post_wear_season_keys" = "Mùa phù hợp";
+"post_wear_year_round" = "Mặc quanh năm";
 "product_action_follow_seller" = "Theo dõi";
 "product_action_following_seller" = "Đang theo dõi";
 "product_action_like" = "Thích";
@@ -1756,6 +1766,7 @@
 "product_status_active_cd" = "Đang bán";
 "product_total_payment" = "Tổng thanh toán";
 "product_visit_shop" = "Xem shop";
+"product_wear_season_label" = "Hợp mùa";
 "profile_account_email" = "Email: %1$@";
 "profile_account_phone" = "Điện thoại: %1$@";
 "profile_action_share" = "Chia sẻ shop";
@@ -1963,15 +1974,6 @@
 "share_profile_text" = "Shop %1$@ trên Fash — khám phá tủ đồ second-hand.\n\nMở trên web:\n%2$@\n\nMở trong ứng dụng:\n%3$@";
 "shipping_address_row_untitled" = "Địa chỉ đã lưu";
 "shopping_context_chip" = "%1$@";
-"post_step_wear_season" = "Hợp mùa & khu vực";
-"post_step_wear_season_subtitle" = "Giúp người mua và gợi ý theo mùa tìm đúng sản phẩm hơn (không bắt buộc).";
-"post_hint_wear_season" = "Chọn mùa/khu vực phù hợp hoặc bật \"mặc quanh năm\" nếu item dùng được mọi lúc.";
-"post_wear_year_round" = "Mặc quanh năm";
-"post_wear_season_keys" = "Mùa phù hợp";
-"post_wear_climate_zones" = "Khí hậu";
-"post_wear_macro_regions" = "Vùng miền";
-"product_wear_season_label" = "Hợp mùa";
-"post_fill_mode_recommendation_notice" = "Điền đủ size, phong cách, mùa và khu vực giúp gợi ý For You / theo mùa chính xác hơn.\nChọn \"theo hồ sơ\" hoặc nhập thủ công đều được — bạn có thể sửa ở các bước sau.";
 "splash_footer_gen_z" = "THẾ HỆ GEN Z";
 "splash_logo_cd" = "Logo Fash";
 "splash_wordmark" = "FASH";

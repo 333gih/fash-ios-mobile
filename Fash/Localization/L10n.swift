@@ -1203,6 +1203,8 @@ enum L10n {
     static var listingStatusRejected: String { t("listing_status_rejected") }
     static var listingStatusReserved: String { t("listing_status_reserved") }
     static var listingStatusSold: String { t("listing_status_sold") }
+    static var loginApple: String { t("login_apple") }
+    static var loginAppleError: String { t("login_apple_error") }
     static var loginContinueWithoutAccount: String { t("login_continue_without_account") }
     static var loginEmailIconCd: String { t("login_email_icon_cd") }
     static var loginEmailInvalid: String { t("login_email_invalid") }
@@ -1832,6 +1834,7 @@ enum L10n {
     static func postFillModeProfileTags(_ a1: CVarArg) -> String {
         String(format: t("post_fill_mode_profile_tags"), a1)
     }
+    static var postFillModeRecommendationNotice: String { t("post_fill_mode_recommendation_notice") }
     static var postFillModeSubtitle: String { t("post_fill_mode_subtitle") }
     static var postFillModeTitle: String { t("post_fill_mode_title") }
     static var postFloorPrice: String { t("post_floor_price") }
@@ -1848,6 +1851,7 @@ enum L10n {
     static var postHintShipping: String { t("post_hint_shipping") }
     static var postHintStyleTagsStep: String { t("post_hint_style_tags_step") }
     static var postHintTitleDesc: String { t("post_hint_title_desc") }
+    static var postHintWearSeason: String { t("post_hint_wear_season") }
     static var postListingColorHint: String { t("post_listing_color_hint") }
     static var postListingDetailsIntro: String { t("post_listing_details_intro") }
     static var postListingPhotoSlotsUnavailable: String { t("post_listing_photo_slots_unavailable") }
@@ -1924,15 +1928,6 @@ enum L10n {
     static var postStepCountry: String { t("post_step_country") }
     static var postStepGenderTarget: String { t("post_step_gender_target") }
     static var postStepListingDetails: String { t("post_step_listing_details") }
-    static var postStepWearSeason: String { t("post_step_wear_season") }
-    static var postStepWearSeasonSubtitle: String { t("post_step_wear_season_subtitle") }
-    static var postHintWearSeason: String { t("post_hint_wear_season") }
-    static var postWearYearRound: String { t("post_wear_year_round") }
-    static var postWearSeasonKeys: String { t("post_wear_season_keys") }
-    static var postWearClimateZones: String { t("post_wear_climate_zones") }
-    static var postWearMacroRegions: String { t("post_wear_macro_regions") }
-    static var productWearSeasonLabel: String { t("product_wear_season_label") }
-    static var postFillModeRecommendationNotice: String { t("post_fill_mode_recommendation_notice") }
     static var postStepMeasure: String { t("post_step_measure") }
     static var postStepPhotos: String { t("post_step_photos") }
     static var postStepPrice: String { t("post_step_price") }
@@ -1940,6 +1935,8 @@ enum L10n {
     static var postStepShipping: String { t("post_step_shipping") }
     static var postStepStyleOnly: String { t("post_step_style_only") }
     static var postStepText: String { t("post_step_text") }
+    static var postStepWearSeason: String { t("post_step_wear_season") }
+    static var postStepWearSeasonSubtitle: String { t("post_step_wear_season_subtitle") }
     static var postStyleTagsNoMatches: String { t("post_style_tags_no_matches") }
     static var postUnitCm: String { t("post_unit_cm") }
     static var postUnitIn: String { t("post_unit_in") }
@@ -1956,6 +1953,10 @@ enum L10n {
     static var postValidationTagsMax: String { t("post_validation_tags_max") }
     static var postValidationTitleLong: String { t("post_validation_title_long") }
     static var postValidationTitleShort: String { t("post_validation_title_short") }
+    static var postWearClimateZones: String { t("post_wear_climate_zones") }
+    static var postWearMacroRegions: String { t("post_wear_macro_regions") }
+    static var postWearSeasonKeys: String { t("post_wear_season_keys") }
+    static var postWearYearRound: String { t("post_wear_year_round") }
     static var productActionFollowSeller: String { t("product_action_follow_seller") }
     static var productActionFollowingSeller: String { t("product_action_following_seller") }
     static var productActionLike: String { t("product_action_like") }
@@ -2077,6 +2078,7 @@ enum L10n {
     static var productStatusActiveCd: String { t("product_status_active_cd") }
     static var productTotalPayment: String { t("product_total_payment") }
     static var productVisitShop: String { t("product_visit_shop") }
+    static var productWearSeasonLabel: String { t("product_wear_season_label") }
     static func profileAccountEmail(_ a1: CVarArg) -> String {
         String(format: t("profile_account_email"), a1)
     }

@@ -51,6 +51,16 @@ struct LoginSocialOutlineButton: View {
     }
 }
 
+struct AppleBrandIcon: View {
+    var body: some View {
+        Image(systemName: "apple.logo")
+            .font(.system(size: 22, weight: .medium))
+            .foregroundStyle(FashColors.textPrimary)
+            .frame(width: 24, height: 24)
+            .accessibilityHidden(true)
+    }
+}
+
 struct GoogleBrandIcon: View {
     var body: some View {
         Image("ic_brand_google")

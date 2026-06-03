@@ -37,9 +37,15 @@ Auth-service must list the **Web** client id in `GOOGLE_OAUTH_CLIENT_IDS`.
 4. Session is saved; `RootView.bootstrapSession()` runs onboarding gate like OTP login.
 5. Logout calls `GIDSignIn.sharedInstance.signOut()` via `SocialAuthCacheClear`.
 
+## Enable on Firebase (recommended)
+
+1. Firebase Console → project `fash-3526e` → **Authentication** → **Sign-in method** → enable **Google**.
+2. Re-download **GoogleService-Info.plist** for each iOS app (prod + dev). The file must include `CLIENT_ID` and `REVERSED_CLIENT_ID`.
+3. Replace `Fash/GoogleService-Info.plist` and `Fash/GoogleService-Info-Dev.plist`, then run `python scripts/env_to_xcconfig.py` (or set `GOOGLE_IOS_CLIENT_ID` in `env/*.env`).
+
 ## Troubleshooting
 
-- Button appears dimmed → `GOOGLE_IOS_CLIENT_ID` is empty or placeholder; fill env and regenerate xcconfig.
+- Button appears dimmed → `GOOGLE_IOS_CLIENT_ID` / plist `CLIENT_ID` is missing; follow **Enable on Firebase** above.
 - Sign-in fails immediately → URL scheme / bundle id mismatch with the iOS OAuth client in GCP.
 - API error after Google succeeds → check `GOOGLE_OAUTH_CLIENT_IDS` on auth-service matches `GOOGLE_WEB_CLIENT_ID`.
 
