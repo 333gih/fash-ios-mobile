@@ -84,7 +84,7 @@ extension AppDependencies {
         router.sellerShopUsername = nil
         router.listingDetailRootId = nil
         router.listingDetailPath = []
-        deps.listingPreview.close(deps: self, animated: false)
+        listingPreview.close(deps: self, animated: false)
         Task {
             await exploreVM.openFromProfileFilter(
                 deps: self,

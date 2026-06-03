@@ -288,7 +288,9 @@ private extension UIView {
         }
         return false
     }
+}
 
+private extension UIScrollView {
     var fash_isHorizontallyScrollable: Bool {
         guard isScrollEnabled, bounds.width > 1 else { return false }
         return contentSize.width > bounds.width + 4
