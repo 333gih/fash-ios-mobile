@@ -79,11 +79,11 @@ struct SellerProfileScreen: View {
                             },
                             onListingClick: { item in onListingClick(item) },
                             onLike: { item in
-                                if isGuestMode { presentGuestSignIn(L10n.guestLoginReasonLike) }
+                                if isGuestMode { presentGuestSignIn(reason: L10n.guestLoginReasonLike) }
                                 else { Task { await viewModel.toggleLike(item, deps: deps) } }
                             },
                             onSave: { item in
-                                if isGuestMode { presentGuestSignIn(L10n.guestLoginReasonSaved) }
+                                if isGuestMode { presentGuestSignIn(reason: L10n.guestLoginReasonSaved) }
                                 else { Task { await viewModel.toggleSave(item, deps: deps) } }
                             },
                             expandedHeader: { expandedHeader },
@@ -123,7 +123,7 @@ struct SellerProfileScreen: View {
                     listingPreview: deps.listingPreview,
                     router: router,
                     isGuestMode: isGuestMode,
-                    onRequestLogin: isGuestMode ? { presentGuestSignIn(L10n.guestLoginReasonBuy) } : nil,
+                    onRequestLogin: isGuestMode ? { presentGuestSignIn(reason: L10n.guestLoginReasonBuy) } : nil,
                     onFeedEngagementPatch: { id, transform in
                         viewModel.patchListingEngagement(id, transform: transform)
                     }
@@ -217,7 +217,7 @@ struct SellerProfileScreen: View {
                 isFollowing: viewModel.isFollowing && !isGuestMode,
                 inFlight: viewModel.followInFlight,
                 onToggle: {
-                    if isGuestMode { presentGuestSignIn(L10n.guestLoginReasonFollow) }
+                    if isGuestMode { presentGuestSignIn(reason: L10n.guestLoginReasonFollow) }
                     else { Task { await viewModel.toggleFollow(deps: deps, isGuestMode: isGuestMode) } }
                 }
             )

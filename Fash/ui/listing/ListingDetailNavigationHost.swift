@@ -86,7 +86,7 @@ struct ListingDetailNavigationHost: View {
             router: router,
             listingId: listingId,
             isGuestMode: isGuestMode,
-            onRequestSignIn: isGuestMode ? presentGuestSignIn : nil,
+            onRequestSignIn: isGuestMode ? { presentGuestSignIn(reason: $0) } : nil,
             dismissExploreOverlayOnClose: dismissExploreOverlayOnClose,
             onDismiss: { router.popListingDetail() },
             onListingClick: { router.pushListingDetail($0) },

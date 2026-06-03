@@ -55,6 +55,6 @@ extension View {
         reason: String?,
         router: AppRouter
     ) -> some View {
-        modifier(GuestLoginSheetModifier(isPresented: isPresented, reason: reason, router: router))
+        modifier(GuestLoginSheetModifier(router: router, isPresented: isPresented, reason: reason))
     }
 }

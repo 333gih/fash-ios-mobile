@@ -58,7 +58,7 @@ struct ExploreOverlayHost: View {
                     onClose()
                     router.showFeaturedSellersAll = true
                 },
-                onRequestSignIn: isGuestMode ? presentGuestSignIn : nil,
+                onRequestSignIn: isGuestMode ? { presentGuestSignIn(reason: $0) } : nil,
                 hostManagesStickyChrome: true
             )
         }
@@ -74,7 +74,7 @@ struct ExploreOverlayHost: View {
                 listingPreview: listingPreview,
                 router: router,
                 isGuestMode: isGuestMode,
-                onRequestLogin: isGuestMode ? { presentGuestSignIn(L10n.guestLoginReasonBuy) } : nil,
+                onRequestLogin: isGuestMode ? { presentGuestSignIn(reason: L10n.guestLoginReasonBuy) } : nil,
                 onFeedEngagementPatch: { id, transform in
                     viewModel.patchListingEngagement(id, transform: transform)
                 }
