@@ -70,6 +70,27 @@ Tránh push `releases/*` chỉ để kích hoạt CI khi có thể dùng `workfl
 
 ---
 
+## Lỗi job fail ~3 giây — billing (không phải Xcode)
+
+Nếu log/annotation:
+
+> The job was not started because recent account payments have failed or your spending limit needs to be increased.
+
+**Không có bước checkout/archive** — sửa tài khoản GitHub, không sửa Swift:
+
+1. [GitHub Settings → Billing & plans](https://github.com/settings/billing)
+2. Thanh toán invoice quá hạn hoặc tăng **Spending limit** (Actions)
+3. Chờ vài phút, rồi:
+
+```powershell
+gh workflow run ios-release.yml --ref releases/1.0 -f scheme=Fash-Prod -f upload_testflight=true
+gh run watch
+```
+
+Push `github` remote (repo chạy Actions): `git push github releases/1.0`
+
+---
+
 ## Monitor & debug (không tốn thêm phút)
 
 ```powershell
