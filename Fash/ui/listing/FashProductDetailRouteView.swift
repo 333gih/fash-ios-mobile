@@ -6,6 +6,7 @@ struct FashProductDetailRouteView: View {
     @Bindable var router: AppRouter
     let listingId: String
     var isGuestMode: Bool
+    var onRequestSignIn: ((String) -> Void)? = nil
     /// When true, closing the entire PDP flow also dismisses the Explore overlay.
     var dismissExploreOverlayOnClose: Bool = false
     var onDismiss: () -> Void = {}
@@ -32,7 +33,7 @@ struct FashProductDetailRouteView: View {
                 deps.openSellerShop(username: username, router: router)
             },
             showTopBar: false,
-            onRequestLogin: { router.loginStep = .email },
+            onRequestLogin: { reason in onRequestSignIn?(reason) },
             onNavigateToExplore: { cat, brand, tag, query, countryId, iso in
                 onDismissEntireFlow()
                 router.pendingExploreProfileFilter = ExploreProfileFilterRequest(

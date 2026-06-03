@@ -15,6 +15,8 @@ struct RootView: View {
     @State private var notificationPreferencesVM = NotificationPreferencesViewModel()
     @State private var featuredSellersVM = FeaturedSellersViewModel()
     @State private var launchProgress = LaunchWaitingProgress()
+    @State private var showGuestLoginSheet = false
+    @State private var guestLoginReason: String?
 
     var body: some View {
         FashTheme {
@@ -48,7 +50,7 @@ struct RootView: View {
                         router.showExploreOverlay = false
                         router.exploreSearchExpanded = false
                     },
-                    onRequestSignIn: router.isGuestMode ? { _ in router.loginStep = .email } : nil
+                    onRequestSignIn: router.isGuestMode ? presentGuestSignIn : nil
                 )
                 .environment(\.locale, AppLocale.locale)
                 .fashSnackbarOverlay()
@@ -70,6 +72,18 @@ struct RootView: View {
             .onOpenURL { url in
                 if GoogleSignInClients.handle(url: url) { return }
                 DeepLinkRouter.handle(url: url, router: router, deps: deps)
+            }
+            .sheet(isPresented: $showGuestLoginSheet) {
+                GuestLoginSheet(
+                    reason: guestLoginReason,
+                    onSignIn: {
+                        showGuestLoginSheet = false
+                        deps.isGuestBrowseActive = false
+                        router.isGuestMode = false
+                        router.loginStep = .email
+                    },
+                    onContinueBrowsing: { showGuestLoginSheet = false }
+                )
             }
         }
         .task {
@@ -161,7 +175,8 @@ struct RootView: View {
             ListingDetailNavigationHost(
                 router: router,
                 rootListingId: rootId,
-                isGuestMode: router.isGuestMode
+                isGuestMode: router.isGuestMode,
+                onRequestSignIn: router.isGuestMode ? presentGuestSignIn : nil
             )
         case .seller(let user):
             SellerProfileScreen(
@@ -463,5 +478,10 @@ struct RootView: View {
         case "setup_password": return .setupPassword
         default: return .aestheticTags
         }
+    }
+
+    private func presentGuestSignIn(reason: String) {
+        guestLoginReason = reason
+        showGuestLoginSheet = true
     }
 }

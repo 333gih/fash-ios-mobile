@@ -7,6 +7,7 @@ struct ListingDetailNavigationHost: View {
     @Bindable var router: AppRouter
     let rootListingId: String
     var isGuestMode: Bool
+    var onRequestSignIn: ((String) -> Void)? = nil
     var dismissExploreOverlayOnClose: Bool = false
     @State private var shareItems: [Any] = []
     @State private var showShareSheet = false
@@ -74,6 +75,7 @@ struct ListingDetailNavigationHost: View {
             router: router,
             listingId: listingId,
             isGuestMode: isGuestMode,
+            onRequestSignIn: onRequestSignIn,
             dismissExploreOverlayOnClose: dismissExploreOverlayOnClose,
             onDismiss: { router.popListingDetail() },
             onListingClick: { router.pushListingDetail($0) },

@@ -87,6 +87,7 @@ struct ExploreOverlayHost: View {
                     router: router,
                     rootListingId: rootId,
                     isGuestMode: isGuestMode,
+                    onRequestSignIn: onRequestSignIn,
                     dismissExploreOverlayOnClose: false
                 )
             }

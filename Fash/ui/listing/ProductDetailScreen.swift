@@ -14,7 +14,7 @@ struct ProductDetailScreen: View {
     var onListingClick: (String) -> Void = { _ in }
     var onVisitSellerShop: (String) -> Void = { _ in }
     var showTopBar: Bool = true
-    var onRequestLogin: () -> Void = {}
+    var onRequestLogin: (String) -> Void = { _ in }
     var onNavigateToExplore: (
         _ categoryId: String?,
         _ brandId: String?,
@@ -88,9 +88,9 @@ struct ProductDetailScreen: View {
                     ProductDetailComponents.heroImage(
                         detail: detail,
                         galleryIndex: $viewModel.galleryIndex,
-                        onLike: { guestGate { Task { await viewModel.toggleLike(deps: deps) } } },
+                        onLike: { guestGate(L10n.guestLoginReasonLike) { Task { await viewModel.toggleLike(deps: deps) } } },
                         onSave: {
-                            guestGate {
+                            guestGate(L10n.guestLoginReasonSaved) {
                                 Task {
                                     let wasSaved = detail.isSaved
                                     let added = await viewModel.toggleSave(deps: deps)
@@ -112,7 +112,7 @@ struct ProductDetailScreen: View {
                                 onVisitSellerShop(handle)
                             }
                         },
-                        onFollow: { guestGate { Task { await viewModel.follow(deps: deps) } } },
+                        onFollow: { guestGate(L10n.guestLoginReasonFollow) { Task { await viewModel.follow(deps: deps) } } },
                         onUnfollow: { Task { await viewModel.unfollow(deps: deps) } }
                     )
                     .padding(.horizontal, spacing.editorialStart)
@@ -146,8 +146,8 @@ struct ProductDetailScreen: View {
                         entries: viewModel.discoveryFeed,
                         isLoading: viewModel.isDiscoveryLoading,
                         onListingTap: onListingClick,
-                        onLike: { item in guestGate { Task { await viewModel.toggleLikeRailItem(item, deps: deps) } } },
-                        onSave: { item in guestGate { Task { await viewModel.toggleSaveRailItem(item, deps: deps) } } }
+                        onLike: { item in guestGate(L10n.guestLoginReasonLike) { Task { await viewModel.toggleLikeRailItem(item, deps: deps) } } },
+                        onSave: { item in guestGate(L10n.guestLoginReasonSaved) { Task { await viewModel.toggleSaveRailItem(item, deps: deps) } } }
                     )
                     if showSaveNudge {
                         saveNudge
@@ -224,7 +224,9 @@ struct ProductDetailScreen: View {
                     }
                 case .normal:
                     if buyNowEnabled, let listingId = viewModel.detail?.id {
-                        FashPrimaryButton(title: L10n.buyNow) { onBuyNow(listingId) }
+                        FashPrimaryButton(title: L10n.buyNow) {
+                            guestGate(L10n.guestLoginReasonBuy) { onBuyNow(listingId) }
+                        }
                     }
                     messageButton(outlined: buyNowEnabled)
                 }
@@ -237,8 +239,10 @@ struct ProductDetailScreen: View {
 
     private func messageButton(outlined: Bool) -> some View {
         Button {
-            Task {
-                if let convId = await viewModel.openChat(deps: deps) { onChat(convId) }
+            guestGate(L10n.guestLoginReasonChat) {
+                Task {
+                    if let convId = await viewModel.openChat(deps: deps) { onChat(convId) }
+                }
             }
         } label: {
             HStack {
@@ -268,8 +272,10 @@ struct ProductDetailScreen: View {
                 .font(FashTypography.bodySmall)
             Spacer()
             Button(L10n.productSaveNudgeCta) {
-                showSaveNudge = false
-                Task { if let convId = await viewModel.openChat(deps: deps) { onChat(convId) } }
+                guestGate(L10n.guestLoginReasonChat) {
+                    showSaveNudge = false
+                    Task { if let convId = await viewModel.openChat(deps: deps) { onChat(convId) } }
+                }
             }
             .font(FashTypography.labelMedium.weight(.semibold))
             .foregroundStyle(FashColors.brandPrimary)
@@ -288,8 +294,8 @@ struct ProductDetailScreen: View {
             ?? L10n.explorePreviewSellerUsernameFallback
     }
 
-    private func guestGate(_ action: () -> Void) {
-        if isGuestMode { onRequestLogin() } else { action() }
+    private func guestGate(_ reason: String, _ action: () -> Void) {
+        if isGuestMode { onRequestLogin(reason) } else { action() }
     }
 }
 
