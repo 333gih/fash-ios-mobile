@@ -123,7 +123,7 @@ struct SellerProfileScreen: View {
                     listingPreview: deps.listingPreview,
                     router: router,
                     isGuestMode: isGuestMode,
-                    onRequestLogin: isGuestMode ? { presentGuestSignIn(L10n.guestLoginReasonBuy) } : nil
+                    onRequestLogin: isGuestMode ? { presentGuestSignIn(L10n.guestLoginReasonBuy) } : nil,
                     onFeedEngagementPatch: { id, transform in
                         viewModel.patchListingEngagement(id, transform: transform)
                     }
