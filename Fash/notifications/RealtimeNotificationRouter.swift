@@ -135,25 +135,41 @@ enum RealtimeNotificationRouter {
         deps.dismissInAppNotification()
         let data = session.dataMap
 
-        if let inboxId = session.userNotificationId?.trimmingCharacters(in: .whitespaces), !inboxId.isEmpty {
-            router.showNotificationScreen = true
-            router.notificationDetailId = inboxId
+        // Chat/deal threads first — inbox row also has user_notification_id but user expects the thread.
+        if let convId = InAppNotificationNavigation.chatConversationId(from: data) {
+            InAppNotificationNavigation.openChat(conversationId: convId, router: router, deps: deps)
             return
         }
+
         if let deepLink = data["deep_link"]?.trimmingCharacters(in: .whitespaces), !deepLink.isEmpty,
            let url = URL(string: deepLink) {
             DeepLinkRouter.handle(url: url, router: router, deps: deps)
             return
         }
-        if data["nav_target"] == "in_app_invite_friends" {
+
+        let nav = data["nav_target"]?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            ?? data["navTarget"]?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            ?? ""
+        if nav == "in_app_invite_friends" {
             router.showInviteFriendsScreen = true
             return
         }
-        if let convId = data["conversation_id"]?.trimmingCharacters(in: .whitespaces), !convId.isEmpty {
-            router.selectedTab = .chat
-            router.selectedConversationId = convId
+        if nav == "order", let orderId = InAppNotificationNavigation.orderId(from: data) {
+            InAppNotificationNavigation.openOrder(orderId: orderId, router: router, deps: deps)
             return
         }
+
+        if let inboxId = session.userNotificationId?.trimmingCharacters(in: .whitespaces), !inboxId.isEmpty {
+            router.showNotificationScreen = true
+            router.notificationDetailId = inboxId
+            return
+        }
+        if let inboxId = data["user_notification_id"]?.trimmingCharacters(in: .whitespaces), !inboxId.isEmpty {
+            router.showNotificationScreen = true
+            router.notificationDetailId = inboxId
+            return
+        }
+
         router.showNotificationScreen = true
     }
 
