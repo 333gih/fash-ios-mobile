@@ -932,6 +932,7 @@ final class ExploreViewModel {
         primarySection = .listings
         searchBarExpanded = false
         loadError = false
+        lastSuccessfulExploreRefreshAt = nil
         await ensureFilterCatalogLoaded(deps: deps)
 
         let q = searchQuery.trimmingCharacters(in: .whitespaces)

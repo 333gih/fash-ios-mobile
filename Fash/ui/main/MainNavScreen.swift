@@ -303,6 +303,10 @@ struct MainNavScreen: View {
         .onChange(of: router.pendingExploreProfileFilter) { _, _ in
             Task { await applyPendingExploreProfileFilter() }
         }
+        .onChange(of: router.exploreOverlayOpenNonce) { _, nonce in
+            guard nonce > 0 else { return }
+            Task { await applyPendingExploreProfileFilter() }
+        }
         .onChange(of: router.showEditProfile) { wasOpen, isOpen in
             if wasOpen, !isOpen, !isGuestMode {
                 homeVM.refreshSizingBannerAfterProfileSave(deps: deps, isGuestMode: isGuestMode)

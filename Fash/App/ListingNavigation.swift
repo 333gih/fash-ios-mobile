@@ -68,4 +68,29 @@ extension AppDependencies {
         router.showExploreOverlay = false
         router.exploreSearchExpanded = false
     }
+
+    /// Seller shop category / brand / style chips — same flow as PDP [onNavigateToExplore] (pending filter + MainNav opens Explore).
+    @MainActor
+    func scheduleExploreFromSellerProfile(
+        router: AppRouter,
+        categoryId: String?,
+        brandId: String?,
+        aestheticTagId: String?,
+        searchQuery: String,
+        countryId: String?,
+        countryIso2: String?
+    ) {
+        router.sellerShopUsername = nil
+        router.listingDetailRootId = nil
+        router.listingDetailPath = []
+        router.pendingExploreProfileFilter = ExploreProfileFilterRequest(
+            categoryId: categoryId,
+            brandId: brandId,
+            aestheticTagId: aestheticTagId,
+            searchQuery: searchQuery,
+            countryId: countryId,
+            countryIso2: countryIso2
+        )
+        router.exploreOverlayOpenNonce += 1
+    }
 }
