@@ -61,8 +61,6 @@ final class AppRouter {
     var showExploreOverlay = false
     var exploreSearchExpanded = false
     var pendingExploreProfileFilter: ExploreProfileFilterRequest?
-    /// Bumped when seller shop (or other overlays) request Explore + filters — MainNav applies [pendingExploreProfileFilter].
-    var exploreOverlayOpenNonce = 0
 
     // MainNav overlays
     var showNotificationScreen = false

@@ -69,10 +69,11 @@ extension AppDependencies {
         router.exploreSearchExpanded = false
     }
 
-    /// Seller shop category / brand / style chips — same flow as PDP [onNavigateToExplore] (pending filter + MainNav opens Explore).
+    /// Seller shop category / brand / style chips — dismiss RootView seller cover, apply filters, open Explore at RootView layer.
     @MainActor
     func scheduleExploreFromSellerProfile(
         router: AppRouter,
+        exploreVM: ExploreViewModel,
         categoryId: String?,
         brandId: String?,
         aestheticTagId: String?,
@@ -83,14 +84,18 @@ extension AppDependencies {
         router.sellerShopUsername = nil
         router.listingDetailRootId = nil
         router.listingDetailPath = []
-        router.pendingExploreProfileFilter = ExploreProfileFilterRequest(
-            categoryId: categoryId,
-            brandId: brandId,
-            aestheticTagId: aestheticTagId,
-            searchQuery: searchQuery,
-            countryId: countryId,
-            countryIso2: countryIso2
-        )
-        router.exploreOverlayOpenNonce += 1
+        deps.listingPreview.close(deps: self, animated: false)
+        Task {
+            await exploreVM.openFromProfileFilter(
+                deps: self,
+                categoryId: categoryId,
+                brandId: brandId,
+                aestheticTagId: aestheticTagId,
+                searchQuery: searchQuery,
+                countryId: countryId,
+                countryIso2: countryIso2
+            )
+            router.showExploreOverlay = true
+        }
     }
 }

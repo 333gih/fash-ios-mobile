@@ -119,28 +119,6 @@ struct MainNavScreen: View {
                 }
             )
         }
-        .fullScreenCover(isPresented: $router.showExploreOverlay) {
-            ExploreOverlayHost(
-                viewModel: exploreVM,
-                router: router,
-                isGuestMode: isGuestMode,
-                expandSearchOnAppear: router.exploreSearchExpanded,
-                promoSlides: homeVM.promoSlides.map(FashPromoSlideDef.fromAdvertising),
-                onClose: {
-                    router.showExploreOverlay = false
-                    router.exploreSearchExpanded = false
-                },
-                onRequestSignIn: { reason in onRequestSignIn?(reason) }
-            )
-            .environment(\.locale, AppLocale.locale)
-            .fashSnackbarOverlay()
-            .fashInAppNotificationOverlay()
-        }
-        .onChange(of: router.showExploreOverlay) { wasShowing, isShowing in
-            guard wasShowing, !isShowing else { return }
-            exploreVM.resetSessionOnOverlayClose()
-            router.exploreSearchExpanded = false
-        }
         .overlay(alignment: .bottom) {
             if let message = deps.snackbarMessage {
                 FashSnackbarHost(message: message) {
@@ -301,10 +279,6 @@ struct MainNavScreen: View {
             }
         }
         .onChange(of: router.pendingExploreProfileFilter) { _, _ in
-            Task { await applyPendingExploreProfileFilter() }
-        }
-        .onChange(of: router.exploreOverlayOpenNonce) { _, nonce in
-            guard nonce > 0 else { return }
             Task { await applyPendingExploreProfileFilter() }
         }
         .onChange(of: router.showEditProfile) { wasOpen, isOpen in

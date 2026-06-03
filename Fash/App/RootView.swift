@@ -37,6 +37,28 @@ struct RootView: View {
                 }
             }
             .animation(.easeInOut(duration: 0.22), value: deps.snackbarMessage)
+            .fullScreenCover(isPresented: $router.showExploreOverlay) {
+                ExploreOverlayHost(
+                    viewModel: exploreVM,
+                    router: router,
+                    isGuestMode: router.isGuestMode,
+                    expandSearchOnAppear: router.exploreSearchExpanded,
+                    promoSlides: homeVM.promoSlides.map(FashPromoSlideDef.fromAdvertising),
+                    onClose: {
+                        router.showExploreOverlay = false
+                        router.exploreSearchExpanded = false
+                    },
+                    onRequestSignIn: router.isGuestMode ? { _ in router.loginStep = .email } : nil
+                )
+                .environment(\.locale, AppLocale.locale)
+                .fashSnackbarOverlay()
+                .fashInAppNotificationOverlay()
+            }
+            .onChange(of: router.showExploreOverlay) { wasShowing, isShowing in
+                guard wasShowing, !isShowing else { return }
+                exploreVM.resetSessionOnOverlayClose()
+                router.exploreSearchExpanded = false
+            }
             .fullScreenCover(item: Binding(
                 get: { router.fullScreenRoute },
                 set: { if $0 == nil { router.dismissFullScreen() } }
@@ -159,6 +181,7 @@ struct RootView: View {
                 onNavigateToExploreFromProfile: { cat, brand, tag, q, countryId, iso in
                     deps.scheduleExploreFromSellerProfile(
                         router: router,
+                        exploreVM: exploreVM,
                         categoryId: cat,
                         brandId: brand,
                         aestheticTagId: tag,
