@@ -93,7 +93,10 @@ struct ChatScreen: View {
     }
 
     private var flatList: some View {
-        chatInboxScrollList {
+        ChatInboxScrollContainer(
+            scrollTopId: chatScrollTopId,
+            scrollToTopToken: viewModel.chatScrollToTopToken
+        ) {
             ForEach(viewModel.conversations) { item in
                 ChatConversationRow(
                     item: item,
@@ -107,7 +110,10 @@ struct ChatScreen: View {
     }
 
     private var groupedList: some View {
-        chatInboxScrollList {
+        ChatInboxScrollContainer(
+            scrollTopId: chatScrollTopId,
+            scrollToTopToken: viewModel.chatScrollToTopToken
+        ) {
             ForEach(viewModel.displayGroups) { group in
                 ChatListingGroupHeader(
                     group: group,
@@ -130,20 +136,28 @@ struct ChatScreen: View {
         }
     }
 
-    private func chatInboxScrollList<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+}
+
+/// Scroll-to-top for chat inbox lists (struct avoids ViewBuilder escaping issues in `ScrollViewReader`).
+private struct ChatInboxScrollContainer<Content: View>: View {
+    let scrollTopId: UUID
+    let scrollToTopToken: Int
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                Color.clear.frame(height: 0).id(chatScrollTopId)
+                Color.clear.frame(height: 0).id(scrollTopId)
                 LazyVStack(spacing: 8) {
                     content()
                 }
                 .padding(.bottom, 8)
             }
-            .onChange(of: viewModel.chatScrollToTopToken) { _, _ in
+            .onChange(of: scrollToTopToken) { _, _ in
                 var transaction = Transaction()
                 transaction.disablesAnimations = true
                 withTransaction(transaction) {
-                    proxy.scrollTo(chatScrollTopId, anchor: .top)
+                    proxy.scrollTo(scrollTopId, anchor: .top)
                 }
             }
         }
