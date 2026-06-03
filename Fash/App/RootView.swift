@@ -158,14 +158,18 @@ struct RootView: View {
                 },
                 onNavigateToExploreFromProfile: { cat, brand, tag, q, countryId, iso in
                     router.sellerShopUsername = nil
-                    router.pendingExploreProfileFilter = ExploreProfileFilterRequest(
-                        categoryId: cat,
-                        brandId: brand,
-                        aestheticTagId: tag,
-                        searchQuery: q,
-                        countryId: countryId,
-                        countryIso2: iso
-                    )
+                    Task {
+                        await exploreVM.openFromProfileFilter(
+                            deps: deps,
+                            categoryId: cat,
+                            brandId: brand,
+                            aestheticTagId: tag,
+                            searchQuery: q,
+                            countryId: countryId,
+                            countryIso2: iso
+                        )
+                        router.showExploreOverlay = true
+                    }
                 }
             )
         case .editListing(let id):

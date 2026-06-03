@@ -49,11 +49,14 @@ struct CreateListingModeStep: View {
                             action: { Task { await postVM.selectFillMode(deps: deps, mode: .manual) } }
                         )
                     }
-                    PostFlowNoticeCard(text: L10n.postFillModeRecommendationNotice)
                 }
                 .padding(.horizontal, spacing.editorialStart)
-                .padding(.bottom, spacing.spacing6)
+                .padding(.bottom, spacing.spacing4)
             }
+
+            PostFlowNoticeCard(text: L10n.postFillModeRecommendationNotice)
+                .padding(.horizontal, spacing.editorialStart)
+                .padding(.bottom, spacing.spacing4)
         }
         .background(PostListingColors.stepCanvas)
         .task {

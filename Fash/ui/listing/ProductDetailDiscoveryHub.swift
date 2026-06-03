@@ -94,7 +94,8 @@ struct ProductDetailDiscoveryHub: View {
                     for: item.listingStatus,
                     suppressActive: true
                 ),
-                relationBadgeLabel: entry?.relationLabel,
+                relationHighlight: entry?.relation,
+                relationMatchLabel: entry?.relationLabel,
                 onLike: onLike.map { handler in { handler(item) } },
                 onSave: onSave.map { handler in { handler(item) } }
             )

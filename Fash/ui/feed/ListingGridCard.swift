@@ -10,8 +10,9 @@ struct ListingGridCard: View {
     var compactFooter: Bool = false
     var showQuickActions: Bool = false
     var statusOverlayLabel: String? = nil
-    /// PDP discovery — why this listing is related (e.g. shop, category name).
-    var relationBadgeLabel: String? = nil
+    /// PDP discovery — highlight matching footer segment (seller / category / brand / style).
+    var relationHighlight: ProductDiscoveryRelation? = nil
+    var relationMatchLabel: String? = nil
     var onLike: (() -> Void)? = nil
     var onSave: (() -> Void)? = nil
 
@@ -162,7 +163,12 @@ struct ListingGridCard: View {
             priceRow
             titleRow
             if !compactFooter, metaUi.hasAny {
-                ListingCardMetaRow(parts: metaUi, lineHeight: FooterMetrics.metaLineHeight)
+                ListingCardMetaRow(
+                    parts: metaUi,
+                    lineHeight: FooterMetrics.metaLineHeight,
+                    relationHighlight: relationHighlight,
+                    relationMatchLabel: relationMatchLabel
+                )
             }
             sellerRow
         }
@@ -220,8 +226,9 @@ struct ListingGridCard: View {
     }
 
     private var sellerRow: some View {
-        ListingCardMarqueeText(
+        ListingCardHighlightedMarqueeText(
             text: sellerLine,
+            highlight: relationHighlight == .seller ? relationMatchLabel : nil,
             font: FashTypography.labelSmall,
             color: .white.opacity(0.88),
             lineHeight: FooterMetrics.sellerLineHeight
@@ -231,21 +238,8 @@ struct ListingGridCard: View {
     @ViewBuilder
     private var topLeadingOverlay: some View {
         let status = statusOverlayLabel?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let relation = relationBadgeLabel?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        if item.imageUrls.count > 1 || !status.isEmpty || !relation.isEmpty {
+        if item.imageUrls.count > 1 || !status.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
-                if !relation.isEmpty {
-                    Text(relation)
-                        .font(FashTypography.labelSmall.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 4)
-                        .background(FashColors.brandPrimary.opacity(0.88))
-                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                        .accessibilityLabel(L10n.productRelationBadgeA11y(relation))
-                }
                 if item.imageUrls.count > 1 {
                     HStack(spacing: 4) {
                         Image(systemName: "photo.on.rectangle")
@@ -434,17 +428,29 @@ private struct ListingMetaUi {
 private struct ListingCardMetaRow: View {
     let parts: ListingMetaUi
     let lineHeight: CGFloat
+    var relationHighlight: ProductDiscoveryRelation? = nil
+    var relationMatchLabel: String? = nil
 
     private var condition: String { parts.conditionLabel.trimmingCharacters(in: .whitespaces) }
     private var secondary: String { parts.secondary.trimmingCharacters(in: .whitespaces) }
+    private var metaHighlight: String? {
+        guard let relationHighlight, let relationMatchLabel else { return nil }
+        switch relationHighlight {
+        case .category, .brand, .style:
+            return relationMatchLabel
+        default:
+            return nil
+        }
+    }
 
     var body: some View {
         Group {
             if !condition.isEmpty, !secondary.isEmpty {
                 HStack(alignment: .center, spacing: 6) {
                     conditionPill(maxWidth: 112)
-                    ListingCardMarqueeText(
+                    ListingCardHighlightedMarqueeText(
                         text: secondary,
+                        highlight: metaHighlight,
                         font: FashTypography.labelSmall,
                         color: .white.opacity(0.92),
                         lineHeight: lineHeight
@@ -454,8 +460,9 @@ private struct ListingCardMetaRow: View {
             } else if !condition.isEmpty {
                 conditionPill(maxWidth: 160)
             } else if !secondary.isEmpty {
-                ListingCardMarqueeText(
+                ListingCardHighlightedMarqueeText(
                     text: secondary,
+                    highlight: metaHighlight,
                     font: FashTypography.labelSmall,
                     color: .white.opacity(0.92),
                     lineHeight: lineHeight
