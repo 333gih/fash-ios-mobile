@@ -134,8 +134,10 @@ struct ChatScreen: View {
         ScrollViewReader { proxy in
             ScrollView {
                 Color.clear.frame(height: 0).id(chatScrollTopId)
-                LazyVStack(spacing: 8, content: content)
-                    .padding(.bottom, 8)
+                LazyVStack(spacing: 8) {
+                    content()
+                }
+                .padding(.bottom, 8)
             }
             .onChange(of: viewModel.chatScrollToTopToken) { _, _ in
                 var transaction = Transaction()
