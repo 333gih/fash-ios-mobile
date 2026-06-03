@@ -107,7 +107,11 @@ final class EditListingViewModel {
                 floorPriceText: (d.floorPriceVnd ?? 0) > 0 ? String(d.floorPriceVnd!) : "",
                 priceDropPercentInput: pct,
                 color: normalizeEditChoice(d.color),
-                genderTarget: normalizeEditChoice(d.genderTarget)
+                genderTarget: normalizeEditChoice(d.genderTarget),
+                seasonKeys: Set(d.seasonKeys),
+                climateZones: Set(d.climateZones),
+                macroRegions: Set(d.macroRegions),
+                yearRoundWear: d.yearRoundWear
             )
         case .failure(let err):
             loadError = editListingNonEmpty(FashErrorPresentation.userMessage(for: err)) ?? L10n.editListingLoadError
@@ -383,6 +387,10 @@ private func hasFormChanges(detail: ListingDetail, form: EditListingFormState, b
     }
     if normalizeEditChoice(form.color) != normalizeEditChoice(detail.color) { return true }
     if normalizeEditChoice(form.genderTarget) != normalizeEditChoice(detail.genderTarget) { return true }
+    if form.seasonKeys != Set(detail.seasonKeys) { return true }
+    if form.climateZones != Set(detail.climateZones) { return true }
+    if form.macroRegions != Set(detail.macroRegions) { return true }
+    if form.yearRoundWear != detail.yearRoundWear { return true }
     return false
 }
 
@@ -447,6 +455,13 @@ private func buildDeltaUpdate(
     let colorP = colorNorm != normalizeEditChoice(detail.color) ? editListingNonEmpty(colorNorm) : nil
     let genderNorm = normalizeEditChoice(form.genderTarget)
     let genderP = genderNorm != normalizeEditChoice(detail.genderTarget) ? editListingNonEmpty(genderNorm) : nil
+    let seasonP: [String]? = form.seasonKeys != Set(detail.seasonKeys)
+        ? Array(form.seasonKeys).sorted() : nil
+    let climateP: [String]? = form.climateZones != Set(detail.climateZones)
+        ? Array(form.climateZones).sorted() : nil
+    let regionP: [String]? = form.macroRegions != Set(detail.macroRegions)
+        ? Array(form.macroRegions).sorted() : nil
+    let yearRoundP: Bool? = form.yearRoundWear != detail.yearRoundWear ? form.yearRoundWear : nil
 
     var hemP = deltaMeasurement(form.measurementHem, detail.measurementHem)
     var chestP = deltaMeasurement(form.measurementChest, detail.measurementChest)
@@ -477,7 +492,11 @@ private func buildDeltaUpdate(
         measurementShoulders: shP,
         measurementSleeveLength: slP,
         color: colorP,
-        genderTarget: genderP
+        genderTarget: genderP,
+        seasonKeys: seasonP,
+        climateZones: climateP,
+        macroRegions: regionP,
+        yearRoundWear: yearRoundP
     )
 }
 

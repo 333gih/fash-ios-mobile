@@ -1962,7 +1962,16 @@
 "share_profile_success" = "Đã chia sẻ shop.";
 "share_profile_text" = "Shop %1$@ trên Fash — khám phá tủ đồ second-hand.\n\nMở trên web:\n%2$@\n\nMở trong ứng dụng:\n%3$@";
 "shipping_address_row_untitled" = "Địa chỉ đã lưu";
-"shopping_context_chip" = "Gợi ý: %1$@";
+"shopping_context_chip" = "%1$@";
+"post_step_wear_season" = "Hợp mùa & khu vực";
+"post_step_wear_season_subtitle" = "Giúp người mua và gợi ý theo mùa tìm đúng sản phẩm hơn (không bắt buộc).";
+"post_hint_wear_season" = "Chọn mùa/khu vực phù hợp hoặc bật \"mặc quanh năm\" nếu item dùng được mọi lúc.";
+"post_wear_year_round" = "Mặc quanh năm";
+"post_wear_season_keys" = "Mùa phù hợp";
+"post_wear_climate_zones" = "Khí hậu";
+"post_wear_macro_regions" = "Vùng miền";
+"product_wear_season_label" = "Hợp mùa";
+"post_fill_mode_recommendation_notice" = "Điền đủ size, phong cách, mùa và khu vực giúp gợi ý For You / theo mùa chính xác hơn.\nChọn \"theo hồ sơ\" hoặc nhập thủ công đều được — bạn có thể sửa ở các bước sau.";
 "splash_footer_gen_z" = "THẾ HỆ GEN Z";
 "splash_logo_cd" = "Logo Fash";
 "splash_wordmark" = "FASH";

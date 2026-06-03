@@ -170,10 +170,10 @@ final class PostViewModel {
         guard draft.canProceedFromStep(step) else { return }
         guard step < totalPostSteps else { return }
         step += 1
-        if step == 9 {
+        if step == 10 {
             await loadShippingAddresses(deps: deps)
             applyDefaultShippingIfNeeded(deps: deps)
-        } else if step == 10 {
+        } else if step == 11 {
             await loadProfileForPreview(deps: deps)
             await loadShippingAddresses(deps: deps)
         }

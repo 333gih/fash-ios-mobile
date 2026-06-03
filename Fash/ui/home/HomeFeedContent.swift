@@ -165,11 +165,20 @@ struct HomeFeedContent: View {
     private var homeScrollAwayHeader: some View {
         VStack(spacing: 0) {
             if let chip = viewModel.shoppingContextChip {
-                Text(L10n.shoppingContextChip(chip))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.bottom, 4)
+                HStack(spacing: 6) {
+                    Image(systemName: "leaf.fill")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(FashColors.brandPrimary)
+                    Text(chip)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(FashColors.textSecondary)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(FashColors.surfaceContainerLow)
+                .clipShape(Capsule())
+                .padding(.bottom, 4)
             }
 
             if showJourneyRow {

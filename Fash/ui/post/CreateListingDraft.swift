@@ -6,7 +6,7 @@ enum CreateListingFillMode: String, Equatable {
 }
 
 let createListingModeStep = 0
-let totalPostSteps = 10
+let totalPostSteps = 11
 let maxAestheticTags = 5
 let minListingTitleLength = 3
 let maxListingTitleLength = 60
@@ -72,6 +72,10 @@ struct CreateListingDraft: Equatable {
     var onsiteInspectionCommitment: Bool = false
     var conditionScore: Int = 90
     var conditionDefects: [String] = []
+    var seasonKeys: Set<String> = []
+    var climateZones: Set<String> = []
+    var macroRegions: Set<String> = []
+    var yearRoundWear: Bool = false
 }
 
 let listingConditionDefectOptions = ["stains", "worn", "missing_button", "fading", "pilling", "odor"]
@@ -149,18 +153,18 @@ extension CreateListingDraft {
         switch step {
         case 1: return !categoryId.isEmpty
         case 2: return selectedAestheticTagIds.count <= maxAestheticTags
-        case 3, 4, 6: return true
+        case 3, 4, 6, 7: return true
         case 5:
             let t = title.trimmingCharacters(in: .whitespaces)
             return !condition.isEmpty
                 && t.count >= minListingTitleLength
                 && t.count <= maxListingTitleLength
                 && description.count <= maxListingDescriptionLength
-        case 7:
+        case 8:
             if !postRequireListingImages() { return true }
             return !listingPhotoSlots.isEmpty
                 && listingPhotoSlots.allSatisfy { !$0.required || $0.hasImageSelected() }
-        case 8:
+        case 9:
             guard let p = parsePositiveLong(priceVnd), (minPriceVnd...maxPriceVnd).contains(p) else { return false }
             if !autoPriceDropEnabled { return true }
             guard let f = parsePositiveLong(floorPriceVnd),
@@ -168,8 +172,8 @@ extension CreateListingDraft {
                   f < p,
                   parsedPriceDropPercent() != nil else { return false }
             return true
-        case 9: return onsiteInspectionCommitment
-        case 10: return true
+        case 10: return onsiteInspectionCommitment
+        case 11: return true
         default: return false
         }
     }
@@ -270,8 +274,30 @@ extension CreateListingDraft {
             shippingAddressId: shippingAddressId?.trimmingCharacters(in: .whitespaces).nilIfEmpty,
             onsiteInspectionCommitment: onsiteInspectionCommitment,
             conditionScore: min(max(conditionScore, 80), 99),
-            conditionDefects: conditionDefects
+            conditionDefects: conditionDefects,
+            seasonKeys: Array(seasonKeys),
+            climateZones: Array(climateZones),
+            macroRegions: Array(macroRegions),
+            yearRoundWear: yearRoundWear
         )
+    }
+
+    func toggleSeasonKey(_ key: String) -> CreateListingDraft {
+        var next = seasonKeys
+        if next.contains(key) { next.remove(key) } else { next.insert(key) }
+        return copy(seasonKeys: next)
+    }
+
+    func toggleClimateZone(_ key: String) -> CreateListingDraft {
+        var next = climateZones
+        if next.contains(key) { next.remove(key) } else { next.insert(key) }
+        return copy(climateZones: next)
+    }
+
+    func toggleMacroRegion(_ key: String) -> CreateListingDraft {
+        var next = macroRegions
+        if next.contains(key) { next.remove(key) } else { next.insert(key) }
+        return copy(macroRegions: next)
     }
 
     private func copy(
@@ -284,7 +310,11 @@ extension CreateListingDraft {
         condition: String? = nil,
         listingPhotoSlots: [ListingPhotoSlotDraft]? = nil,
         listingPhotoSlotsCategoryId: String?? = nil,
-        conditionDefects: [String]? = nil
+        conditionDefects: [String]? = nil,
+        seasonKeys: Set<String>? = nil,
+        climateZones: Set<String>? = nil,
+        macroRegions: Set<String>? = nil,
+        yearRoundWear: Bool? = nil
     ) -> CreateListingDraft {
         CreateListingDraft(
             fillMode: fillMode ?? self.fillMode,
@@ -321,7 +351,11 @@ extension CreateListingDraft {
             shippingAddressLabel: shippingAddressLabel,
             onsiteInspectionCommitment: onsiteInspectionCommitment,
             conditionScore: conditionScore,
-            conditionDefects: conditionDefects ?? self.conditionDefects
+            conditionDefects: conditionDefects ?? self.conditionDefects,
+            seasonKeys: seasonKeys ?? self.seasonKeys,
+            climateZones: climateZones ?? self.climateZones,
+            macroRegions: macroRegions ?? self.macroRegions,
+            yearRoundWear: yearRoundWear ?? self.yearRoundWear
         )
     }
 }

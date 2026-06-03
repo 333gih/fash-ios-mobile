@@ -1924,6 +1924,15 @@ enum L10n {
     static var postStepCountry: String { t("post_step_country") }
     static var postStepGenderTarget: String { t("post_step_gender_target") }
     static var postStepListingDetails: String { t("post_step_listing_details") }
+    static var postStepWearSeason: String { t("post_step_wear_season") }
+    static var postStepWearSeasonSubtitle: String { t("post_step_wear_season_subtitle") }
+    static var postHintWearSeason: String { t("post_hint_wear_season") }
+    static var postWearYearRound: String { t("post_wear_year_round") }
+    static var postWearSeasonKeys: String { t("post_wear_season_keys") }
+    static var postWearClimateZones: String { t("post_wear_climate_zones") }
+    static var postWearMacroRegions: String { t("post_wear_macro_regions") }
+    static var productWearSeasonLabel: String { t("product_wear_season_label") }
+    static var postFillModeRecommendationNotice: String { t("post_fill_mode_recommendation_notice") }
     static var postStepMeasure: String { t("post_step_measure") }
     static var postStepPhotos: String { t("post_step_photos") }
     static var postStepPrice: String { t("post_step_price") }

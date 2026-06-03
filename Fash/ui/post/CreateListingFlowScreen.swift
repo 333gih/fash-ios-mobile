@@ -75,7 +75,7 @@ struct CreateListingFlowScreen: View {
         switch postVM.step {
         case 1...5:
             CreateListingPostSteps(postVM: postVM, step: postVM.step)
-        case 6...10:
+        case 6...11:
             CreateListingPostStepsPart2(
                 postVM: postVM,
                 addressVM: addressVM,

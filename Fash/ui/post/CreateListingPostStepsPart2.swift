@@ -11,16 +11,18 @@ struct CreateListingPostStepsPart2: View {
 
     var body: some View {
         Group {
-            if step == 10 {
+            if step == 11 {
                 reviewStep
+            } else if step == 6 {
+                CreateListingWearSeasonStep(postVM: postVM)
             } else {
                 PostStepScrollContent(bottomNotice: bottomNotice) {
                     stepTitle
                     switch step {
-                    case 6: sizeStep
-                    case 7: photosStep
-                    case 8: priceStep
-                    case 9: shippingStep
+                    case 7: sizeStep
+                    case 8: photosStep
+                    case 9: priceStep
+                    case 10: shippingStep
                     default: EmptyView()
                     }
                 }
@@ -31,10 +33,10 @@ struct CreateListingPostStepsPart2: View {
 
     private var bottomNotice: String? {
         switch step {
-        case 6: return L10n.postMeasureNoticeCombined
-        case 7: return L10n.postHintPhotos
-        case 8: return L10n.postHintPrice
-        case 9: return L10n.postHintShipping
+        case 7: return L10n.postMeasureNoticeCombined
+        case 8: return L10n.postHintPhotos
+        case 9: return L10n.postHintPrice
+        case 10: return L10n.postHintShipping
         default: return nil
         }
     }
@@ -42,10 +44,10 @@ struct CreateListingPostStepsPart2: View {
     @ViewBuilder
     private var stepTitle: some View {
         let title: String = switch step {
-        case 6: L10n.postStepMeasure
-        case 7: L10n.postStepPhotos
-        case 8: L10n.postStepPrice
-        case 9: L10n.postStepShipping
+        case 7: L10n.postStepMeasure
+        case 8: L10n.postStepPhotos
+        case 9: L10n.postStepPrice
+        case 10: L10n.postStepShipping
         default: ""
         }
         if !title.isEmpty {

@@ -872,6 +872,15 @@
     <string name="post_fill_mode_profile_size">Size tham chiếu: %1$s</string>
     <string name="post_fill_mode_profile_gender">Đối tượng: %1$s</string>
     <string name="post_fill_mode_prefilled_hint">Đã điền sẵn từ hồ sơ — bạn có thể chỉnh sửa bất cứ lúc nào.</string>
+    <string name="post_fill_mode_recommendation_notice">Điền đủ size, phong cách, mùa và khu vực giúp gợi ý For You / theo mùa chính xác hơn.\nChọn \"theo hồ sơ\" hoặc nhập thủ công đều được — bạn có thể sửa ở các bước sau.</string>
+    <string name="post_step_wear_season">Hợp mùa &amp; khu vực</string>
+    <string name="post_step_wear_season_subtitle">Giúp người mua và gợi ý theo mùa tìm đúng sản phẩm hơn (không bắt buộc).</string>
+    <string name="post_hint_wear_season">Chọn mùa/khu vực phù hợp hoặc bật \"mặc quanh năm\" nếu item dùng được mọi lúc.</string>
+    <string name="post_wear_year_round">Mặc quanh năm</string>
+    <string name="post_wear_season_keys">Mùa phù hợp</string>
+    <string name="post_wear_climate_zones">Khí hậu</string>
+    <string name="post_wear_macro_regions">Vùng miền</string>
+    <string name="product_wear_season_label">Hợp mùa</string>
     <string name="post_review_buyer_banner_title">Góc nhìn người mua</string>
     <string name="post_review_buyer_banner_subtitle">Đây là cách người khác sẽ thấy tin của bạn trên feed và trang chi tiết.</string>
     <string name="post_review_buyer_page_subtitle">Kiểm tra lại trước khi đăng. Chạm từng mục để quay lại chỉnh sửa.</string>
@@ -2022,7 +2031,7 @@
     <string name="home_seasonal_near_you_title">Hợp mùa gần bạn</string>
     <string name="home_guest_tab_seasonal_title">Gợi ý theo mùa</string>
     <string name="home_guest_tab_seasonal_body">Đăng nhập để xem đồ phù hợp mùa và khu vực của bạn.</string>
-    <string name="shopping_context_chip">Gợi ý: %1$s</string>
+    <string name="shopping_context_chip">%1$s</string>
     <string name="home_section_similar_to_saved_title">Tương tự món đã lưu</string>
     <string name="home_section_similar_to_saved_subtitle">Vì bạn đã lưu đồ phong cách này</string>
     <string name="home_section_trending_styles_title">Style đang hot</string>

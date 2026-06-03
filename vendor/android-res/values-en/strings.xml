@@ -849,6 +849,15 @@
     <string name="post_fill_mode_profile_size">Reference size: %1$s</string>
     <string name="post_fill_mode_profile_gender">Target: %1$s</string>
     <string name="post_fill_mode_prefilled_hint">Pre-filled from your profile — you can change this anytime.</string>
+    <string name="post_fill_mode_recommendation_notice">Complete size, style, and season context so For You and seasonal rails match you better.\nProfile pre-fill or manual entry both work — you can edit on later steps.</string>
+    <string name="post_step_wear_season">Season &amp; region fit</string>
+    <string name="post_step_wear_season_subtitle">Helps buyers and seasonal picks surface this item (optional).</string>
+    <string name="post_hint_wear_season">Pick seasons/regions that fit, or enable year-round wear when it applies anytime.</string>
+    <string name="post_wear_year_round">Year-round wear</string>
+    <string name="post_wear_season_keys">Suitable seasons</string>
+    <string name="post_wear_climate_zones">Climate zones</string>
+    <string name="post_wear_macro_regions">Regions</string>
+    <string name="product_wear_season_label">Season fit</string>
     <string name="post_review_buyer_banner_title">Buyer view</string>
     <string name="post_review_buyer_banner_subtitle">This is how others will see your listing on the feed and product detail page.</string>
     <string name="post_review_buyer_page_subtitle">Review before posting. Tap any row to go back and edit.</string>
@@ -1927,7 +1936,7 @@
     <string name="home_seasonal_near_you_title">Seasonal near you</string>
     <string name="home_guest_tab_seasonal_title">Seasonal picks</string>
     <string name="home_guest_tab_seasonal_body">Sign in to see items matched to your area and season.</string>
-    <string name="shopping_context_chip">For you: %1$s</string>
+    <string name="shopping_context_chip">%1$s</string>
     <string name="home_tab_empty_seasonal_title">No seasonal picks yet</string>
     <string name="home_tab_empty_seasonal_subtitle">Add an address or set your browse area for season-aware suggestions.</string>
     <string name="home_guest_tab_sign_in">Sign in</string>

@@ -167,8 +167,24 @@ extension ListingFeedJsonParser {
             }(),
             status: status,
             color: RepositoryHttp.optString(o, "color", "Color").lowercased().nilIfEmpty,
-            genderTarget: RepositoryHttp.optString(o, "gender_target", "GenderTarget").lowercased().nilIfEmpty
+            genderTarget: RepositoryHttp.optString(o, "gender_target", "GenderTarget").lowercased().nilIfEmpty,
+            seasonKeys: parseStringArray(o, "season_keys", "SeasonKeys"),
+            climateZones: parseStringArray(o, "climate_zones", "ClimateZones"),
+            macroRegions: parseStringArray(o, "macro_regions", "MacroRegions"),
+            yearRoundWear: RepositoryHttp.optBool(o, "year_round_wear", "YearRoundWear", default: false)
         )
+    }
+
+    private static func parseStringArray(_ o: [String: Any], _ keys: String...) -> [String] {
+        for key in keys {
+            if let arr = o[key] as? [String] {
+                return arr.map { $0.trimmingCharacters(in: .whitespaces).lowercased() }.filter { !$0.isEmpty }
+            }
+            if let arr = o[key] as? [Any] {
+                return arr.compactMap { ($0 as? String)?.trimmingCharacters(in: .whitespaces).lowercased() }.filter { !$0.isEmpty }
+            }
+        }
+        return []
     }
 
     private static func parseAestheticTagRefs(_ arr: [[String: Any]]?) -> [AestheticTagRef] {

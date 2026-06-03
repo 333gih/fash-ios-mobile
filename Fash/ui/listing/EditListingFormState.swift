@@ -25,4 +25,8 @@ struct EditListingFormState: Equatable {
     var priceDropPercentInput: String = "10"
     var color: String = ""
     var genderTarget: String = ""
+    var seasonKeys: Set<String> = []
+    var climateZones: Set<String> = []
+    var macroRegions: Set<String> = []
+    var yearRoundWear: Bool = false
 }

@@ -232,6 +232,21 @@ enum ProductDetailComponents {
                     action: nil
                 )
             }
+            if let wear = ListingWearSeason.summary(
+                seasonKeys: detail.seasonKeys,
+                climateZones: detail.climateZones,
+                macroRegions: detail.macroRegions,
+                yearRoundWear: detail.yearRoundWear,
+                localeVi: AppLocale.currentTag != AppLocale.tagEN
+            ) {
+                Text(L10n.productWearSeasonLabel)
+                    .font(FashTypography.labelSmall)
+                    .foregroundStyle(FashColors.textSecondary)
+                Text(wear)
+                    .font(FashTypography.bodyMedium)
+                    .foregroundStyle(FashColors.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 

@@ -216,6 +216,44 @@ struct EditListingScreen: View {
                     }
                 }
 
+                sectionTitle(L10n.postStepWearSeason)
+                Text(L10n.postStepWearSeasonSubtitle)
+                    .font(FashTypography.bodySmall)
+                    .foregroundStyle(FashColors.textSecondary)
+                editListingCard {
+                    ListingWearSeasonEditor(
+                        yearRoundWear: viewModel.form.yearRoundWear,
+                        seasonKeys: viewModel.form.seasonKeys,
+                        climateZones: viewModel.form.climateZones,
+                        macroRegions: viewModel.form.macroRegions,
+                        enabled: editable && !saving,
+                        onYearRoundToggle: {
+                            viewModel.updateForm { $0.yearRoundWear.toggle() }
+                        },
+                        onToggleSeason: { key in
+                            viewModel.updateForm { f in
+                                var next = f.seasonKeys
+                                if next.contains(key) { next.remove(key) } else { next.insert(key) }
+                                f.seasonKeys = next
+                            }
+                        },
+                        onToggleClimate: { key in
+                            viewModel.updateForm { f in
+                                var next = f.climateZones
+                                if next.contains(key) { next.remove(key) } else { next.insert(key) }
+                                f.climateZones = next
+                            }
+                        },
+                        onToggleRegion: { key in
+                            viewModel.updateForm { f in
+                                var next = f.macroRegions
+                                if next.contains(key) { next.remove(key) } else { next.insert(key) }
+                                f.macroRegions = next
+                            }
+                        }
+                    )
+                }
+
                 sectionTitle(L10n.postStepCountry)
                 editListingCard {
                     EditListingCountryPicker(

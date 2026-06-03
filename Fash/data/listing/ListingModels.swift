@@ -73,6 +73,10 @@ struct ListingDetail: Equatable {
     var status: String
     var color: String?
     var genderTarget: String?
+    var seasonKeys: [String] = []
+    var climateZones: [String] = []
+    var macroRegions: [String] = []
+    var yearRoundWear: Bool = false
 }
 
 struct NamedRefPayload: Equatable {
@@ -121,6 +125,10 @@ struct CreateListingRequest: Equatable {
     var onsiteInspectionCommitment: Bool?
     var conditionScore: Int?
     var conditionDefects: [String] = []
+    var seasonKeys: [String] = []
+    var climateZones: [String] = []
+    var macroRegions: [String] = []
+    var yearRoundWear: Bool = false
 }
 
 struct CreateListingResponse: Equatable {
@@ -155,4 +163,8 @@ struct UpdateListingRequest: Equatable {
     var color: String?
     var genderTarget: String?
     var status: String?
+    var seasonKeys: [String]?
+    var climateZones: [String]?
+    var macroRegions: [String]?
+    var yearRoundWear: Bool?
 }

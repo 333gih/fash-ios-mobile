@@ -1962,7 +1962,16 @@
 "share_profile_success" = "Shop shared.";
 "share_profile_text" = "%1$@ on Fash — explore their second-hand closet.\n\nOpen in browser:\n%2$@\n\nOpen in app:\n%3$@";
 "shipping_address_row_untitled" = "Saved address";
-"shopping_context_chip" = "For you: %1$@";
+"shopping_context_chip" = "%1$@";
+"post_step_wear_season" = "Season & region fit";
+"post_step_wear_season_subtitle" = "Helps buyers and seasonal picks surface this item (optional).";
+"post_hint_wear_season" = "Pick seasons/regions that fit, or enable year-round wear when it applies anytime.";
+"post_wear_year_round" = "Year-round wear";
+"post_wear_season_keys" = "Suitable seasons";
+"post_wear_climate_zones" = "Climate zones";
+"post_wear_macro_regions" = "Regions";
+"product_wear_season_label" = "Season fit";
+"post_fill_mode_recommendation_notice" = "Complete size, style, and season context so For You and seasonal rails match you better.\nProfile pre-fill or manual entry both work — you can edit on later steps.";
 "splash_footer_gen_z" = "GEN Z GENERATION";
 "splash_logo_cd" = "Fash logo";
 "splash_wordmark" = "FASH";

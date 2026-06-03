@@ -394,6 +394,10 @@ final class ListingRepository {
         if let v = request.onsiteInspectionCommitment { json["onsite_inspection_commitment"] = v }
         if let score = request.conditionScore { json["condition_score"] = min(max(score, 80), 99) }
         if !request.conditionDefects.isEmpty { json["condition_defects"] = request.conditionDefects }
+        if !request.seasonKeys.isEmpty { json["season_keys"] = request.seasonKeys }
+        if !request.climateZones.isEmpty { json["climate_zones"] = request.climateZones }
+        if !request.macroRegions.isEmpty { json["macro_regions"] = request.macroRegions }
+        json["year_round_wear"] = request.yearRoundWear
         return json
     }
 
@@ -487,6 +491,10 @@ final class ListingRepository {
         if let color = update.color { json["color"] = color }
         if let gender = update.genderTarget { json["gender_target"] = gender }
         if let status = update.status { json["status"] = status }
+        if let keys = update.seasonKeys { json["season_keys"] = keys }
+        if let zones = update.climateZones { json["climate_zones"] = zones }
+        if let regions = update.macroRegions { json["macro_regions"] = regions }
+        if let yr = update.yearRoundWear { json["year_round_wear"] = yr }
         return json
     }
 
