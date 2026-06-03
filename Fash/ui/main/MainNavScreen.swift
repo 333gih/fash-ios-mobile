@@ -478,16 +478,6 @@ struct MainNavScreen: View {
                     router.selectedTab = tab
                 }
             },
-            isTabNavLoading: { tab in
-                guard router.selectedTab == tab else { return false }
-                switch tab {
-                case .home: return homeVM.isRefreshing
-                case .orders: return ordersVM.isRefreshing || ordersVM.isLoading
-                case .chat: return chatVM.isRefreshing
-                case .profile: return profileVM.isRefreshing || profileVM.isLoading
-                case .post: return postVM.navReselectLoading
-                }
-            },
             onTabReselected: { tab in
                 Task {
                     switch tab {
@@ -506,6 +496,16 @@ struct MainNavScreen: View {
                     case .post:
                         await postVM.reloadOnNavReselect(deps: deps)
                     }
+                }
+            },
+            isTabNavLoading: { tab in
+                guard router.selectedTab == tab else { return false }
+                switch tab {
+                case .home: return homeVM.isRefreshing
+                case .orders: return ordersVM.isRefreshing || ordersVM.isLoading
+                case .chat: return chatVM.isRefreshing
+                case .profile: return profileVM.isRefreshing || profileVM.isLoading
+                case .post: return postVM.navReselectLoading
                 }
             }
         )
