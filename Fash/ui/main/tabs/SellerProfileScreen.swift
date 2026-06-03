@@ -196,8 +196,9 @@ struct SellerProfileScreen: View {
             profile: viewModel.profile,
             showEditButton: false,
             aestheticCatalog: viewModel.aestheticCatalog,
-            onAestheticTagClick: { _, tagId in
-                onNavigateToExploreFromProfile(nil, nil, tagId, "", nil, nil)
+            onAestheticTagClick: { label, tagId in
+                let p = ExploreProfileFilterRequest.forAestheticChip(label: label, tagId: tagId)
+                onNavigateToExploreFromProfile(nil, nil, p.aestheticTagId, p.searchQuery, nil, nil)
             }
         )
         if viewModel.canShowFollowUi(deps: deps, isGuestMode: isGuestMode) {
@@ -220,7 +221,10 @@ struct SellerProfileScreen: View {
             aestheticCatalog: viewModel.aestheticCatalog,
             onCategory: { id, _ in onNavigateToExploreFromProfile(id, nil, nil, "", nil, nil) },
             onBrand: { id, _ in onNavigateToExploreFromProfile(nil, id, nil, "", nil, nil) },
-            onAesthetic: { id, _ in onNavigateToExploreFromProfile(nil, nil, id, "", nil, nil) }
+            onAesthetic: { id, name in
+                let p = ExploreProfileFilterRequest.forAestheticChip(label: name, tagId: id)
+                onNavigateToExploreFromProfile(nil, nil, p.aestheticTagId, p.searchQuery, nil, nil)
+            }
         )
     }
 

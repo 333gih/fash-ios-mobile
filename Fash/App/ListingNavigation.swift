@@ -69,7 +69,43 @@ extension AppDependencies {
         router.exploreSearchExpanded = false
     }
 
-    /// Seller shop category / brand / style chips — dismiss RootView seller cover, apply filters, open Explore at RootView layer.
+    /// Own profile / PDP chips — apply filters and present Explore overlay on RootView.
+    @MainActor
+    func openExploreFromProfileChips(
+        router: AppRouter,
+        exploreVM: ExploreViewModel,
+        categoryId: String?,
+        brandId: String?,
+        aestheticTagId: String?,
+        searchQuery: String,
+        countryId: String?,
+        countryIso2: String?
+    ) {
+        let normalized = ExploreProfileFilterRequest.forProfileNavigation(
+            categoryId: categoryId,
+            brandId: brandId,
+            aestheticTagId: aestheticTagId,
+            searchQuery: searchQuery,
+            countryId: countryId,
+            countryIso2: countryIso2
+        )
+        listingPreview.close(deps: self, animated: false)
+        Task {
+            await exploreVM.openFromProfileFilter(
+                deps: self,
+                categoryId: normalized.categoryId,
+                brandId: normalized.brandId,
+                aestheticTagId: normalized.aestheticTagId,
+                searchQuery: normalized.searchQuery,
+                countryId: normalized.countryId,
+                countryIso2: normalized.countryIso2
+            )
+            router.exploreSearchExpanded = false
+            router.showExploreOverlay = true
+        }
+    }
+
+    /// Seller shop category / brand / style chips — dismiss RootView seller cover, then [openExploreFromProfileChips].
     @MainActor
     func scheduleExploreFromSellerProfile(
         router: AppRouter,
@@ -84,18 +120,16 @@ extension AppDependencies {
         router.sellerShopUsername = nil
         router.listingDetailRootId = nil
         router.listingDetailPath = []
-        listingPreview.close(deps: self, animated: false)
-        Task {
-            await exploreVM.openFromProfileFilter(
-                deps: self,
-                categoryId: categoryId,
-                brandId: brandId,
-                aestheticTagId: aestheticTagId,
-                searchQuery: searchQuery,
-                countryId: countryId,
-                countryIso2: countryIso2
-            )
-            router.showExploreOverlay = true
-        }
+        openExploreFromProfileChips(
+            router: router,
+            exploreVM: exploreVM,
+            categoryId: categoryId,
+            brandId: brandId,
+            aestheticTagId: aestheticTagId,
+            searchQuery: searchQuery,
+            countryId: countryId,
+            countryIso2: countryIso2
+        )
     }
+
 }

@@ -34,6 +34,33 @@ struct ExploreProfileFilterRequest: Equatable {
     var searchQuery: String = ""
     var countryId: String?
     var countryIso2: String?
+
+    /// When only tag names exist (no snapshot id), pass the label as `searchQuery` so Explore can resolve the catalog id.
+    static func forProfileNavigation(
+        categoryId: String? = nil,
+        brandId: String? = nil,
+        aestheticTagId: String? = nil,
+        searchQuery: String = "",
+        countryId: String? = nil,
+        countryIso2: String? = nil
+    ) -> ExploreProfileFilterRequest {
+        let tagId = aestheticTagId?.trimmingCharacters(in: .whitespacesAndNewlines).flatMap { $0.isEmpty ? nil : $0 }
+        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        return ExploreProfileFilterRequest(
+            categoryId: categoryId,
+            brandId: brandId,
+            aestheticTagId: tagId,
+            searchQuery: tagId == nil ? query : "",
+            countryId: countryId,
+            countryIso2: countryIso2
+        )
+    }
+
+    static func forAestheticChip(label: String, tagId: String?) -> ExploreProfileFilterRequest {
+        let id = tagId?.trimmingCharacters(in: .whitespacesAndNewlines).flatMap { $0.isEmpty ? nil : $0 }
+        let query = id == nil ? label.trimmingCharacters(in: .whitespacesAndNewlines) : ""
+        return forProfileNavigation(aestheticTagId: id, searchQuery: query)
+    }
 }
 
 enum OnboardingStep: String, CaseIterable {

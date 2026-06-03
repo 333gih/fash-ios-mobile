@@ -188,8 +188,9 @@ struct ProfileScreen: View {
             showEditButton: true,
             aestheticCatalog: viewModel.aestheticCatalog,
             onEdit: onEditProfile,
-            onAestheticTagClick: { _, tagId in
-                onNavigateToExploreFromProfile(nil, nil, tagId, "", nil, nil)
+            onAestheticTagClick: { label, tagId in
+                let p = ExploreProfileFilterRequest.forAestheticChip(label: label, tagId: tagId)
+                onNavigateToExploreFromProfile(nil, nil, p.aestheticTagId, p.searchQuery, nil, nil)
             }
         )
         ProfileOwnMetricsCard(

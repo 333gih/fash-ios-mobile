@@ -449,7 +449,18 @@ struct MainNavScreen: View {
                         )
                         router.editListingId = id
                     },
-                    onNavigateToExploreFromProfile: scheduleExploreFromProfile
+                    onNavigateToExploreFromProfile: { cat, brand, tag, q, countryId, iso in
+                        deps.openExploreFromProfileChips(
+                            router: router,
+                            exploreVM: exploreVM,
+                            categoryId: cat,
+                            brandId: brand,
+                            aestheticTagId: tag,
+                            searchQuery: q,
+                            countryId: countryId,
+                            countryIso2: iso
+                        )
+                    }
                 )
             }
         }
@@ -594,28 +605,17 @@ struct MainNavScreen: View {
         router.showExploreOverlay = true
     }
 
-    private func scheduleExploreFromProfile(
-        _ categoryId: String?,
-        _ brandId: String?,
-        _ aestheticTagId: String?,
-        _ searchQuery: String,
-        _ countryId: String?,
-        _ countryIso2: String?
-    ) {
-        router.pendingExploreProfileFilter = ExploreProfileFilterRequest(
-            categoryId: categoryId,
-            brandId: brandId,
-            aestheticTagId: aestheticTagId,
-            searchQuery: searchQuery,
-            countryId: countryId,
-            countryIso2: countryIso2
-        )
-        Task { await applyPendingExploreProfileFilter() }
-    }
-
     private func applyPendingExploreProfileFilter() async {
-        guard let req = router.pendingExploreProfileFilter else { return }
+        guard let raw = router.pendingExploreProfileFilter else { return }
         router.pendingExploreProfileFilter = nil
+        let req = ExploreProfileFilterRequest.forProfileNavigation(
+            categoryId: raw.categoryId,
+            brandId: raw.brandId,
+            aestheticTagId: raw.aestheticTagId,
+            searchQuery: raw.searchQuery,
+            countryId: raw.countryId,
+            countryIso2: raw.countryIso2
+        )
         await exploreVM.openFromProfileFilter(
             deps: deps,
             categoryId: req.categoryId,
