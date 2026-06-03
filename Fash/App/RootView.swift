@@ -49,7 +49,7 @@ struct RootView: View {
                     onClose: {
                         router.showExploreOverlay = false
                         router.exploreSearchExpanded = false
-                    },
+                    }
                 )
                 .environment(\.locale, AppLocale.locale)
                 .fashSnackbarOverlay()
