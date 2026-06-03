@@ -85,19 +85,10 @@ struct PinnedTabScrollOffsetFixer: UIViewRepresentable {
         private func applyTrueTop(attempt: Int) {
             guard let scrollView = enclosingScrollView() else { return }
             scrollView.layoutIfNeeded()
-            let maxOffset = max(
-                0,
-                scrollView.contentSize.height
-                    - scrollView.bounds.height
-                    + scrollView.adjustedContentInset.bottom
-            )
             if scrollView.contentOffset.y > 1.5 {
                 scrollView.setContentOffset(CGPoint(x: 0, y: 0), animated: false)
             }
-            // Pinned home tabs: SwiftUI may restore a deep offset after reload — force true top while attempts remain.
             guard attempt < 12 else { return }
-            let needsFollowUp = scrollView.contentOffset.y > 1.5 || (maxOffset > 80 && scrollView.contentOffset.y > maxOffset * 0.02)
-            guard needsFollowUp else { return }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) { [weak self] in
                 self?.applyTrueTop(attempt: attempt + 1)
             }
