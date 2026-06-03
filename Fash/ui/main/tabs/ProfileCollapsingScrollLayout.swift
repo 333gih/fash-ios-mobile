@@ -520,7 +520,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             FeedLoadMoreFooter(
                 enabled: hasMoreListings,
                 isLoadingMore: isLoadingMoreListings,
-                triggersLoadOnAppear: false,
+                triggersLoadOnAppear: true,
                 onLoadMore: onLoadMore
             )
             FeedScrollContentBottomReporter(coordinateSpace: ProfileScrollIds.coordinateSpaceName)
@@ -539,7 +539,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                 columnAssignments: masonryColumnAssignments,
                 eagerLayout: true,
                 footer: { profilePaginationFooter }
-            ) { item, _ in
+            ) { item, index in
                 ListingGridCard(
                     item: item,
                     onTap: { onListingClick(item) },
@@ -552,6 +552,16 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                     onSave: onSave.map { h in { h(item) } }
                 )
                 .id(item.id)
+                .onAppear {
+                    guard let onLoadMore else { return }
+                    guard hasMoreListings, !isLoadingMoreListings, !showGridLoading else { return }
+                    if FeedPaginationPolicy.shouldPrefetchNextPage(
+                        appearedIndex: index,
+                        totalCount: items.count
+                    ) {
+                        onLoadMore()
+                    }
+                }
             }
             .padding(.top, 4)
             .overlay(alignment: .top) {
