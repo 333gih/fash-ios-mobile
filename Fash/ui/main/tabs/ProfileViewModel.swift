@@ -2,8 +2,8 @@ import Foundation
 import Observation
 
 private let profileStaleThresholdSeconds: TimeInterval = 60
-/// First page + scroll load-more (core-service max 50 per request).
-private let profileListingPageSize = 30
+/// Single fetch per tab (Android profile: 50 at once; core-service max 50).
+private let profileListingPageSize = 50
 
 struct ProfileTabOpenRequest: Equatable {
     let tab: ProfileListingTab
@@ -405,7 +405,7 @@ final class ProfileViewModel {
             setListings(page.items, for: tab)
             mutatePagination(for: tab) {
                 $0.nextOffset = page.rawCount
-                $0.hasMore = page.rawCount >= profileListingPageSize
+                $0.hasMore = false
             }
             FeedListingImagePrefetch.prefetch(items: page.items)
         case .failure:

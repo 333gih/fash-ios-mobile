@@ -659,7 +659,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     }
 
     private var profileListingLoadingBlock: some View {
-        FashSkeleton.listingGrid()
+        FashSkeleton.listingGrid(rows: 6, staggered: true)
             .padding(.top, 4)
             .padding(.bottom, 24)
     }

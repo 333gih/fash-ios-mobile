@@ -34,11 +34,14 @@ struct ProfileScreen: View {
     }
 
     private var showListingGridLoading: Bool {
-        viewModel.isFirstPageLoading(for: selectedProfileTab)
-    }
-
-    private var showProfileBlockingLoader: Bool {
-        viewModel.profile == nil && viewModel.isLoading && !showBlockingLoadError
+        if viewModel.isFirstPageLoading(for: selectedProfileTab) { return true }
+        // Đang bán + initial profile refresh — skeleton grid instead of blocking spinner.
+        if selectedProfileTab == .active,
+           !viewModel.hasCompletedInitialLoad,
+           (viewModel.isLoading || viewModel.isRefreshing) {
+            return true
+        }
+        return false
     }
 
     private func tabBadgeCount(for index: Int) -> Int? {
@@ -68,15 +71,13 @@ struct ProfileScreen: View {
                         showStatusOverlay: true,
                         suppressActiveStatusOnGrid: false,
                         showGridLoading: showListingGridLoading,
-                        hasMoreListings: viewModel.hasMoreListings(for: selectedProfileTab),
-                        isLoadingMoreListings: viewModel.isLoadingMoreListings(for: selectedProfileTab),
+                        hasMoreListings: false,
+                        isLoadingMoreListings: false,
                         isReloadingListings: viewModel.isReloadingListings(for: selectedProfileTab),
-                        onLoadMore: {
-                            viewModel.requestLoadMore(for: selectedProfileTab, deps: deps)
-                        },
+                        onLoadMore: nil,
                         showEmptyState: viewModel.hasCompletedInitialLoad,
                         isRefreshing: viewModel.isRefreshing,
-                        lockScroll: showProfileBlockingLoader,
+                        lockScroll: false,
                         scrollToGridToken: scrollToGridToken,
                         scrollToTopToken: viewModel.profileScrollToTopToken,
                         scrollToListingId: viewModel.focusListingId,
@@ -93,18 +94,6 @@ struct ProfileScreen: View {
                     )
                     .refreshable {
                         await viewModel.refresh(deps: deps, activeTab: selectedProfileTab)
-                    }
-                    .allowsHitTesting(!showProfileBlockingLoader)
-
-                    if showProfileBlockingLoader {
-                        ZStack {
-                            FashColors.screen.opacity(0.72)
-                            ProgressView()
-                                .tint(FashColors.brandPrimary)
-                                .scaleEffect(1.1)
-                        }
-                        .ignoresSafeArea()
-                        .allowsHitTesting(true)
                     }
                 }
             }
