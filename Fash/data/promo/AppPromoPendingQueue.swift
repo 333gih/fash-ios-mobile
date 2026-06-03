@@ -31,6 +31,14 @@ enum AppPromoPendingQueue {
         return best
     }
 
+    static func remove(campaignId: String) {
+        let id = campaignId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !id.isEmpty else { return }
+        lock.lock()
+        pending.removeValue(forKey: id)
+        lock.unlock()
+    }
+
     static func clear() {
         lock.lock()
         pending.removeAll()

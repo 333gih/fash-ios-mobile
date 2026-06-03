@@ -6,6 +6,7 @@ enum AppPromoCampaignStore {
     private static let dismissedPrefix = "app_promo_dismissed_"
     private static let showCountPrefix = "app_promo_shows_"
     private static let lastShownPrefix = "app_promo_last_shown_"
+    private static let dialogConsumedPrefix = "app_promo_dialog_consumed_"
     private static let appOpenCountKey = "app_promo_app_open_count"
     private static let legacyWelcomePrefix = "welcome_center_banner_dismissed_v"
 
@@ -51,6 +52,20 @@ enum AppPromoCampaignStore {
         readShowCount(campaignId: campaign.campaignId, version: campaign.version) > 0
     }
 
+    /// Blocks interstitial dialog (in-app in chat or dialog already shown/dismissed).
+    static func isDialogConsumed(_ campaign: AppPromoCampaign) -> Bool {
+        isDialogConsumed(campaignId: campaign.campaignId, version: campaign.version)
+            || isDismissed(campaign)
+    }
+
+    static func isDialogConsumed(campaignId: String, version: Int) -> Bool {
+        defaults.bool(forKey: dialogConsumedKey(campaignId: campaignId, version: version))
+    }
+
+    static func markDialogConsumed(_ campaign: AppPromoCampaign) {
+        defaults.set(true, forKey: dialogConsumedKey(campaignId: campaign.campaignId, version: campaign.version))
+    }
+
     static func recordShow(_ campaign: AppPromoCampaign) {
         let key = showCountKey(campaignId: campaign.campaignId, version: campaign.version)
         let next = defaults.integer(forKey: key) + 1
@@ -84,5 +99,9 @@ enum AppPromoCampaignStore {
 
     private static func lastShownKey(campaignId: String, version: Int) -> String {
         "\(lastShownPrefix)\(campaignId)_v\(version)"
+    }
+
+    private static func dialogConsumedKey(campaignId: String, version: Int) -> String {
+        "\(dialogConsumedPrefix)\(campaignId)_v\(version)"
     }
 }

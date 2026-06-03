@@ -10,6 +10,23 @@ enum NotificationPromoDetail {
             || NotificationNavigation.firstStringFromDataCi(item.dataMap, "promo_payload", "promoPayload") != nil
     }
 
+    static func matchesCampaign(
+        item: InboxNotificationItem,
+        campaignId: String,
+        version: Int
+    ) -> Bool {
+        let cid = campaignId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cid.isEmpty else { return false }
+        if let promo = parseAppPromoCampaignFromInbox(item) {
+            if promo.campaignId.compare(cid, options: .caseInsensitive) == .orderedSame {
+                return true
+            }
+        }
+        guard let data = item.dataMap else { return false }
+        let dataId = NotificationNavigation.firstStringFromDataCi(data, "campaign_id", "campaignId", "id") ?? ""
+        return dataId.compare(cid, options: .caseInsensitive) == .orderedSame
+    }
+
     static func parseAppPromoCampaignFromInbox(_ item: InboxNotificationItem) -> AppPromoCampaign? {
         guard let data = item.dataMap else { return nil }
 

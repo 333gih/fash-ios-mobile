@@ -8,20 +8,50 @@ enum InboxNotificationSync {
     static func markAppPromoNotificationsRead(
         campaignId: String,
         version: Int,
+        userNotificationId: String? = nil,
         userRepository: UserRepository
     ) async {
         let cid = campaignId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cid.isEmpty else { return }
 
+        if let nid = userNotificationId?.trimmingCharacters(in: .whitespacesAndNewlines), !nid.isEmpty {
+            _ = await userRepository.markNotificationRead(notificationId: nid)
+        }
+
         for group in promoGroups {
             guard case .success(let page) = await userRepository.listMyNotifications(limit: 100, group: group) else {
                 continue
             }
-            for item in page.items where item.isUnread {
-                guard NotificationPromoDetail.isAppPromoInboxNotification(item) else { continue }
-                guard let promo = NotificationPromoDetail.parseAppPromoCampaignFromInbox(item) else { continue }
-                guard promo.campaignId.compare(cid, options: .caseInsensitive) == .orderedSame,
-                      promo.version == version else { continue }
+            await markPromoUnreadItems(
+                items: page.items,
+                campaignId: cid,
+                version: version,
+                userRepository: userRepository
+            )
+        }
+        if case .success(let page) = await userRepository.listMyNotifications(limit: 100, group: nil) {
+            await markPromoUnreadItems(
+                items: page.items,
+                campaignId: cid,
+                version: version,
+                userRepository: userRepository
+            )
+        }
+    }
+
+    private static func markPromoUnreadItems(
+        items: [InboxNotificationItem],
+        campaignId: String,
+        version: Int,
+        userRepository: UserRepository
+    ) async {
+        for item in items where item.isUnread {
+            guard NotificationPromoDetail.isAppPromoInboxNotification(item) else { continue }
+            if NotificationPromoDetail.matchesCampaign(
+                item: item,
+                campaignId: campaignId,
+                version: version
+            ) {
                 _ = await userRepository.markNotificationRead(notificationId: item.id)
             }
         }

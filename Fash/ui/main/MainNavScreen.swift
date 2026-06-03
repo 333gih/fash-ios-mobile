@@ -165,9 +165,12 @@ struct MainNavScreen: View {
             guard !isGuestMode, activePromoCampaign == nil, router.selectedConversationId == nil else { return }
             Task {
                 await AppPromoOnAppOpenLoader.fetchAndEnqueue(deps: deps)
-                if let promo = AppPromoOnAppOpenLoader.resolvePresentable() {
+                if let promo = AppPromoOnAppOpenLoader.resolvePresentable(),
+                   !AppPromoCampaignStore.isDialogConsumed(promo) {
                     activePromoCampaign = promo
                     AppPromoCampaignStore.recordShow(promo)
+                    AppPromoCampaignStore.markDialogConsumed(promo)
+                    AppPromoPendingQueue.remove(campaignId: promo.campaignId)
                     AppPromoPresentationPolicy.markInboxReadAfterDialogShown(
                         campaign: promo,
                         userRepository: deps.userRepository
@@ -530,9 +533,11 @@ struct MainNavScreen: View {
             isGuestMode: isGuestMode,
             blockBecauseOtherUi: false,
             incrementOpenCount: incrementOpenCount
-        ) {
+        ), !AppPromoCampaignStore.isDialogConsumed(promo) {
             activePromoCampaign = promo
             AppPromoCampaignStore.recordShow(promo)
+            AppPromoCampaignStore.markDialogConsumed(promo)
+            AppPromoPendingQueue.remove(campaignId: promo.campaignId)
             AppPromoPresentationPolicy.markInboxReadAfterDialogShown(
                 campaign: promo,
                 userRepository: deps.userRepository
@@ -544,12 +549,20 @@ struct MainNavScreen: View {
     private func dismissActivePromo() {
         if let campaign = activePromoCampaign {
             AppPromoCampaignStore.markDismissed(campaign)
+            AppPromoPresentationPolicy.markInboxReadAfterDialogShown(
+                campaign: campaign,
+                userRepository: deps.userRepository
+            )
         }
         activePromoCampaign = nil
     }
 
     private func handlePromoPrimary(_ campaign: AppPromoCampaign) {
         AppPromoCampaignStore.markDismissed(campaign)
+        AppPromoPresentationPolicy.markInboxReadAfterDialogShown(
+            campaign: campaign,
+            userRepository: deps.userRepository
+        )
         activePromoCampaign = nil
         AppPromoNavigation.applyPrimary(campaign: campaign, router: router)
     }
@@ -560,6 +573,10 @@ struct MainNavScreen: View {
         } else {
             AppPromoCampaignStore.markDismissed(campaign)
         }
+        AppPromoPresentationPolicy.markInboxReadAfterDialogShown(
+            campaign: campaign,
+            userRepository: deps.userRepository
+        )
         activePromoCampaign = nil
     }
 

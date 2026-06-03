@@ -16,8 +16,11 @@ enum AppPromoOnAppOpenLoader {
     }
 
     static func resolvePresentable() -> AppPromoCampaign? {
-        guard let remote = AppPromoPendingQueue.pollHighest() else { return nil }
-        return AppPromoCampaignStore.canShow(remote) ? remote : nil
+        while true {
+            guard let remote = AppPromoPendingQueue.pollHighest() else { return nil }
+            if AppPromoCampaignStore.isDialogConsumed(remote) { continue }
+            return AppPromoCampaignStore.canShow(remote) ? remote : nil
+        }
     }
 
     /// Pull catalog, enqueue eligible campaigns, return highest-priority presentable promo.

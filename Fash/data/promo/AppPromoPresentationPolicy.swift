@@ -8,7 +8,7 @@ enum AppPromoPresentationPolicy {
         return !id.isEmpty
     }
 
-    /// After the blocking dialog was shown (any dismiss/CTA), skip redundant in-app toasts.
+    /// After dialog or duplicate delivery — skip redundant in-app toasts.
     static func shouldSuppressInAppToast(for campaign: AppPromoCampaign) -> Bool {
         AppPromoCampaignStore.isDismissed(campaign)
             || AppPromoCampaignStore.hasRecordedShow(campaign)
@@ -40,17 +40,10 @@ enum AppPromoPresentationPolicy {
         deps.requestInboxUnreadRefresh()
 
         if isInChatDetail(openConversationId: openConversationId) {
-            guard !shouldSuppressInAppToast(for: campaign) else { return }
-            let title = RemoteAppPromoModels.sanitizePromoDisplayString(campaign.remoteTitle) ?? ""
-            let body = RemoteAppPromoModels.sanitizePromoDisplayString(campaign.remoteMessage) ?? ""
-            guard !title.isEmpty || !body.isEmpty else { return }
-            deps.showInAppNotification(
-                FashInAppNotificationSession(
-                    title: title,
-                    body: body,
-                    userNotificationId: userNotificationId,
-                    dataMap: promoInAppDataMap(campaign: campaign, userNotificationId: userNotificationId)
-                ),
+            presentInChatOnly(
+                campaign: campaign,
+                deps: deps,
+                userNotificationId: userNotificationId,
                 chatVM: chatVM
             )
             return
@@ -59,14 +52,60 @@ enum AppPromoPresentationPolicy {
         deps.requestShowAppPromo(campaign)
     }
 
+    /// In-app toast while in chat; never surface blocking dialog after leaving the thread.
+    private static func presentInChatOnly(
+        campaign: AppPromoCampaign,
+        deps: AppDependencies,
+        userNotificationId: String?,
+        chatVM: ChatViewModel?
+    ) {
+        guard !shouldSuppressInAppToast(for: campaign) else {
+            AppPromoCampaignStore.markDialogConsumed(campaign)
+            AppPromoPendingQueue.remove(campaignId: campaign.campaignId)
+            return
+        }
+        AppPromoCampaignStore.markDialogConsumed(campaign)
+        AppPromoPendingQueue.remove(campaignId: campaign.campaignId)
+        markInboxReadAfterPromoSeen(
+            campaign: campaign,
+            userNotificationId: userNotificationId,
+            userRepository: deps.userRepository
+        )
+        let title = RemoteAppPromoModels.sanitizePromoDisplayString(campaign.remoteTitle) ?? ""
+        let body = RemoteAppPromoModels.sanitizePromoDisplayString(campaign.remoteMessage) ?? ""
+        guard !title.isEmpty || !body.isEmpty else { return }
+        deps.showInAppNotification(
+            FashInAppNotificationSession(
+                title: title,
+                body: body,
+                userNotificationId: userNotificationId,
+                dataMap: promoInAppDataMap(campaign: campaign, userNotificationId: userNotificationId)
+            ),
+            chatVM: chatVM
+        )
+    }
+
     static func markInboxReadAfterDialogShown(
         campaign: AppPromoCampaign,
+        userRepository: UserRepository
+    ) {
+        markInboxReadAfterPromoSeen(
+            campaign: campaign,
+            userNotificationId: nil,
+            userRepository: userRepository
+        )
+    }
+
+    static func markInboxReadAfterPromoSeen(
+        campaign: AppPromoCampaign,
+        userNotificationId: String?,
         userRepository: UserRepository
     ) {
         Task {
             await InboxNotificationSync.markAppPromoNotificationsRead(
                 campaignId: campaign.campaignId,
                 version: campaign.version,
+                userNotificationId: userNotificationId,
                 userRepository: userRepository
             )
             await MainActor.run {

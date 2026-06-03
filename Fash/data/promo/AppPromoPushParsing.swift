@@ -33,15 +33,30 @@ enum AppPromoPushParsing {
             ?? ""
         guard !id.isEmpty, !title.isEmpty, !body.isEmpty else { return nil }
         let version = max(Int(data["campaign_version"] ?? "") ?? 1, 1)
+        let images = imageUrlsFromPushData(data)
         return AppPromoCampaign(
             campaignId: id,
             version: version,
             kind: .remote,
             remoteTitle: title,
             remoteMessage: body,
+            remoteImageUrls: images,
             remotePrimaryLabel: title,
             primaryAction: AppPromoButtonAction(type: "none", payload: "")
         )
+    }
+
+    private static func imageUrlsFromPushData(_ data: [String: String]) -> [String] {
+        if let raw = data["image_urls"]?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty {
+            if raw.hasPrefix("["),
+               let jsonData = raw.data(using: .utf8),
+               let arr = try? JSONSerialization.jsonObject(with: jsonData) as? [Any] {
+                return arr.compactMap { ($0 as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) }
+                    .filter { !$0.isEmpty }
+            }
+            return [raw]
+        }
+        return []
     }
 
     static func parseRealtimeCampaignJson(_ campaignJson: String) -> AppPromoCampaign? {

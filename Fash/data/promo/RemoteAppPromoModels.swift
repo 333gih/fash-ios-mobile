@@ -26,9 +26,7 @@ enum RemoteAppPromoModels {
         let description = optString(json, "description", "body", "detail_body", "message", "remote_message")
         guard !title.isEmpty, !description.isEmpty else { return nil }
 
-        let images = (json["image_urls"] as? [Any] ?? json["imageUrls"] as? [Any] ?? [])
-            .compactMap { ($0 as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
+        let images = parseImageUrls(json)
 
         let primaryObj = (json["primary_button"] as? [String: Any]) ?? (json["primaryButton"] as? [String: Any])
         let primaryLabel = optString(primaryObj ?? [:], "label")
@@ -90,6 +88,22 @@ enum RemoteAppPromoModels {
         let s = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if s.isEmpty || s.lowercased() == "null" { return nil }
         return s
+    }
+
+    private static func parseImageUrls(_ json: [String: Any]) -> [String] {
+        if let arr = json["image_urls"] as? [Any] ?? json["imageUrls"] as? [Any] {
+            return arr.compactMap { ($0 as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+        }
+        let raw = optString(json, "image_urls", "imageUrls")
+        if raw.hasPrefix("["),
+           let data = raw.data(using: .utf8),
+           let arr = try? JSONSerialization.jsonObject(with: data) as? [Any] {
+            return arr.compactMap { ($0 as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+        }
+        if !raw.isEmpty { return [raw] }
+        return []
     }
 
     private static func parseButtonAction(_ obj: [String: Any]) -> AppPromoButtonAction {

@@ -103,14 +103,10 @@ struct FashAppPromoOverlayDialog: View {
         if campaign.kind == .remote, !campaign.remoteImageUrls.isEmpty {
             TabView {
                 ForEach(campaign.remoteImageUrls, id: \.self) { urlString in
-                    AsyncImage(url: URL(string: urlString)) { phase in
-                        switch phase {
-                        case .success(let image):
-                            image.resizable().scaledToFill()
-                        default:
-                            FashColors.surfaceContainer
-                        }
-                    }
+                    FashAsyncImage(
+                        url: FeedImageUrl.resolveListingImageUrlOrNil(urlString) ?? urlString,
+                        contentMode: .fill
+                    )
                     .frame(height: heroHeight)
                     .clipped()
                 }
