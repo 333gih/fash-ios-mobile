@@ -193,6 +193,7 @@ struct RootView: View {
                         position: 0
                     )
                 },
+                onRequestSignIn: router.isGuestMode ? presentGuestSignIn : nil,
                 onNavigateToExploreFromProfile: { cat, brand, tag, q, countryId, iso in
                     deps.scheduleExploreFromSellerProfile(
                         router: router,
@@ -204,8 +205,7 @@ struct RootView: View {
                         countryId: countryId,
                         countryIso2: iso
                     )
-                },
-                onRequestSignIn: router.isGuestMode ? presentGuestSignIn : nil
+                }
             )
         case .editListing(let id):
             EditListingScreen(listingId: id, onDismiss: {
