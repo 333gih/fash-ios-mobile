@@ -89,25 +89,25 @@ enum HomeFeedScrollReset {
         trueTopToken: Binding<Int>,
         clampRevision: Binding<Int>
     ) {
-        clampRevision.wrappedValue += 1
-        var transaction = Transaction()
-        transaction.disablesAnimations = true
-        withTransaction(transaction) {
-            scrollPosition.wrappedValue = HomeScrollIds.top
-            proxy.scrollTo(HomeScrollIds.top, anchor: .top)
+        func applyScrollToTrueTop() {
+            clampRevision.wrappedValue += 1
+            trueTopToken.wrappedValue += 1
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                scrollPosition.wrappedValue = nil
+                scrollPosition.wrappedValue = HomeScrollIds.top
+                proxy.scrollTo(HomeScrollIds.top, anchor: .top)
+            }
         }
-        // Do not bump `resetToken` — PinnedTabScrollOffsetFixer `.pinnedReset` snaps to tab-pinned offset (~headerHeight), not y=0.
-        trueTopToken.wrappedValue += 1
+
+        // Do not bump `resetToken` — `.pinnedReset` snaps to tab-pinned offset (~headerHeight), not y=0.
+        applyScrollToTrueTop()
 
         Task { @MainActor in
-            for delayMs in [60, 140, 260] {
+            for delayMs in [60, 140, 260, 420, 640] {
                 try? await Task.sleep(for: .milliseconds(delayMs))
-                var followUp = Transaction()
-                followUp.disablesAnimations = true
-                withTransaction(followUp) {
-                    scrollPosition.wrappedValue = HomeScrollIds.top
-                    proxy.scrollTo(HomeScrollIds.top, anchor: .top)
-                }
+                applyScrollToTrueTop()
             }
         }
     }

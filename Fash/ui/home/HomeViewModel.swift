@@ -262,6 +262,8 @@ final class HomeViewModel {
         }
         prefetchAdjacentTabs(around: selectedFeedTab, deps: deps, isGuestMode: isGuestMode)
         lastSuccessfulRefreshAt = Date()
+        // After layout settles — scroll again so pinned-tab offsets do not stick (Android refresh tail).
+        requestScrollHomeToTop()
     }
 
     func retryTab(_ tab: HomeFeedTab, deps: AppDependencies, isGuestMode: Bool) {
