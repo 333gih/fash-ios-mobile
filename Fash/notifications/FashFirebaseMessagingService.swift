@@ -27,8 +27,14 @@ enum FashFirebaseMessagingService {
                fallbackTitle: data["title"],
                fallbackBody: data["body"]
            ) {
-            AppDependencies.shared.requestShowAppPromo(campaign)
-            AppDependencies.shared.requestInboxUnreadRefresh()
+            let deps = AppDependencies.shared
+            AppPromoPresentationPolicy.handleIncoming(
+                campaign: campaign,
+                deps: deps,
+                openConversationId: ChatNotificationPresence.openConversationId(deps: deps),
+                userNotificationId: data["user_notification_id"],
+                chatVM: nil
+            )
             return
         }
 
@@ -68,8 +74,13 @@ enum FashFirebaseMessagingService {
                    fallbackTitle: data["title"],
                    fallbackBody: data["body"]
                ) {
-                deps.requestShowAppPromo(campaign)
-                deps.requestInboxUnreadRefresh()
+                AppPromoPresentationPolicy.handleIncoming(
+                    campaign: campaign,
+                    deps: deps,
+                    openConversationId: ChatNotificationPresence.openConversationId(deps: deps),
+                    userNotificationId: data["user_notification_id"],
+                    chatVM: nil
+                )
                 return
             }
             if let deepLink = data["deep_link"]?.trimmingCharacters(in: .whitespacesAndNewlines), !deepLink.isEmpty,

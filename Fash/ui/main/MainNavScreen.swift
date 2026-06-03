@@ -168,6 +168,10 @@ struct MainNavScreen: View {
                 if let promo = AppPromoOnAppOpenLoader.resolvePresentable() {
                     activePromoCampaign = promo
                     AppPromoCampaignStore.recordShow(promo)
+                    AppPromoPresentationPolicy.markInboxReadAfterDialogShown(
+                        campaign: promo,
+                        userRepository: deps.userRepository
+                    )
                 }
             }
         }
@@ -175,11 +179,6 @@ struct MainNavScreen: View {
             if conversationId != nil {
                 activePromoCampaign = nil
             } else {
-                AppPromoPresenter.pollQueuedPromoIfEligible(
-                    active: &activePromoCampaign,
-                    isGuestMode: isGuestMode,
-                    selectedConversationId: nil
-                )
                 guard !isGuestMode else { return }
                 Task {
                     await chatVM.loadConversationsWhenNeeded(deps: deps, staleAfterMs: 0)
@@ -534,13 +533,12 @@ struct MainNavScreen: View {
         ) {
             activePromoCampaign = promo
             AppPromoCampaignStore.recordShow(promo)
+            AppPromoPresentationPolicy.markInboxReadAfterDialogShown(
+                campaign: promo,
+                userRepository: deps.userRepository
+            )
             return
         }
-        AppPromoPresenter.pollQueuedPromoIfEligible(
-            active: &activePromoCampaign,
-            isGuestMode: isGuestMode,
-            selectedConversationId: router.selectedConversationId
-        )
     }
 
     private func dismissActivePromo() {

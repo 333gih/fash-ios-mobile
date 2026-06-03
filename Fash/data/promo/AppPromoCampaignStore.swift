@@ -47,6 +47,10 @@ enum AppPromoCampaignStore {
         return true
     }
 
+    static func hasRecordedShow(_ campaign: AppPromoCampaign) -> Bool {
+        readShowCount(campaignId: campaign.campaignId, version: campaign.version) > 0
+    }
+
     static func recordShow(_ campaign: AppPromoCampaign) {
         let key = showCountKey(campaignId: campaign.campaignId, version: campaign.version)
         let next = defaults.integer(forKey: key) + 1

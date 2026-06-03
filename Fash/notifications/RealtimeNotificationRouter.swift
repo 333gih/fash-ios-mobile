@@ -27,8 +27,13 @@ enum RealtimeNotificationRouter {
                    fallbackTitle: title,
                    fallbackBody: body
                ) {
-                deps.requestShowAppPromo(campaign)
-                deps.requestInboxUnreadRefresh()
+                AppPromoPresentationPolicy.handleIncoming(
+                    campaign: campaign,
+                    deps: deps,
+                    openConversationId: ChatNotificationPresence.openConversationId(deps: deps),
+                    userNotificationId: userNotificationId,
+                    chatVM: chatVM
+                )
                 return
             }
             guard !title.trimmingCharacters(in: .whitespaces).isEmpty else { return }
@@ -55,8 +60,13 @@ enum RealtimeNotificationRouter {
             }
         case .appPromoShow(let campaignJson):
             if let campaign = AppPromoPushParsing.parseRealtimeCampaignJson(campaignJson) {
-                deps.requestShowAppPromo(campaign)
-                deps.requestInboxUnreadRefresh()
+                AppPromoPresentationPolicy.handleIncoming(
+                    campaign: campaign,
+                    deps: deps,
+                    openConversationId: ChatNotificationPresence.openConversationId(deps: deps),
+                    userNotificationId: nil,
+                    chatVM: chatVM
+                )
             }
         case .feedRefresh:
             Task {

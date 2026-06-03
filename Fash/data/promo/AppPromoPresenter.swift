@@ -13,17 +13,9 @@ enum AppPromoPresenter {
         guard AppPromoCampaignStore.canShow(promo) else { return }
         active = promo
         AppPromoCampaignStore.recordShow(promo)
-    }
-
-    static func pollQueuedPromoIfEligible(
-        active: inout AppPromoCampaign?,
-        isGuestMode: Bool,
-        selectedConversationId: String?
-    ) {
-        guard !isGuestMode, selectedConversationId == nil, active == nil else { return }
-        guard let remote = AppPromoPendingQueue.peekHighest(),
-              AppPromoCampaignStore.canShow(remote) else { return }
-        active = remote
-        AppPromoCampaignStore.recordShow(remote)
+        AppPromoPresentationPolicy.markInboxReadAfterDialogShown(
+            campaign: promo,
+            userRepository: AppDependencies.shared.userRepository
+        )
     }
 }
