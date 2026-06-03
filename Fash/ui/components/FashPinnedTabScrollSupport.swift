@@ -17,6 +17,8 @@ enum PinnedTabScrollPolicy {
 /// Resets UIScrollView offset after tab swaps when feed/grid height shrinks — SwiftUI `scrollTo` alone keeps stale offset.
 struct PinnedTabScrollOffsetFixer: UIViewRepresentable {
     var resetToken: Int
+    /// Bottom-nav re-tap / pull-to-refresh — force `contentOffset.y = 0` (full header), not pinned-tab offset.
+    var trueTopToken: Int = 0
     var clampRevision: Int = 0
     var headerHeight: CGFloat
 
@@ -31,8 +33,16 @@ struct PinnedTabScrollOffsetFixer: UIViewRepresentable {
     func updateUIView(_ uiView: AnchorView, context: Context) {
         uiView.coordinator = context.coordinator
         let token = resetToken
+        let topToken = trueTopToken
         let revision = clampRevision
-        guard token > 0 || revision > 0 else { return }
+        guard token > 0 || topToken > 0 || revision > 0 else { return }
+
+        let trueTopChanged = topToken != context.coordinator.lastAppliedTrueTopToken
+        if trueTopChanged, topToken > 0 {
+            context.coordinator.lastAppliedTrueTopToken = topToken
+            uiView.scheduleTrueTop(attempt: 0)
+            return
+        }
 
         let tokenChanged = token != context.coordinator.lastAppliedToken
         let revisionChanged = revision != context.coordinator.lastAppliedClampRevision
@@ -46,6 +56,7 @@ struct PinnedTabScrollOffsetFixer: UIViewRepresentable {
 
     final class Coordinator {
         var lastAppliedToken = 0
+        var lastAppliedTrueTopToken = 0
         var lastAppliedClampRevision = 0
     }
 
@@ -62,6 +73,24 @@ struct PinnedTabScrollOffsetFixer: UIViewRepresentable {
         func scheduleReset(headerHeight: CGFloat, mode: ResetMode) {
             DispatchQueue.main.async { [weak self] in
                 self?.applyReset(headerHeight: headerHeight, mode: mode, attempt: 0)
+            }
+        }
+
+        func scheduleTrueTop(attempt: Int) {
+            DispatchQueue.main.async { [weak self] in
+                self?.applyTrueTop(attempt: attempt)
+            }
+        }
+
+        private func applyTrueTop(attempt: Int) {
+            guard let scrollView = enclosingScrollView() else { return }
+            scrollView.layoutIfNeeded()
+            if scrollView.contentOffset.y > 1.5 {
+                scrollView.setContentOffset(CGPoint(x: 0, y: 0), animated: false)
+            }
+            guard attempt < 12 else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) { [weak self] in
+                self?.applyTrueTop(attempt: attempt + 1)
             }
         }
 

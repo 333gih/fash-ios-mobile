@@ -86,7 +86,7 @@ enum HomeFeedScrollReset {
     static func scrollToTop(
         scrollPosition: Binding<String?>,
         proxy: ScrollViewProxy,
-        resetToken: Binding<Int>,
+        trueTopToken: Binding<Int>,
         clampRevision: Binding<Int>
     ) {
         clampRevision.wrappedValue += 1
@@ -96,6 +96,19 @@ enum HomeFeedScrollReset {
             scrollPosition.wrappedValue = HomeScrollIds.top
             proxy.scrollTo(HomeScrollIds.top, anchor: .top)
         }
-        resetToken.wrappedValue += 1
+        // Do not bump `resetToken` — PinnedTabScrollOffsetFixer `.pinnedReset` snaps to tab-pinned offset (~headerHeight), not y=0.
+        trueTopToken.wrappedValue += 1
+
+        Task { @MainActor in
+            for delayMs in [60, 140, 260] {
+                try? await Task.sleep(for: .milliseconds(delayMs))
+                var followUp = Transaction()
+                followUp.disablesAnimations = true
+                withTransaction(followUp) {
+                    scrollPosition.wrappedValue = HomeScrollIds.top
+                    proxy.scrollTo(HomeScrollIds.top, anchor: .top)
+                }
+            }
+        }
     }
 }

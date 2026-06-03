@@ -60,6 +60,7 @@ struct HomeFeedContent: View {
 
     @State private var homeScrollPosition: String?
     @State private var homeScrollResetToken = 0
+    @State private var homeTrueTopToken = 0
     @State private var scrollClampRevision = 0
     @State private var homeHeaderHeight: CGFloat = 0
     @State private var pendingPinnedFeedScroll = false
@@ -118,6 +119,7 @@ struct HomeFeedContent: View {
                 .background {
                     PinnedTabScrollOffsetFixer(
                         resetToken: homeScrollResetToken,
+                        trueTopToken: homeTrueTopToken,
                         clampRevision: scrollClampRevision,
                         headerHeight: homeHeaderHeight
                     )
@@ -164,6 +166,8 @@ struct HomeFeedContent: View {
     @ViewBuilder
     private var homeScrollAwayHeader: some View {
         VStack(spacing: 0) {
+            HomeFeedScrollOffsetAnchor()
+
             if let chip = viewModel.shoppingContextChip {
                 HStack(spacing: 6) {
                     Image(systemName: "leaf.fill")
@@ -420,7 +424,7 @@ struct HomeFeedContent: View {
         HomeFeedScrollReset.scrollToTop(
             scrollPosition: $homeScrollPosition,
             proxy: scrollProxy,
-            resetToken: $homeScrollResetToken,
+            trueTopToken: $homeTrueTopToken,
             clampRevision: $scrollClampRevision
         )
     }
