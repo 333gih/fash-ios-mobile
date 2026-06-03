@@ -1,6 +1,7 @@
 import Foundation
 
 /// Builds in-app banner copy — prefer peer username/display name over generic "User".
+@MainActor
 enum InAppNotificationPresentation {
     private static let genericActorTitles: Set<String> = [
         "user", "buyer", "người dùng", "người mua",
