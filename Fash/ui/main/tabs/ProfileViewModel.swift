@@ -2,8 +2,8 @@ import Foundation
 import Observation
 
 private let profileStaleThresholdSeconds: TimeInterval = 60
-/// First page + scroll load-more — same page size pattern as Home following feed.
-private let profileListingPageSize = 20
+/// First page + scroll load-more (core-service max 50 per request).
+private let profileListingPageSize = 30
 
 struct ProfileTabOpenRequest: Equatable {
     let tab: ProfileListingTab

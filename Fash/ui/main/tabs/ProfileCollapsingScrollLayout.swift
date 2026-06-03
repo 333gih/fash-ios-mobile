@@ -301,16 +301,21 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         )
     }
 
-    private var profileMasonryChunks: [ListingMasonryFeedPages.Chunk] {
-        ListingMasonryFeedPages.columnChunks(
+    private var profileMasonryEstimatedHeight: CGFloat {
+        guard !items.isEmpty, !profileMasonryLayout.isEmpty else { return 0 }
+        let grid = ListingMasonryGrid.estimatedGridHeight(
             layout: profileMasonryLayout,
-            pageSize: ListingMasonryFeedPages.profileChunkPageSize
+            columnWidth: profileMasonryColumnWidth,
+            verticalGap: spacing.spacing2
         )
+        let footer: CGFloat = (hasMoreListings || isLoadingMoreListings) ? 88 : 12
+        return grid + footer
     }
 
     @ViewBuilder
     private var profileListingGridRows: some View {
         profileListingGridBody
+            .id(listingGridScrollId)
             .allowsHitTesting(listingInteractionEnabled)
             .transition(
                 .asymmetric(
@@ -339,24 +344,6 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         if assignments != masonryColumnAssignments.wrappedValue {
             masonryColumnAssignments.wrappedValue = assignments
         }
-    }
-
-    private func estimatedChunkHeight(
-        _ chunk: ListingMasonryFeedPages.Chunk,
-        columnWidth: CGFloat,
-        gap: CGFloat
-    ) -> CGFloat {
-        let left = ListingMasonryGrid.estimatedColumnHeight(
-            entries: chunk.left,
-            columnWidth: columnWidth,
-            verticalGap: gap
-        )
-        let right = ListingMasonryGrid.estimatedColumnHeight(
-            entries: chunk.right,
-            columnWidth: columnWidth,
-            verticalGap: gap
-        )
-        return max(left, right)
     }
 
     private func resetProfileScrollChromeState() {
@@ -590,50 +577,16 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         } else if items.isEmpty, showEmptyState {
             emptyBlock
         } else if !items.isEmpty {
-            let gap = spacing.spacing2
-            let columnWidth = profileMasonryColumnWidth
-            ForEach(profileMasonryChunks) { chunk in
-                profileMasonryChunkRow(
-                    chunk,
-                    columnWidth: columnWidth,
-                    gap: gap,
-                    isFirstChunk: chunk.id == 0
-                )
-                .id(chunk.id == 0 ? listingGridScrollId : "\(listingGridScrollId)_\(selectedTab)_\(chunk.id)")
+            VStack(spacing: 0) {
+                ListingMasonryColumnFeed(layout: profileMasonryLayout) { item, index in
+                    profileListingGridCard(item: item, index: index)
+                }
+                profilePaginationFooter
             }
-            profilePaginationFooter
-                .padding(.leading, spacing.editorialStart)
-                .padding(.trailing, spacing.editorialEnd)
-            if isReloadingListings, !isRefreshing {
-                ProgressView()
-                    .tint(FashColors.brandPrimary)
-                    .scaleEffect(1.05)
-                    .frame(maxWidth: .infinity, alignment: .top)
-                    .padding(.top, spacing.spacing4)
-                    .allowsHitTesting(false)
-            }
-        }
-    }
-
-    private func profileMasonryChunkRow(
-        _ chunk: ListingMasonryFeedPages.Chunk,
-        columnWidth: CGFloat,
-        gap: CGFloat,
-        isFirstChunk: Bool
-    ) -> some View {
-        HStack(alignment: .top, spacing: gap) {
-            profileMasonryColumn(chunk.left, columnWidth: columnWidth, gap: gap)
-            profileMasonryColumn(chunk.right, columnWidth: columnWidth, gap: gap)
-        }
-        .padding(.leading, spacing.editorialStart)
-        .padding(.trailing, spacing.editorialEnd)
-        .padding(.top, isFirstChunk ? 4 : 0)
-        .frame(
-            minHeight: estimatedChunkHeight(chunk, columnWidth: columnWidth, gap: gap),
-            alignment: .top
-        )
-        .background {
-            if isFirstChunk {
+            .padding(.top, 4)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(minHeight: profileMasonryEstimatedHeight, alignment: .top)
+            .background {
                 GeometryReader { proxy in
                     Color.clear.preference(
                         key: ListingMasonryContainerWidthKey.self,
@@ -641,44 +594,37 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                     )
                 }
             }
-        }
-        .onPreferenceChange(ListingMasonryContainerWidthKey.self) { width in
-            guard isFirstChunk, width > 1, abs(width - profileMasonryContainerWidth) > 0.5 else { return }
-            profileMasonryContainerWidth = width
-            refreshProfileMasonryLayout()
+            .onPreferenceChange(ListingMasonryContainerWidthKey.self) { width in
+                guard width > 1, abs(width - profileMasonryContainerWidth) > 0.5 else { return }
+                profileMasonryContainerWidth = width
+                refreshProfileMasonryLayout()
+            }
+            .overlay(alignment: .top) {
+                if isReloadingListings, !isRefreshing {
+                    ProgressView()
+                        .tint(FashColors.brandPrimary)
+                        .scaleEffect(1.05)
+                        .frame(maxWidth: .infinity, alignment: .top)
+                        .padding(.top, spacing.spacing4)
+                        .allowsHitTesting(false)
+                }
+            }
         }
     }
 
-    private func profileMasonryColumn(
-        _ entries: [(index: Int, item: ListingFeedItem)],
-        columnWidth: CGFloat,
-        gap: CGFloat
-    ) -> some View {
-        VStack(spacing: gap) {
-            ForEach(entries, id: \.item.id) { entry in
-                let item = entry.item
-                ListingGridCard(
-                    item: item,
-                    onTap: { onListingClick(item) },
-                    imageAspectRatio: ListingMasonryGrid.masonryAspectRatio(for: item),
-                    showQuickActions: showQuickActions,
-                    statusOverlayLabel: showStatusOverlay
-                        ? ListingStatusUi.overlayLabel(for: item.listingStatus, suppressActive: suppressActiveStatusOnGrid)
-                        : nil,
-                    onLike: onLike.map { h in { h(item) } },
-                    onSave: onSave.map { h in { h(item) } }
-                )
-                .environment(\.listingMasonryColumnWidth, columnWidth)
-                .frame(
-                    width: columnWidth,
-                    height: max(1, ListingMasonryGrid.tileHeight(columnWidth: columnWidth, item: item)),
-                    alignment: .top
-                )
-                .clipped()
-                .onAppear { profilePrefetchLoadMoreIfNeeded(appearedIndex: entry.index) }
-            }
-        }
-        .frame(width: columnWidth, alignment: .top)
+    private func profileListingGridCard(item: ListingFeedItem, index: Int) -> some View {
+        ListingGridCard(
+            item: item,
+            onTap: { onListingClick(item) },
+            imageAspectRatio: ListingMasonryGrid.masonryAspectRatio(for: item),
+            showQuickActions: showQuickActions,
+            statusOverlayLabel: showStatusOverlay
+                ? ListingStatusUi.overlayLabel(for: item.listingStatus, suppressActive: suppressActiveStatusOnGrid)
+                : nil,
+            onLike: onLike.map { h in { h(item) } },
+            onSave: onSave.map { h in { h(item) } }
+        )
+        .onAppear { profilePrefetchLoadMoreIfNeeded(appearedIndex: index) }
     }
 
     private func profilePrefetchLoadMoreIfNeeded(appearedIndex: Int) {
