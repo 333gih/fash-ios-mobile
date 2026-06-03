@@ -44,7 +44,8 @@ struct ExploreProfileFilterRequest: Equatable {
         countryId: String? = nil,
         countryIso2: String? = nil
     ) -> ExploreProfileFilterRequest {
-        let tagId = aestheticTagId?.trimmingCharacters(in: .whitespacesAndNewlines).flatMap { $0.isEmpty ? nil : $0 }
+        let tagTrimmed = aestheticTagId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let tagId = tagTrimmed.isEmpty ? nil : tagTrimmed
         let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         return ExploreProfileFilterRequest(
             categoryId: categoryId,
@@ -57,7 +58,8 @@ struct ExploreProfileFilterRequest: Equatable {
     }
 
     static func forAestheticChip(label: String, tagId: String?) -> ExploreProfileFilterRequest {
-        let id = tagId?.trimmingCharacters(in: .whitespacesAndNewlines).flatMap { $0.isEmpty ? nil : $0 }
+        let idTrimmed = tagId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let id = idTrimmed.isEmpty ? nil : idTrimmed
         let query = id == nil ? label.trimmingCharacters(in: .whitespacesAndNewlines) : ""
         return forProfileNavigation(aestheticTagId: id, searchQuery: query)
     }
