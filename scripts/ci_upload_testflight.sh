@@ -14,7 +14,7 @@ if [[ ! -f "${IPA}" ]]; then
   exit 1
 fi
 
-KEY_DIR="${RUNNER_TEMP:-/tmp}/private_keys"
+KEY_DIR="${HOME}/.private_keys"
 mkdir -p "${KEY_DIR}"
 KEY_FILE="${KEY_DIR}/AuthKey_${API_KEY_ID}.p8"
 printf '%s\n' "${API_PRIVATE_KEY}" > "${KEY_FILE}"
