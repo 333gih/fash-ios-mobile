@@ -32,20 +32,23 @@ enum RealtimeNotificationRouter {
                 return
             }
             guard !title.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-            let openId = router.selectedConversationId ?? deps.activeChatSession.conversationId
+            let openId = ChatNotificationPresence.openConversationId(deps: deps)
             if ChatInAppNotificationPolicy.shouldSuppressInApp(data: pushData, openConversationId: openId) {
+                ChatNotificationPresence.handleSuppressedChatNotification(data: pushData, deps: deps)
                 if ChatInAppNotificationPolicy.isChatRelated(data: pushData) {
                     refreshChatInbox(chatVM: chatVM, deps: deps)
                 }
-                deps.requestInboxUnreadRefresh()
                 return
             }
-            deps.showInAppNotification(FashInAppNotificationSession(
-                title: title,
-                body: body,
-                userNotificationId: userNotificationId,
-                dataMap: pushData
-            ))
+            deps.showInAppNotification(
+                FashInAppNotificationSession(
+                    title: title,
+                    body: body,
+                    userNotificationId: userNotificationId,
+                    dataMap: pushData
+                ),
+                chatVM: chatVM
+            )
             deps.requestInboxUnreadRefresh()
             if isChatPushData(pushData) {
                 refreshChatInbox(chatVM: chatVM, deps: deps)
@@ -72,7 +75,15 @@ enum RealtimeNotificationRouter {
             refreshChatInbox(chatVM: chatVM, deps: deps)
             guard !isGuestMode else { return }
             let myId = deps.authSessionStore.read()?.userId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            let openId = router.selectedConversationId ?? deps.activeChatSession.conversationId
+            let openId = ChatNotificationPresence.openConversationId(deps: deps)
+            let cid = conversationId.trimmingCharacters(in: .whitespacesAndNewlines)
+            if ChatInAppNotificationPolicy.isOpenConversation(cid, openConversationId: openId) {
+                ChatNotificationPresence.handleSuppressedChatNotification(
+                    data: ["conversation_id": cid],
+                    deps: deps
+                )
+                return
+            }
             guard ChatInAppNotificationPolicy.shouldShowMessageNewInApp(
                 conversationId: conversationId,
                 senderId: senderId,
@@ -84,14 +95,21 @@ enum RealtimeNotificationRouter {
             ) else { return }
             let trimmedPreview = preview.trimmingCharacters(in: .whitespacesAndNewlines)
             var dataMap: [String: String] = [:]
-            let cid = conversationId.trimmingCharacters(in: .whitespacesAndNewlines)
             if !cid.isEmpty { dataMap["conversation_id"] = cid }
-            deps.showInAppNotification(FashInAppNotificationSession(
-                title: L10n.notificationPtMarketplaceChatMessage,
-                body: trimmedPreview.isEmpty ? L10n.notificationPtMarketplaceChatMessage : trimmedPreview,
-                userNotificationId: nil,
-                dataMap: dataMap
-            ))
+            let bannerTitle = InAppNotificationPresentation.chatMessageNewTitle(
+                conversationId: cid,
+                senderId: senderId,
+                chatVM: chatVM
+            )
+            deps.showInAppNotification(
+                FashInAppNotificationSession(
+                    title: bannerTitle,
+                    body: trimmedPreview.isEmpty ? L10n.notificationPtMarketplaceChatMessage : trimmedPreview,
+                    userNotificationId: nil,
+                    dataMap: dataMap
+                ),
+                chatVM: chatVM
+            )
         case .readReceipts, .conversationClosed, .conversationReopened:
             refreshChatInbox(chatVM: chatVM, deps: deps)
         case .offerLimitReset, .listingReserved, .listingAvailable, .listingSold:

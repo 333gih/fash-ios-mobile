@@ -159,10 +159,23 @@ private struct ChatDetailScreenBody: View {
         }
         .animation(.easeInOut(duration: 0.22), value: viewModel.isOtherTyping)
         .background(FashColors.screen)
+        .onAppear {
+            deps.registerOpenChatConversation(conversationId)
+            Task {
+                await InboxNotificationSync.markChatNotificationsRead(
+                    forConversationId: conversationId,
+                    userRepository: deps.userRepository
+                )
+                deps.requestInboxUnreadRefresh()
+            }
+        }
         .task(id: conversationId) {
             await viewModel.load(conversationId: conversationId, deps: deps)
         }
-        .onDisappear { viewModel.stopPolling() }
+        .onDisappear {
+            viewModel.stopPolling()
+            deps.clearOpenChatConversation(conversationId)
+        }
         .onChange(of: viewModel.eventMessage) { _, msg in
             guard let msg, !msg.isEmpty else { return }
             deps.showSnackbar(msg)

@@ -35,16 +35,13 @@ enum FashFirebaseMessagingService {
         let title = data["title"]?.trimmingCharacters(in: .whitespacesAndNewlines)
         let body = data["body"]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if let title, !title.isEmpty {
-            let openId = AppDependencies.shared.navigationRouter?.selectedConversationId
-                ?? AppDependencies.shared.activeChatSession.conversationId
+            let deps = AppDependencies.shared
+            let openId = ChatNotificationPresence.openConversationId(deps: deps)
             if ChatInAppNotificationPolicy.shouldSuppressInApp(data: data, openConversationId: openId) {
-                if ChatInAppNotificationPolicy.isChatRelated(data: data) {
-                    AppDependencies.shared.requestChatInboxRefresh()
-                }
-                AppDependencies.shared.requestInboxUnreadRefresh()
+                ChatNotificationPresence.handleSuppressedChatNotification(data: data, deps: deps)
                 return
             }
-            AppDependencies.shared.showInAppNotification(FashInAppNotificationSession(
+            deps.showInAppNotification(FashInAppNotificationSession(
                 title: title,
                 body: body,
                 userNotificationId: data["user_notification_id"],

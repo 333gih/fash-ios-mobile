@@ -297,12 +297,21 @@ final class AppDependencies {
         return max(0, chatUnreadTotal - (chatUnreadByConversationId[cid] ?? 0))
     }
 
-    func showInAppNotification(_ session: FashInAppNotificationSession) {
-        let openId = navigationRouter?.selectedConversationId ?? activeChatSession.conversationId
+    func registerOpenChatConversation(_ conversationId: String) {
+        ChatNotificationPresence.registerOpenConversation(conversationId, deps: self)
+    }
+
+    func clearOpenChatConversation(_ conversationId: String) {
+        ChatNotificationPresence.clearOpenConversation(conversationId, deps: self)
+    }
+
+    func showInAppNotification(_ session: FashInAppNotificationSession, chatVM: ChatViewModel? = nil) {
+        let openId = ChatNotificationPresence.openConversationId(deps: self)
         if ChatInAppNotificationPolicy.shouldSuppressInApp(data: session.dataMap, openConversationId: openId) {
+            ChatNotificationPresence.handleSuppressedChatNotification(data: session.dataMap, deps: self)
             return
         }
-        inAppNotification = session
+        inAppNotification = InAppNotificationPresentation.enrich(session, chatVM: chatVM)
     }
 
     func dismissInAppNotification() {

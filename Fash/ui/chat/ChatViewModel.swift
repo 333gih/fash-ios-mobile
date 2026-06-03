@@ -297,4 +297,45 @@ final class ChatViewModel {
     func unreadCountExcludingConversation(_ conversationId: String) -> Int {
         max(0, unreadTotal - unreadCountForConversation(conversationId))
     }
+
+    /// Display label for in-app chat toasts — prefers display name, then @username.
+    func peerLabel(forConversationId conversationId: String) -> String? {
+        let cid = conversationId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cid.isEmpty else { return nil }
+        if let item = allConversations.first(where: {
+            $0.conversationId.compare(cid, options: .caseInsensitive) == .orderedSame
+        }) {
+            return peerLabel(for: item)
+        }
+        if let item = conversationGroups
+            .flatMap(\.conversations)
+            .first(where: { $0.conversationId.compare(cid, options: .caseInsensitive) == .orderedSame }) {
+            return peerLabel(for: item)
+        }
+        return nil
+    }
+
+    func peerLabel(forOtherUserId userId: String) -> String? {
+        let uid = userId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !uid.isEmpty else { return nil }
+        if let item = allConversations.first(where: {
+            $0.otherUserId.compare(uid, options: .caseInsensitive) == .orderedSame
+        }) {
+            return peerLabel(for: item)
+        }
+        if let item = conversationGroups
+            .flatMap(\.conversations)
+            .first(where: { $0.otherUserId.compare(uid, options: .caseInsensitive) == .orderedSame }) {
+            return peerLabel(for: item)
+        }
+        return nil
+    }
+
+    private func peerLabel(for item: ConversationItem) -> String? {
+        let name = item.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !name.isEmpty { return name }
+        let user = item.username.trimmingCharacters(in: .whitespacesAndNewlines)
+        if user.isEmpty { return nil }
+        return user.hasPrefix("@") ? user : "@\(user)"
+    }
 }

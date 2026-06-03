@@ -12,7 +12,7 @@ enum InboxNotificationSync {
         guard !cid.isEmpty else { return }
 
         for group in chatGroups {
-            guard case .success(let page) = await userRepository.listMyNotifications(limit: 40, group: group) else {
+            guard case .success(let page) = await userRepository.listMyNotifications(limit: 100, group: group) else {
                 continue
             }
             for item in page.items where item.isUnread {

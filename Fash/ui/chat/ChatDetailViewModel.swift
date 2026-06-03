@@ -97,9 +97,7 @@ final class ChatDetailViewModel {
         if let id = loadedConversationId {
             AppDependencies.shared.realtimeManager.sendTypingStop(conversationId: id)
             AppDependencies.shared.realtimeManager.unsubscribeFromConversation(id)
-            if AppDependencies.shared.activeChatSession.conversationId == id {
-                AppDependencies.shared.activeChatSession = ActiveChatSession()
-            }
+            AppDependencies.shared.clearOpenChatConversation(id)
         }
     }
 

@@ -31,8 +31,13 @@ enum ChatInAppNotificationPolicy {
         openConversationId: String?
     ) -> Bool {
         guard let target = conversationId(from: data) else { return false }
+        return isOpenConversation(target, openConversationId: openConversationId)
+    }
+
+    static func isOpenConversation(_ conversationId: String, openConversationId: String?) -> Bool {
+        let target = conversationId.trimmingCharacters(in: .whitespacesAndNewlines)
         let open = openConversationId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        guard !open.isEmpty else { return false }
+        guard !target.isEmpty, !open.isEmpty else { return false }
         return target.compare(open, options: .caseInsensitive) == .orderedSame
     }
 
