@@ -144,6 +144,8 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     @State private var scrollViewportHeight: CGFloat = 0
     @State private var feedContentBottomY: CGFloat = .infinity
     @State private var lastProximityLoadMoreAt: Date = .distantPast
+    @State private var profileMasonryLayout: ListingMasonryColumnLayout = .empty
+    @State private var profileMasonryContainerWidth: CGFloat = 0
 
     /// One id for all tabs — Android keeps one [LazyListState]; do not vary per tab (preserves scroll on swipe).
     private let listingGridScrollId = ProfileScrollIds.listingGrid
@@ -244,7 +246,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                     .background(profileHeaderOffsetReader)
             }
             Section {
-                profileListingGridSection
+                profileListingGridRows
                     .profileTabSwipe(
                         enabled: profileTabSwipeEnabled,
                         currentIndex: visualTabIndex,
@@ -289,18 +291,72 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         .allowsHitTesting(false)
     }
 
-    private var profileListingGridSection: some View {
-        Group {
-            profileListingGridBody
-        }
-        .id(listingGridScrollId)
-        .allowsHitTesting(listingInteractionEnabled)
-        .transition(
-            .asymmetric(
-                insertion: .opacity.combined(with: .offset(x: CGFloat(tabSlideDirection) * 28)),
-                removal: .opacity.combined(with: .offset(x: CGFloat(-tabSlideDirection) * 28))
-            )
+    private var profileMasonryColumnWidth: CGFloat {
+        let width = profileMasonryContainerWidth > 1
+            ? profileMasonryContainerWidth
+            : UIScreen.main.bounds.width
+        return ListingMasonryGrid.feedGridColumnWidth(
+            containerWidth: width,
+            spacing: spacing
         )
+    }
+
+    private var profileMasonryChunks: [ListingMasonryFeedPages.Chunk] {
+        ListingMasonryFeedPages.columnChunks(
+            layout: profileMasonryLayout,
+            pageSize: ListingMasonryFeedPages.profileChunkPageSize
+        )
+    }
+
+    @ViewBuilder
+    private var profileListingGridRows: some View {
+        profileListingGridBody
+            .allowsHitTesting(listingInteractionEnabled)
+            .transition(
+                .asymmetric(
+                    insertion: .opacity.combined(with: .offset(x: CGFloat(tabSlideDirection) * 28)),
+                    removal: .opacity.combined(with: .offset(x: CGFloat(-tabSlideDirection) * 28))
+                )
+            )
+            .onAppear { refreshProfileMasonryLayout() }
+            .onChange(of: items.map(\.id)) { _, _ in refreshProfileMasonryLayout() }
+            .onChange(of: selectedTab) { _, _ in refreshProfileMasonryLayout() }
+    }
+
+    private func refreshProfileMasonryLayout() {
+        guard !items.isEmpty else {
+            profileMasonryLayout = .empty
+            return
+        }
+        var assignments = masonryColumnAssignments.wrappedValue
+        let gap = spacing.spacing2
+        profileMasonryLayout = ListingMasonryGrid.makeStableColumnLayout(
+            items: items,
+            columnWidth: profileMasonryColumnWidth,
+            verticalGap: gap,
+            assignedIsRightColumn: &assignments
+        )
+        if assignments != masonryColumnAssignments.wrappedValue {
+            masonryColumnAssignments.wrappedValue = assignments
+        }
+    }
+
+    private func estimatedChunkHeight(
+        _ chunk: ListingMasonryFeedPages.Chunk,
+        columnWidth: CGFloat,
+        gap: CGFloat
+    ) -> CGFloat {
+        let left = ListingMasonryGrid.estimatedColumnHeight(
+            entries: chunk.left,
+            columnWidth: columnWidth,
+            verticalGap: gap
+        )
+        let right = ListingMasonryGrid.estimatedColumnHeight(
+            entries: chunk.right,
+            columnWidth: columnWidth,
+            verticalGap: gap
+        )
+        return max(left, right)
     }
 
     private func resetProfileScrollChromeState() {
@@ -534,12 +590,73 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         } else if items.isEmpty, showEmptyState {
             emptyBlock
         } else if !items.isEmpty {
-            ListingStaggeredMasonryView(
-                items: items,
-                columnAssignments: masonryColumnAssignments,
-                eagerLayout: true,
-                footer: { profilePaginationFooter }
-            ) { item, index in
+            let gap = spacing.spacing2
+            let columnWidth = profileMasonryColumnWidth
+            ForEach(profileMasonryChunks) { chunk in
+                profileMasonryChunkRow(
+                    chunk,
+                    columnWidth: columnWidth,
+                    gap: gap,
+                    isFirstChunk: chunk.id == 0
+                )
+                .id(chunk.id == 0 ? listingGridScrollId : "\(listingGridScrollId)_\(selectedTab)_\(chunk.id)")
+            }
+            profilePaginationFooter
+                .padding(.leading, spacing.editorialStart)
+                .padding(.trailing, spacing.editorialEnd)
+            if isReloadingListings, !isRefreshing {
+                ProgressView()
+                    .tint(FashColors.brandPrimary)
+                    .scaleEffect(1.05)
+                    .frame(maxWidth: .infinity, alignment: .top)
+                    .padding(.top, spacing.spacing4)
+                    .allowsHitTesting(false)
+            }
+        }
+    }
+
+    private func profileMasonryChunkRow(
+        _ chunk: ListingMasonryFeedPages.Chunk,
+        columnWidth: CGFloat,
+        gap: CGFloat,
+        isFirstChunk: Bool
+    ) -> some View {
+        HStack(alignment: .top, spacing: gap) {
+            profileMasonryColumn(chunk.left, columnWidth: columnWidth, gap: gap)
+            profileMasonryColumn(chunk.right, columnWidth: columnWidth, gap: gap)
+        }
+        .padding(.leading, spacing.editorialStart)
+        .padding(.trailing, spacing.editorialEnd)
+        .padding(.top, isFirstChunk ? 4 : 0)
+        .frame(
+            minHeight: estimatedChunkHeight(chunk, columnWidth: columnWidth, gap: gap),
+            alignment: .top
+        )
+        .background {
+            if isFirstChunk {
+                GeometryReader { proxy in
+                    Color.clear.preference(
+                        key: ListingMasonryContainerWidthKey.self,
+                        value: proxy.size.width
+                    )
+                }
+            }
+        }
+        .onPreferenceChange(ListingMasonryContainerWidthKey.self) { width in
+            guard isFirstChunk, width > 1, abs(width - profileMasonryContainerWidth) > 0.5 else { return }
+            profileMasonryContainerWidth = width
+            refreshProfileMasonryLayout()
+        }
+    }
+
+    private func profileMasonryColumn(
+        _ entries: [(index: Int, item: ListingFeedItem)],
+        columnWidth: CGFloat,
+        gap: CGFloat
+    ) -> some View {
+        VStack(spacing: gap) {
+            ForEach(entries, id: \.item.id) { entry in
+                let item = entry.item
                 ListingGridCard(
                     item: item,
                     onTap: { onListingClick(item) },
@@ -551,29 +668,27 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                     onLike: onLike.map { h in { h(item) } },
                     onSave: onSave.map { h in { h(item) } }
                 )
-                .id(item.id)
-                .onAppear {
-                    guard let onLoadMore else { return }
-                    guard hasMoreListings, !isLoadingMoreListings, !showGridLoading else { return }
-                    if FeedPaginationPolicy.shouldPrefetchNextPage(
-                        appearedIndex: index,
-                        totalCount: items.count
-                    ) {
-                        onLoadMore()
-                    }
-                }
+                .environment(\.listingMasonryColumnWidth, columnWidth)
+                .frame(
+                    width: columnWidth,
+                    height: max(1, ListingMasonryGrid.tileHeight(columnWidth: columnWidth, item: item)),
+                    alignment: .top
+                )
+                .clipped()
+                .onAppear { profilePrefetchLoadMoreIfNeeded(appearedIndex: entry.index) }
             }
-            .padding(.top, 4)
-            .overlay(alignment: .top) {
-                if isReloadingListings, !isRefreshing {
-                    ProgressView()
-                        .tint(FashColors.brandPrimary)
-                        .scaleEffect(1.05)
-                        .frame(maxWidth: .infinity, alignment: .top)
-                        .padding(.top, spacing.spacing4)
-                        .allowsHitTesting(false)
-                }
-            }
+        }
+        .frame(width: columnWidth, alignment: .top)
+    }
+
+    private func profilePrefetchLoadMoreIfNeeded(appearedIndex: Int) {
+        guard let onLoadMore else { return }
+        guard hasMoreListings, !isLoadingMoreListings, !showGridLoading else { return }
+        if FeedPaginationPolicy.shouldPrefetchNextPage(
+            appearedIndex: appearedIndex,
+            totalCount: items.count
+        ) {
+            onLoadMore()
         }
     }
 

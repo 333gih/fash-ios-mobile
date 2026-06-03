@@ -126,6 +126,8 @@ enum ListingMasonryGrid {
 /// Lazy page size for masonry column segments inside a parent `ScrollView`.
 enum ListingMasonryFeedPages {
     static let defaultChunkSize = 16
+    /// Profile collapsing scroll — each chunk is its own outer `LazyVStack` row (Android `listingMasonryProfileChunkItems`).
+    static let profileChunkPageSize = 6
 
     struct Chunk: Identifiable {
         let id: Int
