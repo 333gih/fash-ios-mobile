@@ -8,7 +8,7 @@ struct SellerProfileScreen: View {
     var isGuestMode: Bool = false
     var onDismiss: () -> Void
     var onListingClick: (ListingFeedItem) -> Void = { _ in }
-    var onRequestSignIn: (() -> Void)? = nil
+    var onRequestSignIn: ((String) -> Void)? = nil
     var onNavigateToExploreFromProfile: (
         _ categoryId: String?,
         _ brandId: String?,
@@ -78,11 +78,11 @@ struct SellerProfileScreen: View {
                             },
                             onListingClick: { item in onListingClick(item) },
                             onLike: { item in
-                                if isGuestMode { onRequestSignIn?() }
+                                if isGuestMode { onRequestSignIn?(L10n.guestLoginReasonLike) }
                                 else { Task { await viewModel.toggleLike(item, deps: deps) } }
                             },
                             onSave: { item in
-                                if isGuestMode { onRequestSignIn?() }
+                                if isGuestMode { onRequestSignIn?(L10n.guestLoginReasonSaved) }
                                 else { Task { await viewModel.toggleSave(item, deps: deps) } }
                             },
                             expandedHeader: { expandedHeader },
@@ -122,7 +122,7 @@ struct SellerProfileScreen: View {
                     listingPreview: deps.listingPreview,
                     router: router,
                     isGuestMode: isGuestMode,
-                    onRequestLogin: { onRequestSignIn?() },
+                    onRequestLogin: { onRequestSignIn?(L10n.guestLoginReasonBuy) },
                     onFeedEngagementPatch: { id, transform in
                         viewModel.patchListingEngagement(id, transform: transform)
                     }
@@ -206,7 +206,7 @@ struct SellerProfileScreen: View {
                 isFollowing: viewModel.isFollowing && !isGuestMode,
                 inFlight: viewModel.followInFlight,
                 onToggle: {
-                    if isGuestMode { onRequestSignIn?() }
+                    if isGuestMode { onRequestSignIn?(L10n.guestLoginReasonFollow) }
                     else { Task { await viewModel.toggleFollow(deps: deps, isGuestMode: isGuestMode) } }
                 }
             )

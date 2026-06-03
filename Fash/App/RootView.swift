@@ -204,7 +204,8 @@ struct RootView: View {
                         countryId: countryId,
                         countryIso2: iso
                     )
-                }
+                },
+                onRequestSignIn: router.isGuestMode ? presentGuestSignIn : nil
             )
         case .editListing(let id):
             EditListingScreen(listingId: id, onDismiss: {

@@ -506,16 +506,26 @@ final class SellerProfileViewModel {
         }
         switch result {
         case .success(let rawPage):
-            let items: [ListingFeedItem]
-            if tab == .selling {
-                items = rawPage.filter { ($0.listingStatus ?? "").lowercased() != "sold" }
-            } else {
-                items = rawPage
-            }
-            return .success(SellerListingsPagePayload(items: items, rawCount: rawPage.count))
+            return .success(normalizeSellerListingsPage(rawPage, tab: tab))
         case .failure(let error):
             return .failure(error)
         }
+    }
+
+    /// Cap client work when the API returns more than `limit` — keeps first paint fast on guest storefront.
+    private func normalizeSellerListingsPage(
+        _ rawPage: [ListingFeedItem],
+        tab: SellerProfileTab
+    ) -> SellerListingsPagePayload {
+        let filtered: [ListingFeedItem]
+        if tab == .selling {
+            filtered = rawPage.filter { ($0.listingStatus ?? "").lowercased() != "sold" }
+        } else {
+            filtered = rawPage
+        }
+        let items = Array(filtered.prefix(sellerListingPageSize))
+        let deliveredCount = min(rawPage.count, sellerListingPageSize)
+        return SellerListingsPagePayload(items: items, rawCount: deliveredCount)
     }
 
     private func setListings(_ items: [ListingFeedItem], for tab: SellerProfileTab) {
