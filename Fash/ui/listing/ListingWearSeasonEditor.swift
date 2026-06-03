@@ -53,7 +53,7 @@ struct ListingWearSeasonEditor: View {
                             .font(FashTypography.labelMedium)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 8)
-                            .foregroundStyle(isSel ? FashColors.onBrand : FashColors.textPrimary)
+                            .foregroundStyle(isSel ? FashColors.onBrandPrimary : FashColors.textPrimary)
                             .background(isSel ? FashColors.brandPrimary : FashColors.surfaceContainerHigh)
                             .clipShape(Capsule())
                     }
