@@ -103,6 +103,8 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     /// When true, hide "active"/"inactive" chips (seller storefront); own profile passes false.
     var suppressActiveStatusOnGrid: Bool = true
     var additionalBottomInset: CGFloat = 0
+    /// Seller storefront: lazy two-column masonry (no chunked rows) — lighter than paginated chunks.
+    var useStaggeredMasonryGrid: Bool = false
     /// Skeleton grid (Explore-style) while the first page loads.
     var showGridLoading: Bool = false
     var showGridLoadRetry: Bool = false
@@ -129,8 +131,6 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     var enableScrollProximityLoadMore: Bool = false
     /// When false, tiles do not prefetch pages while scrolling mid-grid.
     var enableTilePrefetchLoadMore: Bool = false
-    /// Seller storefront: lazy two-column masonry (no chunked rows) — lighter than paginated chunks.
-    var useStaggeredMasonryGrid: Bool = false
     var onListingClick: (ListingFeedItem) -> Void
     var onLike: ((ListingFeedItem) -> Void)?
     var onSave: ((ListingFeedItem) -> Void)?
