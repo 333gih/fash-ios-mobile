@@ -157,6 +157,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     @State private var profileMasonryLayout: ListingMasonryColumnLayout = .empty
     @State private var profileMasonryContainerWidth: CGFloat = 0
     @State private var masonryLayoutRefreshTask: Task<Void, Never>?
+    @State private var profileLayoutedItemCount = 0
 
     /// One id for all tabs — Android keeps one [LazyListState]; do not vary per tab (preserves scroll on swipe).
     private let listingGridScrollId = ProfileScrollIds.listingGrid
@@ -345,16 +346,36 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     private func refreshProfileMasonryLayout() {
         guard !items.isEmpty else {
             profileMasonryLayout = .empty
+            profileLayoutedItemCount = 0
             return
         }
-        var assignments = masonryColumnAssignments.wrappedValue
         let gap = spacing.spacing2
-        profileMasonryLayout = ListingMasonryGrid.makeStableColumnLayout(
-            items: items,
-            columnWidth: profileMasonryColumnWidth,
-            verticalGap: gap,
-            assignedIsRightColumn: &assignments
-        )
+        var assignments = masonryColumnAssignments.wrappedValue
+        let fullRelayout = profileMasonryLayout.isEmpty
+            || items.count < profileLayoutedItemCount
+            || profileMasonryColumnWidth <= 1
+
+        if fullRelayout {
+            profileMasonryLayout = ListingMasonryGrid.makeStableColumnLayout(
+                items: items,
+                columnWidth: profileMasonryColumnWidth,
+                verticalGap: gap,
+                assignedIsRightColumn: &assignments
+            )
+            profileLayoutedItemCount = items.count
+        } else if items.count > profileLayoutedItemCount {
+            let start = profileLayoutedItemCount
+            let slice = Array(items[start...])
+            profileMasonryLayout = ListingMasonryGrid.extendStableColumnLayout(
+                existing: profileMasonryLayout,
+                newItems: slice,
+                startIndex: start,
+                columnWidth: profileMasonryColumnWidth,
+                verticalGap: gap,
+                assignedIsRightColumn: &assignments
+            )
+            profileLayoutedItemCount = items.count
+        }
         if assignments != masonryColumnAssignments.wrappedValue {
             masonryColumnAssignments.wrappedValue = assignments
         }

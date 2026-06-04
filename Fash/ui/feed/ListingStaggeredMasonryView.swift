@@ -12,6 +12,7 @@ struct ListingStaggeredMasonryView<Cell: View, Footer: View>: View {
     @ViewBuilder let cellContent: (ListingFeedItem, Int) -> Cell
 
     @State private var layout: ListingMasonryColumnLayout = .empty
+    @State private var layoutedItemCount = 0
     @State private var containerWidth: CGFloat = 0
 
     init(
@@ -101,14 +102,33 @@ struct ListingStaggeredMasonryView<Cell: View, Footer: View>: View {
     }
 
     private func refreshLayout() {
+        guard !items.isEmpty else {
+            layout = .empty
+            layoutedItemCount = 0
+            return
+        }
         var assignments = columnAssignments
-        let newLayout = ListingMasonryGrid.makeStableColumnLayout(
-            items: items,
-            columnWidth: columnWidth,
-            verticalGap: gap,
-            assignedIsRightColumn: &assignments
-        )
-        layout = newLayout
+        let fullRelayout = layout.isEmpty || items.count < layoutedItemCount || columnWidth <= 1
+        if fullRelayout {
+            layout = ListingMasonryGrid.makeStableColumnLayout(
+                items: items,
+                columnWidth: columnWidth,
+                verticalGap: gap,
+                assignedIsRightColumn: &assignments
+            )
+            layoutedItemCount = items.count
+        } else if items.count > layoutedItemCount {
+            let start = layoutedItemCount
+            layout = ListingMasonryGrid.extendStableColumnLayout(
+                existing: layout,
+                newItems: Array(items[start...]),
+                startIndex: start,
+                columnWidth: columnWidth,
+                verticalGap: gap,
+                assignedIsRightColumn: &assignments
+            )
+            layoutedItemCount = items.count
+        }
         guard assignments != columnAssignments else { return }
         let pending = assignments
         Task { @MainActor in

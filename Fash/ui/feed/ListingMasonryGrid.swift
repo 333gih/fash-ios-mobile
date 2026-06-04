@@ -316,6 +316,45 @@ extension ListingMasonryGrid {
         }
         return ListingMasonryColumnLayout(left: left, right: right)
     }
+
+    /// Append-only masonry — O(new items) instead of relayouting the full feed.
+    static func extendStableColumnLayout(
+        existing: ListingMasonryColumnLayout,
+        newItems: [ListingFeedItem],
+        startIndex: Int,
+        columnWidth: CGFloat,
+        verticalGap: CGFloat,
+        assignedIsRightColumn: inout [String: Bool]
+    ) -> ListingMasonryColumnLayout {
+        guard !newItems.isEmpty else { return existing }
+
+        var left = existing.left
+        var right = existing.right
+        var leftHeight = estimatedColumnHeight(entries: left, columnWidth: columnWidth, verticalGap: verticalGap)
+        var rightHeight = estimatedColumnHeight(entries: right, columnWidth: columnWidth, verticalGap: verticalGap)
+        left.reserveCapacity(left.count + newItems.count / 2)
+        right.reserveCapacity(right.count + newItems.count / 2)
+
+        for (offset, item) in newItems.enumerated() {
+            let index = startIndex + offset
+            let tileH = tileHeight(columnWidth: columnWidth, item: item) + verticalGap
+            let placeRight: Bool
+            if let stored = assignedIsRightColumn[item.id] {
+                placeRight = stored
+            } else {
+                placeRight = leftHeight > rightHeight
+                assignedIsRightColumn[item.id] = placeRight
+            }
+            if placeRight {
+                right.append((index, item))
+                rightHeight += tileH
+            } else {
+                left.append((index, item))
+                leftHeight += tileH
+            }
+        }
+        return ListingMasonryColumnLayout(left: left, right: right)
+    }
 }
 
 struct ListingMasonryContainerWidthKey: PreferenceKey {

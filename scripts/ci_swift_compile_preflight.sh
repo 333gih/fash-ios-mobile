@@ -7,6 +7,8 @@ cd "${ROOT}"
 
 fail=0
 
+bash scripts/validate_masonry_layout.sh || fail=1
+
 if grep -q 'private func postJSON' Fash/data/chat/ChatRepository.swift 2>/dev/null; then
   echo "::error::ChatRepository.postJSON is still private — ChatRepository+Offers.swift cannot compile. Remove private (commit db56ad3)."
   fail=1

@@ -142,13 +142,25 @@ struct HomeFeedTabSwitcher: View {
             }
             .background(FashColors.screen)
             .animation(FashTabSwipeMotion.contentAnimation, value: selectedTab.id)
-            .onChange(of: selectedTab.id) { _, _ in
-                withAnimation(FashTabSwipeMotion.contentAnimation) {
-                    proxy.scrollTo(selectedTab.id, anchor: .center)
-                }
+            .onChange(of: selectedTab.id) { _, newId in
+                scrollTabBarTo(newId, proxy: proxy, animated: true)
             }
             .onAppear {
-                proxy.scrollTo(selectedTab.id, anchor: .center)
+                scrollTabBarTo(selectedTab.id, proxy: proxy, animated: false)
+            }
+        }
+    }
+
+    private func scrollTabBarTo(_ tabId: String, proxy: ScrollViewProxy, animated: Bool) {
+        if animated {
+            withAnimation(FashTabSwipeMotion.contentAnimation) {
+                proxy.scrollTo(tabId, anchor: .center)
+            }
+        } else {
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                proxy.scrollTo(tabId, anchor: .center)
             }
         }
     }

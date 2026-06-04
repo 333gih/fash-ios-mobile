@@ -36,7 +36,8 @@ final class ListingRepository {
             do {
                 let (data, http) = try await client.data(for: req)
                 guard (200..<300).contains(http.statusCode) else { continue }
-                return .success(try ListingFeedJsonParser.parseFeed(data))
+                let items = try await ListingFeedParseSupport.parseFeedItems(data)
+                return .success(items)
             } catch {
                 continue
             }
@@ -170,7 +171,8 @@ final class ListingRepository {
                     client: client,
                     publicBrowse: true
                 )
-                return .success(try ListingFeedJsonParser.parseFeed(data))
+                let items = try await ListingFeedParseSupport.parseFeedItems(data)
+                return .success(items)
             } catch {
                 return .failure(error)
             }
@@ -180,7 +182,8 @@ final class ListingRepository {
                 relativePath: "api/v1/users/\(seg)/listings?\(q)",
                 client: client
             )
-            return .success(try ListingFeedJsonParser.parseFeed(data))
+            let items = try await ListingFeedParseSupport.parseFeedItems(data)
+            return .success(items)
         } catch {
             return .failure(error)
         }
@@ -194,7 +197,8 @@ final class ListingRepository {
                 path += "&status=\(encoded)"
             }
             let data = try await RepositoryHttp.executeCoreGet(relativePath: path, client: client)
-            return .success(try ListingFeedJsonParser.parseFeed(data))
+            let items = try await ListingFeedParseSupport.parseFeedItems(data)
+            return .success(items)
         } catch {
             return .failure(error)
         }
@@ -220,7 +224,8 @@ final class ListingRepository {
                 relativePath: "api/v1/listings/wishlist?limit=\(limit)&offset=\(offset)",
                 client: client
             )
-            return .success(try ListingFeedJsonParser.parseFeed(data))
+            let items = try await ListingFeedParseSupport.parseFeedItems(data)
+            return .success(items)
         } catch {
             return .failure(error)
         }

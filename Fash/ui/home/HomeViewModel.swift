@@ -5,6 +5,8 @@ private enum HomeFeedConstants {
     static let followPageSize = 20
     static let huntTodayLimit = 12
     static let staleThreshold: TimeInterval = 60
+    /// Cap in-memory following feed — keeps scroll smooth beyond ~2000 server rows.
+    static let maxFollowingItemsInMemory = 280
 }
 
 @Observable
@@ -30,6 +32,9 @@ final class HomeViewModel {
 
     private var sections = HomeRecommendationSections()
     private var followingItems: [ListingFeedItem] = []
+    /// Absolute API offset after the last successful following fetch (survives front-trim).
+    private var followingServerOffset = 0
+    private var followingTrimmedCount = 0
     private var loadedTabs: Set<String> = []
     private var recommendationSectionsFetched = false
     private var tabLoadTasks: [String: Task<Void, Never>] = [:]
@@ -86,6 +91,8 @@ final class HomeViewModel {
         featuredSellers = []
         featuredSellersLoading = false
         followingItems = []
+        followingServerOffset = 0
+        followingTrimmedCount = 0
         followingHasMore = false
         buyerStats = BuyerHomeStats()
         showSizingBanner = false
@@ -117,6 +124,7 @@ final class HomeViewModel {
     private func openFeedTab(_ tab: HomeFeedTab, deps: AppDependencies, isGuestMode: Bool) {
         deps.uxTabTracker.onTabOpened(scope: "home", tabKey: UxPersonalizationMapping.uxTabKey(for: tab))
         selectedFeedTabKey = tab.rawValue
+        syncVisibleItemsForTab(tab)
         ensureTabLoaded(tab, deps: deps, isGuestMode: isGuestMode)
         prefetchAdjacentTabs(around: tab, deps: deps, isGuestMode: isGuestMode)
     }
@@ -294,27 +302,32 @@ final class HomeViewModel {
         guard selectedFeedTab == .following else { return }
         guard !isLoadingMoreFollowing, followingHasMore else { return }
         guard !isShellLoading, !isRefreshing, !isTabLoading(.following) else { return }
-        let offset = followingItems.count
+        let offset = followingServerOffset
         guard offset > 0 else { return }
         if let last = lastFollowFeedLoadMoreAt, Date().timeIntervalSince(last) < 0.9 { return }
         lastFollowFeedLoadMoreAt = Date()
         isLoadingMoreFollowing = true
         Task {
             defer { isLoadingMoreFollowing = false }
-            let result = await deps.listingRepository.getHomeFeed(
-                limit: HomeFeedConstants.followPageSize,
-                offset: offset
-            )
+            let result = await FeedPerformance.measure("Home following loadMore @\(offset)") {
+                await deps.listingRepository.getHomeFeed(
+                    limit: HomeFeedConstants.followPageSize,
+                    offset: offset
+                )
+            }
             guard case .success(let page) = result else { return }
             if page.isEmpty {
                 followingHasMore = false
             } else {
+                followingServerOffset += page.count
                 let existing = Set(followingItems.map(\.id))
-                followingItems.append(contentsOf: page.filter { existing.contains($0.id) == false })
+                followingItems.append(contentsOf: page.filter { !existing.contains($0.id) })
+                trimFollowingItemsIfNeeded()
                 followingHasMore = page.count >= HomeFeedConstants.followPageSize
                 if selectedFeedTab == .following {
                     syncItemsForSelectedTab()
                 }
+                FeedPerformance.log("Home following append -> items=\(followingItems.count)")
             }
         }
     }
@@ -404,6 +417,8 @@ final class HomeViewModel {
         recommendationSectionsFetched = false
         sections = HomeRecommendationSections()
         followingItems = []
+        followingServerOffset = 0
+        followingTrimmedCount = 0
         followingHasMore = false
         tabsLoading = []
         tabsLoadError = []
@@ -620,11 +635,17 @@ final class HomeViewModel {
     private func loadFollowingTab(deps: AppDependencies, isGuestMode: Bool, force: Bool) async -> Bool {
         if isGuestMode { return true }
         if !force && loadedTabs.contains(HomeFeedTabKeys.following) && !followingItems.isEmpty { return true }
-        let result = await fetchHomeFeedWithRetry(deps: deps)
+        let result = await FeedPerformance.measure("Home following first page") {
+            await fetchHomeFeedWithRetry(deps: deps, offset: 0)
+        }
         guard case .success(let feed) = result else { return false }
         followingItems = feed
+        followingServerOffset = feed.count
+        followingTrimmedCount = 0
+        trimFollowingItemsIfNeeded()
         followingHasMore = feed.count >= HomeFeedConstants.followPageSize
         if selectedFeedTab == .following { syncItemsForSelectedTab() }
+        FeedPerformance.log("Home following items=\(followingItems.count) serverOffset=\(followingServerOffset)")
         return true
     }
 
@@ -657,23 +678,40 @@ final class HomeViewModel {
         return true
     }
 
-    private func fetchHomeFeedWithRetry(deps: AppDependencies) async -> Result<[ListingFeedItem], Error> {
+    private func fetchHomeFeedWithRetry(
+        deps: AppDependencies,
+        offset: Int
+    ) async -> Result<[ListingFeedItem], Error> {
         func once() async -> Result<[ListingFeedItem], Error> {
-            await deps.listingRepository.getHomeFeed(limit: HomeFeedConstants.followPageSize, offset: 0)
+            await deps.listingRepository.getHomeFeed(limit: HomeFeedConstants.followPageSize, offset: offset)
         }
         var result = await once()
         if case .failure = result {
             try? await Task.sleep(for: .milliseconds(400))
             result = await once()
         }
-        if case .success(let page) = result {
-            followingHasMore = page.count >= HomeFeedConstants.followPageSize
-        }
         return result
+    }
+
+    private func trimFollowingItemsIfNeeded() {
+        let cap = HomeFeedConstants.maxFollowingItemsInMemory
+        guard followingItems.count > cap else { return }
+        let overflow = followingItems.count - cap
+        followingItems.removeFirst(overflow)
+        followingTrimmedCount += overflow
+        FeedPerformance.log("Home following trimmed \(overflow) (window \(cap))")
     }
 
     func hasCachedItems(for tab: HomeFeedTab) -> Bool {
         !itemsForTab(tab).isEmpty
+    }
+
+    /// Immediate tab body swap from per-tab cache — avoids white flash while a tab reloads.
+    func syncVisibleItemsForTab(_ tab: HomeFeedTab) {
+        let cached = itemsForTab(tab)
+        if !cached.isEmpty {
+            items = cached
+        }
     }
 
     private func syncItemsForSelectedTab() {
@@ -693,7 +731,7 @@ final class HomeViewModel {
         }
         if isRefreshing { return }
         if tabsLoading.contains(tab.rawValue) {
-            items = []
+            items = cached.isEmpty ? [] : cached
         }
     }
 
@@ -809,6 +847,7 @@ final class HomeViewModel {
         sections.forYou = sections.forYou.map { $0.id == id ? transform($0) : $0 }
         sections.stylePicks = sections.stylePicks.map { $0.id == id ? transform($0) : $0 }
         sections.similarToSaved = sections.similarToSaved.map { $0.id == id ? transform($0) : $0 }
+        sections.seasonalNearYou = sections.seasonalNearYou.map { $0.id == id ? transform($0) : $0 }
         syncItemsForSelectedTab()
     }
 }

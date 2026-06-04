@@ -95,7 +95,8 @@ final class RecommendationRepository {
                     client: client
                 )
             }
-            return .success(try ListingFeedJsonParser.parseFeed(data))
+            let items = try await ListingFeedParseSupport.parseFeedItems(data)
+            return .success(items)
         } catch {
             return .failure(error)
         }
@@ -131,15 +132,23 @@ final class RecommendationRepository {
                     client: client
                 )
             }
-            let root = try RepositoryHttp.jsonObject(data)
+            let root = try await Task.detached(priority: .userInitiated) {
+                try RepositoryHttp.jsonObject(data)
+            }.value
             let payload = (root["data"] as? [String: Any]) ?? root
+            async let huntToday = ListingFeedParseSupport.parseItemsArray(payload["hunt_today"] as? [[String: Any]])
+            async let forYou = ListingFeedParseSupport.parseItemsArray(payload["for_you"] as? [[String: Any]])
+            async let stylePicks = ListingFeedParseSupport.parseItemsArray(payload["style_picks"] as? [[String: Any]])
+            async let continueBrowsing = ListingFeedParseSupport.parseItemsArray(payload["continue_browsing"] as? [[String: Any]])
+            async let similarToSaved = ListingFeedParseSupport.parseItemsArray(payload["similar_to_saved"] as? [[String: Any]])
+            async let seasonalNearYou = ListingFeedParseSupport.parseItemsArray(payload["seasonal_near_you"] as? [[String: Any]])
             return .success(HomeRecommendationSections(
-                huntToday: ListingFeedJsonParser.parseItemsArray(payload["hunt_today"] as? [[String: Any]]),
-                forYou: ListingFeedJsonParser.parseItemsArray(payload["for_you"] as? [[String: Any]]),
-                stylePicks: ListingFeedJsonParser.parseItemsArray(payload["style_picks"] as? [[String: Any]]),
-                continueBrowsing: ListingFeedJsonParser.parseItemsArray(payload["continue_browsing"] as? [[String: Any]]),
-                similarToSaved: ListingFeedJsonParser.parseItemsArray(payload["similar_to_saved"] as? [[String: Any]]),
-                seasonalNearYou: ListingFeedJsonParser.parseItemsArray(payload["seasonal_near_you"] as? [[String: Any]]),
+                huntToday: await huntToday,
+                forYou: await forYou,
+                stylePicks: await stylePicks,
+                continueBrowsing: await continueBrowsing,
+                similarToSaved: await similarToSaved,
+                seasonalNearYou: await seasonalNearYou,
                 shoppingContext: ShoppingContext.fromDict(payload["shopping_context"] as? [String: Any])
             ))
         } catch {

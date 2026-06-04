@@ -301,14 +301,16 @@ struct HomeFeedContent: View {
                 viewModel.retryTab(viewModel.selectedFeedTab, deps: deps, isGuestMode: isGuestMode)
             }
             .padding(.vertical, spacing.spacing4)
-        } else if (viewModel.isShellLoading || viewModel.isTabLoading(viewModel.selectedFeedTab)) && viewModel.items.isEmpty {
+        } else if (viewModel.isShellLoading || viewModel.isTabLoading(viewModel.selectedFeedTab))
+            && viewModel.items.isEmpty
+            && !viewModel.hasCachedItems(for: viewModel.selectedFeedTab) {
             FashSkeleton.listingGrid()
                 .padding(.top, spacing.spacing2)
         } else if viewModel.items.isEmpty {
             HomeFeedTabGenericEmpty(tab: viewModel.selectedFeedTab)
         } else {
             VStack(spacing: 0) {
-                ListingStaggeredMasonryView(
+                FeedMasonryChunkedGrid(
                     items: viewModel.items,
                     columnAssignments: masonryColumnAssignments
                 ) { item, index in
@@ -380,17 +382,18 @@ struct HomeFeedContent: View {
                             )
                         }
                     )
-                }
-
-                if viewModel.selectedFeedTab == .following,
-                   viewModel.followingHasMore || viewModel.isLoadingMoreFollowing {
-                    FeedLoadMoreFooter(
-                        enabled: viewModel.followingHasMore,
-                        isLoadingMore: viewModel.isLoadingMoreFollowing
-                    ) {
-                        viewModel.loadMoreFollowing(deps: deps, isGuestMode: isGuestMode)
+                } footer: {
+                    if viewModel.selectedFeedTab == .following,
+                       viewModel.followingHasMore || viewModel.isLoadingMoreFollowing {
+                        FeedLoadMoreFooter(
+                            enabled: viewModel.followingHasMore,
+                            isLoadingMore: viewModel.isLoadingMoreFollowing
+                        ) {
+                            viewModel.loadMoreFollowing(deps: deps, isGuestMode: isGuestMode)
+                        }
                     }
                 }
+
             }
             .padding(.top, spacing.spacing2)
             .padding(.bottom, spacing.spacing4)
@@ -409,7 +412,8 @@ struct HomeFeedContent: View {
 
     private func resetHomeFeedScrollForTabChange(using scrollProxy: ScrollViewProxy, tabKey: String) {
         scrollClampRevision += 1
-        let tab = viewModel.selectedFeedTab
+        let tab = HomeFeedTab(rawValue: tabKey) ?? viewModel.selectedFeedTab
+        viewModel.syncVisibleItemsForTab(tab)
         let ready = viewModel.hasCachedItems(for: tab)
             || (!viewModel.isTabLoading(tab) && !viewModel.items.isEmpty)
         guard ready else {
