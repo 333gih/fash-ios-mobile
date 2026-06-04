@@ -8,13 +8,20 @@ enum AppleSignInClients {
         case cancelled
         case missingIdentityToken
         case noPresentationAnchor
+        case notAvailable
+    }
+
+    static func isAvailable() -> Bool {
+        // ASAuthorizationAppleIDProvider is available on iOS 13+; we target newer OS.
+        true
     }
 
     @MainActor
     static func signIn() async throws -> String {
-        try await withCheckedThrowingContinuation { continuation in
+        guard isAvailable() else { throw SignInError.notAvailable }
+        return try await withCheckedThrowingContinuation { continuation in
             let coordinator = Coordinator(continuation: continuation)
-            Coordinator.active = coordinator
+            Coordinator.retain(coordinator)
             let provider = ASAuthorizationAppleIDProvider()
             let request = provider.createRequest()
             request.requestedScopes = [.fullName, .email]
@@ -25,11 +32,57 @@ enum AppleSignInClients {
             controller.performRequests()
         }
     }
+
+    static func userMessage(for error: Error) -> String {
+        if let signInError = error as? SignInError {
+            switch signInError {
+            case .cancelled:
+                return ""
+            case .notAvailable:
+                return L10n.loginAppleUnavailable
+            case .missingIdentityToken, .noPresentationAnchor:
+                return L10n.loginAppleError
+            }
+        }
+        let ns = error as NSError
+        if ns.domain == ASAuthorizationError.errorDomain {
+            switch ASAuthorizationError.Code(rawValue: ns.code) {
+            case .canceled, .unknown:
+                return ""
+            case .notHandled:
+                return L10n.loginAppleNotHandled
+            case .failed:
+                return L10n.loginAppleError
+            case .invalidResponse:
+                return L10n.loginAppleInvalidResponse
+            case .notInteractive:
+                return L10n.loginAppleNotInteractive
+            @unknown default:
+                return L10n.loginAppleError
+            }
+        }
+        #if DEBUG
+        let detail = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        if !detail.isEmpty {
+            return "\(L10n.loginAppleError) (\(detail))"
+        }
+        #endif
+        return L10n.loginAppleError
+    }
 }
 
 @MainActor
 private final class Coordinator: NSObject, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
-    static var active: Coordinator?
+    private static var retained: Coordinator?
+
+    static func retain(_ coordinator: Coordinator) {
+        retained = coordinator
+    }
+
+    static func release() {
+        retained = nil
+    }
+
     private let continuation: CheckedContinuation<String, Error>
     private var finished = false
     weak var controller: ASAuthorizationController?
@@ -39,10 +92,7 @@ private final class Coordinator: NSObject, ASAuthorizationControllerDelegate, AS
     }
 
     func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
-        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
-        let scene = scenes.first(where: { $0.activationState == .foregroundActive || $0.activationState == .foregroundInactive })
-            ?? scenes.first
-        if let window = scene?.windows.first(where: \.isKeyWindow) ?? scene?.windows.first {
+        if let window = RootViewControllerFinder.keyWindow() {
             return window
         }
         finish(.failure(AppleSignInClients.SignInError.noPresentationAnchor))
@@ -74,7 +124,7 @@ private final class Coordinator: NSObject, ASAuthorizationControllerDelegate, AS
     private func finish(_ result: Result<String, Error>) {
         guard !finished else { return }
         finished = true
-        Self.active = nil
+        Self.release()
         switch result {
         case .success(let token):
             continuation.resume(returning: token)

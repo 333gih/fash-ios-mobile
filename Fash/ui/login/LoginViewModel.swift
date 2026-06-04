@@ -25,6 +25,10 @@ final class LoginViewModel {
         GoogleSignInClients.isConfigured()
     }
 
+    static func googleNotConfiguredMessage() -> String {
+        GoogleSignInClients.notConfiguredUserMessage()
+    }
+
     func togglePasswordLogin() {
         usePasswordLogin.toggle()
     }
@@ -94,6 +98,10 @@ final class LoginViewModel {
     }
 
     func performAppleSignIn(sessionStore: AuthSessionStore) async -> Bool {
+        guard AppleSignInClients.isAvailable() else {
+            errorMessage = L10n.loginAppleUnavailable
+            return false
+        }
         isSocialLoading = true
         defer { isSocialLoading = false }
         do {
@@ -102,7 +110,10 @@ final class LoginViewModel {
         } catch AppleSignInClients.SignInError.cancelled {
             return false
         } catch {
-            errorMessage = L10n.loginAppleError
+            let message = AppleSignInClients.userMessage(for: error)
+            if !message.isEmpty {
+                errorMessage = message
+            }
             return false
         }
     }
@@ -132,7 +143,7 @@ final class LoginViewModel {
     }
 
     func warnGoogleNotConfigured() {
-        errorMessage = L10n.loginGoogleNotConfigured
+        errorMessage = Self.googleNotConfiguredMessage()
     }
 
     private func completeSocialLogin(

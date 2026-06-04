@@ -1032,6 +1032,10 @@
 "listing_status_sold" = "Đã bán";
 "login_apple" = "Đăng nhập với Apple";
 "login_apple_error" = "Đăng nhập Apple không thành công.";
+"login_apple_invalid_response" = "Phản hồi từ Apple không hợp lệ. Thử lại.";
+"login_apple_not_handled" = "Đăng nhập Apple chưa được xử lý. Thử lại hoặc dùng email/OTP.";
+"login_apple_not_interactive" = "Không thể hiển thị đăng nhập Apple. Thử lại khi app đang mở toàn màn hình.";
+"login_apple_unavailable" = "Đăng nhập Apple không khả dụng trên thiết bị này.";
 "login_continue_without_account" = "Tiếp tục xem không đăng nhập";
 "login_email_icon_cd" = "Email";
 "login_email_invalid" = "Vui lòng nhập email hợp lệ.";
@@ -1045,6 +1049,7 @@
 "login_google_developer_error" = "Cấu hình đăng nhập Google chưa đúng: kiểm tra GOOGLE_WEB_CLIENT_ID (OAuth Web), Android OAuth client (đúng package và SHA‑1 debug/release) trên Google Cloud Console.";
 "login_google_error" = "Đăng nhập Google không thành công.";
 "login_google_error_code" = "Đăng nhập Google thất bại (mã %1$d — %2$@).";
+"login_google_ios_setup" = "Thiếu OAuth client iOS: đặt GOOGLE_IOS_CLIENT_ID trong env hoặc bật Google trên Firebase và tải lại GoogleService-Info.plist (phải có CLIENT_ID). Xem GOOGLE_SIGNIN.md.";
 "login_google_network_error" = "Không kết nối được máy chủ Google (mạng hoặc DNS). Kiểm tra Internet, tắt VPN hoặc DNS riêng (Private DNS), thử Wi‑Fi khác hoặc mạng dữ liệu.";
 "login_google_not_configured" = "Thêm GOOGLE_WEB_CLIENT_ID (OAuth Web client) vào env — và Android client + SHA-1 trên Google Cloud.";
 "login_google_play_services_error" = "Google Play Services chưa sẵn sàng. Cập nhật hoặc cài đặt Google Play Services rồi thử lại.";

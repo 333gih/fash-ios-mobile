@@ -135,6 +135,35 @@ jobs:
             echo "::error::GoogleService-Info.plist BUNDLE_ID must be ${EXPECTED_BUNDLE} for ${SCHEME} (got ${BUNDLE_ID})"
             exit 1
           fi
+          CLIENT_ID=""
+          if /usr/libexec/PlistBuddy -c "Print :CLIENT_ID" Fash/GoogleService-Info.plist 2>/dev/null; then
+            CLIENT_ID="$(/usr/libexec/PlistBuddy -c 'Print :CLIENT_ID' Fash/GoogleService-Info.plist)"
+          fi
+          if [[ -z "${CLIENT_ID}" ]]; then
+            echo "::warning::GoogleService-Info.plist missing CLIENT_ID — Google Sign-In stays disabled in the app. Enable Google in Firebase Authentication for this iOS app, re-download the plist, update GOOGLE_SERVICE_INFO_PLIST_BASE64, or set GitHub secret GOOGLE_IOS_CLIENT_ID."
+          else
+            echo "Google Sign-In: CLIENT_ID present in installed plist"
+          fi
+
+      - name: Apply env / Google OAuth build config
+        env:
+          GOOGLE_IOS_CLIENT_ID: ${{ secrets.GOOGLE_IOS_CLIENT_ID }}
+        run: |
+          set -euo pipefail
+          ENV_FILE="env/prod.env"
+          if [[ "${SCHEME}" == "Fash-Dev" ]]; then
+            ENV_FILE="env/dev.env"
+          fi
+          if [[ -n "${GOOGLE_IOS_CLIENT_ID:-}" ]]; then
+            if grep -q '^GOOGLE_IOS_CLIENT_ID=' "${ENV_FILE}"; then
+              sed -i.bak "s|^GOOGLE_IOS_CLIENT_ID=.*|GOOGLE_IOS_CLIENT_ID=${GOOGLE_IOS_CLIENT_ID}|" "${ENV_FILE}"
+              rm -f "${ENV_FILE}.bak"
+            else
+              echo "GOOGLE_IOS_CLIENT_ID=${GOOGLE_IOS_CLIENT_ID}" >> "${ENV_FILE}"
+            fi
+            echo "Applied GOOGLE_IOS_CLIENT_ID from GitHub secret"
+          fi
+          python3 scripts/env_to_xcconfig.py
 
       - name: Prepare Xcode project
         run: bash scripts/ci_ios_prepare.sh "${SCHEME}"

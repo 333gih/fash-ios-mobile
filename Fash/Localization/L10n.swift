@@ -1206,6 +1206,10 @@ enum L10n {
     static var listingStatusSold: String { t("listing_status_sold") }
     static var loginApple: String { t("login_apple") }
     static var loginAppleError: String { t("login_apple_error") }
+    static var loginAppleInvalidResponse: String { t("login_apple_invalid_response") }
+    static var loginAppleNotHandled: String { t("login_apple_not_handled") }
+    static var loginAppleNotInteractive: String { t("login_apple_not_interactive") }
+    static var loginAppleUnavailable: String { t("login_apple_unavailable") }
     static var loginContinueWithoutAccount: String { t("login_continue_without_account") }
     static var loginEmailIconCd: String { t("login_email_icon_cd") }
     static var loginEmailInvalid: String { t("login_email_invalid") }
@@ -1221,6 +1225,7 @@ enum L10n {
     static func loginGoogleErrorCode(_ a1: CVarArg, _ a2: CVarArg) -> String {
         String(format: t("login_google_error_code"), a1, a2)
     }
+    static var loginGoogleIosSetup: String { t("login_google_ios_setup") }
     static var loginGoogleNetworkError: String { t("login_google_network_error") }
     static var loginGoogleNotConfigured: String { t("login_google_not_configured") }
     static var loginGooglePlayServicesError: String { t("login_google_play_services_error") }

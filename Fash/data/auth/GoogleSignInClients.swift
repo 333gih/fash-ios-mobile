@@ -31,11 +31,50 @@ enum GoogleSignInClients {
     }
 
     static func isConfigured() -> Bool {
+        configurationDiagnostics().isReady
+    }
+
+    /// Mirrors Android `isGoogleConfigured()` (web id) plus iOS-native client id required by GoogleSignIn-iOS.
+    struct ConfigurationDiagnostics {
+        let webClientId: String
+        let iosClientId: String
+        let plistClientId: String
+        let envIosClientId: String
+
+        var isReady: Bool {
+            guard !webClientId.isEmpty, !iosClientId.isEmpty else { return false }
+            if webClientId.uppercased().hasPrefix("YOUR_") || iosClientId.uppercased().hasPrefix("YOUR_") {
+                return false
+            }
+            return true
+        }
+
+        var userMessage: String {
+            if webClientId.isEmpty {
+                return L10n.loginGoogleNotConfigured
+            }
+            if iosClientId.isEmpty {
+                return L10n.loginGoogleIosSetup
+            }
+            return L10n.loginGoogleNotConfigured
+        }
+    }
+
+    static func configurationDiagnostics() -> ConfigurationDiagnostics {
         let web = webClientId
+        let envIos = resolved(AppEnvironment.googleIosClientId)
+        let plistIos = resolved(GoogleServiceInfoOAuth.clientId)
         let ios = resolvedIosClientId
-        guard !web.isEmpty, !ios.isEmpty else { return false }
-        if web.uppercased().hasPrefix("YOUR_") || ios.uppercased().hasPrefix("YOUR_") { return false }
-        return true
+        return ConfigurationDiagnostics(
+            webClientId: web,
+            iosClientId: ios,
+            plistClientId: plistIos,
+            envIosClientId: envIos
+        )
+    }
+
+    static func notConfiguredUserMessage() -> String {
+        configurationDiagnostics().userMessage
     }
 
     private static func resolved(_ value: String) -> String {
@@ -105,12 +144,17 @@ enum GoogleSignInClients {
 
 enum RootViewControllerFinder {
     @MainActor
+    static func keyWindow() -> UIWindow? {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let scene = scenes.first(where: { $0.activationState == .foregroundActive })
+            ?? scenes.first(where: { $0.activationState == .foregroundInactive })
+            ?? scenes.first
+        return scene?.windows.first(where: \.isKeyWindow) ?? scene?.windows.first
+    }
+
+    @MainActor
     static func topmost() -> UIViewController? {
-        guard let scene = UIApplication.shared.connectedScenes
-            .compactMap({ $0 as? UIWindowScene })
-            .first(where: { $0.activationState == .foregroundActive || $0.activationState == .foregroundInactive }),
-              let root = scene.windows.first(where: \.isKeyWindow)?.rootViewController ?? scene.windows.first?.rootViewController
-        else { return nil }
+        guard let root = keyWindow()?.rootViewController else { return nil }
         return topMost(from: root)
     }
 

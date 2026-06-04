@@ -1032,6 +1032,10 @@
 "listing_status_sold" = "Sold";
 "login_apple" = "Sign in with Apple";
 "login_apple_error" = "Apple sign-in failed.";
+"login_apple_invalid_response" = "Invalid response from Apple. Try again.";
+"login_apple_not_handled" = "Sign in with Apple was not handled. Try again or use email/OTP.";
+"login_apple_not_interactive" = "Cannot show Apple sign-in. Try again with the app in the foreground.";
+"login_apple_unavailable" = "Sign in with Apple is not available on this device.";
 "login_continue_without_account" = "Continue without signing in";
 "login_email_icon_cd" = "Email";
 "login_email_invalid" = "Please enter a valid email address.";
@@ -1045,6 +1049,7 @@
 "login_google_developer_error" = "Google Sign-In is misconfigured: verify GOOGLE_WEB_CLIENT_ID (Web OAuth client) and an Android OAuth client (correct package name and debug/release SHA‑1) in Google Cloud Console.";
 "login_google_error" = "Google sign-in failed.";
 "login_google_error_code" = "Google sign-in failed (code %1$d — %2$@).";
+"login_google_ios_setup" = "Missing iOS OAuth client: set GOOGLE_IOS_CLIENT_ID in env or enable Google in Firebase and re-download GoogleService-Info.plist (must include CLIENT_ID). See GOOGLE_SIGNIN.md.";
 "login_google_network_error" = "Cannot reach Google's servers (network or DNS). Check your connection, turn off VPN or Private DNS, or try another Wi‑Fi or mobile data.";
 "login_google_not_configured" = "Add GOOGLE_WEB_CLIENT_ID (OAuth Web client) to env, plus an Android OAuth client with your package name and SHA-1 in Google Cloud.";
 "login_google_play_services_error" = "Google Play Services is not available. Update or install Google Play Services and try again.";

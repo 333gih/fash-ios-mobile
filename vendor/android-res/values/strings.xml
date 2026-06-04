@@ -92,6 +92,11 @@
     <string name="login_google">Đăng nhập với Google</string>
     <string name="login_apple">Đăng nhập với Apple</string>
     <string name="login_apple_error">Đăng nhập Apple không thành công.</string>
+    <string name="login_apple_unavailable">Đăng nhập Apple không khả dụng trên thiết bị này.</string>
+    <string name="login_apple_not_handled">Đăng nhập Apple chưa được xử lý. Thử lại hoặc dùng email/OTP.</string>
+    <string name="login_apple_invalid_response">Phản hồi từ Apple không hợp lệ. Thử lại.</string>
+    <string name="login_apple_not_interactive">Không thể hiển thị đăng nhập Apple. Thử lại khi app đang mở toàn màn hình.</string>
+    <string name="login_google_ios_setup">Thiếu OAuth client iOS: đặt GOOGLE_IOS_CLIENT_ID trong env hoặc bật Google trên Firebase và tải lại GoogleService-Info.plist (phải có CLIENT_ID). Xem GOOGLE_SIGNIN.md.</string>
     <string name="login_facebook">Đăng nhập với Facebook</string>
     <string name="login_hero_cd">Minh họa thời trang</string>
     <string name="login_hero_pager_cd">Minh họa thời trang, ảnh %1$d / %2$d</string>

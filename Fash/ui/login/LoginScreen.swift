@@ -164,7 +164,10 @@ struct LoginScreen: View {
         }
         .background(FashColors.screen)
         .task { await loginHeroVM.refresh() }
-        .onAppear { runEntranceAnimations() }
+        .onAppear {
+            GoogleSignInClients.configureIfNeeded()
+            runEntranceAnimations()
+        }
         .onChange(of: localeController.revision) { _, _ in
             Task { await loginHeroVM.refresh() }
         }

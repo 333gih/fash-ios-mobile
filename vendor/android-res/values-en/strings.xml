@@ -89,6 +89,11 @@
     <string name="login_google">Sign in with Google</string>
     <string name="login_apple">Sign in with Apple</string>
     <string name="login_apple_error">Apple sign-in failed.</string>
+    <string name="login_apple_unavailable">Sign in with Apple is not available on this device.</string>
+    <string name="login_apple_not_handled">Sign in with Apple was not handled. Try again or use email/OTP.</string>
+    <string name="login_apple_invalid_response">Invalid response from Apple. Try again.</string>
+    <string name="login_apple_not_interactive">Cannot show Apple sign-in. Try again with the app in the foreground.</string>
+    <string name="login_google_ios_setup">Missing iOS OAuth client: set GOOGLE_IOS_CLIENT_ID in env or enable Google in Firebase and re-download GoogleService-Info.plist (must include CLIENT_ID). See GOOGLE_SIGNIN.md.</string>
     <string name="login_facebook">Sign in with Facebook</string>
     <string name="login_hero_cd">Fashion illustration</string>
     <string name="login_hero_pager_cd">Fashion illustration, slide %1$d of %2$d</string>
