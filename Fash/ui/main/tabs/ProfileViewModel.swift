@@ -2,8 +2,8 @@ import Foundation
 import Observation
 
 private let profileStaleThresholdSeconds: TimeInterval = 60
-/// Single fetch per tab (Android profile: 50 at once; core-service max 50).
-private let profileListingPageSize = 50
+/// Paginated per tab — same page size as [SellerProfileViewModel] for stable scroll performance.
+private let profileListingPageSize = 20
 
 struct ProfileTabOpenRequest: Equatable {
     let tab: ProfileListingTab
@@ -405,7 +405,7 @@ final class ProfileViewModel {
             setListings(page.items, for: tab)
             mutatePagination(for: tab) {
                 $0.nextOffset = page.rawCount
-                $0.hasMore = false
+                $0.hasMore = page.rawCount >= profileListingPageSize
             }
             FeedListingImagePrefetch.prefetch(items: page.items)
         case .failure:
@@ -493,10 +493,17 @@ final class ProfileViewModel {
         }
         switch result {
         case .success(let items):
-            return .success(ListingPagePayload(items: items, rawCount: items.count))
+            return .success(normalizeProfileListingsPage(items))
         case .failure(let error):
             return .failure(error)
         }
+    }
+
+    /// Cap client work when the API returns more than `limit` — keeps masonry layout predictable.
+    private func normalizeProfileListingsPage(_ rawPage: [ListingFeedItem]) -> ListingPagePayload {
+        let items = Array(rawPage.prefix(profileListingPageSize))
+        let deliveredCount = min(rawPage.count, profileListingPageSize)
+        return ListingPagePayload(items: items, rawCount: deliveredCount)
     }
 
     private func setListings(_ items: [ListingFeedItem], for tab: ProfileListingTab) {

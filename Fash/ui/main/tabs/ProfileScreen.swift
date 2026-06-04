@@ -71,10 +71,12 @@ struct ProfileScreen: View {
                         showStatusOverlay: true,
                         suppressActiveStatusOnGrid: false,
                         showGridLoading: showListingGridLoading,
-                        hasMoreListings: false,
-                        isLoadingMoreListings: false,
+                        hasMoreListings: viewModel.hasMoreListings(for: selectedProfileTab),
+                        isLoadingMoreListings: viewModel.isLoadingMoreListings(for: selectedProfileTab),
                         isReloadingListings: viewModel.isReloadingListings(for: selectedProfileTab),
-                        onLoadMore: nil,
+                        onLoadMore: {
+                            viewModel.requestLoadMore(for: selectedProfileTab, deps: deps)
+                        },
                         showEmptyState: viewModel.hasCompletedInitialLoad,
                         isRefreshing: viewModel.isRefreshing,
                         lockScroll: false,
