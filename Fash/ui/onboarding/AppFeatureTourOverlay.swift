@@ -85,23 +85,22 @@ struct AppFeatureTourOverlay: View {
                     .padding(.horizontal, 20)
                 Spacer(minLength: 0)
             }
-            return
-        }
+        } else {
+            let cardAtTop = cardAlignsToTop(hole: hole, overlayHeight: overlayHeight)
+            let bottomNavClearance = currentStep.isBottomNavAnchor
+                ? MainNavBottomBar.contentHeight + 28
+                : 24
 
-        let cardAtTop = cardAlignsToTop(hole: hole, overlayHeight: overlayHeight)
-        let bottomNavClearance = currentStep.isBottomNavAnchor
-            ? MainNavBottomBar.contentHeight + 28
-            : 24
-
-        VStack {
-            if !cardAtTop { Spacer(minLength: 0) }
-            cardContent(progress: progress, steps: steps)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 28)
-            if cardAtTop { Spacer(minLength: 0) }
+            VStack {
+                if !cardAtTop { Spacer(minLength: 0) }
+                cardContent(progress: progress, steps: steps)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 28)
+                if cardAtTop { Spacer(minLength: 0) }
+            }
+            .padding(.top, cardAtTop ? 24 : 0)
+            .padding(.bottom, cardAtTop ? bottomNavClearance : 24)
         }
-        .padding(.top, cardAtTop ? 24 : 0)
-        .padding(.bottom, cardAtTop ? bottomNavClearance : 24)
     }
 
     /// Hole near bottom → card at top (Android verticalBias 0.18); hole near top → card at bottom (0.82).
