@@ -158,6 +158,12 @@ struct HomeFeedContent: View {
             viewModel.normalizeSelectedFeedTab(isGuestMode: isGuestMode, deps: deps)
             await viewModel.loadShell(deps: deps, isGuestMode: isGuestMode, skipIfFresh: true)
         }
+        .task(id: viewModel.selectedFeedTabKey) {
+            viewModel.ensureSelectedFeedTabLoaded(deps: deps, isGuestMode: isGuestMode)
+        }
+        .onAppear {
+            viewModel.ensureSelectedFeedTabLoaded(deps: deps, isGuestMode: isGuestMode)
+        }
         .onChange(of: isGuestMode) { _, guest in
             viewModel.normalizeSelectedFeedTab(isGuestMode: guest, deps: deps)
         }
@@ -280,6 +286,15 @@ struct HomeFeedContent: View {
             FashEmptyStateView(
                 title: L10n.feedLoadError,
                 subtitle: L10n.feedRetry,
+                actionTitle: L10n.feedRetry
+            ) {
+                viewModel.retryTab(viewModel.selectedFeedTab, deps: deps, isGuestMode: isGuestMode)
+            }
+            .padding(.vertical, spacing.spacing4)
+        } else if viewModel.isTabLoadStalled(viewModel.selectedFeedTab), viewModel.items.isEmpty {
+            FashEmptyStateView(
+                title: L10n.feedLoadError,
+                subtitle: L10n.feedLoadStallSubtitle,
                 actionTitle: L10n.feedRetry
             ) {
                 viewModel.retryTab(viewModel.selectedFeedTab, deps: deps, isGuestMode: isGuestMode)

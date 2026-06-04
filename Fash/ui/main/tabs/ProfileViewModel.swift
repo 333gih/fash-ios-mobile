@@ -29,6 +29,7 @@ final class ProfileViewModel {
     var loadError = false
     /// Profile shell + summary ready — listing grid may still load first page.
     var hasCompletedInitialLoad = false
+    var listingTabsStalled: Set<Int> = []
     var tabCounts = ProfileListingsSummary()
     var profileUxPersonalization = ProfileUxPersonalization()
     var orderedProfileTabIndices: [Int] = ProfileListingTab.allCases.map(\.rawValue)
@@ -48,6 +49,7 @@ final class ProfileViewModel {
     private(set) var lastSelectedProfileTab = ProfileListingTab.active.rawValue
     private var tabPagination: [Int: ProfileTabPagination] = [:]
     private var loadMoreTasks: [Int: Task<Void, Never>] = [:]
+    private let listingStallWatch = FeedLoadStallWatch()
     var focusListingScrollToken = 0
     private(set) var focusListingId: String?
     /// Bottom-nav re-tap — scroll profile list to top (Android `scrollProfileToTop`).
@@ -130,6 +132,7 @@ final class ProfileViewModel {
     }
 
     func ensureListingsLoaded(for tab: ProfileListingTab, deps: AppDependencies) async {
+        guard profile != nil else { return }
         guard !isFirstPageLoading(for: tab), !isReloadingListings(for: tab) else { return }
         guard listings(for: tab).isEmpty else { return }
         if loadedListingTabs.contains(tab.rawValue) {
@@ -137,6 +140,30 @@ final class ProfileViewModel {
             loadedListingTabs.remove(tab.rawValue)
         }
         await loadListingsForTab(tab, deps: deps, force: false)
+    }
+
+    func isListingTabStalled(_ tab: ProfileListingTab) -> Bool {
+        listingTabsStalled.contains(tab.rawValue)
+    }
+
+    func shouldShowListingGridSkeleton(for tab: ProfileListingTab) -> Bool {
+        if isListingTabStalled(tab) { return false }
+        if isFirstPageLoading(for: tab) || isReloadingListings(for: tab) { return true }
+        if profile == nil { return isLoading }
+        if !hasCompletedInitialLoad, isLoading || isRefreshing { return true }
+        if listings(for: tab).isEmpty,
+           !loadedListingTabs.contains(tab.rawValue),
+           !isListingTabStalled(tab) {
+            return true
+        }
+        return false
+    }
+
+    func retryListings(for tab: ProfileListingTab, deps: AppDependencies) async {
+        listingTabsStalled.remove(tab.rawValue)
+        listingStallWatch.cancel(key: tab.rawValue)
+        loadedListingTabs.remove(tab.rawValue)
+        await fetchListingsFirstPage(tab, deps: deps, force: true)
     }
 
     func refresh(
@@ -147,6 +174,7 @@ final class ProfileViewModel {
         if !force,
            let last = lastSuccessfulRefreshAt,
            Date().timeIntervalSince(last) < profileStaleThresholdSeconds {
+            await ensureListingsLoaded(for: activeTab ?? currentProfileTab(), deps: deps)
             return
         }
         let tab = activeTab ?? currentProfileTab()
@@ -256,6 +284,8 @@ final class ProfileViewModel {
         wishlistListings = []
         tabCounts = ProfileListingsSummary()
         loadedListingTabs = []
+        listingTabsStalled = []
+        listingStallWatch.cancelAll()
         tabPagination = [:]
         loadMoreTasks.values.forEach { $0.cancel() }
         loadMoreTasks = [:]
@@ -371,6 +401,7 @@ final class ProfileViewModel {
 
         let generation = pagination(for: tab).fetchGeneration
         let hadItems = !listings(for: tab).isEmpty
+        listingTabsStalled.remove(tab.rawValue)
         mutatePagination(for: tab) { state in
             if hadItems {
                 state.isReloading = true
@@ -379,6 +410,7 @@ final class ProfileViewModel {
             }
             state.isLoadingMore = false
         }
+        scheduleListingStallWatch(for: tab)
 
         let result = await fetchListingsPage(tab: tab, offset: 0, deps: deps)
         guard generation == pagination(for: tab).fetchGeneration else { return }
@@ -387,6 +419,8 @@ final class ProfileViewModel {
             state.isLoadingFirstPage = false
             state.isReloading = false
         }
+        listingStallWatch.cancel(key: tab.rawValue)
+        listingTabsStalled.remove(tab.rawValue)
 
         switch result {
         case .success(let page):
@@ -512,6 +546,22 @@ final class ProfileViewModel {
         case .rejected: rejectedListings.append(contentsOf: items)
         case .sold: soldListings.append(contentsOf: items)
         case .wishlist: wishlistListings.append(contentsOf: items)
+        }
+    }
+
+    private func scheduleListingStallWatch(for tab: ProfileListingTab) {
+        let key = String(tab.rawValue)
+        listingStallWatch.schedule(key: key) { [weak self] in
+            guard let self else { return false }
+            guard self.profile != nil else { return false }
+            guard self.lastSelectedProfileTab == tab.rawValue
+                || self.currentProfileTab() == tab else { return false }
+            guard !self.loadedListingTabs.contains(tab.rawValue) else { return false }
+            guard !self.isFirstPageLoading(for: tab) else { return false }
+            guard self.listings(for: tab).isEmpty else { return false }
+            return true
+        } onStalled: { [weak self] in
+            self?.listingTabsStalled.insert(tab.rawValue)
         }
     }
 

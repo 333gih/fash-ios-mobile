@@ -105,6 +105,8 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     var additionalBottomInset: CGFloat = 0
     /// Skeleton grid (Explore-style) while the first page loads.
     var showGridLoading: Bool = false
+    var showGridLoadRetry: Bool = false
+    var onRetryGridLoad: (() -> Void)? = nil
     var hasMoreListings: Bool = false
     var isLoadingMoreListings: Bool = false
     var isReloadingListings: Bool = false
@@ -581,7 +583,15 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
 
     @ViewBuilder
     private var profileListingGridBody: some View {
-        if showGridLoading {
+        if showGridLoadRetry, items.isEmpty, let onRetryGridLoad {
+            FashEmptyStateView(
+                title: L10n.feedLoadError,
+                subtitle: L10n.feedLoadStallSubtitle,
+                actionTitle: L10n.feedRetry,
+                onAction: onRetryGridLoad
+            )
+            .padding(.vertical, 24)
+        } else if showGridLoading {
             profileListingLoadingBlock
         } else if items.isEmpty, showEmptyState {
             emptyBlock

@@ -17,6 +17,7 @@ final class SellerProfileViewModel {
     var isRefreshing = false
     var loadError = false
     var hasCompletedInitialLoad = false
+    var listingTabsStalled: Set<Int> = []
     var isFollowing = false
     var followInFlight = false
     var selectedTab = SellerProfileTab.selling.rawValue
@@ -27,6 +28,7 @@ final class SellerProfileViewModel {
     private var loadedListingTabs = Set<Int>()
     private var tabPagination: [Int: SellerTabPagination] = [:]
     private var loadMoreTasks: [Int: Task<Void, Never>] = [:]
+    private let listingStallWatch = FeedLoadStallWatch()
 
     private struct SellerTabPagination {
         var hasMore = true
@@ -58,6 +60,8 @@ final class SellerProfileViewModel {
             hasCompletedInitialLoad = false
             activeSellerId = nil
             loadedListingTabs = []
+            listingTabsStalled = []
+            listingStallWatch.cancelAll()
             tabPagination = [:]
             loadMoreTasks.values.forEach { $0.cancel() }
             loadMoreTasks = [:]
@@ -90,7 +94,6 @@ final class SellerProfileViewModel {
                 aestheticCatalog = tags
             }
             activeSellerId = prof.userId.trimmingCharacters(in: .whitespaces).isEmpty ? key : prof.userId
-            hasCompletedInitialLoad = true
             let initialTab = SellerProfileTab(rawValue: selectedTab) ?? .selling
             async let focusTask: Void = loadSellerFocus(
                 username: key,
@@ -106,7 +109,10 @@ final class SellerProfileViewModel {
                     generation: generation,
                     force: true
                 )
+                guard generation == loadGeneration else { return }
+                hasCompletedInitialLoad = true
             } else {
+                hasCompletedInitialLoad = true
                 await reloadListingFeedOnRefresh(
                     activeTab: initialTab,
                     deps: deps,
@@ -289,6 +295,40 @@ final class SellerProfileViewModel {
         await loadListingsForTab(tab, deps: deps, isGuestMode: isGuestMode, force: false)
     }
 
+    func isListingTabStalled(_ tab: SellerProfileTab) -> Bool {
+        listingTabsStalled.contains(tab.rawValue)
+    }
+
+    func shouldShowListingGridSkeleton(for tab: SellerProfileTab) -> Bool {
+        if isListingTabStalled(tab) { return false }
+        if isFirstPageLoading(for: tab) || isReloadingListings(for: tab) { return true }
+        if profile == nil { return isLoading }
+        if !hasCompletedInitialLoad { return true }
+        if listings(for: tab).isEmpty,
+           !loadedListingTabs.contains(tab.rawValue),
+           !isListingTabStalled(tab) {
+            return true
+        }
+        return false
+    }
+
+    func retryListings(
+        for tab: SellerProfileTab,
+        deps: AppDependencies,
+        isGuestMode: Bool
+    ) async {
+        listingTabsStalled.remove(tab.rawValue)
+        listingStallWatch.cancel(key: String(tab.rawValue))
+        loadedListingTabs.remove(tab.rawValue)
+        await fetchListingsFirstPage(
+            tab,
+            deps: deps,
+            isGuestMode: isGuestMode,
+            generation: loadGeneration,
+            force: true
+        )
+    }
+
     func requestLoadMore(for tab: SellerProfileTab, deps: AppDependencies, isGuestMode: Bool) {
         guard canLoadMore(for: tab) else { return }
         guard loadMoreTasks[tab.rawValue] == nil else { return }
@@ -386,6 +426,7 @@ final class SellerProfileViewModel {
 
         let pageGen = pagination(for: tab).fetchGeneration
         let hadItems = !listings(for: tab).isEmpty
+        listingTabsStalled.remove(tab.rawValue)
         mutatePagination(for: tab) { state in
             if hadItems {
                 state.isReloading = true
@@ -394,6 +435,7 @@ final class SellerProfileViewModel {
             }
             state.isLoadingMore = false
         }
+        scheduleListingStallWatch(for: tab)
 
         let result = await fetchSellerListingsPage(
             sellerId: sellerId,
@@ -408,6 +450,8 @@ final class SellerProfileViewModel {
             state.isLoadingFirstPage = false
             state.isReloading = false
         }
+        listingStallWatch.cancel(key: String(tab.rawValue))
+        listingTabsStalled.remove(tab.rawValue)
 
         switch result {
         case .success(let payload):
@@ -424,6 +468,21 @@ final class SellerProfileViewModel {
                 setListings([], for: tab)
                 mutatePagination(for: tab) { $0.hasMore = false }
             }
+        }
+    }
+
+    private func scheduleListingStallWatch(for tab: SellerProfileTab) {
+        let key = String(tab.rawValue)
+        listingStallWatch.schedule(key: key) { [weak self] in
+            guard let self else { return false }
+            guard self.profile != nil else { return false }
+            guard self.selectedTab == tab.rawValue else { return false }
+            guard !self.loadedListingTabs.contains(tab.rawValue) else { return false }
+            guard !self.isFirstPageLoading(for: tab) else { return false }
+            guard self.listings(for: tab).isEmpty else { return false }
+            return true
+        } onStalled: { [weak self] in
+            self?.listingTabsStalled.insert(tab.rawValue)
         }
     }
 

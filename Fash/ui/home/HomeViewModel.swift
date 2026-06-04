@@ -21,6 +21,7 @@ final class HomeViewModel {
     var homeUxPersonalization = HomeUxPersonalization()
     var tabsLoading: Set<String> = []
     var tabsLoadError: Set<String> = []
+    var tabsLoadStalled: Set<String> = []
     var followingHasMore = false
     var isLoadingMoreFollowing = false
     var buyerStats = BuyerHomeStats()
@@ -32,6 +33,7 @@ final class HomeViewModel {
     private var loadedTabs: Set<String> = []
     private var recommendationSectionsFetched = false
     private var tabLoadTasks: [String: Task<Void, Never>] = [:]
+    private let tabStallWatch = FeedLoadStallWatch()
     private var homeUxApplied = false
     private var lastSuccessfulRefreshAt: Date?
     private var lastFollowFeedLoadMoreAt: Date?
@@ -53,6 +55,22 @@ final class HomeViewModel {
 
     func isTabLoadError(_ tab: HomeFeedTab) -> Bool {
         tabsLoadError.contains(tab.rawValue)
+    }
+
+    func isTabLoadStalled(_ tab: HomeFeedTab) -> Bool {
+        tabsLoadStalled.contains(tab.rawValue)
+    }
+
+    /// Main tab Home visible — reload default feed tab if UI is empty without an active load.
+    func ensureSelectedFeedTabLoaded(deps: AppDependencies, isGuestMode: Bool) {
+        normalizeSelectedFeedTab(isGuestMode: isGuestMode, deps: deps)
+        let tab = selectedFeedTab
+        if isGuestMode && tab.requiresAuth { return }
+        if items.isEmpty, !isTabLoading(tab), !isTabLoadError(tab) {
+            ensureTabLoaded(tab, deps: deps, isGuestMode: isGuestMode, force: true)
+        } else if !items.isEmpty {
+            syncItemsForSelectedTab()
+        }
     }
 
     func onGuestBrowseEntered(deps: AppDependencies) {
@@ -89,10 +107,16 @@ final class HomeViewModel {
     }
 
     func selectFeedTab(_ tab: HomeFeedTab, deps: AppDependencies, isGuestMode: Bool) {
-        guard selectedFeedTab != tab else { return }
+        if selectedFeedTab == tab {
+            ensureSelectedFeedTabLoaded(deps: deps, isGuestMode: isGuestMode)
+            return
+        }
+        openFeedTab(tab, deps: deps, isGuestMode: isGuestMode)
+    }
+
+    private func openFeedTab(_ tab: HomeFeedTab, deps: AppDependencies, isGuestMode: Bool) {
         deps.uxTabTracker.onTabOpened(scope: "home", tabKey: UxPersonalizationMapping.uxTabKey(for: tab))
         selectedFeedTabKey = tab.rawValue
-        syncItemsForSelectedTab()
         ensureTabLoaded(tab, deps: deps, isGuestMode: isGuestMode)
         prefetchAdjacentTabs(around: tab, deps: deps, isGuestMode: isGuestMode)
     }
@@ -222,19 +246,11 @@ final class HomeViewModel {
     ) async {
         let tab = selectedFeedTab
         if isGuestMode && tab.requiresAuth { return }
+        beginTabLoad(tab)
         tabLoadTasks[tab.rawValue]?.cancel()
-        setTabLoading(tab, true)
         setTabError(tab, false)
         let ok = await loadTab(tab, deps: deps, isGuestMode: isGuestMode, force: force)
-        if ok {
-            loadedTabs.insert(tab.rawValue)
-            if HomeFeedTab.recommendationSectionTabs.contains(tab) {
-                HomeFeedTab.recommendationSectionTabs.forEach { loadedTabs.insert($0.rawValue) }
-            }
-        } else {
-            setTabError(tab, true)
-        }
-        setTabLoading(tab, false)
+        finishTabLoad(tab, succeeded: ok)
         tabLoadTasks[tab.rawValue] = nil
     }
 
@@ -265,6 +281,7 @@ final class HomeViewModel {
     }
 
     func retryTab(_ tab: HomeFeedTab, deps: AppDependencies, isGuestMode: Bool) {
+        tabsLoadStalled.remove(tab.rawValue)
         loadedTabs.remove(tab.rawValue)
         if HomeFeedTab.recommendationSectionTabs.contains(tab) {
             recommendationSectionsFetched = false
@@ -391,6 +408,8 @@ final class HomeViewModel {
         followingHasMore = false
         tabsLoading = []
         tabsLoadError = []
+        tabsLoadStalled = []
+        tabStallWatch.cancelAll()
         syncItemsForSelectedTab()
     }
 
@@ -413,8 +432,12 @@ final class HomeViewModel {
         force: Bool = false
     ) {
         if isGuestMode && tab.requiresAuth { return }
+        if force {
+            tabLoadTasks[tab.rawValue]?.cancel()
+            tabLoadTasks[tab.rawValue] = nil
+        }
         if !force && loadedTabs.contains(tab.rawValue) { return }
-        if tabsLoading.contains(tab.rawValue) { return }
+        if tabLoadTasks[tab.rawValue] != nil { return }
         if !force && tab == .huntToday && recommendationSectionsFetched && !sections.huntToday.isEmpty {
             loadedTabs.insert(tab.rawValue)
             syncItemsForSelectedTab()
@@ -426,23 +449,14 @@ final class HomeViewModel {
             return
         }
 
-        tabLoadTasks[tab.rawValue]?.cancel()
+        beginTabLoad(tab)
+        if tab == selectedFeedTab {
+            syncItemsForSelectedTab()
+        }
         tabLoadTasks[tab.rawValue] = Task {
-            setTabLoading(tab, true)
             setTabError(tab, false)
-            if tab == selectedFeedTab {
-                syncItemsForSelectedTab()
-            }
             let ok = await loadTab(tab, deps: deps, isGuestMode: isGuestMode, force: force)
-            if ok {
-                loadedTabs.insert(tab.rawValue)
-                if HomeFeedTab.recommendationSectionTabs.contains(tab) {
-                    HomeFeedTab.recommendationSectionTabs.forEach { loadedTabs.insert($0.rawValue) }
-                }
-            } else {
-                setTabError(tab, true)
-            }
-            setTabLoading(tab, false)
+            finishTabLoad(tab, succeeded: ok)
             tabLoadTasks[tab.rawValue] = nil
         }
     }
@@ -507,8 +521,44 @@ final class HomeViewModel {
         homeUxApplied = true
         selectedFeedTabKey = tab.rawValue
         deps.uxTabTracker.onTabOpened(scope: "home", tabKey: UxPersonalizationMapping.uxTabKey(for: tab))
-        syncItemsForSelectedTab()
         ensureTabLoaded(tab, deps: deps, isGuestMode: isGuestMode, force: !loadedTabs.contains(tab.rawValue))
+    }
+
+    private func beginTabLoad(_ tab: HomeFeedTab) {
+        tabsLoadStalled.remove(tab.rawValue)
+        setTabLoading(tab, true)
+        scheduleTabStallWatch(for: tab)
+    }
+
+    private func finishTabLoad(_ tab: HomeFeedTab, succeeded: Bool) {
+        tabStallWatch.cancel(key: tab.rawValue)
+        tabsLoadStalled.remove(tab.rawValue)
+        if succeeded {
+            loadedTabs.insert(tab.rawValue)
+            if HomeFeedTab.recommendationSectionTabs.contains(tab) {
+                HomeFeedTab.recommendationSectionTabs.forEach { loadedTabs.insert($0.rawValue) }
+            }
+            if tab == selectedFeedTab {
+                syncItemsForSelectedTab()
+            }
+        } else {
+            setTabError(tab, true)
+        }
+        setTabLoading(tab, false)
+    }
+
+    private func scheduleTabStallWatch(for tab: HomeFeedTab) {
+        let key = tab.rawValue
+        tabStallWatch.schedule(key: key) { [weak self] in
+            guard let self else { return false }
+            guard self.selectedFeedTab == tab else { return false }
+            guard !self.loadedTabs.contains(key) else { return false }
+            guard !self.tabsLoading.contains(key) else { return false }
+            guard self.items.isEmpty else { return false }
+            return true
+        } onStalled: { [weak self] in
+            self?.tabsLoadStalled.insert(key)
+        }
     }
 
     private func sectionLimit(for tab: HomeFeedTab, fallback: Int) -> Int {

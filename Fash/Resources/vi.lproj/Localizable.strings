@@ -827,6 +827,7 @@
 "feed_empty_subtitle" = "Theo dõi người bán hoặc khám phá để xem sản phẩm mới.";
 "feed_empty_title" = "Chưa có tin nào";
 "feed_load_error" = "Không tải được nội dung. Thử lại.";
+"feed_load_stall_subtitle" = "Hãy thử lại sau.";
 "feed_loading_more" = "Đang tải thêm…";
 "feed_retry" = "Thử lại";
 "follow_button" = "Theo dõi";

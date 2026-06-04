@@ -36,7 +36,11 @@ struct SellerProfileScreen: View {
     }
 
     private var showListingGridLoading: Bool {
-        viewModel.isFirstPageLoading(for: selectedSellerTab)
+        viewModel.shouldShowListingGridSkeleton(for: selectedSellerTab)
+    }
+
+    private var showListingGridLoadRetry: Bool {
+        viewModel.isListingTabStalled(selectedSellerTab) && viewModel.listingsForSelectedTab.isEmpty
     }
 
     private var showSellerBlockingLoader: Bool {
@@ -61,6 +65,16 @@ struct SellerProfileScreen: View {
                             showStatusOverlay: true,
                             additionalBottomInset: promoBottomInset,
                             showGridLoading: showListingGridLoading,
+                            showGridLoadRetry: showListingGridLoadRetry,
+                            onRetryGridLoad: {
+                                Task {
+                                    await viewModel.retryListings(
+                                        for: selectedSellerTab,
+                                        deps: deps,
+                                        isGuestMode: isGuestMode
+                                    )
+                                }
+                            },
                             hasMoreListings: viewModel.hasMoreListings(for: selectedSellerTab),
                             isLoadingMoreListings: viewModel.isLoadingMoreListings(for: selectedSellerTab),
                             isReloadingListings: viewModel.isReloadingListings(for: selectedSellerTab),
@@ -145,6 +159,16 @@ struct SellerProfileScreen: View {
                 deps: deps,
                 isGuestMode: isGuestMode
             )
+        }
+        .onChange(of: viewModel.profile?.userId) { _, _ in
+            guard viewModel.profile != nil else { return }
+            Task {
+                await viewModel.ensureListingsLoaded(
+                    for: selectedSellerTab,
+                    deps: deps,
+                    isGuestMode: isGuestMode
+                )
+            }
         }
         .task(id: username) {
             await viewModel.loadForSeller(username, deps: deps, isGuestMode: isGuestMode)

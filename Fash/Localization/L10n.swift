@@ -991,6 +991,7 @@ enum L10n {
     static var feedEmptySubtitle: String { t("feed_empty_subtitle") }
     static var feedEmptyTitle: String { t("feed_empty_title") }
     static var feedLoadError: String { t("feed_load_error") }
+    static var feedLoadStallSubtitle: String { t("feed_load_stall_subtitle") }
     static var feedLoadingMore: String { t("feed_loading_more") }
     static var feedRetry: String { t("feed_retry") }
     static var followButton: String { t("follow_button") }

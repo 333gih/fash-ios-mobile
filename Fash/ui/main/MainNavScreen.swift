@@ -291,6 +291,8 @@ struct MainNavScreen: View {
         .onChange(of: router.selectedTab) { _, tab in
             guard !isGuestMode else { return }
             switch tab {
+            case .home:
+                homeVM.ensureSelectedFeedTabLoaded(deps: deps, isGuestMode: isGuestMode)
             case .profile:
                 Task { await profileVM.refreshIfStale(deps: deps) }
             case .chat:

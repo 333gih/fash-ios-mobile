@@ -34,14 +34,11 @@ struct ProfileScreen: View {
     }
 
     private var showListingGridLoading: Bool {
-        if viewModel.isFirstPageLoading(for: selectedProfileTab) { return true }
-        // Đang bán + initial profile refresh — skeleton grid instead of blocking spinner.
-        if selectedProfileTab == .active,
-           !viewModel.hasCompletedInitialLoad,
-           (viewModel.isLoading || viewModel.isRefreshing) {
-            return true
-        }
-        return false
+        viewModel.shouldShowListingGridSkeleton(for: selectedProfileTab)
+    }
+
+    private var showListingGridLoadRetry: Bool {
+        viewModel.isListingTabStalled(selectedProfileTab) && currentItems.isEmpty
     }
 
     private func tabBadgeCount(for index: Int) -> Int? {
@@ -71,6 +68,12 @@ struct ProfileScreen: View {
                         showStatusOverlay: true,
                         suppressActiveStatusOnGrid: false,
                         showGridLoading: showListingGridLoading,
+                        showGridLoadRetry: showListingGridLoadRetry,
+                        onRetryGridLoad: {
+                            Task {
+                                await viewModel.retryListings(for: selectedProfileTab, deps: deps)
+                            }
+                        },
                         hasMoreListings: viewModel.hasMoreListings(for: selectedProfileTab),
                         isLoadingMoreListings: viewModel.isLoadingMoreListings(for: selectedProfileTab),
                         isReloadingListings: viewModel.isReloadingListings(for: selectedProfileTab),
@@ -106,6 +109,7 @@ struct ProfileScreen: View {
             await viewModel.ensureListingsLoaded(for: selectedProfileTab, deps: deps)
         }
         .onAppear {
+            syncSelectedTabFromViewModel()
             _ = applyProfileTabOpenRequestIfNeeded()
             tryApplyPendingExternalGridScroll()
             Task { await viewModel.ensureListingsLoaded(for: selectedProfileTab, deps: deps) }
@@ -120,6 +124,8 @@ struct ProfileScreen: View {
             if let tab = viewModel.consumePendingDefaultProfileTab() {
                 selectedTab = tab
                 viewModel.onProfileTabSelected(tab, deps: deps)
+            } else {
+                syncSelectedTabFromViewModel()
             }
             tryApplyPendingExternalGridScroll()
         }
@@ -154,6 +160,12 @@ struct ProfileScreen: View {
             viewModel.prepareEditReturn(tab: selectedProfileTab, listingId: item.id)
             onEditListingClick(item.id)
         }
+    }
+
+    private func syncSelectedTabFromViewModel() {
+        let vmTab = viewModel.lastSelectedProfileTab
+        guard viewModel.profile != nil, selectedTab != vmTab else { return }
+        selectedTab = vmTab
     }
 
     /// Applies Home journey → Profile tab navigation. Returns true when consumed (Android `LaunchedEffect(profileTabOpenGen)`).

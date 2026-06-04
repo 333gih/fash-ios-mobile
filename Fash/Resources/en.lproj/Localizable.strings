@@ -827,6 +827,7 @@
 "feed_empty_subtitle" = "Follow sellers or explore to discover new items.";
 "feed_empty_title" = "No listings yet";
 "feed_load_error" = "Could not load feed. Try again.";
+"feed_load_stall_subtitle" = "Please try again in a moment.";
 "feed_loading_more" = "Loading more…";
 "feed_retry" = "Retry";
 "follow_button" = "Follow";
