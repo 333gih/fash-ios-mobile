@@ -161,7 +161,7 @@ final class ProfileViewModel {
 
     func retryListings(for tab: ProfileListingTab, deps: AppDependencies) async {
         listingTabsStalled.remove(tab.rawValue)
-        listingStallWatch.cancel(key: tab.rawValue)
+        listingStallWatch.cancel(key: String(tab.rawValue))
         loadedListingTabs.remove(tab.rawValue)
         await fetchListingsFirstPage(tab, deps: deps, force: true)
     }
@@ -419,7 +419,7 @@ final class ProfileViewModel {
             state.isLoadingFirstPage = false
             state.isReloading = false
         }
-        listingStallWatch.cancel(key: tab.rawValue)
+        listingStallWatch.cancel(key: String(tab.rawValue))
         listingTabsStalled.remove(tab.rawValue)
 
         switch result {

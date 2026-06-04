@@ -1030,6 +1030,8 @@
 "listing_status_rejected" = "Rejected";
 "listing_status_reserved" = "Reserved";
 "listing_status_sold" = "Sold";
+"login_apple" = "Sign in with Apple";
+"login_apple_error" = "Apple sign-in failed.";
 "login_continue_without_account" = "Continue without signing in";
 "login_email_icon_cd" = "Email";
 "login_email_invalid" = "Please enter a valid email address.";

@@ -87,6 +87,8 @@
     <string name="login_send_otp_cd">Send OTP code</string>
     <string name="login_or_continue">Or continue with</string>
     <string name="login_google">Sign in with Google</string>
+    <string name="login_apple">Sign in with Apple</string>
+    <string name="login_apple_error">Apple sign-in failed.</string>
     <string name="login_facebook">Sign in with Facebook</string>
     <string name="login_hero_cd">Fashion illustration</string>
     <string name="login_hero_pager_cd">Fashion illustration, slide %1$d of %2$d</string>

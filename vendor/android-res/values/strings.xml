@@ -90,6 +90,8 @@
     <string name="login_send_otp_cd">Gửi mã OTP</string>
     <string name="login_or_continue">Hoặc tiếp tục với</string>
     <string name="login_google">Đăng nhập với Google</string>
+    <string name="login_apple">Đăng nhập với Apple</string>
+    <string name="login_apple_error">Đăng nhập Apple không thành công.</string>
     <string name="login_facebook">Đăng nhập với Facebook</string>
     <string name="login_hero_cd">Minh họa thời trang</string>
     <string name="login_hero_pager_cd">Minh họa thời trang, ảnh %1$d / %2$d</string>

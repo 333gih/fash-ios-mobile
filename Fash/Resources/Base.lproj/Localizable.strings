@@ -1030,6 +1030,8 @@
 "listing_status_rejected" = "Từ chối";
 "listing_status_reserved" = "Giữ chỗ";
 "listing_status_sold" = "Đã bán";
+"login_apple" = "Đăng nhập với Apple";
+"login_apple_error" = "Đăng nhập Apple không thành công.";
 "login_continue_without_account" = "Tiếp tục xem không đăng nhập";
 "login_email_icon_cd" = "Email";
 "login_email_invalid" = "Vui lòng nhập email hợp lệ.";
