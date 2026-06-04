@@ -136,12 +136,12 @@ final class RecommendationRepository {
                 try RepositoryHttp.jsonObject(data)
             }.value
             let payload = (root["data"] as? [String: Any]) ?? root
-            async let huntToday = ListingFeedParseSupport.parseItemsArray(payload["hunt_today"] as? [[String: Any]])
-            async let forYou = ListingFeedParseSupport.parseItemsArray(payload["for_you"] as? [[String: Any]])
-            async let stylePicks = ListingFeedParseSupport.parseItemsArray(payload["style_picks"] as? [[String: Any]])
-            async let continueBrowsing = ListingFeedParseSupport.parseItemsArray(payload["continue_browsing"] as? [[String: Any]])
-            async let similarToSaved = ListingFeedParseSupport.parseItemsArray(payload["similar_to_saved"] as? [[String: Any]])
-            async let seasonalNearYou = ListingFeedParseSupport.parseItemsArray(payload["seasonal_near_you"] as? [[String: Any]])
+            async let huntToday = ListingFeedParseSupport.parseItemsArray(payload["hunt_today"] as? [[String: Any]] ?? [])
+            async let forYou = ListingFeedParseSupport.parseItemsArray(payload["for_you"] as? [[String: Any]] ?? [])
+            async let stylePicks = ListingFeedParseSupport.parseItemsArray(payload["style_picks"] as? [[String: Any]] ?? [])
+            async let continueBrowsing = ListingFeedParseSupport.parseItemsArray(payload["continue_browsing"] as? [[String: Any]] ?? [])
+            async let similarToSaved = ListingFeedParseSupport.parseItemsArray(payload["similar_to_saved"] as? [[String: Any]] ?? [])
+            async let seasonalNearYou = ListingFeedParseSupport.parseItemsArray(payload["seasonal_near_you"] as? [[String: Any]] ?? [])
             return .success(HomeRecommendationSections(
                 huntToday: await huntToday,
                 forYou: await forYou,

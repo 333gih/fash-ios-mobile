@@ -312,8 +312,8 @@ struct HomeFeedContent: View {
             VStack(spacing: 0) {
                 FeedMasonryChunkedGrid(
                     items: viewModel.items,
-                    columnAssignments: masonryColumnAssignments
-                ) { item, index in
+                    columnAssignments: masonryColumnAssignments,
+                    cell: { item, index in
                     HomeFeedListingCell(
                         item: item,
                         index: index,
@@ -382,7 +382,8 @@ struct HomeFeedContent: View {
                             )
                         }
                     )
-                } footer: {
+                    },
+                    footer: {
                     if viewModel.selectedFeedTab == .following,
                        viewModel.followingHasMore || viewModel.isLoadingMoreFollowing {
                         FeedLoadMoreFooter(
