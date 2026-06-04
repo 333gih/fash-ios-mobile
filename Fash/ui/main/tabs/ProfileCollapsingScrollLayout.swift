@@ -129,6 +129,8 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     var enableScrollProximityLoadMore: Bool = false
     /// When false, tiles do not prefetch pages while scrolling mid-grid.
     var enableTilePrefetchLoadMore: Bool = false
+    /// Seller storefront: lazy two-column masonry (no chunked rows) — lighter than paginated chunks.
+    var useStaggeredMasonryGrid: Bool = false
     var onListingClick: (ListingFeedItem) -> Void
     var onLike: ((ListingFeedItem) -> Void)?
     var onSave: ((ListingFeedItem) -> Void)?
@@ -602,19 +604,34 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             emptyBlock
         } else if !items.isEmpty {
             ZStack(alignment: .top) {
-                VStack(spacing: 0) {
-                    profileGridWidthProbe
-                    ForEach(profileFeedChunks) { chunk in
-                        profileFeedChunkRow(chunk)
-                            .id("\(listingGridScrollId)_chunk_\(chunk.id)")
-                    }
-                    profilePaginationFooter
-                }
-                .padding(.top, spacing.spacing2)
+                profileListingMasonryContent
+                    .padding(.top, spacing.spacing2)
                 profileListingReloadOverlay
             }
             if enableScrollProximityLoadMore {
                 FeedScrollContentBottomReporter(coordinateSpace: ProfileScrollIds.coordinateSpaceName)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var profileListingMasonryContent: some View {
+        if useStaggeredMasonryGrid {
+            ListingStaggeredMasonryView(
+                items: items,
+                columnAssignments: masonryColumnAssignments,
+                eagerLayout: false
+            ) { item, index in
+                profileListingGridCard(item: item, index: index)
+            }
+        } else {
+            VStack(spacing: 0) {
+                profileGridWidthProbe
+                ForEach(profileFeedChunks) { chunk in
+                    profileFeedChunkRow(chunk)
+                        .id("\(listingGridScrollId)_chunk_\(chunk.id)")
+                }
+                profilePaginationFooter
             }
         }
     }

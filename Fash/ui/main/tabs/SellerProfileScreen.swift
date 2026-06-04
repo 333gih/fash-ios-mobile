@@ -63,6 +63,7 @@ struct SellerProfileScreen: View {
                             items: viewModel.listingsForSelectedTab,
                             showQuickActions: true,
                             showStatusOverlay: true,
+                            useStaggeredMasonryGrid: true,
                             additionalBottomInset: promoBottomInset,
                             showGridLoading: showListingGridLoading,
                             showGridLoadRetry: showListingGridLoadRetry,
@@ -75,16 +76,7 @@ struct SellerProfileScreen: View {
                                     )
                                 }
                             },
-                            hasMoreListings: viewModel.hasMoreListings(for: selectedSellerTab),
-                            isLoadingMoreListings: viewModel.isLoadingMoreListings(for: selectedSellerTab),
                             isReloadingListings: viewModel.isReloadingListings(for: selectedSellerTab),
-                            onLoadMore: {
-                                viewModel.requestLoadMore(
-                                    for: selectedSellerTab,
-                                    deps: deps,
-                                    isGuestMode: isGuestMode
-                                )
-                            },
                             showEmptyState: viewModel.hasCompletedInitialLoad,
                             isRefreshing: viewModel.isRefreshing,
                             lockScroll: showSellerBlockingLoader,
