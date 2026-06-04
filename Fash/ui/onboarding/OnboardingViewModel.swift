@@ -336,7 +336,7 @@ final class OnboardingViewModel {
                     aestheticTagsConfigured: true,
                     onboardingDone: true,
                     sizingReferenceCompleted: true
-                )).merging(onboardingDone: true, hasProfile: true)
+                )).merging(hasProfile: true, onboardingDone: true)
                 advanceAfterStatus(base, completedStep: .username, deps: deps)
                 onSuccess()
             case .failure(let err):
@@ -363,7 +363,7 @@ final class OnboardingViewModel {
                 _ = await AuthTokenRefreshCoordinator.refreshIfStillCurrent(
                     sessionStore: deps.authSessionStore,
                     authRepository: deps.authRepository,
-                    expectedRefreshToken: ""
+                    accessTokenWhenUnauthorized: deps.authSessionStore.read()?.accessToken ?? ""
                 )
                 let status = (try? await deps.userRepository.getUserAccessStatus().get())
                 let base = status
