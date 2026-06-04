@@ -63,8 +63,8 @@ struct SellerProfileScreen: View {
                             items: viewModel.listingsForSelectedTab,
                             showQuickActions: true,
                             showStatusOverlay: true,
-                            useStaggeredMasonryGrid: true,
                             additionalBottomInset: promoBottomInset,
+                            useStaggeredMasonryGrid: true,
                             showGridLoading: showListingGridLoading,
                             showGridLoadRetry: showListingGridLoadRetry,
                             onRetryGridLoad: {
