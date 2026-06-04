@@ -384,17 +384,17 @@ struct HomeFeedContent: View {
                     )
                     },
                     footer: {
-                    if viewModel.selectedFeedTab == .following,
-                       viewModel.followingHasMore || viewModel.isLoadingMoreFollowing {
-                        FeedLoadMoreFooter(
-                            enabled: viewModel.followingHasMore,
-                            isLoadingMore: viewModel.isLoadingMoreFollowing
-                        ) {
-                            viewModel.loadMoreFollowing(deps: deps, isGuestMode: isGuestMode)
+                        if viewModel.selectedFeedTab == .following,
+                           viewModel.followingHasMore || viewModel.isLoadingMoreFollowing {
+                            FeedLoadMoreFooter(
+                                enabled: viewModel.followingHasMore,
+                                isLoadingMore: viewModel.isLoadingMoreFollowing
+                            ) {
+                                viewModel.loadMoreFollowing(deps: deps, isGuestMode: isGuestMode)
+                            }
                         }
                     }
-                }
-
+                )
             }
             .padding(.top, spacing.spacing2)
             .padding(.bottom, spacing.spacing4)
