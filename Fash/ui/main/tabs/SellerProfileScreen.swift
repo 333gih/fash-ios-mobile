@@ -223,44 +223,46 @@ struct SellerProfileScreen: View {
 
     @ViewBuilder
     private var expandedHeader: some View {
-        ProfileHeroSection(
-            coverImageUrl: viewModel.profile?.coverImageUrl,
-            avatarUrl: viewModel.profile?.avatarUrl
-        )
-        ProfileIdentityBlock(
-            profile: viewModel.profile,
-            showEditButton: false,
-            aestheticCatalog: viewModel.aestheticCatalog,
-            onAestheticTagClick: { label, tagId in
-                let p = ExploreProfileFilterRequest.forAestheticChip(label: label, tagId: tagId)
-                onNavigateToExploreFromProfile(nil, nil, p.aestheticTagId, p.searchQuery, nil, nil)
+        VStack(spacing: 0) {
+            ProfileHeroSection(
+                coverImageUrl: viewModel.profile?.coverImageUrl,
+                avatarUrl: viewModel.profile?.avatarUrl
+            )
+            ProfileIdentityBlock(
+                profile: viewModel.profile,
+                showEditButton: false,
+                aestheticCatalog: viewModel.aestheticCatalog,
+                onAestheticTagClick: { label, tagId in
+                    let p = ExploreProfileFilterRequest.forAestheticChip(label: label, tagId: tagId)
+                    onNavigateToExploreFromProfile(nil, nil, p.aestheticTagId, p.searchQuery, nil, nil)
+                }
+            )
+            if viewModel.canShowFollowUi(deps: deps, isGuestMode: isGuestMode) {
+                SellerProfileFollowBlock(
+                    isFollowing: viewModel.isFollowing && !isGuestMode,
+                    inFlight: viewModel.followInFlight,
+                    onToggle: {
+                        if isGuestMode { presentGuestSignIn(reason: L10n.guestLoginReasonFollow) }
+                        else { Task { await viewModel.toggleFollow(deps: deps, isGuestMode: isGuestMode) } }
+                    }
+                )
             }
-        )
-        if viewModel.canShowFollowUi(deps: deps, isGuestMode: isGuestMode) {
-            SellerProfileFollowBlock(
-                isFollowing: viewModel.isFollowing && !isGuestMode,
-                inFlight: viewModel.followInFlight,
-                onToggle: {
-                    if isGuestMode { presentGuestSignIn(reason: L10n.guestLoginReasonFollow) }
-                    else { Task { await viewModel.toggleFollow(deps: deps, isGuestMode: isGuestMode) } }
+            SellerProfileMetricsCard(profile: viewModel.profile)
+            SellerProfileBodyMeasurements(profile: viewModel.profile)
+            SellerProfileTopBadges(profile: viewModel.profile)
+            SellerListingFocusSection(
+                focus: viewModel.sellerFocus,
+                forbidden: viewModel.sellerFocusForbidden,
+                loading: viewModel.sellerFocusLoading,
+                aestheticCatalog: viewModel.aestheticCatalog,
+                onCategory: { id, _ in onNavigateToExploreFromProfile(id, nil, nil, "", nil, nil) },
+                onBrand: { id, _ in onNavigateToExploreFromProfile(nil, id, nil, "", nil, nil) },
+                onAesthetic: { id, name in
+                    let p = ExploreProfileFilterRequest.forAestheticChip(label: name, tagId: id)
+                    onNavigateToExploreFromProfile(nil, nil, p.aestheticTagId, p.searchQuery, nil, nil)
                 }
             )
         }
-        SellerProfileMetricsCard(profile: viewModel.profile)
-        SellerProfileBodyMeasurements(profile: viewModel.profile)
-        SellerProfileTopBadges(profile: viewModel.profile)
-        SellerListingFocusSection(
-            focus: viewModel.sellerFocus,
-            forbidden: viewModel.sellerFocusForbidden,
-            loading: viewModel.sellerFocusLoading,
-            aestheticCatalog: viewModel.aestheticCatalog,
-            onCategory: { id, _ in onNavigateToExploreFromProfile(id, nil, nil, "", nil, nil) },
-            onBrand: { id, _ in onNavigateToExploreFromProfile(nil, id, nil, "", nil, nil) },
-            onAesthetic: { id, name in
-                let p = ExploreProfileFilterRequest.forAestheticChip(label: name, tagId: id)
-                onNavigateToExploreFromProfile(nil, nil, p.aestheticTagId, p.searchQuery, nil, nil)
-            }
-        )
     }
 
     private var titleHandle: String {

@@ -192,32 +192,34 @@ struct ProfileScreen: View {
 
     @ViewBuilder
     private var expandedHeader: some View {
-        ProfileHeroSection(
-            coverImageUrl: viewModel.profile?.coverImageUrl ?? viewModel.coverImageUrl,
-            avatarUrl: viewModel.profile?.avatarUrl ?? viewModel.avatarUrl
-        )
-        ProfileIdentityBlock(
-            profile: viewModel.profile,
-            showEditButton: true,
-            aestheticCatalog: viewModel.aestheticCatalog,
-            onEdit: onEditProfile,
-            onAestheticTagClick: { label, tagId in
-                let p = ExploreProfileFilterRequest.forAestheticChip(label: label, tagId: tagId)
-                onNavigateToExploreFromProfile(nil, nil, p.aestheticTagId, p.searchQuery, nil, nil)
-            }
-        )
-        ProfileOwnMetricsCard(
-            profile: viewModel.profile,
-            onFollowersTap: { onOpenFollowConnections(1) },
-            onFollowingTap: { onOpenFollowConnections(0) }
-        )
-        ProfileSizingReferenceCard(profile: viewModel.profile, onEdit: onEditProfile)
-        ProfileQuickActionsCard(
-            username: viewModel.profile?.username ?? viewModel.username,
-            displayName: viewModel.profile?.displayName ?? viewModel.displayName,
-            onShipping: onShippingAddressesClick,
-            onInvite: onInviteFriendsClick
-        )
+        VStack(spacing: 0) {
+            ProfileHeroSection(
+                coverImageUrl: viewModel.profile?.coverImageUrl ?? viewModel.coverImageUrl,
+                avatarUrl: viewModel.profile?.avatarUrl ?? viewModel.avatarUrl
+            )
+            ProfileIdentityBlock(
+                profile: viewModel.profile,
+                showEditButton: true,
+                aestheticCatalog: viewModel.aestheticCatalog,
+                onEdit: onEditProfile,
+                onAestheticTagClick: { label, tagId in
+                    let p = ExploreProfileFilterRequest.forAestheticChip(label: label, tagId: tagId)
+                    onNavigateToExploreFromProfile(nil, nil, p.aestheticTagId, p.searchQuery, nil, nil)
+                }
+            )
+            ProfileOwnMetricsCard(
+                profile: viewModel.profile,
+                onFollowersTap: { onOpenFollowConnections(1) },
+                onFollowingTap: { onOpenFollowConnections(0) }
+            )
+            ProfileSizingReferenceCard(profile: viewModel.profile, onEdit: onEditProfile)
+            ProfileQuickActionsCard(
+                username: viewModel.profile?.username ?? viewModel.username,
+                displayName: viewModel.profile?.displayName ?? viewModel.displayName,
+                onShipping: onShippingAddressesClick,
+                onInvite: onInviteFriendsClick
+            )
+        }
     }
 
     private var compactHeader: some View {

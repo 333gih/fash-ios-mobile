@@ -321,15 +321,25 @@ struct SellerProfileMetricsCard: View {
                     statCell(ProfileFormatting.formatCount(profile.soldCount), L10n.profileCompletedSales)
                 }
                 .padding(.vertical, 6)
-                ProfileSellerTrustLine(profile: profile)
-                    .padding(.horizontal, 14)
-                    .padding(.bottom, 12)
+                if sellerTrustLineVisible(profile) {
+                    ProfileSellerTrustLine(profile: profile)
+                        .padding(.horizontal, 14)
+                        .padding(.bottom, 12)
+                }
             }
             .background(FashColors.surfaceContainer)
             .clipShape(RoundedRectangle(cornerRadius: spacing.radiusCard, style: .continuous))
             .padding(.horizontal, spacing.editorialStart)
             .padding(.bottom, spacing.spacing2)
         }
+    }
+
+    private func sellerTrustLineVisible(_ profile: ProfileInfo) -> Bool {
+        let hasRating = (profile.rating ?? 0) > 0
+        let hasShop = profile.productCount > 0
+        let completedSales = profile.soldCount
+        return hasRating || hasShop || completedSales > 0
+            || profile.reputationPoints != nil || profile.hasFastDelivery
     }
 
     private func statCell(_ value: String, _ label: String) -> some View {
