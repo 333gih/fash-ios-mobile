@@ -83,6 +83,11 @@ struct SellerProfileScreen: View {
                             onTabsPinnedAtTopChange: { pinned in
                                 showPromoFooter = pinned
                             },
+                            onTabHorizontalSwipeActive: { active in
+                                if active {
+                                    deps.listingPreview.close(deps: deps, animated: false)
+                                }
+                            },
                             onListingClick: { item in onListingClick(item) },
                             onLike: { item in
                                 if isGuestMode { presentGuestSignIn(reason: L10n.guestLoginReasonLike) }
@@ -143,6 +148,7 @@ struct SellerProfileScreen: View {
             viewModel.selectedTab = SellerProfileTab.selling.rawValue
         }
         .onChange(of: viewModel.selectedTab) { _, tab in
+            deps.listingPreview.close(deps: deps, animated: false)
             viewModel.onTabSelected(tab, deps: deps, isGuestMode: isGuestMode)
         }
         .onChange(of: viewModel.profile?.userId) { _, _ in

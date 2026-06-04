@@ -82,6 +82,7 @@ struct ProfileScreen: View {
                         },
                         showEmptyState: viewModel.hasCompletedInitialLoad,
                         isRefreshing: viewModel.isRefreshing,
+                        enableScrollProximityLoadMore: true,
                         lockScroll: false,
                         scrollToGridToken: scrollToGridToken,
                         scrollToTopToken: viewModel.profileScrollToTopToken,

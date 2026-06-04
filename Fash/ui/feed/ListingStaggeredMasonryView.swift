@@ -6,7 +6,7 @@ struct ListingStaggeredMasonryView<Cell: View, Footer: View>: View {
 
     let items: [ListingFeedItem]
     @Binding var columnAssignments: [String: Bool]
-    /// Profile grid lives inside a parent `ScrollView` — `LazyVStack` only materializes tiles while scrolling (looks like one card). Home/Explore keep lazy columns.
+    /// When nested in a parent `ScrollView` (profile/seller), use `true` so all columns lay out; `false` shows ~one lazy tile until scroll.
     var eagerLayout: Bool = false
     @ViewBuilder var footer: () -> Footer
     @ViewBuilder let cellContent: (ListingFeedItem, Int) -> Cell

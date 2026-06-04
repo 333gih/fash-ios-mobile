@@ -100,7 +100,12 @@ struct HomeFeedContent: View {
                     .fashScrollViewTabSwipe(
                         currentIndex: selectedTabIndex,
                         tabCount: tabs.count,
-                        listingInteractionEnabled: $listingInteractionEnabled
+                        listingInteractionEnabled: $listingInteractionEnabled,
+                        onHorizontalSwipeActive: { active in
+                            if active {
+                                deps.listingPreview.close(deps: deps, animated: false)
+                            }
+                        }
                     ) { index in
                         tabSlideDirection = FashTabSwipeMotion.slideDirection(
                             oldIndex: selectedTabIndex,

@@ -127,6 +127,8 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     var scrollToListingToken: Int = 0
     /// Hero scrolled off + tabs pinned — Android `rememberProfilePromoFooterVisible` (index > 0).
     var onTabsPinnedAtTopChange: ((Bool) -> Void)? = nil
+    /// Fired when a horizontal tab pan locks — dismiss listing preview overlays.
+    var onTabHorizontalSwipeActive: ((Bool) -> Void)? = nil
     /// When false, only [FeedLoadMoreFooter] at the list bottom triggers pagination (seller storefront).
     var enableScrollProximityLoadMore: Bool = false
     /// When false, tiles do not prefetch pages while scrolling mid-grid.
@@ -154,6 +156,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     @State private var lastProximityLoadMoreAt: Date = .distantPast
     @State private var profileMasonryLayout: ListingMasonryColumnLayout = .empty
     @State private var profileMasonryContainerWidth: CGFloat = 0
+    @State private var masonryLayoutRefreshTask: Task<Void, Never>?
 
     /// One id for all tabs — Android keeps one [LazyListState]; do not vary per tab (preserves scroll on swipe).
     private let listingGridScrollId = ProfileScrollIds.listingGrid
@@ -259,7 +262,8 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                         enabled: profileTabSwipeEnabled,
                         currentIndex: visualTabIndex,
                         tabCount: resolvedTabIndices.count,
-                        listingInteractionEnabled: $listingInteractionEnabled
+                        listingInteractionEnabled: $listingInteractionEnabled,
+                        onHorizontalSwipeActive: onTabHorizontalSwipeActive
                     ) { visualIndex in
                         commitProfileTabSwipe(toVisualIndex: visualIndex)
                     }
@@ -270,7 +274,8 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                         enabled: profileTabSwipeEnabled,
                         currentIndex: visualTabIndex,
                         tabCount: resolvedTabIndices.count,
-                        listingInteractionEnabled: $listingInteractionEnabled
+                        listingInteractionEnabled: $listingInteractionEnabled,
+                        onHorizontalSwipeActive: onTabHorizontalSwipeActive
                     ) { visualIndex in
                         commitProfileTabSwipe(toVisualIndex: visualIndex)
                     }
@@ -320,11 +325,21 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         profileListingGridBody
             .id(listingGridScrollId)
             .allowsHitTesting(listingInteractionEnabled)
-            .animation(FashTabSwipeMotion.contentAnimation, value: selectedTab)
+            .animation(showGridLoading ? nil : FashTabSwipeMotion.contentAnimation, value: selectedTab)
             .transition(FashTabSwipeMotion.contentTransition)
-            .onAppear { refreshProfileMasonryLayout() }
-            .onChange(of: items.map(\.id)) { _, _ in refreshProfileMasonryLayout() }
-            .onChange(of: selectedTab) { _, _ in refreshProfileMasonryLayout() }
+            .onAppear { scheduleProfileMasonryLayoutRefresh() }
+            .onChange(of: items.map(\.id)) { _, _ in scheduleProfileMasonryLayoutRefresh() }
+            .onChange(of: selectedTab) { _, _ in scheduleProfileMasonryLayoutRefresh() }
+            .onDisappear { masonryLayoutRefreshTask?.cancel() }
+    }
+
+    private func scheduleProfileMasonryLayoutRefresh() {
+        masonryLayoutRefreshTask?.cancel()
+        masonryLayoutRefreshTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(48))
+            guard !Task.isCancelled else { return }
+            refreshProfileMasonryLayout()
+        }
     }
 
     private func refreshProfileMasonryLayout() {
@@ -620,7 +635,8 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             ListingStaggeredMasonryView(
                 items: items,
                 columnAssignments: masonryColumnAssignments,
-                eagerLayout: false
+                eagerLayout: true,
+                footer: { profilePaginationFooter }
             ) { item, index in
                 profileListingGridCard(item: item, index: index)
             }
@@ -650,7 +666,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             .onPreferenceChange(ListingMasonryContainerWidthKey.self) { width in
                 guard width > 1, abs(width - profileMasonryContainerWidth) > 0.5 else { return }
                 profileMasonryContainerWidth = width
-                refreshProfileMasonryLayout()
+                scheduleProfileMasonryLayoutRefresh()
             }
     }
 

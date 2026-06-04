@@ -232,7 +232,23 @@ final class ProfileViewModel {
         lastSelectedProfileTab = tabIndex
         deps.uxTabTracker.onTabOpened(scope: "profile", tabKey: UxPersonalizationMapping.profileTabKey(from: tabIndex))
         let tab = ProfileListingTab(rawValue: tabIndex) ?? .active
-        Task { await loadListingsForTab(tab, deps: deps, force: false) }
+        Task {
+            await loadListingsForTab(tab, deps: deps, force: false)
+            prefetchAdjacentProfileTabs(around: tab, deps: deps)
+        }
+    }
+
+    /// Warm neighbor tabs in the background so swipe/tab tap does not show a single lazy tile.
+    private func prefetchAdjacentProfileTabs(around tab: ProfileListingTab, deps: AppDependencies) {
+        let order = orderedProfileTabIndices
+        guard let center = order.firstIndex(of: tab.rawValue) else { return }
+        let neighborIndices = [center - 1, center + 1].filter { order.indices.contains($0) }
+        for idx in neighborIndices {
+            guard let neighbor = ProfileListingTab(rawValue: order[idx]) else { continue }
+            Task(priority: .utility) {
+                await loadListingsForTab(neighbor, deps: deps, force: false)
+            }
+        }
     }
 
     /// Home journey / shortcuts — Android `requestOpenProfileTab` + `refresh(force = true)`.
@@ -448,6 +464,7 @@ final class ProfileViewModel {
                 $0.hasMore = page.rawCount >= profileListingPageSize
             }
             FeedListingImagePrefetch.prefetch(items: page.items)
+            prefetchAdjacentProfileTabs(around: tab, deps: deps)
         case .failure:
             loadedListingTabs.remove(tab.rawValue)
             if !hadItems {
@@ -487,8 +504,7 @@ final class ProfileViewModel {
             }
             mutatePagination(for: tab) { state in
                 state.nextOffset += page.rawCount
-                let shortPage = page.items.count < profileListingPageSize
-                state.hasMore = !shortPage && !fresh.isEmpty
+                state.hasMore = page.rawCount >= profileListingPageSize
             }
         case .failure:
             break

@@ -63,7 +63,13 @@ final class SellerProfileViewModel {
             tabLoadState = [:]
         }
         let showBlocking = profile == nil
-        if showBlocking { isLoading = true } else { isRefreshing = true }
+        if showBlocking {
+            isLoading = true
+        } else if sellerChanged {
+            isRefreshing = true
+        } else {
+            isRefreshing = force
+        }
         defer {
             if generation == loadGeneration {
                 isLoading = false

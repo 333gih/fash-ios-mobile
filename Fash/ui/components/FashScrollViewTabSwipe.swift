@@ -12,10 +12,12 @@ struct FashScrollViewTabSwipe: UIViewRepresentable {
     var onHorizontalSwipeActive: (Bool) -> Void = { _ in }
     var onTabSwipeCommitted: () -> Void = {}
 
-    static let swipeThreshold: CGFloat = 72
-    static let flingDistanceThreshold: CGFloat = 36
-    static let flingVelocityThreshold: CGFloat = 900
-    static let postCommitTapGuard: TimeInterval = 0.32
+    static let swipeThreshold: CGFloat = 80
+    static let flingDistanceThreshold: CGFloat = 40
+    static let flingVelocityThreshold: CGFloat = 950
+    /// Suppress accidental listing taps after a horizontal pan (committed or cancelled).
+    static let postCommitTapGuard: TimeInterval = 0.45
+    static let axisLockMinDrag: CGFloat = 14
 
     func makeCoordinator() -> Coordinator {
         Coordinator(
@@ -117,7 +119,8 @@ struct FashScrollViewTabSwipe: UIViewRepresentable {
             case .changed:
                 let translation = recognizer.translation(in: view)
                 if !horizontalLocked {
-                    if abs(translation.x) > 10, abs(translation.x) > abs(translation.y) * 1.15 {
+                    if abs(translation.x) >= Self.axisLockMinDrag,
+                       abs(translation.x) > abs(translation.y) * 1.22 {
                         horizontalLocked = true
                         recognizer.cancelsTouchesInView = true
                         scrollView?.isScrollEnabled = false
@@ -158,7 +161,8 @@ struct FashScrollViewTabSwipe: UIViewRepresentable {
                     } else {
                         onPrevious()
                     }
-                } else {
+                } else if wasLocked {
+                    onTabSwipeCommitted()
                     onHorizontalSwipeActive(false)
                 }
 
@@ -186,7 +190,8 @@ struct FashScrollViewTabSwipe: UIViewRepresentable {
                 return false
             }
             let velocity = pan.velocity(in: view)
-            return abs(velocity.x) > abs(velocity.y) * 1.1
+            return abs(velocity.x) > abs(velocity.y) * 1.2
+            && abs(velocity.x) > 120
         }
 
         func gestureRecognizer(
@@ -216,6 +221,7 @@ extension View {
         currentIndex: Int,
         tabCount: Int,
         listingInteractionEnabled: Binding<Bool>? = nil,
+        onHorizontalSwipeActive: ((Bool) -> Void)? = nil,
         onIndexChanged: @escaping (Int) -> Void
     ) -> some View {
         fashScrollViewTabSwipe(
@@ -223,6 +229,7 @@ extension View {
             currentIndex: currentIndex,
             tabCount: tabCount,
             listingInteractionEnabled: listingInteractionEnabled,
+            onHorizontalSwipeActive: onHorizontalSwipeActive,
             onIndexChanged: onIndexChanged
         )
     }
@@ -233,6 +240,7 @@ extension View {
         currentIndex: Int,
         tabCount: Int,
         listingInteractionEnabled: Binding<Bool>? = nil,
+        onHorizontalSwipeActive: ((Bool) -> Void)? = nil,
         onIndexChanged: @escaping (Int) -> Void
     ) -> some View {
         background {
@@ -250,6 +258,7 @@ extension View {
                 },
                 onHorizontalSwipeActive: { active in
                     listingInteractionEnabled?.wrappedValue = !active
+                    onHorizontalSwipeActive?(active)
                 },
                 onTabSwipeCommitted: {
                     listingInteractionEnabled?.wrappedValue = false
