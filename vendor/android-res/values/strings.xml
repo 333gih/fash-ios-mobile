@@ -90,8 +90,6 @@
     <string name="login_send_otp_cd">Gửi mã OTP</string>
     <string name="login_or_continue">Hoặc tiếp tục với</string>
     <string name="login_google">Đăng nhập với Google</string>
-    <string name="login_apple">Đăng nhập với Apple</string>
-    <string name="login_apple_error">Đăng nhập Apple không thành công.</string>
     <string name="login_facebook">Đăng nhập với Facebook</string>
     <string name="login_hero_cd">Minh họa thời trang</string>
     <string name="login_hero_pager_cd">Minh họa thời trang, ảnh %1$d / %2$d</string>
@@ -313,6 +311,7 @@
     <string name="listing_card_photo_stack_a11y">Tin có %d ảnh</string>
     <string name="listing_card_a11y_seller_role">Người bán</string>
     <string name="feed_load_error">Không tải được nội dung. Thử lại.</string>
+    <string name="feed_load_stall_subtitle">Hãy thử lại sau.</string>
     <string name="feed_loading_more">Đang tải thêm…</string>
     <string name="profile_slow_load_hint">Đang tải hồ sơ, vui lòng chờ một chút…</string>
     <string name="feed_empty_title">Chưa có tin nào</string>

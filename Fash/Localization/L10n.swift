@@ -1204,8 +1204,6 @@ enum L10n {
     static var listingStatusRejected: String { t("listing_status_rejected") }
     static var listingStatusReserved: String { t("listing_status_reserved") }
     static var listingStatusSold: String { t("listing_status_sold") }
-    static var loginApple: String { t("login_apple") }
-    static var loginAppleError: String { t("login_apple_error") }
     static var loginContinueWithoutAccount: String { t("login_continue_without_account") }
     static var loginEmailIconCd: String { t("login_email_icon_cd") }
     static var loginEmailInvalid: String { t("login_email_invalid") }

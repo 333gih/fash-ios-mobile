@@ -87,8 +87,6 @@
     <string name="login_send_otp_cd">Send OTP code</string>
     <string name="login_or_continue">Or continue with</string>
     <string name="login_google">Sign in with Google</string>
-    <string name="login_apple">Sign in with Apple</string>
-    <string name="login_apple_error">Apple sign-in failed.</string>
     <string name="login_facebook">Sign in with Facebook</string>
     <string name="login_hero_cd">Fashion illustration</string>
     <string name="login_hero_pager_cd">Fashion illustration, slide %1$d of %2$d</string>
@@ -282,6 +280,7 @@
     <string name="listing_card_photo_stack_a11y">Listing has %d photos</string>
     <string name="listing_card_a11y_seller_role">Seller</string>
     <string name="feed_load_error">Could not load feed. Try again.</string>
+    <string name="feed_load_stall_subtitle">Please try again in a moment.</string>
     <string name="feed_loading_more">Loading more…</string>
     <string name="profile_slow_load_hint">Loading profile, please wait a moment…</string>
     <string name="feed_empty_title">No listings yet</string>
