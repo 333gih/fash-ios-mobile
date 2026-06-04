@@ -119,7 +119,7 @@ struct FashScrollViewTabSwipe: UIViewRepresentable {
             case .changed:
                 let translation = recognizer.translation(in: view)
                 if !horizontalLocked {
-                    if abs(translation.x) >= Self.axisLockMinDrag,
+                    if abs(translation.x) >= FashScrollViewTabSwipe.axisLockMinDrag,
                        abs(translation.x) > abs(translation.y) * 1.22 {
                         horizontalLocked = true
                         recognizer.cancelsTouchesInView = true

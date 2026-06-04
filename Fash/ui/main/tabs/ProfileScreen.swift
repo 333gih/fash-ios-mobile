@@ -58,49 +58,10 @@ struct ProfileScreen: View {
                 }
             } else {
                 ZStack {
-                    ProfileCollapsingScrollLayout(
-                        selectedTab: $selectedTab,
-                        tabSet: .ownProfile,
-                        orderedTabIndices: viewModel.orderedProfileTabIndices,
-                        tabBadgeCounts: tabBadgeCount,
-                        items: currentItems,
-                        showQuickActions: selectedProfileTab == .wishlist,
-                        showStatusOverlay: true,
-                        suppressActiveStatusOnGrid: false,
-                        showGridLoading: showListingGridLoading,
-                        showGridLoadRetry: showListingGridLoadRetry,
-                        onRetryGridLoad: {
-                            Task {
-                                await viewModel.retryListings(for: selectedProfileTab, deps: deps)
-                            }
-                        },
-                        hasMoreListings: viewModel.hasMoreListings(for: selectedProfileTab),
-                        isLoadingMoreListings: viewModel.isLoadingMoreListings(for: selectedProfileTab),
-                        isReloadingListings: viewModel.isReloadingListings(for: selectedProfileTab),
-                        onLoadMore: {
-                            viewModel.requestLoadMore(for: selectedProfileTab, deps: deps)
-                        },
-                        showEmptyState: viewModel.hasCompletedInitialLoad,
-                        isRefreshing: viewModel.isRefreshing,
-                        enableScrollProximityLoadMore: true,
-                        lockScroll: false,
-                        scrollToGridToken: scrollToGridToken,
-                        scrollToTopToken: viewModel.profileScrollToTopToken,
-                        scrollToListingId: viewModel.focusListingId,
-                        scrollToListingToken: viewModel.focusListingScrollToken,
-                        onListingClick: { item in handleListingTap(item) },
-                        onLike: selectedProfileTab == .wishlist
-                            ? { item in Task { await viewModel.toggleLike(item, deps: deps) } }
-                            : nil,
-                        onSave: selectedProfileTab == .wishlist
-                            ? { item in Task { await viewModel.toggleSave(item, deps: deps) } }
-                            : nil,
-                        expandedHeader: { expandedHeader },
-                        compactHeader: { compactHeader }
-                    )
-                    .refreshable {
-                        await viewModel.refresh(deps: deps, activeTab: selectedProfileTab)
-                    }
+                    profileCollapsingScroll
+                        .refreshable {
+                            await viewModel.refresh(deps: deps, activeTab: selectedProfileTab)
+                        }
                 }
             }
         }
@@ -150,6 +111,57 @@ struct ProfileScreen: View {
 
     private var currentItems: [ListingFeedItem] {
         viewModel.listings(for: selectedProfileTab)
+    }
+
+    private var profileCollapsingScroll: some View {
+        ProfileCollapsingScrollLayout(
+            selectedTab: $selectedTab,
+            tabSet: .ownProfile,
+            orderedTabIndices: viewModel.orderedProfileTabIndices,
+            tabBadgeCounts: tabBadgeCount,
+            items: currentItems,
+            showQuickActions: selectedProfileTab == .wishlist,
+            showStatusOverlay: true,
+            suppressActiveStatusOnGrid: false,
+            showGridLoading: showListingGridLoading,
+            showGridLoadRetry: showListingGridLoadRetry,
+            onRetryGridLoad: profileRetryGridLoad,
+            hasMoreListings: viewModel.hasMoreListings(for: selectedProfileTab),
+            isLoadingMoreListings: viewModel.isLoadingMoreListings(for: selectedProfileTab),
+            isReloadingListings: viewModel.isReloadingListings(for: selectedProfileTab),
+            onLoadMore: profileLoadMore,
+            showEmptyState: viewModel.hasCompletedInitialLoad,
+            isRefreshing: viewModel.isRefreshing,
+            enableScrollProximityLoadMore: true,
+            lockScroll: false,
+            scrollToGridToken: scrollToGridToken,
+            scrollToTopToken: viewModel.profileScrollToTopToken,
+            scrollToListingId: viewModel.focusListingId,
+            scrollToListingToken: viewModel.focusListingScrollToken,
+            onListingClick: handleListingTap,
+            onLike: profileWishlistLikeHandler,
+            onSave: profileWishlistSaveHandler,
+            expandedHeader: { expandedHeader },
+            compactHeader: { compactHeader }
+        )
+    }
+
+    private func profileRetryGridLoad() {
+        Task { await viewModel.retryListings(for: selectedProfileTab, deps: deps) }
+    }
+
+    private func profileLoadMore() {
+        viewModel.requestLoadMore(for: selectedProfileTab, deps: deps)
+    }
+
+    private var profileWishlistLikeHandler: ((ListingFeedItem) -> Void)? {
+        guard selectedProfileTab == .wishlist else { return nil }
+        return { item in Task { await viewModel.toggleLike(item, deps: deps) } }
+    }
+
+    private var profileWishlistSaveHandler: ((ListingFeedItem) -> Void)? {
+        guard selectedProfileTab == .wishlist else { return nil }
+        return { item in Task { await viewModel.toggleSave(item, deps: deps) } }
     }
 
     /// Selling / in-review / rejected / sold → edit listing; wishlist → PDP (Android Profile `onListingClick`).
