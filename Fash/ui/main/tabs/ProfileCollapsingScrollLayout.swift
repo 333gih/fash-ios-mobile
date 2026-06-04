@@ -195,8 +195,8 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             scrollClampRevision += 1
         }
         .onChange(of: scrollToGridToken) { _, token in
-            guard token > 0, !lockScroll, !showGridLoading else { return }
-            applyPinnedGridScroll(using: scrollProxy)
+            guard token > 0, !lockScroll else { return }
+            scheduleApplyPinnedGridScroll(using: scrollProxy)
         }
         .onChange(of: scrollToTopToken) { _, token in
             guard token > 0, !lockScroll else { return }
@@ -391,6 +391,20 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         scrollClampRevision += 1
     }
 
+    /// Retries until hero height is known — Home → Profile tab switch often fires before layout is ready.
+    private func scheduleApplyPinnedGridScroll(using scrollProxy: ScrollViewProxy) {
+        Task { @MainActor in
+            for delayMs in [0, 80, 160, 320, 520, 720] {
+                if delayMs > 0 {
+                    try? await Task.sleep(for: .milliseconds(delayMs))
+                }
+                guard !lockScroll else { return }
+                applyPinnedGridScroll(using: scrollProxy)
+                if headerHeight > 24 { return }
+            }
+        }
+    }
+
     private func applyPinnedGridScroll(using scrollProxy: ScrollViewProxy) {
         if headerHeight > 24 {
             showBriefBar = true
@@ -402,7 +416,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             proxy: scrollProxy,
             resetToken: $profileScrollResetToken,
             contentId: listingGridScrollId,
-            followUpDelaysMs: [120]
+            followUpDelaysMs: [120, 280]
         )
     }
 

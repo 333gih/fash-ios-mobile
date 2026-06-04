@@ -207,28 +207,17 @@ final class ProfileViewModel {
         Task { await loadListingsForTab(tab, deps: deps, force: false) }
     }
 
+    /// Home journey / shortcuts — Android `requestOpenProfileTab` + `refresh(force = true)`.
     func requestWishlistTabFromHome(deps: AppDependencies) {
-        requestOpenProfileTab(.wishlist, scrollToGrid: true)
-        Task {
-            if profile == nil {
-                await refresh(deps: deps, force: true, activeTab: .wishlist)
-            } else {
-                await refreshIfStale(deps: deps)
-                await fetchListingsFirstPage(.wishlist, deps: deps, force: true)
-            }
-        }
+        requestOpenProfileTab(fromHome: .wishlist, deps: deps)
     }
 
     func requestInReviewTabFromHome(deps: AppDependencies) {
-        requestOpenProfileTab(.inReview, scrollToGrid: true)
-        Task {
-            if profile == nil {
-                await refresh(deps: deps, force: true, activeTab: .inReview)
-            } else {
-                await refreshIfStale(deps: deps)
-                await fetchListingsFirstPage(.inReview, deps: deps, force: true)
-            }
-        }
+        requestOpenProfileTab(fromHome: .inReview, deps: deps)
+    }
+
+    func requestSellingTabFromHome(deps: AppDependencies) {
+        requestOpenProfileTab(fromHome: .active, deps: deps)
     }
 
     func consumeProfileTabOpenRequest() -> ProfileTabOpenRequest? {
@@ -547,6 +536,11 @@ final class ProfileViewModel {
            !profileUxDefaultApplied {
             pendingDefaultProfileTab = idx
         }
+    }
+
+    private func requestOpenProfileTab(fromHome tab: ProfileListingTab, deps: AppDependencies) {
+        requestOpenProfileTab(tab, scrollToGrid: true)
+        Task { await refresh(deps: deps, force: true, activeTab: tab) }
     }
 
     private func requestOpenProfileTab(_ tab: ProfileListingTab, scrollToGrid: Bool) {

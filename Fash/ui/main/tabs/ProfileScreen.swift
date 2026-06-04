@@ -107,11 +107,12 @@ struct ProfileScreen: View {
         }
         .onAppear {
             _ = applyProfileTabOpenRequestIfNeeded()
-            applyPendingExternalGridScrollIfNeeded()
+            tryApplyPendingExternalGridScroll()
             Task { await viewModel.ensureListingsLoaded(for: selectedProfileTab, deps: deps) }
         }
         .onChange(of: viewModel.profileTabOpenGeneration) { _, _ in
             _ = applyProfileTabOpenRequestIfNeeded()
+            tryApplyPendingExternalGridScroll()
         }
         .onChange(of: viewModel.profile?.userId) { _, _ in
             guard viewModel.profile != nil else { return }
@@ -120,16 +121,23 @@ struct ProfileScreen: View {
                 selectedTab = tab
                 viewModel.onProfileTabSelected(tab, deps: deps)
             }
+            tryApplyPendingExternalGridScroll()
         }
         .onChange(of: viewModel.isRefreshing) { _, _ in
-            applyPendingExternalGridScrollIfNeeded()
+            tryApplyPendingExternalGridScroll()
+        }
+        .onChange(of: viewModel.hasCompletedInitialLoad) { _, _ in
+            tryApplyPendingExternalGridScroll()
+        }
+        .onChange(of: showListingGridLoading) { _, _ in
+            tryApplyPendingExternalGridScroll()
         }
         .onChange(of: currentItems.count) { _, _ in
-            applyPendingExternalGridScrollIfNeeded()
+            tryApplyPendingExternalGridScroll()
         }
         .onChange(of: selectedTab) { _, tab in
             viewModel.onProfileTabSelected(tab, deps: deps)
-            applyPendingExternalGridScrollIfNeeded()
+            tryApplyPendingExternalGridScroll()
         }
     }
 
@@ -156,15 +164,16 @@ struct ProfileScreen: View {
         selectedTab = req.tab.rawValue
         viewModel.onProfileTabSelected(req.tab.rawValue, deps: deps)
         pendingExternalGridScroll = req.scrollToGrid
-        applyPendingExternalGridScrollIfNeeded()
+        tryApplyPendingExternalGridScroll()
         return true
     }
 
-    /// Scroll listing grid to pinned position once profile refresh finishes (parity with Android ProfileScreen).
-    private func applyPendingExternalGridScrollIfNeeded() {
-        guard pendingExternalGridScroll,
-              viewModel.hasCompletedInitialLoad,
-              !viewModel.isRefreshing else { return }
+    /// Scroll listing grid to pinned tabs once refresh + first-page load settle (Android `LaunchedEffect(pendingExternalGridScroll, …)`).
+    private func tryApplyPendingExternalGridScroll() {
+        guard pendingExternalGridScroll else { return }
+        guard viewModel.hasCompletedInitialLoad else { return }
+        guard !viewModel.isRefreshing else { return }
+        guard !showListingGridLoading else { return }
         pendingExternalGridScroll = false
         scrollToGridToken += 1
     }
