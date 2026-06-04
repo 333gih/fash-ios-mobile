@@ -38,15 +38,41 @@ struct ProfileInfo: Equatable {
     var topBadges: [SellerBadgeSummary] = []
 }
 
-/// Onboarding / home gate flags from `GET .../setup-status`.
+/// Core `GET …/access-status` — Android [UserAccessStatus].
 struct UserAccessStatus: Equatable {
-    var needsUsername: Bool
-    var needsPassword: Bool
-    var needsProfilePhoto: Bool
-    var needsShoppingPrefs: Bool
-    var needsSizing: Bool
-    var needsAestheticTags: Bool
-    var canAccessHome: Bool
+    var hasProfile: Bool
+    var aestheticTagsConfigured: Bool
+    var onboardingDone: Bool
+    var sizingReferenceCompleted: Bool
+    var shoppingPreferencesConfigured: Bool = false
+    /// When present (`can_access_home`), authoritative for [canAccessHome].
+    var serverCanAccessHome: Bool? = nil
+    /// e.g. `password`, `onboard`, `sizing_reference`, `none`.
+    var nextStep: String? = nil
+    var passwordSet: Bool? = nil
+    var isChangePassword: Bool? = nil
+    var meetingSchedulingReverifyRequired: Bool = false
+    var meetingSchedulingSuspendedUntil: String? = nil
+
+    func needsPasswordSetup() -> Bool {
+        if !onboardingDone { return false }
+        if passwordSet == true { return false }
+        if passwordSet == false { return true }
+        if isChangePassword == true { return true }
+        if nextStep?.trimmingCharacters(in: .whitespaces).lowercased() == "password" { return true }
+        return false
+    }
+
+    var canAccessHome: Bool {
+        if needsPasswordSetup() { return false }
+        if let server = serverCanAccessHome { return server }
+        if nextStep?.trimmingCharacters(in: .whitespaces).lowercased() == "none",
+           hasProfile, onboardingDone, sizingReferenceCompleted, shoppingPreferencesConfigured {
+            return true
+        }
+        return hasProfile && aestheticTagsConfigured && onboardingDone
+            && sizingReferenceCompleted && shoppingPreferencesConfigured
+    }
 }
 
 struct ProfilePatch: Equatable {
@@ -67,12 +93,15 @@ struct ProfilePatch: Equatable {
 }
 
 struct SizingReferenceRequest: Equatable {
-    var measurementUnit: String?
-    var chest: Double?
-    var waist: Double?
-    var hips: Double?
-    var height: Double?
-    var weight: Double?
+    var referenceSize: String
+    var referenceMeasurementUnit: String
+    var referenceMeasurementChest: Double = 0
+    var referenceMeasurementHem: Double = 0
+    var referenceMeasurementLength: Double = 0
+    var referenceMeasurementShoulders: Double = 0
+    var referenceMeasurementSleeveLength: Double = 0
+    var heightCm: Int? = nil
+    var weightKg: Double? = nil
 }
 
 struct AestheticTagPutItem: Equatable {

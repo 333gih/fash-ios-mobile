@@ -17,6 +17,8 @@ struct MainNavScreen: View {
     @State private var realtimePingTask: Task<Void, Never>?
     @State private var prevInboxUnreadCount = 0
     @State private var activePromoCampaign: AppPromoCampaign?
+    @State private var showFeatureTour = false
+    @State private var tourStep: AppTourStep = .intro
     @State private var accountSwitchPrompt: AccountSwitchPrompt?
     @State private var promoOpenCountTracked = false
 
@@ -135,6 +137,21 @@ struct MainNavScreen: View {
                 onSecondaryClick: handlePromoSecondary
             )
         }
+        .overlay {
+            if showFeatureTour {
+                AppFeatureTourOverlay(
+                    currentStep: tourStep,
+                    onStepChange: { step in
+                        tourStep = step
+                        if let tab = step.prepareTab {
+                            router.selectedTab = tab
+                        }
+                    },
+                    onSkip: finishFeatureTour,
+                    onFinish: finishFeatureTour
+                )
+            }
+        }
         .animation(.easeInOut(duration: 0.22), value: deps.snackbarMessage)
         .fashInAppNotificationOverlay()
         .animation(.easeInOut(duration: 0.25), value: activePromoCampaign?.campaignId)
@@ -160,6 +177,20 @@ struct MainNavScreen: View {
         .task(id: "promoOnAppOpen-\(isGuestMode)") {
             guard !isGuestMode else { return }
             await tryPresentAppOpenPromo(incrementOpenCount: true)
+        }
+        .task(id: "featureTour-\(isGuestMode)") {
+            guard !isGuestMode else {
+                showFeatureTour = false
+                return
+            }
+            guard !AppFeatureTourStore.isCompletedForCurrentVersion() else { return }
+            try? await Task.sleep(for: .milliseconds(400))
+            guard activePromoCampaign == nil else { return }
+            showFeatureTour = true
+            tourStep = .intro
+        }
+        .onChange(of: activePromoCampaign?.campaignId) { _, newId in
+            if newId != nil { showFeatureTour = false }
         }
         .onChange(of: deps.appPromoCatalogRefreshGeneration) { _, _ in
             guard !isGuestMode, activePromoCampaign == nil, router.selectedConversationId == nil else { return }
@@ -546,6 +577,11 @@ struct MainNavScreen: View {
             )
             return
         }
+    }
+
+    private func finishFeatureTour() {
+        AppFeatureTourStore.markCompletedForCurrentVersion()
+        showFeatureTour = false
     }
 
     private func dismissActivePromo() {

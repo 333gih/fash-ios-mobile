@@ -158,6 +158,35 @@ enum RepositoryHttp {
         throw lastError
     }
 
+    static func executeCorePut(
+        relativePath: String,
+        client: SecuredApiClient,
+        body: Data
+    ) async throws {
+        let path = relativePath.hasPrefix("api/") ? relativePath : "api/v1/\(relativePath)"
+        var lastError: Error = URLError(.cannotConnectToHost)
+        for urlString in AppEnvironment.coreApiCandidateURLs(path) {
+            guard let url = URL(string: urlString) else { continue }
+            var req = URLRequest(url: url)
+            req.httpMethod = "PUT"
+            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            req.httpBody = body
+            do {
+                let (_, http) = try await client.data(for: req)
+                guard (200..<300).contains(http.statusCode) else {
+                    throw CoreServiceHttpException(
+                        statusCode: http.statusCode,
+                        message: "HTTP \(http.statusCode)"
+                    )
+                }
+                return
+            } catch {
+                lastError = error
+            }
+        }
+        throw lastError
+    }
+
     static func executeCorePost(
         relativePath: String,
         client: SecuredApiClient,

@@ -10,6 +10,8 @@ struct RootView: View {
     @State private var chatVM = ChatViewModel()
     @State private var ordersVM = OrdersViewModel()
     @State private var loginVM = LoginViewModel()
+    @State private var onboardingVM = OnboardingViewModel()
+    @State private var needsOnboarding: Bool?
     @State private var addressBookVM = AddressBookViewModel()
     @State private var changePasswordVM = ChangePasswordViewModel()
     @State private var notificationPreferencesVM = NotificationPreferencesViewModel()
@@ -117,7 +119,7 @@ struct RootView: View {
                 guard deps.authSessionStore.read() != nil,
                       !router.isGuestMode,
                       router.loginStep == nil,
-                      router.onboardingStep == nil || router.onboardingStep == .completed
+                      needsOnboarding != true
                 else { return }
                 Task {
                     await deps.realtimeManager.connect()
@@ -153,9 +155,9 @@ struct RootView: View {
                 router.setupGateFetchFailed = false
                 Task { await bootstrapSession() }
             }
-        } else if let onboard = router.onboardingStep {
-            onboardingFlow(step: onboard)
-        } else {
+        } else if needsOnboarding == true {
+            onboardingFlow()
+        } else if needsOnboarding == false {
             MainNavScreen(
                 router: router,
                 homeVM: homeVM,
@@ -164,6 +166,8 @@ struct RootView: View {
                 chatVM: chatVM,
                 ordersVM: ordersVM
             )
+        } else {
+            FashWaitingScreen()
         }
     }
 
@@ -387,24 +391,74 @@ struct RootView: View {
     }
 
     @ViewBuilder
-    private func onboardingFlow(step: OnboardingStep) -> some View {
-        switch step {
-        case .aestheticTags:
-            OnboardingScreen(onContinue: { router.onboardingStep = .shoppingPreferences })
-        case .shoppingPreferences:
-            ShoppingPreferencesOnboardScreen(onContinue: { router.onboardingStep = .profilePhoto })
-        case .profilePhoto:
-            ProfilePhotoOnboardScreen(onContinue: { router.onboardingStep = .sizingReference })
-        case .sizingReference:
-            SizingReferenceScreen(onContinue: { router.onboardingStep = .username })
-        case .username:
-            UsernameOnboardScreen(onContinue: { router.onboardingStep = .setupPassword })
+    private func onboardingFlow() -> some View {
+        let onStepComplete: () -> Void = {
+            Task { await handleOnboardingStepComplete() }
+        }
+        switch onboardingVM.onboardingStep {
         case .setupPassword:
-            SetupPasswordOnboardScreen(onContinue: { router.onboardingStep = .completed })
+            SetupPasswordOnboardScreen(viewModel: onboardingVM, onStepComplete: onStepComplete)
+        case .aestheticTags:
+            OnboardingScreen(viewModel: onboardingVM, onStepComplete: onStepComplete)
+        case .shoppingPreferences:
+            ShoppingPreferencesOnboardScreen(viewModel: onboardingVM, onStepComplete: onStepComplete)
+        case .profilePhoto:
+            ProfilePhotoOnboardScreen(viewModel: onboardingVM, onStepComplete: onStepComplete)
+        case .sizingReference:
+            SizingReferenceScreen(viewModel: onboardingVM, onStepComplete: onStepComplete)
+        case .username:
+            UsernameOnboardScreen(viewModel: onboardingVM, onStepComplete: onStepComplete)
         case .completed:
             FashWaitingScreen()
-                .task { await prepareMainShellEntry() }
+                .task { await finishOnboardingIfReady() }
         }
+    }
+
+    private func handleOnboardingStepComplete() async {
+        if onboardingVM.onboardingStep == .completed {
+            await finishOnboardingIfReady()
+            return
+        }
+        let stillNeeds = await resolveShellNeedsOnboardingAfterStep()
+        if stillNeeds {
+            needsOnboarding = true
+        } else {
+            await finishOnboardingIfReady()
+        }
+    }
+
+    private func finishOnboardingIfReady() async {
+        if onboardingVM.onboardingStep != .completed {
+            let stillNeeds = await resolveNeedsOnboardingAfterProfileSubmit()
+            guard !stillNeeds else {
+                needsOnboarding = true
+                return
+            }
+        }
+        needsOnboarding = false
+        await prepareMainShellEntry()
+    }
+
+    private func resolveShellNeedsOnboardingAfterStep() async -> Bool {
+        switch await deps.userRepository.getUserAccessStatus() {
+        case .success(let status):
+            return !status.canAccessHome || onboardingVM.onboardingStep != .completed
+        case .failure:
+            return true
+        }
+    }
+
+    private func resolveNeedsOnboardingAfterProfileSubmit() async -> Bool {
+        if onboardingVM.onboardingStep != .completed { return true }
+        for attempt in 0..<4 {
+            if case .success(let status) = await deps.userRepository.getUserAccessStatus(), status.canAccessHome {
+                return false
+            }
+            if attempt < 3 {
+                try? await Task.sleep(for: .milliseconds(350))
+            }
+        }
+        return false
     }
 
     private func dismissChat() {
@@ -414,12 +468,15 @@ struct RootView: View {
 
     private func bootstrapSession() async {
         router.setupGateFetchFailed = false
+        needsOnboarding = nil
         let hasSession = deps.authSessionStore.read() != nil
         let sessionValid = hasSession ? await deps.revalidateSession() : false
         if !hasSession || !sessionValid {
+            needsOnboarding = nil
             if PublicBrowseHttp.isConfigured {
                 router.isGuestMode = true
                 deps.isGuestBrowseActive = true
+                needsOnboarding = false
                 await prepareMainShellEntry()
             } else {
                 router.loginStep = .email
@@ -428,21 +485,35 @@ struct RootView: View {
         }
         router.isGuestMode = false
         deps.isGuestBrowseActive = false
-        let status = await deps.userRepository.fetchSetupStatus()
-        switch status {
-        case .success(let gate):
-            deps.authManager.onSessionSaved()
-            await deps.preferredLocaleSync.syncIfSession(locale: AppLocale.currentTag)
-            await deps.realtimeManager.connect()
-            await PushNotificationCoordinator.shared.requestAuthorizationAndRegisterForRemoteNotifications()
-            await PushNotificationCoordinator.shared.registerCurrentTokenIfSession()
-            if gate.canAccessHome {
-                await prepareMainShellEntry()
-            } else {
-                router.onboardingStep = mapNextStep(gate.nextStep)
+        var accessStatus: UserAccessStatus?
+        for attempt in 0..<4 {
+            if case .success(let status) = await deps.userRepository.getUserAccessStatus() {
+                accessStatus = status
+                break
             }
-        case .failure:
+            if attempt < 3 {
+                try? await Task.sleep(for: .milliseconds(450))
+            }
+        }
+        guard let status = accessStatus else {
             router.setupGateFetchFailed = true
+            needsOnboarding = nil
+            return
+        }
+        deps.authManager.onSessionSaved()
+        await deps.preferredLocaleSync.syncIfSession(locale: AppLocale.currentTag)
+        await deps.realtimeManager.connect()
+        await PushNotificationCoordinator.shared.requestAuthorizationAndRegisterForRemoteNotifications()
+        await PushNotificationCoordinator.shared.registerCurrentTokenIfSession()
+        if status.canAccessHome {
+            needsOnboarding = false
+            await prepareMainShellEntry()
+        } else {
+            needsOnboarding = true
+            await onboardingVM.applyInitialStepFromAccessStatus(status, deps: deps)
+            if onboardingVM.onboardingStep == .aestheticTags {
+                onboardingVM.loadTags(deps: deps)
+            }
         }
     }
 
@@ -465,17 +536,6 @@ struct RootView: View {
         }
         router.loginStep = nil
         router.onboardingStep = nil
-    }
-
-    private func mapNextStep(_ raw: String?) -> OnboardingStep {
-        switch raw {
-        case "shopping_preferences": return .shoppingPreferences
-        case "profile_photo": return .profilePhoto
-        case "sizing_reference": return .sizingReference
-        case "username": return .username
-        case "setup_password": return .setupPassword
-        default: return .aestheticTags
-        }
     }
 
     private func presentGuestSignIn(reason: String) {
