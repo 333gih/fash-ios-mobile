@@ -516,7 +516,6 @@ struct MainNavScreen: View {
             selectedTab: $router.selectedTab,
             chatUnreadCount: chatVM.unreadTotal,
             isPostListingFlow: isPostListingFlow,
-            featureTourAnchorsEnabled: showFeatureTour,
             onTabChange: { tab in
                 if isGuestMode && tab.isGuestLocked {
                     onRequestSignIn?(guestLoginReason(for: tab))
@@ -553,7 +552,8 @@ struct MainNavScreen: View {
                 case .profile: return profileVM.isRefreshing || profileVM.isLoading
                 case .post: return postVM.navReselectLoading
                 }
-            }
+            },
+            featureTourAnchorsEnabled: showFeatureTour
         )
     }
 
