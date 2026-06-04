@@ -276,8 +276,11 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         guard visualIndex >= 0, visualIndex < resolvedTabIndices.count else { return }
         let nextTab = resolvedTabIndices[visualIndex]
         guard nextTab != selectedTab else { return }
-        tabSlideDirection = visualIndex > visualTabIndex ? 1 : -1
-        withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+        tabSlideDirection = FashTabSwipeMotion.slideDirection(
+            oldIndex: visualTabIndex,
+            newIndex: visualIndex
+        )
+        withAnimation(FashTabSwipeMotion.contentAnimation) {
             selectedTab = nextTab
         }
     }
@@ -311,12 +314,8 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         profileListingGridBody
             .id(listingGridScrollId)
             .allowsHitTesting(listingInteractionEnabled)
-            .transition(
-                .asymmetric(
-                    insertion: .opacity.combined(with: .offset(x: CGFloat(tabSlideDirection) * 28)),
-                    removal: .opacity.combined(with: .offset(x: CGFloat(-tabSlideDirection) * 28))
-                )
-            )
+            .animation(FashTabSwipeMotion.contentAnimation, value: selectedTab)
+            .transition(FashTabSwipeMotion.contentTransition)
             .onAppear { refreshProfileMasonryLayout() }
             .onChange(of: items.map(\.id)) { _, _ in refreshProfileMasonryLayout() }
             .onChange(of: selectedTab) { _, _ in refreshProfileMasonryLayout() }
@@ -373,8 +372,8 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         guard !isRefreshing, !lockScroll else { return }
         let oldVisual = resolvedTabIndices.firstIndex(of: oldTab) ?? 0
         let newVisual = resolvedTabIndices.firstIndex(of: newTab) ?? 0
-        tabSlideDirection = newVisual > oldVisual ? 1 : -1
-        scheduleClampAfterTabContentLayout()
+        tabSlideDirection = FashTabSwipeMotion.slideDirection(oldIndex: oldVisual, newIndex: newVisual)
+        scrollClampRevision += 1
     }
 
     private func applyScrollToTop(using scrollProxy: ScrollViewProxy) {
@@ -755,7 +754,7 @@ struct ProfileTabSwitcher: View {
                     ForEach(orderedTabIndices, id: \.self) { logicalIndex in
                         let selected = selectedTab == logicalIndex
                         Button {
-                            withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+                            withAnimation(FashTabSwipeMotion.contentAnimation) {
                                 selectedTab = logicalIndex
                             }
                         } label: {
@@ -788,10 +787,10 @@ struct ProfileTabSwitcher: View {
                 .padding(.horizontal, spacing.editorialStart)
             }
             .background(FashColors.screen)
-            .animation(.spring(response: 0.34, dampingFraction: 0.86), value: selectedTab)
+            .animation(FashTabSwipeMotion.contentAnimation, value: selectedTab)
             .onChange(of: selectedTab) { _, tab in
                 guard orderedTabIndices.contains(tab) else { return }
-                withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+                withAnimation(FashTabSwipeMotion.contentAnimation) {
                     proxy.scrollTo(tab, anchor: .center)
                 }
             }

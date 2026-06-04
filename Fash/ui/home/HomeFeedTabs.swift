@@ -141,9 +141,9 @@ struct HomeFeedTabSwitcher: View {
                 .padding(.horizontal, spacing.editorialStart)
             }
             .background(FashColors.screen)
-            .animation(.spring(response: 0.34, dampingFraction: 0.86), value: selectedTab.id)
+            .animation(FashTabSwipeMotion.contentAnimation, value: selectedTab.id)
             .onChange(of: selectedTab.id) { _, _ in
-                withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+                withAnimation(FashTabSwipeMotion.contentAnimation) {
                     proxy.scrollTo(selectedTab.id, anchor: .center)
                 }
             }

@@ -51,7 +51,8 @@ struct HomeFeedContent: View {
     /// Avoid collapsed empty gap while tab content swaps during horizontal swipe.
     private var homeFeedMinHeight: CGFloat {
         if !viewModel.items.isEmpty { return 0 }
-        if viewModel.isRefreshing { return 280 }
+        if viewModel.hasCachedItems(for: viewModel.selectedFeedTab) { return 0 }
+        if viewModel.isRefreshing { return 0 }
         if viewModel.isShellLoading || viewModel.isTabLoading(viewModel.selectedFeedTab) {
             return 520
         }
@@ -101,16 +102,12 @@ struct HomeFeedContent: View {
                         tabCount: tabs.count,
                         listingInteractionEnabled: $listingInteractionEnabled
                     ) { index in
-                        tabSlideDirection = index > selectedTabIndex ? 1 : -1
-                        let selectTab = {
+                        tabSlideDirection = FashTabSwipeMotion.slideDirection(
+                            oldIndex: selectedTabIndex,
+                            newIndex: index
+                        )
+                        withAnimation(FashTabSwipeMotion.contentAnimation) {
                             viewModel.selectFeedTab(tabs[index], deps: deps, isGuestMode: isGuestMode)
-                        }
-                        if viewModel.isRefreshing {
-                            selectTab()
-                        } else {
-                            withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
-                                selectTab()
-                            }
                         }
                     }
                 }
@@ -143,8 +140,15 @@ struct HomeFeedContent: View {
                 .onChange(of: viewModel.tabsLoading) { _, _ in
                     guard pendingPinnedFeedScroll else { return }
                     guard !viewModel.isTabLoading(viewModel.selectedFeedTab) else { return }
+                    guard !viewModel.items.isEmpty else { return }
                     pendingPinnedFeedScroll = false
-                    applyPinnedFeedScroll(using: scrollProxy)
+                    scrollClampRevision += 1
+                }
+                .onChange(of: viewModel.items.count) { _, _ in
+                    guard pendingPinnedFeedScroll else { return }
+                    guard !viewModel.items.isEmpty else { return }
+                    pendingPinnedFeedScroll = false
+                    scrollClampRevision += 1
                 }
             }
 
@@ -236,17 +240,13 @@ struct HomeFeedContent: View {
                 onSelect: { tab in
                     if let oldIdx = tabs.firstIndex(of: viewModel.selectedFeedTab),
                        let newIdx = tabs.firstIndex(of: tab), oldIdx != newIdx {
-                        tabSlideDirection = newIdx > oldIdx ? 1 : -1
+                        tabSlideDirection = FashTabSwipeMotion.slideDirection(
+                            oldIndex: oldIdx,
+                            newIndex: newIdx
+                        )
                     }
-                    let selectTab = {
+                    withAnimation(FashTabSwipeMotion.contentAnimation) {
                         viewModel.selectFeedTab(tab, deps: deps, isGuestMode: isGuestMode)
-                    }
-                    if viewModel.isRefreshing {
-                        selectTab()
-                    } else {
-                        withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
-                            selectTab()
-                        }
                     }
                 }
             )
@@ -264,15 +264,11 @@ struct HomeFeedContent: View {
         }
         .id(viewModel.selectedFeedTabKey)
         .allowsHitTesting(listingInteractionEnabled)
-        .animation(viewModel.isRefreshing ? nil : .spring(response: 0.34, dampingFraction: 0.86), value: viewModel.selectedFeedTabKey)
-        .transition(
-            viewModel.isRefreshing
-                ? .opacity
-                : .asymmetric(
-                    insertion: .opacity.combined(with: .offset(x: CGFloat(tabSlideDirection) * 28)),
-                    removal: .opacity.combined(with: .offset(x: CGFloat(-tabSlideDirection) * 28))
-                )
+        .animation(
+            viewModel.isRefreshing ? nil : FashTabSwipeMotion.contentAnimation,
+            value: viewModel.selectedFeedTabKey
         )
+        .transition(FashTabSwipeMotion.contentTransition)
     }
 
     @ViewBuilder
@@ -408,22 +404,22 @@ struct HomeFeedContent: View {
 
     private func resetHomeFeedScrollForTabChange(using scrollProxy: ScrollViewProxy, tabKey: String) {
         scrollClampRevision += 1
-        homeScrollPosition = HomeScrollIds.feedContent
-        scrollProxy.scrollTo(HomeScrollIds.feedContent, anchor: .top)
-        homeScrollResetToken += 1
-        pendingPinnedFeedScroll = viewModel.isTabLoading(viewModel.selectedFeedTab)
-        guard !viewModel.isRefreshing else { return }
-        Task { @MainActor in
-            for delayMs in [60, 140, 280] {
-                try? await Task.sleep(for: .milliseconds(delayMs))
-                guard viewModel.selectedFeedTabKey == tabKey else { return }
-                guard !viewModel.isRefreshing else { return }
-                scrollClampRevision += 1
-                homeScrollPosition = HomeScrollIds.feedContent
-                scrollProxy.scrollTo(HomeScrollIds.feedContent, anchor: .top)
-                homeScrollResetToken += 1
-            }
+        let tab = viewModel.selectedFeedTab
+        let ready = viewModel.hasCachedItems(for: tab)
+            || (!viewModel.isTabLoading(tab) && !viewModel.items.isEmpty)
+        guard ready else {
+            pendingPinnedFeedScroll = viewModel.isTabLoading(tab)
+            return
         }
+        pendingPinnedFeedScroll = false
+        guard !viewModel.isRefreshing else { return }
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            homeScrollPosition = HomeScrollIds.feedContent
+            scrollProxy.scrollTo(HomeScrollIds.feedContent, anchor: .top)
+        }
+        homeScrollResetToken += 1
     }
 
     private func applyPinnedFeedScroll(using scrollProxy: ScrollViewProxy) {

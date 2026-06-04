@@ -255,7 +255,6 @@ final class HomeViewModel {
     }
 
     func pullToRefresh(deps: AppDependencies, isGuestMode: Bool = false) async {
-        requestScrollHomeToTop()
         isRefreshing = true
         defer { isRefreshing = false }
         let tabToReload = selectedFeedTab
@@ -673,18 +672,28 @@ final class HomeViewModel {
         return result
     }
 
+    func hasCachedItems(for tab: HomeFeedTab) -> Bool {
+        !itemsForTab(tab).isEmpty
+    }
+
     private func syncItemsForSelectedTab() {
         let tab = selectedFeedTab
-        guard loadedTabs.contains(tab.rawValue), !tabsLoading.contains(tab.rawValue) else {
-            if !isRefreshing {
-                items = []
+        let cached = itemsForTab(tab)
+        if loadedTabs.contains(tab.rawValue), !tabsLoading.contains(tab.rawValue) {
+            items = cached
+            if !items.isEmpty {
+                errorMessage = nil
+                FeedListingImagePrefetch.prefetch(items: items)
             }
             return
         }
-        items = itemsForTab(tab)
-        if !items.isEmpty {
-            errorMessage = nil
-            FeedListingImagePrefetch.prefetch(items: items)
+        if !cached.isEmpty {
+            items = cached
+            return
+        }
+        if isRefreshing { return }
+        if tabsLoading.contains(tab.rawValue) {
+            items = []
         }
     }
 
