@@ -371,11 +371,11 @@ struct RootView: View {
                 },
                 onSocialLoginVerified: {
                     router.loginStep = nil
-                    Task { await bootstrapSession() }
+                    Task { await handleAuthenticatedLogin() }
                 },
                 onPasswordLoginVerified: {
                     router.loginStep = nil
-                    Task { await bootstrapSession() }
+                    Task { await handleAuthenticatedLogin() }
                 }
             )
         case .otp:
@@ -383,7 +383,7 @@ struct RootView: View {
                 viewModel: loginVM,
                 onVerified: {
                     router.loginStep = nil
-                    Task { await bootstrapSession() }
+                    Task { await handleAuthenticatedLogin() }
                 },
                 onBack: { router.loginStep = .email }
             )
@@ -464,6 +464,19 @@ struct RootView: View {
     private func dismissChat() {
         router.selectedConversationId = nil
         deps.requestChatInboxRefresh()
+    }
+
+    private func handleAuthenticatedLogin() async {
+        let previousUserId = deps.consumePendingLoginPreviousUserId()
+        SignedInShellCacheReset.prepareForNewSession(
+            deps: deps,
+            homeVM: homeVM,
+            profileVM: profileVM,
+            chatVM: chatVM,
+            exploreVM: exploreVM,
+            previousUserId: previousUserId
+        )
+        await bootstrapSession()
     }
 
     private func bootstrapSession() async {

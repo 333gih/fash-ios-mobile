@@ -139,7 +139,7 @@ final class AuthRepository {
         let type = (json["token_type"] as? String)?.trimmingCharacters(in: .whitespaces).isEmpty == false
             ? (json["token_type"] as? String ?? "Bearer")
             : "Bearer"
-        let userId = json["user_id"] as? String
+        let userId = Self.resolveUserId(from: json)
         let expiresIn: Int64 = {
             if let n = json["expires_in"] as? NSNumber { return n.int64Value }
             if let s = json["expires_in"] as? String, let v = Int64(s) { return v }
@@ -157,5 +157,23 @@ final class AuthRepository {
             isNewUser: isNewUser,
             unreadCount: max(0, unreadCount)
         )
+    }
+
+    private static func resolveUserId(from json: [String: Any]) -> String? {
+        if let top = json["user_id"] as? String {
+            let trimmed = top.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty { return trimmed }
+        }
+        if let user = json["user"] as? [String: Any] {
+            if let id = user["id"] as? String {
+                let trimmed = id.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty { return trimmed }
+            }
+            if let id = user["ID"] as? String {
+                let trimmed = id.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty { return trimmed }
+            }
+        }
+        return nil
     }
 }

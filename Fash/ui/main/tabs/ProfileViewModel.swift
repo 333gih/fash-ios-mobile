@@ -276,6 +276,7 @@ final class ProfileViewModel {
         pendingDefaultProfileTab = nil
         deps.uxTabTracker.closeActiveTab()
         deps.uxTabTracker.flush()
+        resetDisplayedIdentity()
         profile = nil
         sellingListings = []
         inReviewListings = []
@@ -293,6 +294,22 @@ final class ProfileViewModel {
         lastSuccessfulRefreshAt = nil
         hasCompletedInitialLoad = false
         lastSelectedProfileTab = ProfileListingTab.active.rawValue
+        isLoading = false
+        isRefreshing = false
+    }
+
+    /// Clears header fields so a new account never shows the previous user's name/email while loading.
+    private func resetDisplayedIdentity() {
+        displayName = ""
+        username = ""
+        avatarUrl = ""
+        coverImageUrl = ""
+        bio = ""
+        followerCount = 0
+        followingCount = 0
+        productCount = 0
+        soldCount = 0
+        aestheticCatalog = []
     }
 
     // MARK: - Private

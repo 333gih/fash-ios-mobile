@@ -89,10 +89,19 @@ enum GoogleSignInClients {
         )
     }
 
+    /// Revokes the cached Google account so the next sign-in shows the account picker (Android parity on account switch).
+    @MainActor
+    static func prepareForAccountPicker() {
+        guard isConfigured() else { return }
+        configureIfNeeded()
+        GIDSignIn.sharedInstance.signOut()
+    }
+
     @MainActor
     static func signIn(presenting viewController: UIViewController) async throws -> String {
         guard isConfigured() else { throw SignInError.notConfigured }
         configureIfNeeded()
+        prepareForAccountPicker()
         do {
             let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: viewController)
             guard let token = result.user.idToken?.tokenString, !token.isEmpty else {

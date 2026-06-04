@@ -76,6 +76,8 @@ final class AppDependencies {
     var activeChatSession = ActiveChatSession()
     var snackbarMessage: String?
     var pendingAccountSwitchPrompt: AccountSwitchPrompt?
+    /// Previous account user id captured at login — consumed by [RootView] to clear shell caches.
+    private var pendingLoginPreviousUserId: String?
 
     /// Set from [RootView] so push notification taps can open overlays while the app is running.
     weak var navigationRouter: AppRouter?
@@ -188,6 +190,15 @@ final class AppDependencies {
     func invalidateSessionValidationForLogin() {
         sessionValidationTask?.cancel()
         sessionValidationTask = nil
+    }
+
+    func noteAuthenticatedSessionChange(previousUserId: String?) {
+        pendingLoginPreviousUserId = previousUserId
+    }
+
+    func consumePendingLoginPreviousUserId() -> String? {
+        defer { pendingLoginPreviousUserId = nil }
+        return pendingLoginPreviousUserId
     }
 
     /// Fresh validation after login/logout — avoids reusing cold-start prefetch (guest shell bug).

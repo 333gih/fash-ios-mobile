@@ -77,7 +77,7 @@
 "app_tour_back" = "Trước";
 "app_tour_chip" = "Lượt giới thiệu";
 "app_tour_done" = "Hoàn tất";
-"app_tour_intro_body" = "Fash là chợ thời trang second-hand: xem tin đăng, lưu yêu thích, chat với người bán và theo dõi đơn hàng. Trong vài bước tới, bạn sẽ thấy các khu vực chính của ứng dụng.";
+"app_tour_intro_body" = "Fash là chợ thời trang second-hand trên iPhone: xem tin, lưu yêu thích, chat và theo dõi đơn. Các bước sau sẽ chỉ từng mục trên thanh tab và thanh trên cùng.";
 "app_tour_intro_title" = "Chào bạn, đây là Fash";
 "app_tour_nav_chat_body" = "Chat trực tiếp với người mua hoặc người bán để hỏi size, thương lượng và nhận cập nhật đơn hàng.";
 "app_tour_nav_chat_title" = "Tin nhắn";
@@ -85,13 +85,13 @@
 "app_tour_nav_home_title" = "Trang chủ";
 "app_tour_nav_orders_body" = "Theo dõi đơn mua và đơn bán, trạng thái thanh toán, giao hàng và xác nhận — ngay trên thanh điều hướng.";
 "app_tour_nav_orders_title" = "Đơn hàng";
-"app_tour_nav_post_body" = "Nút + ở giữa thanh dưới để đăng món bạn muốn bán lại. Bạn có thể chỉnh sửa ảnh, mô tả và giao vận sau khi tạo tin.";
+"app_tour_nav_post_body" = "Chạm nút + giữa thanh tab để đăng bán. Thêm ảnh, giá và giao vận trước khi đăng tin.";
 "app_tour_nav_post_title" = "Đăng bán";
-"app_tour_nav_profile_body" = "Xem tin đăng của bạn, danh sách đã lưu, theo dõi và cài đặt tài khoản (menu ⋮ trên hồ sơ).";
+"app_tour_nav_profile_body" = "Tin đăng, mục đã lưu và công cụ tài khoản nằm ở đây. Dùng nút menu trên Hồ sơ để mở cài đặt và đăng xuất.";
 "app_tour_nav_profile_title" = "Hồ sơ";
 "app_tour_next" = "Tiếp";
 "app_tour_skip" = "Bỏ qua";
-"app_tour_top_bar_body" = "Tìm kiếm nhanh, mở hộp thông báo để xem tin nhắn và hoạt động, và biểu tượng túi để vào đơn hàng của bạn.";
+"app_tour_top_bar_body" = "Tìm kiếm, mở Thông báo cho tin nhắn và hoạt động; vuốt ngang để đổi tab trên Trang chủ và Hồ sơ.";
 "app_tour_top_bar_title" = "Thanh trên cùng";
 "appointment_card_ticket" = "Vé hẹn xem hàng";
 "avatar_default_cd" = "Ảnh đại diện";

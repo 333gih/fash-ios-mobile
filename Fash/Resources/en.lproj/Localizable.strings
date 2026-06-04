@@ -77,7 +77,7 @@
 "app_tour_back" = "Back";
 "app_tour_chip" = "Quick tour";
 "app_tour_done" = "Done";
-"app_tour_intro_body" = "Fash is a pre-loved fashion marketplace: browse listings, save favorites, chat with sellers, and stay on top of orders. The next steps highlight the main areas of the app.";
+"app_tour_intro_body" = "Fash is a pre-loved fashion marketplace on iPhone: browse listings, save favorites, chat with sellers, and track orders. The next steps highlight each area in the tab bar and top bar.";
 "app_tour_intro_title" = "Welcome to Fash";
 "app_tour_nav_chat_body" = "Chat with buyers or sellers about sizing, offers, and order updates—all in one inbox-style tab.";
 "app_tour_nav_chat_title" = "Messages";
@@ -85,13 +85,13 @@
 "app_tour_nav_home_title" = "Home";
 "app_tour_nav_orders_body" = "Track purchases and sales, payment status, shipping, and confirmations—right from the bottom navigation bar.";
 "app_tour_nav_orders_title" = "Orders";
-"app_tour_nav_post_body" = "The + button in the middle of the bottom bar starts a new listing. You can refine photos, pricing, and shipping details before publishing.";
+"app_tour_nav_post_body" = "Tap the + button in the center of the tab bar to sell an item. Add photos, price, and shipping before you publish.";
 "app_tour_nav_post_title" = "Sell an item";
-"app_tour_nav_profile_body" = "See your listings, saved items, follows, and account tools. Open the ⋮ menu on Profile for settings and sign-out.";
+"app_tour_nav_profile_body" = "Your listings, saved items, and account tools live here. Use the menu button on Profile for settings and sign-out.";
 "app_tour_nav_profile_title" = "Profile";
 "app_tour_next" = "Next";
 "app_tour_skip" = "Skip";
-"app_tour_top_bar_body" = "Search anywhere in the app, open Notifications for messages and activity, and use the bag icon to jump to your orders.";
+"app_tour_top_bar_body" = "Search the marketplace, open Notifications for messages and activity, and swipe between tabs on Home and Profile.";
 "app_tour_top_bar_title" = "Top bar";
 "appointment_card_ticket" = "Viewing appointment ticket";
 "avatar_default_cd" = "Profile photo";

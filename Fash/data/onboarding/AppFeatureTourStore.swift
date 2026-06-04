@@ -6,7 +6,7 @@ enum AppFeatureTourStore {
     private static let keyPrefix = "app_feature_tour_completed_v"
 
     /// Increment to replay the tour for all users.
-    static let currentTourVersion = 1
+    static let currentTourVersion = 2
 
     private static var key: String { keyPrefix + "\(currentTourVersion)" }
 

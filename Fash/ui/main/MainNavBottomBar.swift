@@ -9,6 +9,7 @@ struct MainNavBottomBar: View {
     var onTabReselected: ((MainTab) -> Void)? = nil
     /// Re-tap on the active tab — show spinner on that tab icon while reload runs.
     var isTabNavLoading: ((MainTab) -> Bool)? = nil
+    var featureTourAnchorsEnabled: Bool = false
 
     /// Total bar content height (divider + row); use for overlay insets (~58pt + safe area).
     static let contentHeight: CGFloat = 58
@@ -106,6 +107,17 @@ struct MainNavBottomBar: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(MainNavTabButtonStyle())
+        .featureTourAnchor(tourAnchor(for: tab), enabled: featureTourAnchorsEnabled)
+    }
+
+    private func tourAnchor(for tab: MainTab) -> FeatureTourAnchor {
+        switch tab {
+        case .home: return .bottomHome
+        case .orders: return .bottomOrders
+        case .post: return .bottomPostFab
+        case .chat: return .bottomChat
+        case .profile: return .bottomProfile
+        }
     }
 
     private var postFab: some View {
@@ -143,6 +155,7 @@ struct MainNavBottomBar: View {
         }
         .buttonStyle(MainNavTabButtonStyle())
         .accessibilityLabel(L10n.navPostFabCd)
+        .featureTourAnchor(.bottomPostFab, enabled: featureTourAnchorsEnabled)
     }
 
     private func icon(for tab: MainTab, selected: Bool) -> String {

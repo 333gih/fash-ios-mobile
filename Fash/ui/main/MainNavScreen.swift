@@ -21,6 +21,7 @@ struct MainNavScreen: View {
     @State private var tourStep: AppTourStep = .intro
     @State private var accountSwitchPrompt: AccountSwitchPrompt?
     @State private var promoOpenCountTracked = false
+    @State private var featureTourAnchorFrames: [FeatureTourAnchor: CGRect] = [:]
 
     private var isPostListingFlow: Bool { router.selectedTab == .post }
 
@@ -141,6 +142,7 @@ struct MainNavScreen: View {
             if showFeatureTour {
                 AppFeatureTourOverlay(
                     currentStep: tourStep,
+                    anchorFrames: featureTourAnchorFrames,
                     onStepChange: { step in
                         tourStep = step
                         if let tab = step.prepareTab {
@@ -152,6 +154,7 @@ struct MainNavScreen: View {
                 )
             }
         }
+        .onPreferenceChange(FeatureTourAnchorKey.self) { featureTourAnchorFrames = $0 }
         .animation(.easeInOut(duration: 0.22), value: deps.snackbarMessage)
         .fashInAppNotificationOverlay()
         .animation(.easeInOut(duration: 0.25), value: activePromoCampaign?.campaignId)
@@ -181,16 +184,22 @@ struct MainNavScreen: View {
         .task(id: "featureTour-\(isGuestMode)") {
             guard !isGuestMode else {
                 showFeatureTour = false
+                router.featureTourActive = false
                 return
             }
             guard !AppFeatureTourStore.isCompletedForCurrentVersion() else { return }
             try? await Task.sleep(for: .milliseconds(400))
             guard activePromoCampaign == nil else { return }
             showFeatureTour = true
+            router.featureTourActive = true
             tourStep = .intro
+            router.selectedTab = .home
         }
         .onChange(of: activePromoCampaign?.campaignId) { _, newId in
-            if newId != nil { showFeatureTour = false }
+            if newId != nil {
+                showFeatureTour = false
+                router.featureTourActive = false
+            }
         }
         .onChange(of: deps.appPromoCatalogRefreshGeneration) { _, _ in
             guard !isGuestMode, activePromoCampaign == nil, router.selectedConversationId == nil else { return }
@@ -347,6 +356,7 @@ struct MainNavScreen: View {
                 animateSearch: !router.featureTourActive,
                 showGuestSignIn: isGuestMode,
                 unreadCount: deps.inboxUnreadCount,
+                featureTourAnchorsEnabled: showFeatureTour,
                 onSearchClick: openExploreSearch,
                 onNotificationsClick: openNotifications
             )
@@ -506,6 +516,7 @@ struct MainNavScreen: View {
             selectedTab: $router.selectedTab,
             chatUnreadCount: chatVM.unreadTotal,
             isPostListingFlow: isPostListingFlow,
+            featureTourAnchorsEnabled: showFeatureTour,
             onTabChange: { tab in
                 if isGuestMode && tab.isGuestLocked {
                     onRequestSignIn?(guestLoginReason(for: tab))
@@ -582,6 +593,7 @@ struct MainNavScreen: View {
     private func finishFeatureTour() {
         AppFeatureTourStore.markCompletedForCurrentVersion()
         showFeatureTour = false
+        router.featureTourActive = false
     }
 
     private func dismissActivePromo() {
@@ -770,6 +782,7 @@ private struct HomeTopBar: View {
     var animateSearch: Bool = true
     var showGuestSignIn: Bool = false
     var unreadCount: Int = 0
+    var featureTourAnchorsEnabled: Bool = false
     let onSearchClick: () -> Void
     let onNotificationsClick: () -> Void
 
@@ -809,6 +822,7 @@ private struct HomeTopBar: View {
         .padding(.trailing, 4)
         .padding(.vertical, 4)
         .background(FashColors.surface)
+        .featureTourAnchor(.topActionsRow, enabled: featureTourAnchorsEnabled)
     }
 
     private var searchIconButton: some View {

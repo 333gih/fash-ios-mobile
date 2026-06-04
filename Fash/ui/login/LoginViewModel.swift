@@ -62,7 +62,9 @@ final class LoginViewModel {
         let result = await auth.verifyOtp(email: email, otp: otp)
         switch result {
         case .success(let session):
+            let previousUserId = sessionStore.read()?.userId
             sessionStore.save(session)
+            AppDependencies.shared.noteAuthenticatedSessionChange(previousUserId: previousUserId)
             AppDependencies.shared.invalidateSessionValidationForLogin()
             AppDependencies.shared.authManager.onSessionSaved()
             return true
@@ -87,7 +89,9 @@ final class LoginViewModel {
         let result = await auth.login(email: trimmed, password: password)
         switch result {
         case .success(let session):
+            let previousUserId = sessionStore.read()?.userId
             sessionStore.save(session)
+            AppDependencies.shared.noteAuthenticatedSessionChange(previousUserId: previousUserId)
             AppDependencies.shared.invalidateSessionValidationForLogin()
             AppDependencies.shared.authManager.onSessionSaved()
             return true
@@ -152,10 +156,12 @@ final class LoginViewModel {
         sessionStore: AuthSessionStore,
         fallback: String
     ) async -> Bool {
+        let previousUserId = sessionStore.read()?.userId
         let result = await auth.socialLogin(provider: provider, providerToken: token)
         switch result {
         case .success(let session):
             sessionStore.save(session)
+            AppDependencies.shared.noteAuthenticatedSessionChange(previousUserId: previousUserId)
             AppDependencies.shared.invalidateSessionValidationForLogin()
             AppDependencies.shared.authManager.onSessionSaved()
             return true
