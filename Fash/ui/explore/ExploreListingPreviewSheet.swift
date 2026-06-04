@@ -301,17 +301,17 @@ struct ExploreListingPreviewSheet: View {
         VStack(spacing: 6) {
             HStack(spacing: 6) {
                 actionIconButton(
-                    systemName: (detail?.isLiked ?? false) ? "heart.fill" : "heart",
+                    systemName: feedItem.isLiked ? "heart.fill" : "heart",
                     label: L10n.like,
-                    active: detail?.isLiked ?? false,
+                    active: feedItem.isLiked,
                     action: {
                         if isGuestMode { onRequestLogin?() } else { onLike() }
                     }
                 )
                 actionIconButton(
-                    systemName: (detail?.isSaved ?? false) ? "bookmark.fill" : "bookmark",
+                    systemName: feedItem.isSaved ? "bookmark.fill" : "bookmark",
                     label: L10n.save,
-                    active: detail?.isSaved ?? false,
+                    active: feedItem.isSaved,
                     action: {
                         if isGuestMode { onRequestLogin?() } else { onSave() }
                     }

@@ -27,6 +27,35 @@ struct ListingPreviewDetail: Hashable {
     let estimatedShippingVnd: Int64?
     let shipFromRegion: String?
 
+    func withEngagement(from item: ListingFeedItem) -> ListingPreviewDetail {
+        ListingPreviewDetail(
+            title: title,
+            description: description,
+            imageURLs: imageURLs,
+            priceVnd: priceVnd,
+            listPriceVnd: listPriceVnd,
+            condition: condition,
+            size: size,
+            brand: brand,
+            brandId: brandId,
+            category: category,
+            categoryId: categoryId,
+            aestheticTag: aestheticTag,
+            status: status,
+            likeCount: item.likeCount,
+            saveCount: item.saveCount,
+            viewCount: viewCount,
+            isLiked: item.isLiked,
+            isSaved: item.isSaved,
+            sellerDisplayName: sellerDisplayName,
+            sellerUsername: sellerUsername,
+            sellerListingCount: sellerListingCount,
+            sellerAvatarURL: sellerAvatarURL,
+            estimatedShippingVnd: estimatedShippingVnd,
+            shipFromRegion: shipFromRegion
+        )
+    }
+
     static func parse(_ obj: [String: Any]) -> ListingPreviewDetail? {
         guard let id = (obj["id"] as? String) ?? (obj["listing_id"] as? String) else { return nil }
         _ = id

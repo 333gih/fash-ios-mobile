@@ -55,7 +55,25 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
                 scheduleLayoutRefresh(forceFull: false)
             }
         }
+        .onChange(of: engagementLayoutSignature) { _, _ in
+            scheduleLayoutRefresh(forceFull: false)
+        }
         .onDisappear { layoutRefreshTask?.cancel() }
+    }
+
+    private var itemsById: [String: ListingFeedItem] {
+        Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0) })
+    }
+
+    /// Like/save toggles keep the same ids — include engagement in layout refresh.
+    private var engagementLayoutSignature: Int {
+        var hasher = Hasher()
+        for item in items {
+            hasher.combine(item.id)
+            hasher.combine(item.isLiked)
+            hasher.combine(item.isSaved)
+        }
+        return hasher.finalize()
     }
 
     private var feedChunks: [ListingMasonryFeedPages.FeedOrderChunk] {
@@ -105,8 +123,10 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: gap) {
             ForEach(entries, id: \.item.id) { entry in
-                let tileHeight = ListingMasonryGrid.tileHeight(columnWidth: columnWidth, item: entry.item)
-                cell(entry.item, entry.index)
+                let liveItem = itemsById[entry.item.id] ?? entry.item
+                let tileHeight = ListingMasonryGrid.tileHeight(columnWidth: columnWidth, item: liveItem)
+                cell(liveItem, entry.index)
+                    .id(liveItem.masonryCellId)
                     .environment(\.listingMasonryColumnWidth, columnWidth)
                     .frame(width: columnWidth, height: max(1, tileHeight), alignment: .top)
                     .clipped()

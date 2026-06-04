@@ -92,6 +92,9 @@ final class ListingPreviewStore {
     func patchFeedItem(_ id: String, transform: (ListingFeedItem) -> ListingFeedItem) {
         guard var cur = state, cur.feedItem.id == id else { return }
         cur.feedItem = transform(cur.feedItem)
+        if let detail = cur.detail {
+            cur.detail = detail.withEngagement(from: cur.feedItem)
+        }
         state = cur
     }
 
