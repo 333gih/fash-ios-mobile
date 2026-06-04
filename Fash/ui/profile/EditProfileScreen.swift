@@ -21,11 +21,7 @@ struct EditProfileScreen: View {
                             field(L10n.editProfileUsernameLabel, text: $viewModel.username)
                             field(L10n.editProfileBioLabel, text: $viewModel.bio, axis: true)
                             genderSection
-                            ReferenceSizePickerSection(
-                                referenceSize: $viewModel.referenceSize,
-                                genderPreference: viewModel.genderPreference,
-                                label: L10n.profileSetupReferenceSizeLabel
-                            )
+                            sizingSection
                             aestheticSection
                             if let err = viewModel.errorMessage {
                                 Text(err)
@@ -81,6 +77,27 @@ struct EditProfileScreen: View {
                 TextField(title, text: text)
                     .textFieldStyle(.roundedBorder)
             }
+        }
+    }
+
+    private var sizingSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(L10n.editProfileSectionSizing)
+                .font(FashTypography.labelMedium)
+                .foregroundStyle(FashColors.textSecondary)
+            ProfileSetupSizingSection(
+                referenceSize: $viewModel.referenceSize,
+                measurementUnit: $viewModel.measurementUnit,
+                measurementHem: $viewModel.measurementHem,
+                measurementChest: $viewModel.measurementChest,
+                measurementLength: $viewModel.measurementLength,
+                measurementShoulders: $viewModel.measurementShoulders,
+                measurementSleeve: $viewModel.measurementSleeve,
+                genderPreference: viewModel.genderPreference,
+                compactDensity: true,
+                showTitle: false,
+                showSubtitle: false
+            )
         }
     }
 

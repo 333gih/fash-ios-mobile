@@ -41,6 +41,14 @@ enum AppTourStep: Int, CaseIterable {
         }
     }
 
+    /// Steps that spotlight a bottom-tab anchor — tour card stays above the tab bar.
+    var isBottomNavAnchor: Bool {
+        switch self {
+        case .navHome, .navOrders, .navPost, .navChat, .navProfile: return true
+        case .intro, .topBarActions: return false
+        }
+    }
+
     var title: String {
         switch self {
         case .intro: return L10n.appTourIntroTitle

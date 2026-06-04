@@ -77,23 +77,37 @@ struct AppFeatureTourOverlay: View {
         let index = currentStep.rawValue
         let total = steps.count
         let progress = CGFloat(index + 1) / CGFloat(max(total, 1))
-        let placeBelow = cardPlacesBelow(hole: hole, overlayHeight: overlayHeight)
+
+        if currentStep == .intro {
+            VStack {
+                Spacer(minLength: 0)
+                cardContent(progress: progress, steps: steps)
+                    .padding(.horizontal, 20)
+                Spacer(minLength: 0)
+            }
+            return
+        }
+
+        let cardAtTop = cardAlignsToTop(hole: hole, overlayHeight: overlayHeight)
+        let bottomNavClearance = currentStep.isBottomNavAnchor
+            ? MainNavBottomBar.contentHeight + 28
+            : 24
 
         VStack {
-            if !placeBelow { Spacer(minLength: 0) }
+            if !cardAtTop { Spacer(minLength: 0) }
             cardContent(progress: progress, steps: steps)
                 .padding(.horizontal, 20)
-                .padding(.vertical, currentStep == .intro ? 0 : 28)
-            if placeBelow { Spacer(minLength: 0) }
+                .padding(.vertical, 28)
+            if cardAtTop { Spacer(minLength: 0) }
         }
-        .padding(.bottom, placeBelow ? 24 : 0)
-        .padding(.top, placeBelow ? 0 : 24)
+        .padding(.top, cardAtTop ? 24 : 0)
+        .padding(.bottom, cardAtTop ? bottomNavClearance : 24)
     }
 
-    private func cardPlacesBelow(hole: CGRect?, overlayHeight: CGFloat) -> Bool {
-        if currentStep == .intro { return false }
-        guard let hole else { return true }
-        return hole.midY < overlayHeight * 0.42
+    /// Hole near bottom → card at top (Android verticalBias 0.18); hole near top → card at bottom (0.82).
+    private func cardAlignsToTop(hole: CGRect?, overlayHeight: CGFloat) -> Bool {
+        guard let hole else { return false }
+        return hole.midY >= overlayHeight * 0.42
     }
 
     private func cardContent(progress: CGFloat, steps: [AppTourStep]) -> some View {

@@ -47,9 +47,8 @@ struct ReferenceSizePickerSection: View {
                     .foregroundStyle(FashColors.textSecondary)
             }
         }
-        .onAppear { syncCustomMode() }
-        .onChange(of: referenceSize) { _, _ in syncCustomMode() }
-        .onChange(of: genderPreference) { _, _ in syncCustomMode() }
+        .onAppear { resetCustomModeFromReference() }
+        .onChange(of: genderPreference) { _, _ in resetCustomModeFromReference() }
     }
 
     private func sizeChip(_ size: String) -> some View {
@@ -87,7 +86,8 @@ struct ReferenceSizePickerSection: View {
         .buttonStyle(.plain)
     }
 
-    private func syncCustomMode() {
+    /// Align custom-mode with stored value (Android `remember(referenceSize, genderPreference)`).
+    private func resetCustomModeFromReference() {
         let trimmed = referenceSize.trimmingCharacters(in: .whitespacesAndNewlines)
         customSizeMode = !trimmed.isEmpty
             && !SizingReferenceGuide.isStandardReferenceSize(trimmed, genderPreference: genderPreference)
