@@ -313,6 +313,17 @@ struct HomeFeedContent: View {
                 FeedMasonryChunkedGrid(
                     items: viewModel.items,
                     columnAssignments: masonryColumnAssignments,
+                    footer: {
+                        if viewModel.selectedFeedTab == .following,
+                           viewModel.followingHasMore || viewModel.isLoadingMoreFollowing {
+                            FeedLoadMoreFooter(
+                                enabled: viewModel.followingHasMore,
+                                isLoadingMore: viewModel.isLoadingMoreFollowing
+                            ) {
+                                viewModel.loadMoreFollowing(deps: deps, isGuestMode: isGuestMode)
+                            }
+                        }
+                    },
                     cell: { item, index in
                     HomeFeedListingCell(
                         item: item,
@@ -382,17 +393,6 @@ struct HomeFeedContent: View {
                             )
                         }
                     )
-                    },
-                    footer: {
-                        if viewModel.selectedFeedTab == .following,
-                           viewModel.followingHasMore || viewModel.isLoadingMoreFollowing {
-                            FeedLoadMoreFooter(
-                                enabled: viewModel.followingHasMore,
-                                isLoadingMore: viewModel.isLoadingMoreFollowing
-                            ) {
-                                viewModel.loadMoreFollowing(deps: deps, isGuestMode: isGuestMode)
-                            }
-                        }
                     }
                 )
             }
