@@ -146,6 +146,8 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     @State private var scrollViewportHeight: CGFloat = 0
     @State private var feedContentBottomY: CGFloat = .infinity
     @State private var lastProximityLoadMoreAt: Date = .distantPast
+    @State private var profileMasonryLayout: ListingMasonryColumnLayout = .empty
+    @State private var profileMasonryContainerWidth: CGFloat = 0
 
     /// One id for all tabs — Android keeps one [LazyListState]; do not vary per tab (preserves scroll on swipe).
     private let listingGridScrollId = ProfileScrollIds.listingGrid
@@ -290,6 +292,20 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         .allowsHitTesting(false)
     }
 
+    private var profileMasonryColumnWidth: CGFloat {
+        let width = profileMasonryContainerWidth > 1
+            ? profileMasonryContainerWidth
+            : UIScreen.main.bounds.width
+        return ListingMasonryGrid.feedGridColumnWidth(
+            containerWidth: width,
+            spacing: spacing
+        )
+    }
+
+    private var profileFeedChunks: [ListingMasonryFeedPages.FeedOrderChunk] {
+        ListingMasonryFeedPages.feedOrderChunks(items: items)
+    }
+
     @ViewBuilder
     private var profileListingGridRows: some View {
         profileListingGridBody
@@ -301,6 +317,27 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                     removal: .opacity.combined(with: .offset(x: CGFloat(-tabSlideDirection) * 28))
                 )
             )
+            .onAppear { refreshProfileMasonryLayout() }
+            .onChange(of: items.map(\.id)) { _, _ in refreshProfileMasonryLayout() }
+            .onChange(of: selectedTab) { _, _ in refreshProfileMasonryLayout() }
+    }
+
+    private func refreshProfileMasonryLayout() {
+        guard !items.isEmpty else {
+            profileMasonryLayout = .empty
+            return
+        }
+        var assignments = masonryColumnAssignments.wrappedValue
+        let gap = spacing.spacing2
+        profileMasonryLayout = ListingMasonryGrid.makeStableColumnLayout(
+            items: items,
+            columnWidth: profileMasonryColumnWidth,
+            verticalGap: gap,
+            assignedIsRightColumn: &assignments
+        )
+        if assignments != masonryColumnAssignments.wrappedValue {
+            masonryColumnAssignments.wrappedValue = assignments
+        }
     }
 
     private func resetProfileScrollChromeState() {
@@ -556,19 +593,80 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             emptyBlock
         } else if !items.isEmpty {
             ZStack(alignment: .top) {
-                ListingStaggeredMasonryView(
-                    items: items,
-                    columnAssignments: masonryColumnAssignments,
-                    eagerLayout: true,
-                    footer: { profilePaginationFooter }
-                ) { item, index in
-                    profileListingGridCard(item: item, index: index)
+                VStack(spacing: 0) {
+                    profileGridWidthProbe
+                    ForEach(profileFeedChunks) { chunk in
+                        profileFeedChunkRow(chunk)
+                            .id("\(listingGridScrollId)_chunk_\(chunk.id)")
+                    }
+                    profilePaginationFooter
                 }
+                .padding(.top, spacing.spacing2)
                 profileListingReloadOverlay
             }
-            .padding(.top, spacing.spacing2)
             FeedScrollContentBottomReporter(coordinateSpace: ProfileScrollIds.coordinateSpaceName)
         }
+    }
+
+    private var profileGridWidthProbe: some View {
+        Color.clear
+            .frame(maxWidth: .infinity, maxHeight: 0)
+            .background {
+                GeometryReader { proxy in
+                    Color.clear.preference(
+                        key: ListingMasonryContainerWidthKey.self,
+                        value: proxy.size.width
+                    )
+                }
+            }
+            .onPreferenceChange(ListingMasonryContainerWidthKey.self) { width in
+                guard width > 1, abs(width - profileMasonryContainerWidth) > 0.5 else { return }
+                profileMasonryContainerWidth = width
+                refreshProfileMasonryLayout()
+            }
+    }
+
+    @ViewBuilder
+    private func profileFeedChunkRow(_ chunk: ListingMasonryFeedPages.FeedOrderChunk) -> some View {
+        let chunkIds = Set(chunk.entries.map(\.item.id))
+        let gap = spacing.spacing2
+        HStack(alignment: .top, spacing: gap) {
+            profileFeedChunkColumn(
+                entries: profileMasonryLayout.left.filter { chunkIds.contains($0.item.id) },
+                gap: gap
+            )
+            profileFeedChunkColumn(
+                entries: profileMasonryLayout.right.filter { chunkIds.contains($0.item.id) },
+                gap: gap
+            )
+        }
+        .padding(.leading, spacing.editorialStart)
+        .padding(.trailing, spacing.editorialEnd)
+    }
+
+    @ViewBuilder
+    private func profileFeedChunkColumn(
+        entries: [(index: Int, item: ListingFeedItem)],
+        gap: CGFloat
+    ) -> some View {
+        VStack(alignment: .leading, spacing: gap) {
+            ForEach(entries, id: \.item.masonryCellId) { entry in
+                profileMasonryTile(item: entry.item, index: entry.index)
+            }
+        }
+        .frame(width: profileMasonryColumnWidth, alignment: .top)
+    }
+
+    @ViewBuilder
+    private func profileMasonryTile(item: ListingFeedItem, index: Int) -> some View {
+        let tileHeight = ListingMasonryGrid.tileHeight(
+            columnWidth: profileMasonryColumnWidth,
+            item: item
+        )
+        profileListingGridCard(item: item, index: index)
+            .environment(\.listingMasonryColumnWidth, profileMasonryColumnWidth)
+            .frame(width: profileMasonryColumnWidth, height: max(1, tileHeight), alignment: .top)
+            .clipped()
     }
 
     @ViewBuilder

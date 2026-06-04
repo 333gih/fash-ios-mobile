@@ -126,9 +126,37 @@ enum ListingMasonryGrid {
 /// Lazy page size for masonry column segments inside a parent `ScrollView`.
 enum ListingMasonryFeedPages {
     static let defaultChunkSize = 16
-    /// Profile collapsing scroll — each chunk is its own outer `LazyVStack` row (Android `listingMasonryProfileChunkItems`).
-    static let profileChunkPageSize = 6
+    /// Profile collapsing scroll — page size for [feedOrderChunks] (Android `DEFAULT_CHUNK_SIZE`).
+    static let profileChunkPageSize = 20
 
+    /// One lazy `LazyVStack` row; entries are a slice of feed order (Android [ListingMasonryFeedPages.chunks]).
+    struct FeedOrderChunk: Identifiable {
+        let id: Int
+        let entries: [(index: Int, item: ListingFeedItem)]
+    }
+
+    static func feedOrderChunks(
+        items: [ListingFeedItem],
+        pageSize: Int = profileChunkPageSize
+    ) -> [FeedOrderChunk] {
+        guard !items.isEmpty, pageSize > 0 else { return [] }
+        var result: [FeedOrderChunk] = []
+        result.reserveCapacity((items.count + pageSize - 1) / pageSize)
+        var pageIndex = 0
+        var start = 0
+        while start < items.count {
+            let end = min(start + pageSize, items.count)
+            result.append(FeedOrderChunk(
+                id: pageIndex,
+                entries: (start..<end).map { ($0, items[$0]) }
+            ))
+            pageIndex += 1
+            start = end
+        }
+        return result
+    }
+
+    /// Legacy zip of left/right column pages — causes vertical gaps; do not use in profile scroll.
     struct Chunk: Identifiable {
         let id: Int
         let left: [(index: Int, item: ListingFeedItem)]
