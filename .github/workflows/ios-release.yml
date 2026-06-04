@@ -39,8 +39,33 @@ concurrency:
 jobs:
   # Fails in ~3s with "payments have failed / spending limit" → fix GitHub Billing (not Xcode).
   # https://github.com/settings/billing
+  preflight:
+    name: Validate source (Ubuntu)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Swift syntax + compile preflight
+        run: |
+          python3 scripts/validate_swift_syntax.py
+          bash scripts/ci_swift_compile_preflight.sh
+          bash scripts/ci_validate_i18n.sh
+
+      - name: CI billing reminder
+        if: always()
+        run: |
+          {
+            echo "### iOS Release preflight"
+            echo "- Source checks: **passed** on Ubuntu."
+            echo "- Archive/TestFlight runs on **macOS** (private repo needs paid Actions minutes)."
+            echo "- If the macOS job shows *payments have failed* or *spending limit*, open [GitHub Billing](https://github.com/settings/billing), fix payment, then **Re-run** workflow **iOS Release**."
+          } >> "${GITHUB_STEP_SUMMARY}"
+
   release:
     name: Archive & export IPA
+    needs: preflight
     runs-on: macos-26
     timeout-minutes: 45
     env:

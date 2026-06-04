@@ -51,21 +51,24 @@ struct AppFeatureTourOverlay: View {
 
     @ViewBuilder
     private func spotlightLayer(hole: CGRect?) -> some View {
-        Canvas { context, size in
-            context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(.black.opacity(0.58)))
+        ZStack {
+            Color.black.opacity(0.58)
             if let hole {
-                let rounded = Path(roundedRect: hole, cornerSize: CGSize(width: holeCorner, height: holeCorner))
-                context.blendMode = .clear
-                context.fill(rounded, with: .color(.white))
-                context.blendMode = .normal
-                context.stroke(
-                    rounded,
-                    with: .color(FashColors.brandPrimary),
-                    lineWidth: 2.5
-                )
+                RoundedRectangle(cornerRadius: holeCorner, style: .continuous)
+                    .frame(width: hole.width, height: hole.height)
+                    .position(x: hole.midX, y: hole.midY)
+                    .blendMode(.destinationOut)
             }
         }
         .compositingGroup()
+        .overlay {
+            if let hole {
+                RoundedRectangle(cornerRadius: holeCorner, style: .continuous)
+                    .stroke(FashColors.brandPrimary, lineWidth: 2.5)
+                    .frame(width: hole.width, height: hole.height)
+                    .position(x: hole.midX, y: hole.midY)
+            }
+        }
     }
 
     @ViewBuilder
