@@ -125,6 +125,10 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     var scrollToListingToken: Int = 0
     /// Hero scrolled off + tabs pinned — Android `rememberProfilePromoFooterVisible` (index > 0).
     var onTabsPinnedAtTopChange: ((Bool) -> Void)? = nil
+    /// When false, only [FeedLoadMoreFooter] at the list bottom triggers pagination (seller storefront).
+    var enableScrollProximityLoadMore: Bool = false
+    /// When false, tiles do not prefetch pages while scrolling mid-grid.
+    var enableTilePrefetchLoadMore: Bool = false
     var onListingClick: (ListingFeedItem) -> Void
     var onLike: ((ListingFeedItem) -> Void)?
     var onSave: ((ListingFeedItem) -> Void)?
@@ -349,12 +353,16 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
 
     private func handleProfileScrollOffset(_ offset: CGFloat) {
         applyScrollOffset(offset)
-        evaluateScrollProximityLoadMore(headerMinY: offset)
+        if enableScrollProximityLoadMore {
+            evaluateScrollProximityLoadMore(headerMinY: offset)
+        }
     }
 
     private func handleFeedContentBottomY(_ bottomY: CGFloat) {
         feedContentBottomY = bottomY
-        evaluateScrollProximityLoadMore(headerMinY: lastScrollOffset)
+        if enableScrollProximityLoadMore {
+            evaluateScrollProximityLoadMore(headerMinY: lastScrollOffset)
+        }
     }
 
     private func handleProfileHeaderBounds(_ frame: CGRect) {
@@ -448,8 +456,10 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
 
     private func evaluateScrollProximityLoadMore(headerMinY: CGFloat) {
         guard let onLoadMore else { return }
+        let scrolled = max(0, -headerMinY)
+        guard scrolled > max(headerHeight * 0.35, 120) else { return }
         let now = Date()
-        guard now.timeIntervalSince(lastProximityLoadMoreAt) >= 0.45 else { return }
+        guard now.timeIntervalSince(lastProximityLoadMoreAt) >= 0.9 else { return }
         guard FeedScrollPaginationPolicy.shouldLoadMore(
             headerMinY: headerMinY,
             contentBottomY: feedContentBottomY,
@@ -603,7 +613,9 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                 .padding(.top, spacing.spacing2)
                 profileListingReloadOverlay
             }
-            FeedScrollContentBottomReporter(coordinateSpace: ProfileScrollIds.coordinateSpaceName)
+            if enableScrollProximityLoadMore {
+                FeedScrollContentBottomReporter(coordinateSpace: ProfileScrollIds.coordinateSpaceName)
+            }
         }
     }
 
@@ -692,11 +704,15 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             onLike: onLike.map { h in { h(item) } },
             onSave: onSave.map { h in { h(item) } }
         )
-        .onAppear { profilePrefetchLoadMoreIfNeeded(appearedIndex: index) }
+        .onAppear {
+            if enableTilePrefetchLoadMore {
+                profilePrefetchLoadMoreIfNeeded(appearedIndex: index)
+            }
+        }
     }
 
     private func profilePrefetchLoadMoreIfNeeded(appearedIndex: Int) {
-        guard let onLoadMore else { return }
+        guard enableTilePrefetchLoadMore, let onLoadMore else { return }
         guard hasMoreListings, !isLoadingMoreListings, !showGridLoading else { return }
         if FeedPaginationPolicy.shouldPrefetchNextPage(
             appearedIndex: appearedIndex,

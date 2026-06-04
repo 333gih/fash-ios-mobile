@@ -459,7 +459,7 @@ final class SellerProfileViewModel {
             setListings(payload.items, for: tab)
             mutatePagination(for: tab) {
                 $0.nextOffset = payload.rawCount
-                $0.hasMore = payload.rawCount >= sellerListingPageSize
+                $0.hasMore = payload.items.count >= sellerListingPageSize
             }
             FeedListingImagePrefetch.prefetch(items: payload.items)
         case .failure:
@@ -494,7 +494,7 @@ final class SellerProfileViewModel {
         guard canLoadMore(for: tab), let sellerId = resolvedSellerId() else { return }
         let now = Date()
         if let until = pagination(for: tab).loadMoreCooldownUntil, now < until { return }
-        mutatePagination(for: tab) { $0.loadMoreCooldownUntil = now.addingTimeInterval(0.4) }
+        mutatePagination(for: tab) { $0.loadMoreCooldownUntil = now.addingTimeInterval(0.9) }
 
         let pageGen = pagination(for: tab).fetchGeneration
         let offset = pagination(for: tab).nextOffset
@@ -514,22 +514,28 @@ final class SellerProfileViewModel {
 
         switch result {
         case .success(let payload):
-            guard payload.rawCount > 0 else {
-                mutatePagination(for: tab) { $0.hasMore = false }
-                return
-            }
-            var seen = Set(listings(for: tab).map(\.id))
-            let fresh = payload.items.filter { seen.insert($0.id).inserted }
-            if !fresh.isEmpty {
-                appendListings(fresh, for: tab)
-                FeedListingImagePrefetch.prefetch(items: fresh)
-            }
-            mutatePagination(for: tab) { state in
-                state.nextOffset += payload.rawCount
-                state.hasMore = payload.rawCount >= sellerListingPageSize
-            }
+            applyLoadMorePage(tab: tab, payload: payload)
         case .failure:
             break
+        }
+    }
+
+    /// Ends pagination when the API returns a short page or every item was already in the grid (avoids infinite fetch loops).
+    private func applyLoadMorePage(tab: SellerProfileTab, payload: SellerListingsPagePayload) {
+        guard payload.rawCount > 0 else {
+            mutatePagination(for: tab) { $0.hasMore = false }
+            return
+        }
+        var seen = Set(listings(for: tab).map(\.id))
+        let fresh = payload.items.filter { seen.insert($0.id).inserted }
+        if !fresh.isEmpty {
+            appendListings(fresh, for: tab)
+            FeedListingImagePrefetch.prefetch(items: fresh)
+        }
+        mutatePagination(for: tab) { state in
+            state.nextOffset += payload.rawCount
+            let shortPage = payload.items.count < sellerListingPageSize
+            state.hasMore = !shortPage && !fresh.isEmpty
         }
     }
 

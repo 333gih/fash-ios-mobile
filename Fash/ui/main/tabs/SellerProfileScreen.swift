@@ -153,13 +153,6 @@ struct SellerProfileScreen: View {
         .onChange(of: viewModel.selectedTab) { _, tab in
             viewModel.onTabSelected(tab, deps: deps, isGuestMode: isGuestMode)
         }
-        .task(id: viewModel.selectedTab) {
-            await viewModel.ensureListingsLoaded(
-                for: selectedSellerTab,
-                deps: deps,
-                isGuestMode: isGuestMode
-            )
-        }
         .onChange(of: viewModel.profile?.userId) { _, _ in
             guard viewModel.profile != nil else { return }
             Task {

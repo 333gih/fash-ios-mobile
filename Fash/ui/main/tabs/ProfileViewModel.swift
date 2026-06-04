@@ -470,7 +470,8 @@ final class ProfileViewModel {
             }
             mutatePagination(for: tab) { state in
                 state.nextOffset += page.rawCount
-                state.hasMore = page.rawCount >= profileListingPageSize
+                let shortPage = page.items.count < profileListingPageSize
+                state.hasMore = !shortPage && !fresh.isEmpty
             }
         case .failure:
             break
