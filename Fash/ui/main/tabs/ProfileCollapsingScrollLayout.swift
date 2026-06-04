@@ -737,9 +737,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     @ViewBuilder
     private var profileListingReloadOverlay: some View {
         if isReloadingListings, !isRefreshing {
-            ProgressView()
-                .tint(FashColors.brandPrimary)
-                .scaleEffect(1.05)
+            FashSkeleton.listingGrid(rows: 1)
                 .frame(maxWidth: .infinity, alignment: .top)
                 .padding(.top, spacing.spacing4)
                 .allowsHitTesting(false)

@@ -234,8 +234,7 @@ struct ExploreListingPreviewSheet: View {
     private var descriptionBlock: some View {
         if isDetailLoading, detail?.description?.isEmpty != false {
             HStack(spacing: 6) {
-                ProgressView()
-                    .controlSize(.small)
+                FashSkeleton.box(width: 120, height: 12, cornerRadius: 4)
                 Text(L10n.explorePreviewLoading)
                     .font(.caption)
                     .foregroundStyle(FashColors.textSecondary)

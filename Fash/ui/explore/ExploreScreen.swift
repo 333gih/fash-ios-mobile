@@ -41,13 +41,9 @@ struct ExploreScreen: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             if viewModel.isLoading && viewModel.items.isEmpty && viewModel.primarySection == .listings && !viewModel.isSearchModeActive {
-                FashColors.screen
-                    .overlay {
-                        ProgressView()
-                            .tint(FashColors.brandPrimary)
-                            .scaleEffect(1.1)
-                    }
+                FashSkeleton.listingGrid()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(FashColors.screen)
                     .zIndex(2)
             }
 
@@ -291,9 +287,7 @@ struct ExploreScreen: View {
         }
         .overlay {
             if viewModel.isReloadingListings, !viewModel.items.isEmpty, !viewModel.isRefreshing {
-                ProgressView()
-                    .tint(FashColors.brandPrimary)
-                    .scaleEffect(1.05)
+                FashSkeleton.listingGrid(rows: 1)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     .padding(.top, spacing.spacing8)
                     .allowsHitTesting(false)

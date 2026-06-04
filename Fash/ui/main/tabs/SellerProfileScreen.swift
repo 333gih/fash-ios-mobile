@@ -106,14 +106,11 @@ struct SellerProfileScreen: View {
                         .allowsHitTesting(!showSellerBlockingLoader)
 
                         if showSellerBlockingLoader {
-                            ZStack {
-                                FashColors.screen.opacity(0.72)
-                                ProgressView()
-                                    .tint(FashColors.brandPrimary)
-                                    .scaleEffect(1.1)
-                            }
-                            .ignoresSafeArea()
-                            .allowsHitTesting(true)
+                            FashSkeleton.listingGrid(rows: 5)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                                .background(FashColors.screen.opacity(0.72))
+                                .ignoresSafeArea()
+                                .allowsHitTesting(true)
                         }
                     }
                 }

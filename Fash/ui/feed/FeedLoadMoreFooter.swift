@@ -12,8 +12,7 @@ struct FeedLoadMoreFooter: View {
     var body: some View {
         VStack(spacing: 10) {
             if isLoadingMore {
-                ProgressView()
-                    .tint(FashColors.brandPrimary)
+                FashSkeleton.listingGrid(rows: 1, staggered: false)
                 Text(L10n.feedLoadingMore)
                     .font(FashTypography.bodySmall)
                     .foregroundStyle(FashColors.textSecondary)

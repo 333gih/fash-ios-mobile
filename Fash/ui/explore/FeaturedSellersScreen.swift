@@ -226,9 +226,8 @@ private struct FeaturedSellerPreviewSlot: View {
                             FashAsyncImage(url: coverUrl)
                         } else {
                             Rectangle()
-                                .fill(FashColors.surfaceContainerHigh)
-                            ProgressView()
-                                .tint(FashColors.brandPrimary)
+                                .fill(FashColors.surfaceVariant.opacity(0.55))
+                                .fashShimmer()
                         }
                     }
                 }
