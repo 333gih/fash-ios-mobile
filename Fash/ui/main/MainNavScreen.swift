@@ -18,6 +18,7 @@ struct MainNavScreen: View {
     @State private var prevInboxUnreadCount = 0
     @State private var activePromoCampaign: AppPromoCampaign?
     @State private var showFeatureTour = false
+    @State private var featureTourPromptedThisSession = false
     @State private var tourStep: AppTourStep = .intro
     @State private var accountSwitchPrompt: AccountSwitchPrompt?
     @State private var promoOpenCountTracked = false
@@ -181,25 +182,27 @@ struct MainNavScreen: View {
             guard !isGuestMode else { return }
             await tryPresentAppOpenPromo(incrementOpenCount: true)
         }
-        .task(id: "featureTour-\(isGuestMode)") {
+        .task(id: "featureTour-\(isGuestMode)-\(activePromoCampaign?.campaignId ?? "clear")") {
             guard !isGuestMode else {
                 showFeatureTour = false
                 router.featureTourActive = false
                 return
             }
             guard !AppFeatureTourStore.isCompletedForCurrentVersion() else { return }
+            guard !featureTourPromptedThisSession else { return }
+            guard activePromoCampaign == nil else {
+                showFeatureTour = false
+                router.featureTourActive = false
+                return
+            }
             try? await Task.sleep(for: .milliseconds(400))
             guard activePromoCampaign == nil else { return }
+            guard !AppFeatureTourStore.isCompletedForCurrentVersion() else { return }
+            featureTourPromptedThisSession = true
             showFeatureTour = true
             router.featureTourActive = true
             tourStep = .intro
             router.selectedTab = .home
-        }
-        .onChange(of: activePromoCampaign?.campaignId) { _, newId in
-            if newId != nil {
-                showFeatureTour = false
-                router.featureTourActive = false
-            }
         }
         .onChange(of: deps.appPromoCatalogRefreshGeneration) { _, _ in
             guard !isGuestMode, activePromoCampaign == nil, router.selectedConversationId == nil else { return }

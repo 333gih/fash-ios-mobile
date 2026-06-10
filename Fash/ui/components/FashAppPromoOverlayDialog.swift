@@ -7,65 +7,66 @@ struct FashAppPromoOverlayDialog: View {
     var onPrimaryClick: (AppPromoCampaign) -> Void
     var onSecondaryClick: ((AppPromoCampaign) -> Void)?
 
-    @State private var isExpanded = false
+    private let cardMaxWidth: CGFloat = 380
+    private let cardWidthFraction: CGFloat = 0.88
+    private let cardMaxHeightFraction: CGFloat = 0.78
+    private let heroHeight: CGFloat = 148
 
     var body: some View {
         ZStack {
-            Color.black.opacity(0.62)
+            Color.black.opacity(0.52)
                 .ignoresSafeArea()
             promoCard
         }
-        .onChange(of: campaign.campaignId) { _, _ in isExpanded = false }
-        .onChange(of: campaign.version) { _, _ in isExpanded = false }
     }
 
     private var promoCard: some View {
-        let maxWidth = isExpanded ? 520.0 : 400.0
-        let widthFraction = isExpanded ? 0.94 : 0.86
-        return GeometryReader { geo in
-            let cardWidth = min(geo.size.width * widthFraction, maxWidth)
-            ScrollView {
+        GeometryReader { geo in
+            let cardWidth = min(geo.size.width * cardWidthFraction, cardMaxWidth)
+            ScrollView(showsIndicators: false) {
                 VStack(spacing: 0) {
-                    HStack {
-                        Spacer()
-                        Button {
-                            isExpanded.toggle()
-                        } label: {
-                            Image(systemName: isExpanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundStyle(FashColors.textPrimary)
-                                .frame(width: 40, height: 40)
-                        }
+                    ZStack(alignment: .topTrailing) {
+                        promoHero
                         Button(action: onDismiss) {
                             Image(systemName: "xmark")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundStyle(FashColors.textPrimary)
-                                .frame(width: 40, height: 40)
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundStyle(.white)
+                                .frame(width: 36, height: 36)
+                                .background(Color.black.opacity(0.42), in: Circle())
                         }
+                        .padding(10)
                     }
-                    .padding(.horizontal, 4)
-                    promoHero
-                    VStack(alignment: .leading, spacing: isExpanded ? 10 : 8) {
+                    VStack(alignment: .leading, spacing: 8) {
                         Text(titleText)
-                            .font(isExpanded ? FashTypography.headlineSmall.weight(.bold) : FashTypography.titleLarge.weight(.bold))
+                            .font(FashTypography.titleLarge.weight(.bold))
                             .foregroundStyle(FashColors.textPrimary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                         Text(messageText)
-                            .font(isExpanded ? FashTypography.bodyLarge : FashTypography.bodyMedium)
+                            .font(FashTypography.bodyMedium)
                             .foregroundStyle(FashColors.textSecondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .padding(.horizontal, isExpanded ? 26 : 22)
-                    .padding(.top, isExpanded ? 20 : 16)
-                    VStack(spacing: 6) {
+                    .padding(.horizontal, 20)
+                    .padding(.top, 18)
+                    VStack(spacing: 4) {
                         Button(action: { onPrimaryClick(campaign) }) {
                             Text(primaryLabel)
                                 .font(FashTypography.labelLarge.weight(.semibold))
                                 .foregroundStyle(FashColors.readableOnBrandPrimary)
                                 .frame(maxWidth: .infinity)
-                                .frame(minHeight: isExpanded ? 52 : 48)
+                                .frame(minHeight: 50)
+                                .background(
+                                    LinearGradient(
+                                        colors: [
+                                            FashColors.brandPrimary,
+                                            FashColors.brandPrimary.opacity(0.82),
+                                        ],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    ),
+                                    in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                )
                         }
-                        .background(FashColors.brandPrimary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                         if let secondary = secondaryLabel {
                             Button {
                                 if let onSecondaryClick {
@@ -78,54 +79,83 @@ struct FashAppPromoOverlayDialog: View {
                                     .font(FashTypography.labelLarge)
                                     .foregroundStyle(FashColors.textSecondary)
                                     .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 8)
                             }
                         }
                     }
-                    .padding(.horizontal, isExpanded ? 26 : 22)
-                    .padding(.vertical, isExpanded ? 22 : 18)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 20)
+                    .padding(.bottom, 22)
                 }
             }
             .frame(width: cardWidth)
-            .frame(maxHeight: geo.size.height * (isExpanded ? 0.88 : 0.72))
-            .background(FashColors.surfaceContainerHigh, in: RoundedRectangle(cornerRadius: isExpanded ? 24 : 22, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: isExpanded ? 24 : 22, style: .continuous)
-                    .stroke(FashColors.textSecondary.opacity(0.25), lineWidth: 1)
-            )
-            .shadow(color: .black.opacity(0.2), radius: 12, y: 4)
+            .frame(maxHeight: geo.size.height * cardMaxHeightFraction)
+            .background(FashColors.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .shadow(color: .black.opacity(0.22), radius: 20, y: 8)
             .position(x: geo.size.width / 2, y: geo.size.height / 2)
         }
     }
 
     @ViewBuilder
     private var promoHero: some View {
-        let heroHeight: CGFloat = isExpanded ? 160 : 112
         if campaign.kind == .remote, !campaign.remoteImageUrls.isEmpty {
-            TabView {
-                ForEach(campaign.remoteImageUrls, id: \.self) { urlString in
-                    FashAsyncImage(
-                        url: FeedImageUrl.resolveListingImageUrlOrNil(urlString) ?? urlString,
-                        contentMode: .fill
-                    )
-                    .frame(height: heroHeight)
-                    .clipped()
+            ZStack(alignment: .topLeading) {
+                TabView {
+                    ForEach(campaign.remoteImageUrls, id: \.self) { urlString in
+                        FashAsyncImage(
+                            url: FeedImageUrl.resolveListingImageUrlOrNil(urlString) ?? urlString,
+                            contentMode: .fill
+                        )
+                        .frame(height: heroHeight)
+                        .clipped()
+                    }
+                }
+                .tabViewStyle(.page(indexDisplayMode: campaign.remoteImageUrls.count > 1 ? .automatic : .never))
+                .frame(height: heroHeight)
+                LinearGradient(
+                    colors: [.clear, Color.black.opacity(0.18)],
+                    startPoint: .center,
+                    endPoint: .bottom
+                )
+                .frame(height: heroHeight)
+                .allowsHitTesting(false)
+                if let badge = badgeLabel {
+                    Text(badge)
+                        .font(FashTypography.labelSmall.weight(.bold))
+                        .foregroundStyle(FashColors.readableOnBrandPrimary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(FashColors.brandPrimary, in: Capsule())
+                        .padding(12)
                 }
             }
-            .tabViewStyle(.page(indexDisplayMode: campaign.remoteImageUrls.count > 1 ? .automatic : .never))
-            .frame(height: heroHeight)
         } else {
-            ZStack {
+            ZStack(alignment: .topLeading) {
                 LinearGradient(
-                    colors: [FashColors.brandPrimary.opacity(0.16), FashColors.surfaceContainerHigh],
+                    colors: [FashColors.brandPrimary.opacity(0.2), FashColors.surfaceContainerHigh],
                     startPoint: .top,
                     endPoint: .bottom
                 )
                 Image(systemName: heroSymbol)
-                    .font(.system(size: isExpanded ? 36 : 28, weight: .semibold))
+                    .font(.system(size: 32, weight: .semibold))
                     .foregroundStyle(FashColors.brandPrimary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                if let badge = badgeLabel {
+                    Text(badge)
+                        .font(FashTypography.labelSmall.weight(.bold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(FashColors.brandPrimary, in: Capsule())
+                        .padding(12)
+                }
             }
             .frame(height: heroHeight)
         }
+    }
+
+    private var badgeLabel: String? {
+        RemoteAppPromoModels.sanitizePromoDisplayString(campaign.remoteBadge)
     }
 
     private var titleText: String {

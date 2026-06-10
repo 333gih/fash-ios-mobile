@@ -519,6 +519,7 @@ struct RootView: View {
         await PushNotificationCoordinator.shared.requestAuthorizationAndRegisterForRemoteNotifications()
         await PushNotificationCoordinator.shared.registerCurrentTokenIfSession()
         if status.canAccessHome {
+            AppFeatureTourStore.markCompletedIfPreviouslyOnboarded(onboardingDone: status.onboardingDone)
             needsOnboarding = false
             await prepareMainShellEntry()
         } else {
