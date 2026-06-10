@@ -203,20 +203,7 @@ struct MainNavScreen: View {
         }
         .onChange(of: deps.appPromoCatalogRefreshGeneration) { _, _ in
             guard !isGuestMode, activePromoCampaign == nil, router.selectedConversationId == nil else { return }
-            Task {
-                await AppPromoOnAppOpenLoader.fetchAndEnqueue(deps: deps)
-                if let promo = AppPromoOnAppOpenLoader.resolvePresentable(),
-                   !AppPromoCampaignStore.isDialogConsumed(promo) {
-                    activePromoCampaign = promo
-                    AppPromoCampaignStore.recordShow(promo)
-                    AppPromoCampaignStore.markDialogConsumed(promo)
-                    AppPromoPendingQueue.remove(campaignId: promo.campaignId)
-                    AppPromoPresentationPolicy.markInboxReadAfterDialogShown(
-                        campaign: promo,
-                        userRepository: deps.userRepository
-                    )
-                }
-            }
+            Task { await tryPresentAppOpenPromo(incrementOpenCount: false) }
         }
         .onChange(of: router.selectedConversationId) { _, conversationId in
             if conversationId != nil {
@@ -226,6 +213,7 @@ struct MainNavScreen: View {
                 Task {
                     await chatVM.loadConversationsWhenNeeded(deps: deps, staleAfterMs: 0)
                     await chatVM.refreshUnreadCount(deps: deps)
+                    await tryPresentAppOpenPromo(incrementOpenCount: false)
                 }
             }
         }
@@ -569,25 +557,43 @@ struct MainNavScreen: View {
         guard !isGuestMode, activePromoCampaign == nil, router.selectedConversationId == nil else { return }
         try? await Task.sleep(for: .milliseconds(550))
         guard activePromoCampaign == nil, router.selectedConversationId == nil else { return }
+        let openCount: Int
         if incrementOpenCount {
+            openCount = AppPromoCampaignStore.incrementAppOpenCount()
             promoOpenCountTracked = true
+        } else {
+            openCount = AppPromoCampaignStore.readAppOpenCount()
         }
         if let promo = await AppPromoOnAppOpenLoader.syncAndResolve(
             deps: deps,
             isGuestMode: isGuestMode,
             blockBecauseOtherUi: false,
-            incrementOpenCount: incrementOpenCount
+            incrementOpenCount: false
         ), !AppPromoCampaignStore.isDialogConsumed(promo) {
-            activePromoCampaign = promo
-            AppPromoCampaignStore.recordShow(promo)
-            AppPromoCampaignStore.markDialogConsumed(promo)
-            AppPromoPendingQueue.remove(campaignId: promo.campaignId)
-            AppPromoPresentationPolicy.markInboxReadAfterDialogShown(
-                campaign: promo,
-                userRepository: deps.userRepository
-            )
+            presentPromo(promo)
             return
         }
+        let gate = AppPromoGateContext.mainShell(
+            isGuestMode: isGuestMode,
+            needsOnboarding: false,
+            selectedConversationId: router.selectedConversationId,
+            appOpenCount: openCount
+        )
+        if let local = AppPromoCampaignResolver.resolve(context: gate),
+           !AppPromoCampaignStore.isDialogConsumed(local) {
+            presentPromo(local)
+        }
+    }
+
+    private func presentPromo(_ promo: AppPromoCampaign) {
+        activePromoCampaign = promo
+        AppPromoCampaignStore.recordShow(promo)
+        AppPromoCampaignStore.markDialogConsumed(promo)
+        AppPromoPendingQueue.remove(campaignId: promo.campaignId)
+        AppPromoPresentationPolicy.markInboxReadAfterDialogShown(
+            campaign: promo,
+            userRepository: deps.userRepository
+        )
     }
 
     private func finishFeatureTour() {

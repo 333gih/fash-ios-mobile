@@ -80,6 +80,32 @@ enum L10n {
     static var appPromoKycTitle: String { t("app_promo_kyc_title") }
     static var appPromoRatingMessage: String { t("app_promo_rating_message") }
     static var appPromoRatingPrimary: String { t("app_promo_rating_primary") }
+    static var appPromoDefaultPrimary: String { t("app_promo_default_primary") }
+    static var appPromoDefaultEsgBadge: String { t("app_promo_default_esg_badge") }
+    static var appPromoDefaultM01Title: String { t("app_promo_default_m01_title") }
+    static var appPromoDefaultM01Body: String { t("app_promo_default_m01_body") }
+    static var appPromoDefaultM02Title: String { t("app_promo_default_m02_title") }
+    static var appPromoDefaultM02Body: String { t("app_promo_default_m02_body") }
+    static var appPromoDefaultM03Title: String { t("app_promo_default_m03_title") }
+    static var appPromoDefaultM03Body: String { t("app_promo_default_m03_body") }
+    static var appPromoDefaultM04Title: String { t("app_promo_default_m04_title") }
+    static var appPromoDefaultM04Body: String { t("app_promo_default_m04_body") }
+    static var appPromoDefaultM05Title: String { t("app_promo_default_m05_title") }
+    static var appPromoDefaultM05Body: String { t("app_promo_default_m05_body") }
+    static var appPromoDefaultM06Title: String { t("app_promo_default_m06_title") }
+    static var appPromoDefaultM06Body: String { t("app_promo_default_m06_body") }
+    static var appPromoDefaultM07Title: String { t("app_promo_default_m07_title") }
+    static var appPromoDefaultM07Body: String { t("app_promo_default_m07_body") }
+    static var appPromoDefaultM08Title: String { t("app_promo_default_m08_title") }
+    static var appPromoDefaultM08Body: String { t("app_promo_default_m08_body") }
+    static var appPromoDefaultM09Title: String { t("app_promo_default_m09_title") }
+    static var appPromoDefaultM09Body: String { t("app_promo_default_m09_body") }
+    static var appPromoDefaultM10Title: String { t("app_promo_default_m10_title") }
+    static var appPromoDefaultM10Body: String { t("app_promo_default_m10_body") }
+    static var appPromoDefaultM11Title: String { t("app_promo_default_m11_title") }
+    static var appPromoDefaultM11Body: String { t("app_promo_default_m11_body") }
+    static var appPromoDefaultM12Title: String { t("app_promo_default_m12_title") }
+    static var appPromoDefaultM12Body: String { t("app_promo_default_m12_body") }
     static var appPromoRatingTitle: String { t("app_promo_rating_title") }
     static var appPromoSecondaryLater: String { t("app_promo_secondary_later") }
     static var appPromoSellerPackageBadge: String { t("app_promo_seller_package_badge") }
@@ -1422,6 +1448,8 @@ enum L10n {
     static var notificationPtMarketplaceRecommendationDailyDigest: String { t("notification_pt_marketplace_recommendation_daily_digest") }
     static var notificationPtMarketplaceRecommendationHuntToday: String { t("notification_pt_marketplace_recommendation_hunt_today") }
     static var notificationPtMarketplaceRecommendationInactiveNudge: String { t("notification_pt_marketplace_recommendation_inactive_nudge") }
+    static var notificationPtMarketplaceRecommendationInactiveLadder: String { t("notification_pt_marketplace_recommendation_inactive_ladder") }
+    static var notificationPtMarketplaceRecommendationSustainableImpact: String { t("notification_pt_marketplace_recommendation_sustainable_impact") }
     static var notificationPtMarketplaceRecommendationSimilarSaved: String { t("notification_pt_marketplace_recommendation_similar_saved") }
     static var notificationPtMarketplaceRecommendationSocialStyleMatch: String { t("notification_pt_marketplace_recommendation_social_style_match") }
     static var notificationPtMarketplaceRecommendationStyleDrought: String { t("notification_pt_marketplace_recommendation_style_drought") }

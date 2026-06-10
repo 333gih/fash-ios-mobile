@@ -52,18 +52,20 @@ enum AppPromoCampaignStore {
         readShowCount(campaignId: campaign.campaignId, version: campaign.version) > 0
     }
 
-    /// Blocks interstitial dialog (in-app in chat or dialog already shown/dismissed).
+    /// Blocks interstitial dialog for the current app process (cooldown handles cross-session frequency).
     static func isDialogConsumed(_ campaign: AppPromoCampaign) -> Bool {
-        isDialogConsumed(campaignId: campaign.campaignId, version: campaign.version)
-            || isDismissed(campaign)
+        isDismissed(campaign) || AppPromoSessionStore.isDialogConsumed(campaign)
     }
 
     static func isDialogConsumed(campaignId: String, version: Int) -> Bool {
-        defaults.bool(forKey: dialogConsumedKey(campaignId: campaignId, version: version))
+        if isDismissed(campaignId: campaignId, version: version) { return true }
+        return AppPromoSessionStore.isDialogConsumed(
+            AppPromoCampaign(campaignId: campaignId, version: version, kind: .remote)
+        )
     }
 
     static func markDialogConsumed(_ campaign: AppPromoCampaign) {
-        defaults.set(true, forKey: dialogConsumedKey(campaignId: campaign.campaignId, version: campaign.version))
+        AppPromoSessionStore.markDialogConsumed(campaign)
     }
 
     static func recordShow(_ campaign: AppPromoCampaign) {
@@ -77,6 +79,10 @@ enum AppPromoCampaignStore {
         let next = defaults.integer(forKey: appOpenCountKey) + 1
         defaults.set(next, forKey: appOpenCountKey)
         return next
+    }
+
+    static func readAppOpenCount() -> Int {
+        defaults.integer(forKey: appOpenCountKey)
     }
 
     private static func readShowCount(campaignId: String, version: Int) -> Int {

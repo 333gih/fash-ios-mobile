@@ -27,6 +27,8 @@ enum NotificationInboxLabels {
         case "marketplace.recommendation.similar_saved": return L10n.notificationPtMarketplaceRecommendationSimilarSaved
         case "marketplace.recommendation.continue_browsing": return L10n.notificationPtMarketplaceRecommendationContinueBrowsing
         case "marketplace.recommendation.inactive_nudge": return L10n.notificationPtMarketplaceRecommendationInactiveNudge
+        case "marketplace.recommendation.inactive_ladder": return L10n.notificationPtMarketplaceRecommendationInactiveLadder
+        case "marketplace.recommendation.sustainable_impact": return L10n.notificationPtMarketplaceRecommendationSustainableImpact
         case "marketplace.recommendation.community_quiet": return L10n.notificationPtMarketplaceRecommendationCommunityQuiet
         case "marketplace.recommendation.style_drought": return L10n.notificationPtMarketplaceRecommendationStyleDrought
         case "marketplace.recommendation.taste_neighbor": return L10n.notificationPtMarketplaceRecommendationTasteNeighbor

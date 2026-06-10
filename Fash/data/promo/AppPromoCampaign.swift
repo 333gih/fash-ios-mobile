@@ -41,4 +41,5 @@ struct AppPromoGateContext: Equatable {
     var blockPromoBecauseOtherUi: Bool
     var sellerPackagePromoEnabled: Bool
     var appOpenCount: Int
+    var meetingKycReverifyRequired: Bool = false
 }

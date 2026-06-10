@@ -19,7 +19,7 @@ enum AppPromoOnAppOpenLoader {
         while true {
             guard let remote = AppPromoPendingQueue.pollHighest() else { return nil }
             if AppPromoCampaignStore.isDialogConsumed(remote) { continue }
-            return AppPromoCampaignStore.canShow(remote) ? remote : nil
+            return AppPromoCampaignStore.canShow(remote) ? remote : continue
         }
     }
 
@@ -35,7 +35,16 @@ enum AppPromoOnAppOpenLoader {
             _ = AppPromoCampaignStore.incrementAppOpenCount()
         }
         await fetchAndEnqueue(deps: deps)
-        return resolvePresentable()
+        if let remote = resolvePresentable() { return remote }
+        if let slide = await slideFallback(deps: deps) { return slide }
+        return AppPromoDefaultFallback.resolve()
+    }
+
+    private static func slideFallback(deps: AppDependencies) async -> AppPromoCampaign? {
+        let result = await deps.advertisingRepository.getSlides(placement: "promo_slider_main")
+        guard case .success(let parsed) = result, let slide = parsed.items.first else { return nil }
+        guard let campaign = AppPromoSlideFallback.fromSlide(slide) else { return nil }
+        return AppPromoCampaignStore.canShow(campaign) ? campaign : nil
     }
 
     private static func isOnAppOpenSchedule(_ campaign: AppPromoCampaign) -> Bool {
