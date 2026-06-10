@@ -19,7 +19,9 @@ enum AppPromoOnAppOpenLoader {
         while true {
             guard let remote = AppPromoPendingQueue.pollHighest() else { return nil }
             if AppPromoCampaignStore.isDialogConsumed(remote) { continue }
-            return AppPromoCampaignStore.canShow(remote) ? remote : continue
+            if AppPromoCampaignStore.canShow(remote) {
+                return remote
+            }
         }
     }
 
