@@ -29,9 +29,9 @@ enum AppPromoCampaignResolver {
                 kind: .kycVerification,
                 remoteTitle: L10n.appPromoKycTitle,
                 remoteMessage: L10n.appPromoKycMessage,
+                remoteBadge: L10n.appPromoKycBadge,
                 remotePrimaryLabel: L10n.appPromoKycPrimary,
-                remoteSecondaryLabel: L10n.appPromoSecondaryLater,
-                remoteBadge: L10n.appPromoKycBadge
+                remoteSecondaryLabel: L10n.appPromoSecondaryLater
             )
         }
 
@@ -43,9 +43,9 @@ enum AppPromoCampaignResolver {
                 kind: .sellerPackage,
                 remoteTitle: L10n.appPromoSellerPackageTitle,
                 remoteMessage: L10n.appPromoSellerPackageMessage,
+                remoteBadge: L10n.appPromoSellerPackageBadge,
                 remotePrimaryLabel: L10n.appPromoSellerPackagePrimary,
-                remoteSecondaryLabel: L10n.appPromoSecondaryLater,
-                remoteBadge: L10n.appPromoSellerPackageBadge
+                remoteSecondaryLabel: L10n.appPromoSecondaryLater
             )
         }
 
