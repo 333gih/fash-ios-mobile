@@ -21,10 +21,6 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         PushNotificationCoordinator.applyAPNSToken(deviceToken)
-        Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(250))
-            await PushNotificationCoordinator.shared.registerCurrentTokenIfSession()
-        }
     }
 
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {

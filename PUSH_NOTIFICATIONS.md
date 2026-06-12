@@ -37,9 +37,9 @@ Bearer JWT bắt buộc (sau login). Backend lưu vào bảng `fcm_tokens` — x
 
 1. App ID bật capability **Push Notifications**.
 2. Provisioning profile include push entitlement.
-3. Entitlements theo build:
-   - `Fash/Fash-Dev.entitlements` → `aps-environment` **development** (DevDebug, DevRelease, ProdDebug)
-   - `Fash/Fash-Prod.entitlements` → **production** (ProdRelease / TestFlight — bắt buộc cho push thật)
+3. Entitlements theo build (`project.yml`):
+   - `Fash/Fash-Dev.entitlements` → `aps-environment` **development** (Fash-Dev: DevDebug, DevRelease)
+   - `Fash/Fash-Prod.entitlements` → **production** (Fash-Prod: ProdDebug, ProdRelease / TestFlight)
 
 ## Bước 3 — Code iOS (trong repo)
 
@@ -85,6 +85,13 @@ Test trên **thiết bị thật**. Simulator hỗ trợ push hạn chế.
 | TestFlight vẫn không push | Console.app filter `subsystem:com.pc.fash-ios-mobile category:Push` — phải thấy `APNs token set (type=production)` và `FcmTokenRegistrar: registerFcm: backend OK` |
 | `FirebaseAppDelegateProxyEnabled` = NO | App phải gọi `setAPNSToken` + `appDidReceiveMessage` trong `AppDelegate` (đã có trong repo) |
 
-**APNs token type:** app `com.pc.fash-ios-mobile` (TestFlight) luôn dùng **production**; chỉ `com.pc.fash-ios-mobile.dev` dùng sandbox.
+**APNs token type (trong `PushNotificationCoordinator`):**
+- `com.pc.fash-ios-mobile.dev` → sandbox (mọi build config).
+- `com.pc.fash-ios-mobile` + **Debug** (chạy từ Xcode) → sandbox.
+- `com.pc.fash-ios-mobile` + **Release** (TestFlight/App Store) → production.
+
+**GoogleService-Info.plist:** build script tự chọn `GoogleService-Info-Dev.plist` cho bundle `.dev`. Local: copy đúng plist trước khi build (xem `secrets/GoogleService-Info*.plist`).
+
+**`apns_auth` trên server:** thường do (1) plist `BUNDLE_ID` ≠ app bundle, (2) APNs token type sai lúc đăng ký FCM, (3) Firebase Console chưa gắn `.p8` cho đúng iOS app, hoặc (4) token cũ còn trong DB — mở app lại để re-register.
 
 Env dùng chung Android: `AUTH_SERVICE_BASE_URL`, `AUTH_FCM_REGISTER_PATH`.

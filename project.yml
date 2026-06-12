@@ -29,7 +29,7 @@ settings:
     SWIFT_VERSION: "5.9"
     TARGETED_DEVICE_FAMILY: "1"
     MARKETING_VERSION: "1.0.20"
-    CURRENT_PROJECT_VERSION: "222"
+    CURRENT_PROJECT_VERSION: "223"
     DEVELOPMENT_TEAM: ""
     CODE_SIGN_STYLE: Automatic
     INFOPLIST_FILE: Fash/Info.plist
@@ -73,13 +73,26 @@ targets:
       - name: Embed GoogleService-Info.plist
         basedOnDependencyAnalysis: false
         script: |
-          PLIST="${SRCROOT}/Fash/GoogleService-Info.plist"
+          BUNDLE="${PRODUCT_BUNDLE_IDENTIFIER}"
+          PLIST_DEV="${SRCROOT}/Fash/GoogleService-Info-Dev.plist"
+          PLIST_PROD="${SRCROOT}/Fash/GoogleService-Info.plist"
+          if [[ "${BUNDLE}" == *".dev" ]]; then
+            if [ -f "${PLIST_DEV}" ]; then
+              PLIST="${PLIST_DEV}"
+            else
+              PLIST="${PLIST_PROD}"
+            fi
+          else
+            PLIST="${PLIST_PROD}"
+          fi
           if [ ! -f "${PLIST}" ]; then
+            echo "warning: GoogleService-Info.plist missing for bundle ${BUNDLE} — FCM disabled"
             exit 0
           fi
           DEST="${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}"
           mkdir -p "${DEST}"
           cp "${PLIST}" "${DEST}/GoogleService-Info.plist"
+          echo "Embedded $(/usr/libexec/PlistBuddy -c 'Print :BUNDLE_ID' "${PLIST}") for app ${BUNDLE}"
     dependencies:
       - package: Kingfisher
       - package: GoogleSignIn
