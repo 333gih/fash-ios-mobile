@@ -91,6 +91,7 @@ struct HomeFeedContent: View {
 
                         feedBodyContent
                             .id(HomeScrollIds.feedContent)
+                            .allowsHitTesting(listingInteractionEnabled)
                             .frame(minHeight: homeFeedMinHeight, alignment: .top)
 
                         HomeBrandFooterStrip()
@@ -359,7 +360,6 @@ struct HomeFeedContent: View {
             .padding(.top, spacing.spacing2)
             .padding(.bottom, spacing.spacing4)
         }
-        .allowsHitTesting(listingInteractionEnabled)
     }
 
     private func guestLoginReason(for tab: HomeFeedTab) -> String {
