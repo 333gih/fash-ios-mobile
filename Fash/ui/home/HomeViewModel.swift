@@ -155,12 +155,18 @@ final class HomeViewModel {
         }
     }
 
-    /// Launch gate — block main UI only until the active Home feed tab has listings (or failed gracefully).
-    func awaitLaunchReady(deps: AppDependencies, isGuestMode: Bool) async {
+    /// Launch gate — prefetch active tab + shell chrome while the waiting screen is visible.
+    func awaitLaunchReady(
+        deps: AppDependencies,
+        isGuestMode: Bool,
+        launchProgress: LaunchWaitingProgress? = nil
+    ) async {
         normalizeSelectedFeedTab(isGuestMode: isGuestMode, deps: deps)
         await awaitSelectedFeedTab(deps: deps, isGuestMode: isGuestMode, force: true)
+        launchProgress?.completeHomeStep()
+        await loadShellEnrichment(deps: deps, isGuestMode: isGuestMode, launchProgress: launchProgress)
+        prefetchAdjacentTabs(around: selectedFeedTab, deps: deps, isGuestMode: isGuestMode)
         lastSuccessfulRefreshAt = Date()
-        scheduleShellEnrichment(deps: deps, isGuestMode: isGuestMode)
     }
 
     func loadShell(deps: AppDependencies, isGuestMode: Bool, skipIfFresh: Bool = false, launchProgress: LaunchWaitingProgress? = nil) async {
@@ -418,7 +424,7 @@ final class HomeViewModel {
     private var isLaunchShellFresh: Bool {
         guard let lastSuccessfulRefreshAt else { return false }
         guard Date().timeIntervalSince(lastSuccessfulRefreshAt) < 120 else { return false }
-        return !items.isEmpty
+        return !items.isEmpty || recommendationSectionsFetched
     }
 
     private func invalidateAllTabFeeds() {

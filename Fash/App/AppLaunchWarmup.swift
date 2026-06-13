@@ -18,12 +18,15 @@ enum AppLaunchWarmup {
         isGuestMode: Bool,
         progress: LaunchWaitingProgress
     ) async {
-        progress.beginWarmup(homeSteps: 1, exploreSteps: 0, shellSteps: 0)
+        progress.beginWarmup(homeSteps: 4, exploreSteps: 0, shellSteps: 0)
 
         await withTaskGroup(of: Void.self) { group in
             group.addTask { @MainActor in
-                await homeVM.awaitLaunchReady(deps: deps, isGuestMode: isGuestMode)
-                progress.completeHomeStep()
+                await homeVM.awaitLaunchReady(
+                    deps: deps,
+                    isGuestMode: isGuestMode,
+                    launchProgress: progress
+                )
             }
             group.addTask {
                 try? await Task.sleep(for: .seconds(homeGateMaxSeconds))

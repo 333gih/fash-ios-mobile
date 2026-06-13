@@ -238,13 +238,15 @@ private struct FashFeedPullRefreshHost: UIViewRepresentable {
             refreshingInsetApplied = false
             let top = baselineContentInsetTop
             baselineContentInsetTop = 0
-            let releaseOffset = -top
+            let releaseOffset = top > 0.5 ? -top : 0
             let adjust = {
                 scrollView.contentInset.top = top
                 var inset = scrollView.verticalScrollIndicatorInsets
                 inset.top = top
                 scrollView.verticalScrollIndicatorInsets = inset
-                scrollView.contentOffset = CGPoint(x: 0, y: releaseOffset)
+                if scrollView.contentOffset.y < releaseOffset - 1 {
+                    scrollView.contentOffset = CGPoint(x: 0, y: releaseOffset)
+                }
             }
             if animated {
                 UIView.animate(withDuration: 0.28, delay: 0, options: [.curveEaseInOut, .allowUserInteraction]) {

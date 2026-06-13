@@ -59,20 +59,12 @@ struct HomeFeedContent: View {
         return 240
     }
 
-    @State private var homeScrollResetToken = 0
-    @State private var homeTrueTopToken = 0
-    @State private var scrollClampRevision = 0
     @State private var homeHeaderHeight: CGFloat = 0
     @State private var homeScrollAnchorMinY: CGFloat = 0
-    @State private var pendingPinnedFeedScroll = false
     @State private var masonryColumnAssignmentsByTab: [String: [String: Bool]] = [:]
     @State private var listingInteractionEnabled = true
     @State private var tabSlideDirection: Int = 0
     @State private var homePullProgress: CGFloat = 0
-
-    private var suspendScrollClamp: Bool {
-        viewModel.isRefreshing || homePullProgress > 0.04
-    }
 
     /// Header scrolled away — tab bar is pinned; preserve feed offset on horizontal tab swap only.
     private var isHomeHeaderCollapsed: Bool {
@@ -106,7 +98,6 @@ struct HomeFeedContent: View {
                                 .id(HomeScrollIds.pinnedTabs)
                         }
                     }
-                    .scrollTargetLayout()
                     .padding(.bottom, promoDockInset + spacing.spacing2)
                     .fashScrollViewTabSwipe(
                         currentIndex: selectedTabIndex,
@@ -130,13 +121,7 @@ struct HomeFeedContent: View {
                     homeScrollAnchorMinY = minY
                 }
                 .background {
-                    PinnedTabScrollOffsetFixer(
-                        resetToken: homeScrollResetToken,
-                        trueTopToken: homeTrueTopToken,
-                        clampRevision: scrollClampRevision,
-                        headerHeight: homeHeaderHeight,
-                        suspendDuringPull: suspendScrollClamp
-                    )
+                    HomeFeedScrollToTopHelper(token: viewModel.homeScrollToTopToken)
                 }
                 .onHomeHeaderHeightChange($homeHeaderHeight)
                 .fashFeedPullRefresh(isRefreshing: $viewModel.isRefreshing, pullProgress: $homePullProgress) {
@@ -147,27 +132,7 @@ struct HomeFeedContent: View {
                 }
                 .onChange(of: viewModel.selectedFeedTabKey) { oldKey, newKey in
                     guard oldKey != newKey else { return }
-                    resetHomeFeedScrollForTabChange(using: scrollProxy, tabKey: newKey)
-                }
-                .onChange(of: viewModel.items.count) { oldCount, newCount in
-                    guard oldCount != newCount else { return }
-                    guard newCount < oldCount else { return }
-                    guard !viewModel.isRefreshing else { return }
-                    guard !viewModel.isTabLoading(viewModel.selectedFeedTab) else { return }
-                    scrollClampRevision += 1
-                }
-                .onChange(of: viewModel.tabsLoading) { _, _ in
-                    guard pendingPinnedFeedScroll else { return }
-                    guard !viewModel.isTabLoading(viewModel.selectedFeedTab) else { return }
-                    guard !viewModel.items.isEmpty else { return }
-                    pendingPinnedFeedScroll = false
-                    scrollClampRevision += 1
-                }
-                .onChange(of: viewModel.items.count) { _, _ in
-                    guard pendingPinnedFeedScroll else { return }
-                    guard !viewModel.items.isEmpty else { return }
-                    pendingPinnedFeedScroll = false
-                    scrollClampRevision += 1
+                    preservePinnedScrollOnTabSwap(using: scrollProxy, tabKey: newKey)
                 }
             }
 
@@ -424,39 +389,21 @@ struct HomeFeedContent: View {
         }
     }
 
-    private func resetHomeFeedScrollForTabChange(using scrollProxy: ScrollViewProxy, tabKey: String) {
+    /// Swap tab body only — when header is collapsed, one soft scroll to pinned tabs (no UIKit offset fixer).
+    private func preservePinnedScrollOnTabSwap(using scrollProxy: ScrollViewProxy, tabKey: String) {
         let tab = HomeFeedTab(rawValue: tabKey) ?? viewModel.selectedFeedTab
         viewModel.syncVisibleItemsForTab(tab)
-        let ready = viewModel.hasCachedItems(for: tab)
-            || (!viewModel.isTabLoading(tab) && !viewModel.items.isEmpty)
-        guard ready else {
-            pendingPinnedFeedScroll = viewModel.isTabLoading(tab)
-            return
-        }
-        pendingPinnedFeedScroll = false
-        guard !viewModel.isRefreshing else { return }
-        // Only preserve pinned-tab scroll when header was already collapsed — never lock scroll to feed top.
         guard isHomeHeaderCollapsed else { return }
+        guard !viewModel.isRefreshing else { return }
         var transaction = Transaction()
         transaction.disablesAnimations = true
         withTransaction(transaction) {
-            scrollProxy.scrollTo(HomeScrollIds.feedContent, anchor: .top)
+            scrollProxy.scrollTo(HomeScrollIds.pinnedTabs, anchor: .top)
         }
-        homeScrollResetToken += 1
-    }
-
-    private func applyPinnedFeedScroll(using scrollProxy: ScrollViewProxy) {
-        HomeFeedScrollReset.scrollToPinnedFeed(
-            proxy: scrollProxy,
-            resetToken: $homeScrollResetToken
-        )
     }
 
     private func scrollHomeToTop(using scrollProxy: ScrollViewProxy) {
-        HomeFeedScrollReset.scrollToTop(
-            proxy: scrollProxy,
-            trueTopToken: $homeTrueTopToken
-        )
+        HomeFeedScrollReset.scrollToTop(proxy: scrollProxy)
     }
 }
 

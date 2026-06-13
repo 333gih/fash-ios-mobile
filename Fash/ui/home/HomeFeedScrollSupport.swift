@@ -1,5 +1,4 @@
 import SwiftUI
-import UIKit
 
 enum HomeScrollIds {
     static let top = "home_feed_scroll_top"
@@ -66,32 +65,17 @@ extension View {
 }
 
 enum HomeFeedScrollReset {
+    /// Bottom-nav Home re-tap — scroll to full header (SwiftUI + one UIKit nudge via [HomeFeedScrollToTopHelper]).
     @MainActor
-    static func scrollToPinnedFeed(
-        proxy: ScrollViewProxy,
-        resetToken: Binding<Int>
-    ) {
-        PinnedTabScrollReset.scrollToPinnedContent(
-            proxy: proxy,
-            resetToken: resetToken,
-            contentId: HomeScrollIds.feedContent
-        )
-    }
-
-    @MainActor
-    static func scrollToTop(
-        proxy: ScrollViewProxy,
-        trueTopToken: Binding<Int>
-    ) {
+    static func scrollToTop(proxy: ScrollViewProxy) {
         var transaction = Transaction()
         transaction.disablesAnimations = true
         withTransaction(transaction) {
             proxy.scrollTo(HomeScrollIds.top, anchor: .top)
         }
-        trueTopToken.wrappedValue += 1
 
         Task { @MainActor in
-            for delayMs in [60, 140, 260, 420] {
+            for delayMs in [60, 140, 260, 420, 640] {
                 try? await Task.sleep(for: .milliseconds(delayMs))
                 var followUp = Transaction()
                 followUp.disablesAnimations = true
@@ -100,5 +84,63 @@ enum HomeFeedScrollReset {
                 }
             }
         }
+    }
+}
+
+/// One-shot scroll-to-top on Home re-tap — does not clamp or fight user scroll at other times.
+struct HomeFeedScrollToTopHelper: UIViewRepresentable {
+    var token: Int
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    func makeUIView(context: Context) -> AnchorView {
+        let view = AnchorView()
+        view.coordinator = context.coordinator
+        return view
+    }
+
+    func updateUIView(_ uiView: AnchorView, context: Context) {
+        uiView.coordinator = context.coordinator
+        guard token > 0, token != context.coordinator.lastAppliedToken else { return }
+        context.coordinator.lastAppliedToken = token
+        uiView.scheduleScrollToTop(attempt: 0)
+    }
+
+    final class Coordinator {
+        var lastAppliedToken = 0
+    }
+
+    final class AnchorView: UIView {
+        weak var coordinator: Coordinator?
+
+        func scheduleScrollToTop(attempt: Int) {
+            DispatchQueue.main.async { [weak self] in
+                self?.applyScrollToTop(attempt: attempt)
+            }
+        }
+
+        private func applyScrollToTop(attempt: Int) {
+            guard let scrollView = enclosingScrollView() else { return }
+            scrollView.layoutIfNeeded()
+            let top = -scrollView.adjustedContentInset.top
+            if scrollView.contentOffset.y > top + 1.5 {
+                scrollView.setContentOffset(CGPoint(x: 0, y: top), animated: attempt == 0)
+            }
+            guard attempt < 8 else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.07) { [weak self] in
+                self?.applyScrollToTop(attempt: attempt + 1)
+            }
+        }
+    }
+}
+
+private extension UIView {
+    func enclosingScrollView() -> UIScrollView? {
+        var candidate: UIView? = superview
+        while let view = candidate {
+            if let scrollView = view as? UIScrollView { return scrollView }
+            candidate = view.superview
+        }
+        return nil
     }
 }
