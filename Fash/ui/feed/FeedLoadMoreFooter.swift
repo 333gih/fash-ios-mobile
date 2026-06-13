@@ -1,7 +1,16 @@
 import SwiftUI
 
-/// End-of-feed pagination — triggers [onLoadMore] only when the user scrolls to the bottom.
-/// Shows a branded loading row while the next page fetches (no mid-scroll prefetch).
+/// Compact Pinterest-style spinner — fixed height so scroll position stays stable while loading.
+struct FashFeedLoadMoreIndicator: View {
+    var body: some View {
+        ProgressView()
+            .controlSize(.regular)
+            .tint(FashColors.brandPrimary)
+            .frame(maxWidth: .infinity)
+    }
+}
+
+/// End-of-feed pagination — one auto-load per visit; re-arm after user scrolls away.
 struct FeedLoadMoreFooter: View {
     let enabled: Bool
     let isLoadingMore: Bool
@@ -9,26 +18,40 @@ struct FeedLoadMoreFooter: View {
     var triggersLoadOnAppear: Bool = true
     let onLoadMore: () -> Void
 
+    private static let sentinelHeight: CGFloat = 48
+
+    @State private var mayAutoLoad = false
+
     var body: some View {
-        VStack(spacing: 10) {
+        ZStack {
             if isLoadingMore {
-                FashSkeleton.listingGrid(rows: 1, staggered: false)
-                Text(L10n.feedLoadingMore)
-                    .font(FashTypography.bodySmall)
-                    .foregroundStyle(FashColors.textSecondary)
-                    .multilineTextAlignment(.center)
-            } else {
-                Color.clear
-                    .frame(height: 1)
+                FashFeedLoadMoreIndicator()
             }
         }
         .frame(maxWidth: .infinity)
-        .frame(minHeight: isLoadingMore ? 72 : 1)
-        .padding(.vertical, isLoadingMore ? 12 : 0)
+        .frame(height: Self.sentinelHeight)
+        .padding(.vertical, 4)
         .onAppear {
-            guard triggersLoadOnAppear, enabled, !isLoadingMore else { return }
-            onLoadMore()
+            mayAutoLoad = true
+            triggerLoadIfNeeded()
         }
+        .onDisappear {
+            mayAutoLoad = false
+        }
+        .onChange(of: enabled) { _, _ in
+            triggerLoadIfNeeded()
+        }
+        .onChange(of: isLoadingMore) { wasLoading, loading in
+            guard wasLoading, !loading, enabled else { return }
+            // After a page lands, wait until the user leaves and returns — avoids hammering at the footer.
+            mayAutoLoad = false
+        }
+    }
+
+    private func triggerLoadIfNeeded() {
+        guard triggersLoadOnAppear, enabled, !isLoadingMore, mayAutoLoad else { return }
+        mayAutoLoad = false
+        onLoadMore()
     }
 }
 

@@ -323,7 +323,7 @@ final class HomeViewModel {
         guard !isShellLoading, !isRefreshing, !isTabLoading(.following) else { return }
         let offset = followingServerOffset
         guard offset > 0 else { return }
-        if let last = lastFollowFeedLoadMoreAt, Date().timeIntervalSince(last) < 0.9 { return }
+        if let last = lastFollowFeedLoadMoreAt, Date().timeIntervalSince(last) < 1.4 { return }
         lastFollowFeedLoadMoreAt = Date()
         isLoadingMoreFollowing = true
         Task {
@@ -337,18 +337,48 @@ final class HomeViewModel {
             guard case .success(let page) = result else { return }
             if page.isEmpty {
                 followingHasMore = false
-            } else {
-                followingServerOffset += page.count
-                let existing = Set(followingItems.map(\.id))
-                followingItems.append(contentsOf: page.filter { !existing.contains($0.id) })
-                trimFollowingItemsIfNeeded()
-                followingHasMore = page.count >= HomeFeedConstants.followPageSize
-                if selectedFeedTab == .following {
-                    syncItemsForSelectedTab()
-                }
-                FeedPerformance.log("Home following append -> items=\(followingItems.count)")
+                if selectedFeedTab == .following { syncItemsForSelectedTab() }
+                return
             }
+
+            followingServerOffset += page.count
+            followingHasMore = page.count >= HomeFeedConstants.followPageSize
+            let existing = Set(followingItems.map(\.id))
+            let fresh = page.filter { !existing.contains($0.id) }
+            guard !fresh.isEmpty else {
+                if selectedFeedTab == .following { syncItemsForSelectedTab() }
+                return
+            }
+
+            let batchSize = 5
+            for batchStart in stride(from: 0, to: fresh.count, by: batchSize) {
+                let end = min(batchStart + batchSize, fresh.count)
+                let batch = Array(fresh[batchStart..<end])
+                followingItems.append(contentsOf: batch)
+                trimFollowingItemsIfNeeded()
+                if selectedFeedTab == .following {
+                    withAnimation(.easeOut(duration: 0.22)) {
+                        syncItemsForSelectedTab()
+                    }
+                }
+                if end < fresh.count {
+                    try? await Task.sleep(for: .milliseconds(64))
+                }
+            }
+            FeedPerformance.log("Home following append -> items=\(followingItems.count)")
         }
+    }
+
+    /// Brand footer only when the active tab finished loading and has no more pages.
+    func showsHomeBrandFooter(isGuestMode: Bool) -> Bool {
+        let tab = selectedFeedTab
+        if isGuestMode && tab.requiresAuth { return false }
+        if items.isEmpty { return false }
+        if isShellLoading || isTabLoading(tab) { return false }
+        if tab == .following {
+            return !followingHasMore && !isLoadingMoreFollowing
+        }
+        return loadedTabs.contains(tab.rawValue)
     }
 
     func recordView(item: ListingFeedItem, position: Int, surface: String, deps: AppDependencies) {

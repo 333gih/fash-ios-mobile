@@ -44,6 +44,7 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
             ForEach(feedChunks) { chunk in
                 feedChunkRow(chunk)
                     .id("masonry_chunk_\(chunk.id)")
+                    .transition(.opacity)
             }
             footer()
         }
@@ -139,7 +140,7 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
     private func scheduleLayoutRefresh(forceFull: Bool) {
         layoutRefreshTask?.cancel()
         layoutRefreshTask = Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(forceFull ? 0 : 72))
+            try? await Task.sleep(for: .milliseconds(forceFull ? 0 : 96))
             guard !Task.isCancelled else { return }
             refreshLayout(forceFull: forceFull)
         }
