@@ -357,9 +357,7 @@ final class HomeViewModel {
                 followingItems.append(contentsOf: batch)
                 trimFollowingItemsIfNeeded()
                 if selectedFeedTab == .following {
-                    withAnimation(.easeOut(duration: 0.22)) {
-                        syncItemsForSelectedTab()
-                    }
+                    syncItemsForSelectedTab()
                 }
                 if end < fresh.count {
                     try? await Task.sleep(for: .milliseconds(64))
