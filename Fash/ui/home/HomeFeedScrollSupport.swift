@@ -160,6 +160,103 @@ struct HomeFeedScrollToTopHelper: UIViewRepresentable {
     }
 }
 
+/// Keeps viewport stable when load-more appends rows at the bottom — new tiles appear below, not jumped into view.
+struct HomeFeedLoadMoreScrollPreserver: UIViewRepresentable {
+    var itemsCount: Int
+    var isLoadingMore: Bool
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    func makeUIView(context: Context) -> AnchorView {
+        let view = AnchorView()
+        view.coordinator = context.coordinator
+        return view
+    }
+
+    func updateUIView(_ uiView: AnchorView, context: Context) {
+        let coordinator = context.coordinator
+        uiView.coordinator = coordinator
+        coordinator.installIfNeeded(from: uiView)
+
+        let countIncreased = itemsCount > coordinator.lastItemsCount
+        if countIncreased, coordinator.lastItemsCount > 0, isLoadingMore || coordinator.wasLoadingMore {
+            uiView.preserveScrollAfterAppend(
+                anchorOffset: coordinator.lastContentOffsetY,
+                anchorHeight: coordinator.lastContentHeight
+            )
+        }
+
+        coordinator.lastItemsCount = itemsCount
+        coordinator.wasLoadingMore = isLoadingMore
+    }
+
+    final class Coordinator {
+        var lastItemsCount = 0
+        var lastContentOffsetY: CGFloat = 0
+        var lastContentHeight: CGFloat = 0
+        var wasLoadingMore = false
+        weak var scrollView: UIScrollView?
+        var offsetObservation: NSKeyValueObservation?
+        var sizeObservation: NSKeyValueObservation?
+
+        func installIfNeeded(from anchor: UIView) {
+            guard let scrollView = anchor.enclosingScrollView() else { return }
+            if self.scrollView === scrollView, offsetObservation != nil { return }
+            offsetObservation?.invalidate()
+            sizeObservation?.invalidate()
+            self.scrollView = scrollView
+            offsetObservation = scrollView.observe(\.contentOffset, options: [.new]) { [weak self] sv, _ in
+                self?.lastContentOffsetY = sv.contentOffset.y
+            }
+            sizeObservation = scrollView.observe(\.contentSize, options: [.new]) { [weak self] sv, _ in
+                self?.lastContentHeight = sv.contentSize.height
+            }
+        }
+    }
+
+    final class AnchorView: UIView {
+        weak var coordinator: Coordinator?
+
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            guard window != nil else { return }
+            DispatchQueue.main.async { [weak self] in
+                guard let self, let coordinator else { return }
+                coordinator.installIfNeeded(from: self)
+            }
+        }
+
+        func preserveScrollAfterAppend(anchorOffset: CGFloat, anchorHeight: CGFloat) {
+            for attempt in 0..<6 {
+                let delay = Double(attempt) * 0.05
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                    self?.applyPreserve(anchorOffset: anchorOffset, anchorHeight: anchorHeight)
+                }
+            }
+        }
+
+        private func applyPreserve(anchorOffset: CGFloat, anchorHeight: CGFloat) {
+            guard let scrollView = coordinator?.scrollView ?? enclosingScrollView() else { return }
+            guard !scrollView.isDragging, !scrollView.isTracking else { return }
+            scrollView.layoutIfNeeded()
+            let delta = scrollView.contentSize.height - anchorHeight
+            guard delta > 1 else { return }
+            let maxOffset = max(
+                0,
+                scrollView.contentSize.height
+                    - scrollView.bounds.height
+                    + scrollView.adjustedContentInset.bottom
+            )
+            // SwiftUI often snaps to the new bottom after append — restore the pre-append viewport.
+            let jumpedToNewBottom = scrollView.contentOffset.y >= maxOffset - 4
+                && anchorOffset < maxOffset - delta + 4
+            if jumpedToNewBottom || abs(scrollView.contentOffset.y - anchorOffset) > delta * 0.35 {
+                scrollView.setContentOffset(CGPoint(x: 0, y: min(anchorOffset, maxOffset)), animated: false)
+            }
+        }
+    }
+}
+
 /// One-shot max-offset trim when tab body height shrinks — never blocks scrolling up.
 struct HomeFeedScrollClampHelper: UIViewRepresentable {
     var clampToken: Int

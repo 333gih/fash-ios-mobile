@@ -122,6 +122,10 @@ struct HomeFeedContent: View {
                 }
                 .background {
                     HomeFeedScrollToTopHelper(token: viewModel.homeScrollToTopToken)
+                    HomeFeedLoadMoreScrollPreserver(
+                        itemsCount: viewModel.items.count,
+                        isLoadingMore: viewModel.isLoadingMoreFollowing
+                    )
                 }
                 .fashFeedPullRefresh(isRefreshing: $viewModel.isRefreshing) {
                     await viewModel.pullToRefresh(deps: deps, isGuestMode: isGuestMode)
