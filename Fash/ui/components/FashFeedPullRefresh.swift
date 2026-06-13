@@ -68,9 +68,9 @@ private struct FashFeedPullRefreshHost: UIViewRepresentable {
     @Binding var pullProgress: CGFloat
     var onRefresh: () async -> Void
 
-    static let triggerDistance: CGFloat = 88
-    static let holdBeforeRefresh: Duration = .milliseconds(180)
-    static let refreshingInset: CGFloat = 46
+    fileprivate static let triggerDistance: CGFloat = 88
+    fileprivate static let holdBeforeRefresh: Duration = .milliseconds(180)
+    fileprivate static let refreshingInset: CGFloat = 46
 
     func makeCoordinator() -> Coordinator {
         Coordinator(
@@ -162,7 +162,7 @@ private struct FashFeedPullRefreshHost: UIViewRepresentable {
 
             guard !isRefreshing else { return }
             let pull = currentPullDistance(on: scrollView)
-            let progress = min(1, pull / Self.triggerDistance)
+            let progress = min(1, pull / FashFeedPullRefreshHost.triggerDistance)
             reportProgress(progress)
         }
 
@@ -179,14 +179,14 @@ private struct FashFeedPullRefreshHost: UIViewRepresentable {
         private func tryCommitRefresh(on scrollView: UIScrollView) {
             guard !isRefreshing else { return }
             let pull = currentPullDistance(on: scrollView)
-            guard pull >= Self.triggerDistance else {
+            guard pull >= FashFeedPullRefreshHost.triggerDistance else {
                 reportProgress(0)
                 return
             }
 
             refreshTask?.cancel()
             refreshTask = Task { @MainActor in
-                try? await Task.sleep(for: Self.holdBeforeRefresh)
+                try? await Task.sleep(for: FashFeedPullRefreshHost.holdBeforeRefresh)
                 guard !Task.isCancelled, !isRefreshing else { return }
                 await runRefresh(on: scrollView)
             }
@@ -211,7 +211,7 @@ private struct FashFeedPullRefreshHost: UIViewRepresentable {
             if baselineContentInsetTop == 0 {
                 baselineContentInsetTop = scrollView.contentInset.top
             }
-            let top = baselineContentInsetTop + Self.refreshingInset
+            let top = baselineContentInsetTop + FashFeedPullRefreshHost.refreshingInset
             let adjust = {
                 scrollView.contentInset.top = top
                 var inset = scrollView.verticalScrollIndicatorInsets
