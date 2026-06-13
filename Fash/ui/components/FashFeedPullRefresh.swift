@@ -69,7 +69,7 @@ private struct FashFeedPullRefreshHost: UIViewRepresentable {
     var onRefresh: () async -> Void
 
     fileprivate static let triggerDistance: CGFloat = 88
-    fileprivate static let holdBeforeRefresh: Duration = .milliseconds(180)
+    fileprivate static let holdBeforeRefresh: Duration = .milliseconds(220)
     fileprivate static let refreshingInset: CGFloat = 46
 
     func makeCoordinator() -> Coordinator {
@@ -186,6 +186,8 @@ private struct FashFeedPullRefreshHost: UIViewRepresentable {
 
             refreshTask?.cancel()
             refreshTask = Task { @MainActor in
+                // Pinterest: snap open and hold while the brief threshold pause runs.
+                snapToRefreshingHold(on: scrollView, animated: true)
                 try? await Task.sleep(for: FashFeedPullRefreshHost.holdBeforeRefresh)
                 guard !Task.isCancelled, !isRefreshing else { return }
                 await runRefresh(on: scrollView)
@@ -194,32 +196,34 @@ private struct FashFeedPullRefreshHost: UIViewRepresentable {
 
         func syncExternalRefreshingState() {
             guard let scrollView, !refreshingInsetApplied else { return }
-            applyRefreshingInset(on: scrollView, animated: true)
+            snapToRefreshingHold(on: scrollView, animated: true)
             reportProgress(1)
         }
 
         private func runRefresh(on scrollView: UIScrollView) async {
-            applyRefreshingInset(on: scrollView, animated: true)
+            snapToRefreshingHold(on: scrollView, animated: false)
             reportProgress(1)
             await onRefresh()
-            clearRefreshingInsetIfNeeded(animated: true)
+            releaseRefreshingHold(on: scrollView, animated: true)
         }
 
-        private func applyRefreshingInset(on scrollView: UIScrollView, animated: Bool) {
-            guard !refreshingInsetApplied else { return }
-            refreshingInsetApplied = true
+        /// Hold scroll pulled open with spinner visible — Pinterest-style refresh posture.
+        private func snapToRefreshingHold(on scrollView: UIScrollView, animated: Bool) {
             if baselineContentInsetTop == 0 {
                 baselineContentInsetTop = scrollView.contentInset.top
             }
             let top = baselineContentInsetTop + FashFeedPullRefreshHost.refreshingInset
+            let holdOffset = -top
+            refreshingInsetApplied = true
             let adjust = {
                 scrollView.contentInset.top = top
                 var inset = scrollView.verticalScrollIndicatorInsets
                 inset.top = top
                 scrollView.verticalScrollIndicatorInsets = inset
+                scrollView.contentOffset = CGPoint(x: 0, y: holdOffset)
             }
             if animated {
-                UIView.animate(withDuration: 0.22, delay: 0, options: [.curveEaseOut]) {
+                UIView.animate(withDuration: 0.24, delay: 0, options: [.curveEaseOut, .allowUserInteraction]) {
                     adjust()
                 }
             } else {
@@ -227,29 +231,34 @@ private struct FashFeedPullRefreshHost: UIViewRepresentable {
             }
         }
 
-        func clearRefreshingInsetIfNeeded(animated: Bool) {
+        private func releaseRefreshingHold(on scrollView: UIScrollView, animated: Bool) {
             refreshTask?.cancel()
             refreshTask = nil
-            guard refreshingInsetApplied, let scrollView else { return }
+            guard refreshingInsetApplied else { return }
             refreshingInsetApplied = false
             let top = baselineContentInsetTop
             baselineContentInsetTop = 0
+            let releaseOffset = -top
             let adjust = {
                 scrollView.contentInset.top = top
                 var inset = scrollView.verticalScrollIndicatorInsets
                 inset.top = top
                 scrollView.verticalScrollIndicatorInsets = inset
+                scrollView.contentOffset = CGPoint(x: 0, y: releaseOffset)
             }
             if animated {
-                UIView.animate(withDuration: 0.24, delay: 0, options: [.curveEaseInOut]) {
+                UIView.animate(withDuration: 0.28, delay: 0, options: [.curveEaseInOut, .allowUserInteraction]) {
                     adjust()
                 }
             } else {
                 adjust()
             }
-            if !isRefreshing {
-                reportProgress(0)
-            }
+            reportProgress(0)
+        }
+
+        func clearRefreshingInsetIfNeeded(animated: Bool) {
+            guard let scrollView, refreshingInsetApplied else { return }
+            releaseRefreshingHold(on: scrollView, animated: animated)
         }
     }
 }

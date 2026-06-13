@@ -34,18 +34,19 @@ struct PinnedTabScrollOffsetFixer: UIViewRepresentable {
 
     func updateUIView(_ uiView: AnchorView, context: Context) {
         uiView.coordinator = context.coordinator
-        guard !suspendDuringPull else { return }
         let token = resetToken
         let topToken = trueTopToken
         let revision = clampRevision
-        guard token > 0 || topToken > 0 || revision > 0 else { return }
 
+        // Home re-tap must always reach y=0 — even during pull-to-refresh overscroll.
         let trueTopChanged = topToken != context.coordinator.lastAppliedTrueTopToken
         if trueTopChanged, topToken > 0 {
             context.coordinator.lastAppliedTrueTopToken = topToken
             uiView.scheduleTrueTop(attempt: 0)
-            return
         }
+
+        guard !suspendDuringPull else { return }
+        guard token > 0 || revision > 0 else { return }
 
         let tokenChanged = token != context.coordinator.lastAppliedToken
         let revisionChanged = revision != context.coordinator.lastAppliedClampRevision
@@ -88,8 +89,9 @@ struct PinnedTabScrollOffsetFixer: UIViewRepresentable {
         private func applyTrueTop(attempt: Int) {
             guard let scrollView = enclosingScrollView() else { return }
             scrollView.layoutIfNeeded()
-            if scrollView.contentOffset.y > 1.5 {
-                scrollView.setContentOffset(CGPoint(x: 0, y: 0), animated: false)
+            let visualTop = -scrollView.adjustedContentInset.top
+            if scrollView.contentOffset.y > visualTop + 1.5 {
+                scrollView.setContentOffset(CGPoint(x: 0, y: visualTop), animated: false)
             }
             guard attempt < 12 else { return }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) { [weak self] in
@@ -117,7 +119,8 @@ struct PinnedTabScrollOffsetFixer: UIViewRepresentable {
 
             switch mode {
             case .pinnedReset:
-                if abs(currentY - safeTarget) > 1.5 {
+                // Only snap when already in pinned-feed territory — never pull user down from mid-scroll-up.
+                if currentY >= safeTarget - 20, abs(currentY - safeTarget) > 1.5 {
                     scrollView.setContentOffset(CGPoint(x: 0, y: safeTarget), animated: false)
                 }
             case .clampOnly:
