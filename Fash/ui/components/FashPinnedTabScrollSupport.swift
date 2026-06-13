@@ -21,6 +21,8 @@ struct PinnedTabScrollOffsetFixer: UIViewRepresentable {
     var trueTopToken: Int = 0
     var clampRevision: Int = 0
     var headerHeight: CGFloat
+    /// Skip clamp/reset while user is pulling to refresh — avoids fighting overscroll bounce.
+    var suspendDuringPull: Bool = false
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
@@ -32,6 +34,7 @@ struct PinnedTabScrollOffsetFixer: UIViewRepresentable {
 
     func updateUIView(_ uiView: AnchorView, context: Context) {
         uiView.coordinator = context.coordinator
+        guard !suspendDuringPull else { return }
         let token = resetToken
         let topToken = trueTopToken
         let revision = clampRevision

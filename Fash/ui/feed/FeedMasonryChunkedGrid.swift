@@ -39,7 +39,7 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
+        LazyVStack(spacing: 0) {
             widthProbe
             ForEach(feedChunks) { chunk in
                 feedChunkRow(chunk)
@@ -56,6 +56,7 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
             }
         }
         .onChange(of: engagementLayoutSignature) { _, _ in
+            guard !items.isEmpty else { return }
             scheduleLayoutRefresh(forceFull: false)
         }
         .onDisappear { layoutRefreshTask?.cancel() }
@@ -138,7 +139,7 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
     private func scheduleLayoutRefresh(forceFull: Bool) {
         layoutRefreshTask?.cancel()
         layoutRefreshTask = Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(forceFull ? 0 : 48))
+            try? await Task.sleep(for: .milliseconds(forceFull ? 0 : 72))
             guard !Task.isCancelled else { return }
             refreshLayout(forceFull: forceFull)
         }

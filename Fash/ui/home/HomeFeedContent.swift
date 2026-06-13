@@ -68,6 +68,11 @@ struct HomeFeedContent: View {
     @State private var masonryColumnAssignmentsByTab: [String: [String: Bool]] = [:]
     @State private var listingInteractionEnabled = true
     @State private var tabSlideDirection: Int = 0
+    @State private var homePullProgress: CGFloat = 0
+
+    private var suspendScrollClamp: Bool {
+        viewModel.isRefreshing || homePullProgress > 0.04
+    }
 
     private var masonryColumnAssignments: Binding<[String: Bool]> {
         Binding(
@@ -121,11 +126,14 @@ struct HomeFeedContent: View {
                         resetToken: homeScrollResetToken,
                         trueTopToken: homeTrueTopToken,
                         clampRevision: scrollClampRevision,
-                        headerHeight: homeHeaderHeight
+                        headerHeight: homeHeaderHeight,
+                        suspendDuringPull: suspendScrollClamp
                     )
                 }
                 .onHomeHeaderHeightChange($homeHeaderHeight)
-                .refreshable { await viewModel.pullToRefresh(deps: deps, isGuestMode: isGuestMode) }
+                .fashFeedPullRefresh(isRefreshing: $viewModel.isRefreshing, pullProgress: $homePullProgress) {
+                    await viewModel.pullToRefresh(deps: deps, isGuestMode: isGuestMode)
+                }
                 .onChange(of: viewModel.homeScrollToTopToken) { _, _ in
                     scrollHomeToTop(using: scrollProxy)
                 }

@@ -272,25 +272,30 @@ final class HomeViewModel {
         isRefreshing = true
         defer { isRefreshing = false }
         let tabToReload = selectedFeedTab
-        // Stale-while-revalidate: keep current `items` visible; refresh feed + chrome without re-applying UX default tab.
-        async let feedReload: Void = reloadFeedTab(tabToReload, deps: deps, isGuestMode: isGuestMode)
-        async let sellers: Void = loadFeaturedSellers(deps: deps, isGuestMode: isGuestMode)
-        async let slidesResult = deps.advertisingRepository.getSlides(publicBrowse: isGuestMode)
-        if !isGuestMode {
-            async let stats: Void = loadBuyerHomeStats(deps: deps, isGuestMode: isGuestMode)
-            async let sizing: Void = refreshSizingBannerState(deps: deps, isGuestMode: isGuestMode)
-            _ = await (stats, sizing)
-        }
-        await feedReload
-        _ = await sellers
-        if case .success(let slides) = await slidesResult {
-            promoSlides = slides.items
-        }
+
+        // Pinterest-style: refresh feed first so spinner dismisses when listings update; chrome loads after.
+        await reloadFeedTab(tabToReload, deps: deps, isGuestMode: isGuestMode)
         if tabToReload == selectedFeedTab {
             syncItemsForSelectedTab()
         }
-        prefetchAdjacentTabs(around: selectedFeedTab, deps: deps, isGuestMode: isGuestMode)
         lastSuccessfulRefreshAt = Date()
+
+        Task { @MainActor in
+            async let sellers: Void = loadFeaturedSellers(deps: deps, isGuestMode: isGuestMode)
+            async let slidesResult = deps.advertisingRepository.getSlides(publicBrowse: isGuestMode)
+            if !isGuestMode {
+                async let stats: Void = loadBuyerHomeStats(deps: deps, isGuestMode: isGuestMode)
+                async let sizing: Void = refreshSizingBannerState(deps: deps, isGuestMode: isGuestMode)
+                _ = await (stats, sizing)
+            }
+            _ = await sellers
+            if case .success(let slides) = await slidesResult {
+                promoSlides = slides.items
+            }
+            try? await Task.sleep(for: .milliseconds(220))
+            guard selectedFeedTab == tabToReload else { return }
+            prefetchAdjacentTabs(around: selectedFeedTab, deps: deps, isGuestMode: isGuestMode)
+        }
     }
 
     func retryTab(_ tab: HomeFeedTab, deps: AppDependencies, isGuestMode: Bool) {
