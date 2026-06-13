@@ -116,6 +116,7 @@ final class HomeViewModel {
 
     func selectFeedTab(_ tab: HomeFeedTab, deps: AppDependencies, isGuestMode: Bool) {
         if selectedFeedTab == tab {
+            requestScrollHomeToTop()
             ensureSelectedFeedTabLoaded(deps: deps, isGuestMode: isGuestMode)
             return
         }
@@ -126,6 +127,7 @@ final class HomeViewModel {
         deps.uxTabTracker.onTabOpened(scope: "home", tabKey: UxPersonalizationMapping.uxTabKey(for: tab))
         selectedFeedTabKey = tab.rawValue
         syncVisibleItemsForTab(tab)
+        requestScrollHomeToTop()
         ensureTabLoaded(tab, deps: deps, isGuestMode: isGuestMode)
         homeTabBarScrollToken &+= 1
         Task { @MainActor in

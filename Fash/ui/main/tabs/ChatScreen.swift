@@ -72,23 +72,40 @@ struct ChatScreen: View {
     @ViewBuilder
     private var inboxContent: some View {
         if viewModel.isLoading && isEmptyInbox && !viewModel.isRefreshing {
-            ProgressView()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if viewModel.loadError && isEmptyInbox {
-            FashEmptyStateView(
-                title: L10n.chatLoadError,
-                actionTitle: L10n.chatRetry
-            ) {
-                Task { await viewModel.loadConversations(deps: deps) }
+            chatPullScrollContainer {
+                ProgressView()
+                    .frame(maxWidth: .infinity, minHeight: 320)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if viewModel.loadError && isEmptyInbox {
+            chatPullScrollContainer {
+                FashEmptyStateView(
+                    title: L10n.chatLoadError,
+                    actionTitle: L10n.chatRetry
+                ) {
+                    Task { await viewModel.loadConversations(deps: deps) }
+                }
+                .frame(maxWidth: .infinity, minHeight: 320)
+            }
         } else if isEmptyInbox {
-            ChatEmptyInboxHint()
+            chatPullScrollContainer {
+                ChatEmptyInboxHint()
+                    .frame(maxWidth: .infinity, minHeight: 320)
+            }
         } else if showGroupedInbox {
             groupedList
         } else {
             flatList
         }
+    }
+
+    private func chatPullScrollContainer<Content: View>(@ViewBuilder content: @escaping () -> Content) -> some View {
+        ChatInboxScrollContainer(
+            scrollTopId: chatScrollTopId,
+            scrollToTopToken: viewModel.chatScrollToTopToken,
+            isRefreshing: $viewModel.isRefreshing,
+            onRefresh: { await viewModel.pullToRefresh(deps: deps) },
+            content: content
+        )
     }
 
     private var flatList: some View {

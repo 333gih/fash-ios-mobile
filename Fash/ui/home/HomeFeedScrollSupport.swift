@@ -142,12 +142,18 @@ struct HomeFeedScrollToTopHelper: UIViewRepresentable {
         private func applyScrollToTop(attempt: Int) {
             guard let scrollView = enclosingScrollView() else { return }
             scrollView.layoutIfNeeded()
-            let top = -scrollView.adjustedContentInset.top
-            if scrollView.contentOffset.y > top + 1.5 {
-                scrollView.setContentOffset(CGPoint(x: 0, y: top), animated: attempt == 0)
+            if scrollView.contentInset.top > 0.5 {
+                scrollView.contentInset.top = 0
+                var inset = scrollView.verticalScrollIndicatorInsets
+                inset.top = 0
+                scrollView.verticalScrollIndicatorInsets = inset
             }
-            guard attempt < 8 else { return }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.07) { [weak self] in
+            let visualTop = -scrollView.adjustedContentInset.top
+            if abs(scrollView.contentOffset.y - visualTop) > 1.5 {
+                scrollView.setContentOffset(CGPoint(x: 0, y: visualTop), animated: attempt == 0)
+            }
+            guard attempt < 10 else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) { [weak self] in
                 self?.applyScrollToTop(attempt: attempt + 1)
             }
         }

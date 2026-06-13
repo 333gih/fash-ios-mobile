@@ -39,7 +39,7 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
     }
 
     var body: some View {
-        LazyVStack(spacing: 0) {
+        VStack(spacing: 0) {
             widthProbe
             ForEach(feedChunks) { chunk in
                 feedChunkRow(chunk)

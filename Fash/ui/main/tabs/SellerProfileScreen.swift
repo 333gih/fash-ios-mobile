@@ -23,6 +23,13 @@ struct SellerProfileScreen: View {
     @State private var showGuestLoginSheet = false
     @State private var guestLoginReason: String?
 
+    private var sellerRefreshBinding: Binding<Bool> {
+        Binding(
+            get: { viewModel.isRefreshing },
+            set: { viewModel.isRefreshing = $0 }
+        )
+    }
+
     private var promoBottomInset: CGFloat {
         showPromoFooter && !promoSlides.isEmpty ? FashStickyPromoDockHeight : 0
     }
@@ -100,7 +107,7 @@ struct SellerProfileScreen: View {
                             expandedHeader: { expandedHeader },
                             compactHeader: { ProfileCompactHeaderBar(profile: viewModel.profile) }
                         )
-                        .refreshable {
+                        .fashFeedPullRefresh(isRefreshing: sellerRefreshBinding) {
                             await viewModel.loadForSeller(username, deps: deps, isGuestMode: isGuestMode, force: true)
                         }
                         .allowsHitTesting(!showSellerBlockingLoader)

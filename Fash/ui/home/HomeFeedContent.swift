@@ -61,13 +61,19 @@ struct HomeFeedContent: View {
 
     @State private var homeHeaderHeight: CGFloat = 0
     @State private var homeTabRowMinY: CGFloat = .infinity
-    @State private var homeScrollClampToken = 0
+    @State private var showStickyTabs = false
     @State private var masonryColumnAssignmentsByTab: [String: [String: Bool]] = [:]
     @State private var listingInteractionEnabled = true
 
     /// Android `showStickyTabs` — overlay duplicate tab row when in-scroll row scrolled off screen.
-    private var showStickyTabs: Bool {
-        homeTabRowMinY < -1
+    /// Hysteresis avoids rapid toggle at the threshold (prevents scroll snap-back).
+    private func updateStickyTabs(for minY: CGFloat) {
+        homeTabRowMinY = minY
+        if minY < -14 {
+            if !showStickyTabs { showStickyTabs = true }
+        } else if minY > 2 {
+            if showStickyTabs { showStickyTabs = false }
+        }
     }
 
     private var masonryColumnAssignments: Binding<[String: Bool]> {
@@ -112,17 +118,17 @@ struct HomeFeedContent: View {
                 }
                 .coordinateSpace(name: "homeFeedScroll")
                 .onPreferenceChange(HomeTabRowMinYKey.self) { minY in
-                    homeTabRowMinY = minY
+                    updateStickyTabs(for: minY)
                 }
                 .background {
                     HomeFeedScrollToTopHelper(token: viewModel.homeScrollToTopToken)
-                    HomeFeedScrollClampHelper(clampToken: homeScrollClampToken)
                 }
                 .onHomeHeaderHeightChange($homeHeaderHeight)
                 .fashFeedPullRefresh(isRefreshing: $viewModel.isRefreshing) {
                     await viewModel.pullToRefresh(deps: deps, isGuestMode: isGuestMode)
                 }
                 .onChange(of: viewModel.homeScrollToTopToken) { _, _ in
+                    showStickyTabs = false
                     scrollHomeToTop(using: scrollProxy)
                 }
                 .onChange(of: viewModel.selectedFeedTabKey) { oldKey, newKey in
@@ -145,7 +151,6 @@ struct HomeFeedContent: View {
                 .zIndex(1)
             }
         }
-        .animation(.easeOut(duration: 0.18), value: showStickyTabs)
         .task {
             viewModel.normalizeSelectedFeedTab(isGuestMode: isGuestMode, deps: deps)
             await viewModel.loadShell(deps: deps, isGuestMode: isGuestMode, skipIfFresh: true)
@@ -375,7 +380,8 @@ struct HomeFeedContent: View {
     private func onHomeFeedTabChanged(to tabKey: String) {
         let tab = HomeFeedTab(rawValue: tabKey) ?? viewModel.selectedFeedTab
         viewModel.syncVisibleItemsForTab(tab)
-        homeScrollClampToken += 1
+        showStickyTabs = false
+        viewModel.requestScrollHomeToTop()
     }
 
     private func scrollHomeToTop(using scrollProxy: ScrollViewProxy) {

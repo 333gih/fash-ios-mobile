@@ -57,7 +57,7 @@ struct FeaturedSellersScreen: View {
                     .padding(.bottom, 24)
                 }
             }
-            .refreshable {
+            .fashFeedPullRefresh(isRefreshing: $viewModel.isRefreshing) {
                 await viewModel.refresh(deps: deps, isGuestMode: isGuestMode)
             }
         }

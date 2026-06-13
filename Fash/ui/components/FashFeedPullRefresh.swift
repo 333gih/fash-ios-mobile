@@ -92,9 +92,14 @@ private struct FashFeedPullRefreshHost: UIViewRepresentable {
         let wasRefreshing = context.coordinator.wasRefreshing
         context.coordinator.wasRefreshing = isRefreshing
         if isRefreshing, !wasRefreshing {
-            context.coordinator.syncExternalRefreshingState()
+            // Nav re-tap / programmatic refresh — keep scroll at top; only user pull snaps inset open.
+            if context.coordinator.refreshInitiatedByPull {
+                context.coordinator.syncExternalRefreshingState()
+            }
         } else if !isRefreshing, wasRefreshing {
             context.coordinator.clearRefreshingInsetIfNeeded(animated: true)
+            context.coordinator.refreshInitiatedByPull = false
+            context.coordinator.reportProgress(0)
         }
         uiView.coordinator = context.coordinator
         uiView.scheduleInstall()
@@ -131,6 +136,7 @@ private struct FashFeedPullRefreshHost: UIViewRepresentable {
         private var refreshingInsetApplied = false
         private var baselineContentInsetTop: CGFloat = 0
         private var lastReportedProgress: CGFloat = -1
+        fileprivate var refreshInitiatedByPull = false
 
         init(
             isRefreshing: Binding<Bool>,
@@ -164,7 +170,7 @@ private struct FashFeedPullRefreshHost: UIViewRepresentable {
             }
             wasDragging = dragging
 
-            guard !isRefreshing else { return }
+            guard !isRefreshing, !refreshingInsetApplied else { return }
             let pull = currentPullDistance(on: scrollView)
             let progress = min(1, pull / FashFeedPullRefreshHost.triggerDistance)
             reportProgress(progress)
@@ -174,7 +180,7 @@ private struct FashFeedPullRefreshHost: UIViewRepresentable {
             max(0, -(scrollView.contentOffset.y + scrollView.adjustedContentInset.top))
         }
 
-        private func reportProgress(_ progress: CGFloat) {
+        fileprivate func reportProgress(_ progress: CGFloat) {
             guard abs(progress - lastReportedProgress) > 0.04 || progress == 0 else { return }
             lastReportedProgress = progress
             pullProgress = progress
@@ -188,6 +194,7 @@ private struct FashFeedPullRefreshHost: UIViewRepresentable {
                 return
             }
 
+            refreshInitiatedByPull = true
             refreshTask?.cancel()
             refreshTask = Task { @MainActor in
                 snapToRefreshingHold(on: scrollView, animated: true)
@@ -204,10 +211,16 @@ private struct FashFeedPullRefreshHost: UIViewRepresentable {
         }
 
         private func runRefresh(on scrollView: UIScrollView) async {
-            snapToRefreshingHold(on: scrollView, animated: false)
-            reportProgress(1)
+            if refreshInitiatedByPull {
+                snapToRefreshingHold(on: scrollView, animated: false)
+                reportProgress(1)
+            }
             await onRefresh()
-            releaseRefreshingHold(on: scrollView, animated: true)
+            if refreshInitiatedByPull {
+                releaseRefreshingHold(on: scrollView, animated: true)
+            }
+            refreshInitiatedByPull = false
+            reportProgress(0)
         }
 
         private func snapToRefreshingHold(on scrollView: UIScrollView, animated: Bool) {

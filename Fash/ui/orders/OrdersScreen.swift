@@ -51,67 +51,66 @@ struct OrdersScreen: View {
 
                 orderFilterBar
 
-                Group {
-                    if activeVM.isLoading, activeVM.buyingOrders.isEmpty, activeVM.sellingOrders.isEmpty {
-                        ProgressView()
-                            .tint(FashColors.brandPrimary)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    } else if let error = activeVM.errorMessage, activeVM.sourceOrders.isEmpty {
-                        FashEmptyStateView(
-                            title: L10n.ordersErrorTitle,
-                            subtitle: error,
-                            systemImage: "exclamationmark.triangle",
-                            actionTitle: L10n.feedRetry
-                        ) {
-                            Task { await activeVM.refresh(deps: deps) }
-                        }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    } else if activeVM.sourceOrders.isEmpty {
-                        FashEmptyStateView(
-                            title: activeVM.selectedRole == .buying ? L10n.ordersEmptyBuying : L10n.ordersEmptySelling,
-                            subtitle: activeVM.selectedRole == .buying ? L10n.ordersEmptyBuyingSub : L10n.ordersEmptySellingSub,
-                            systemImage: activeVM.selectedRole == .buying ? "bag" : "storefront"
-                        )
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    } else if activeVM.filteredOrders.isEmpty {
-                        FashEmptyStateView(
-                            title: L10n.ordersEmptyFilteredTitle,
-                            subtitle: L10n.ordersEmptyFilteredSub,
-                            actionTitle: L10n.ordersFilterClear
-                        ) {
-                            Task { await activeVM.selectStatusFilter(.all, deps: deps) }
-                        }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    } else {
-                        ScrollViewReader { proxy in
-                            ScrollView {
-                                Color.clear.frame(height: 0).id(ordersScrollTopId)
-                                LazyVStack(spacing: 12) {
-                                    ForEach(activeVM.filteredOrders) { order in
-                                        OrderListCard(
-                                            order: order,
-                                            showReviewButton: activeVM.selectedRole == .buying,
-                                            isConfirming: activeVM.confirmingOrderId == order.orderId,
-                                            onConfirm: {
-                                                Task { await activeVM.confirmReceipt(orderId: order.orderId, deps: deps) }
-                                            },
-                                            onTap: { onSelectOrder(order.orderId) }
-                                        )
-                                    }
-                                }
-                                .padding(.horizontal, spacing.editorialStart)
-                                .padding(.vertical, 16)
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        Color.clear.frame(height: 0).id(ordersScrollTopId)
+
+                        if activeVM.isLoading, activeVM.buyingOrders.isEmpty, activeVM.sellingOrders.isEmpty {
+                            ProgressView()
+                                .tint(FashColors.brandPrimary)
+                                .frame(maxWidth: .infinity, minHeight: 320)
+                        } else if let error = activeVM.errorMessage, activeVM.sourceOrders.isEmpty {
+                            FashEmptyStateView(
+                                title: L10n.ordersErrorTitle,
+                                subtitle: error,
+                                systemImage: "exclamationmark.triangle",
+                                actionTitle: L10n.feedRetry
+                            ) {
+                                Task { await activeVM.refresh(deps: deps) }
                             }
-                            .fashFeedPullRefresh(isRefreshing: bindableRefreshing) {
-                                await activeVM.pullToRefresh(deps: deps)
+                            .frame(maxWidth: .infinity, minHeight: 320)
+                        } else if activeVM.sourceOrders.isEmpty {
+                            FashEmptyStateView(
+                                title: activeVM.selectedRole == .buying ? L10n.ordersEmptyBuying : L10n.ordersEmptySelling,
+                                subtitle: activeVM.selectedRole == .buying ? L10n.ordersEmptyBuyingSub : L10n.ordersEmptySellingSub,
+                                systemImage: activeVM.selectedRole == .buying ? "bag" : "storefront"
+                            )
+                            .frame(maxWidth: .infinity, minHeight: 320)
+                        } else if activeVM.filteredOrders.isEmpty {
+                            FashEmptyStateView(
+                                title: L10n.ordersEmptyFilteredTitle,
+                                subtitle: L10n.ordersEmptyFilteredSub,
+                                actionTitle: L10n.ordersFilterClear
+                            ) {
+                                Task { await activeVM.selectStatusFilter(.all, deps: deps) }
                             }
-                            .onChange(of: activeVM.ordersScrollToTopToken) { _, _ in
-                                var transaction = Transaction()
-                                transaction.disablesAnimations = true
-                                withTransaction(transaction) {
-                                    proxy.scrollTo(ordersScrollTopId, anchor: .top)
+                            .frame(maxWidth: .infinity, minHeight: 320)
+                        } else {
+                            LazyVStack(spacing: 12) {
+                                ForEach(activeVM.filteredOrders) { order in
+                                    OrderListCard(
+                                        order: order,
+                                        showReviewButton: activeVM.selectedRole == .buying,
+                                        isConfirming: activeVM.confirmingOrderId == order.orderId,
+                                        onConfirm: {
+                                            Task { await activeVM.confirmReceipt(orderId: order.orderId, deps: deps) }
+                                        },
+                                        onTap: { onSelectOrder(order.orderId) }
+                                    )
                                 }
                             }
+                            .padding(.horizontal, spacing.editorialStart)
+                            .padding(.vertical, 16)
+                        }
+                    }
+                    .fashFeedPullRefresh(isRefreshing: bindableRefreshing) {
+                        await activeVM.pullToRefresh(deps: deps)
+                    }
+                    .onChange(of: activeVM.ordersScrollToTopToken) { _, _ in
+                        var transaction = Transaction()
+                        transaction.disablesAnimations = true
+                        withTransaction(transaction) {
+                            proxy.scrollTo(ordersScrollTopId, anchor: .top)
                         }
                     }
                 }
