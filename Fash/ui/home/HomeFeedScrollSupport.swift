@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 enum HomeScrollIds {
     static let top = "home_feed_scroll_top"
@@ -6,12 +7,20 @@ enum HomeScrollIds {
     static let feedContent = "home_feed_content"
 }
 
-/// Feed scroll offset anchor — parity with Explore [ExploreFeedScrollOffsetAnchor].
 struct HomeFeedScrollOffsetKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
 
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
         value = nextValue()
+    }
+}
+
+/// In-scroll tab row minY — when < 0 the row scrolled off; show Android-style sticky overlay.
+struct HomeTabRowMinYKey: PreferenceKey {
+    static var defaultValue: CGFloat = .infinity
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = min(value, nextValue())
     }
 }
 
@@ -30,6 +39,18 @@ extension View {
             GeometryReader { geo in
                 Color.clear.preference(
                     key: HomeFeedScrollOffsetKey.self,
+                    value: geo.frame(in: .named(space)).minY
+                )
+            }
+            .allowsHitTesting(false)
+        }
+    }
+
+    func homeTabRowScrollReporting(space: String = "homeFeedScroll") -> some View {
+        background {
+            GeometryReader { geo in
+                Color.clear.preference(
+                    key: HomeTabRowMinYKey.self,
                     value: geo.frame(in: .named(space)).minY
                 )
             }
@@ -65,7 +86,6 @@ extension View {
 }
 
 enum HomeFeedScrollReset {
-    /// Bottom-nav Home re-tap — scroll to full header (SwiftUI + one UIKit nudge via [HomeFeedScrollToTopHelper]).
     @MainActor
     static func scrollToTop(proxy: ScrollViewProxy) {
         var transaction = Transaction()
@@ -87,7 +107,7 @@ enum HomeFeedScrollReset {
     }
 }
 
-/// One-shot scroll-to-top on Home re-tap — does not clamp or fight user scroll at other times.
+/// One-shot scroll-to-top on Home re-tap.
 struct HomeFeedScrollToTopHelper: UIViewRepresentable {
     var token: Int
 
@@ -129,6 +149,58 @@ struct HomeFeedScrollToTopHelper: UIViewRepresentable {
             guard attempt < 8 else { return }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.07) { [weak self] in
                 self?.applyScrollToTop(attempt: attempt + 1)
+            }
+        }
+    }
+}
+
+/// One-shot max-offset trim when tab body height shrinks — never blocks scrolling up.
+struct HomeFeedScrollClampHelper: UIViewRepresentable {
+    var clampToken: Int
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    func makeUIView(context: Context) -> AnchorView {
+        let view = AnchorView()
+        view.coordinator = context.coordinator
+        return view
+    }
+
+    func updateUIView(_ uiView: AnchorView, context: Context) {
+        uiView.coordinator = context.coordinator
+        guard clampToken > 0, clampToken != context.coordinator.lastAppliedToken else { return }
+        context.coordinator.lastAppliedToken = clampToken
+        uiView.scheduleClamp(attempt: 0)
+    }
+
+    final class Coordinator {
+        var lastAppliedToken = 0
+    }
+
+    final class AnchorView: UIView {
+        weak var coordinator: Coordinator?
+
+        func scheduleClamp(attempt: Int) {
+            DispatchQueue.main.async { [weak self] in
+                self?.applyClamp(attempt: attempt)
+            }
+        }
+
+        private func applyClamp(attempt: Int) {
+            guard let scrollView = enclosingScrollView() else { return }
+            scrollView.layoutIfNeeded()
+            let maxOffset = max(
+                0,
+                scrollView.contentSize.height
+                    - scrollView.bounds.height
+                    + scrollView.adjustedContentInset.bottom
+            )
+            if scrollView.contentOffset.y > maxOffset + 1.5 {
+                scrollView.setContentOffset(CGPoint(x: 0, y: maxOffset), animated: false)
+            }
+            guard attempt < 3 else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { [weak self] in
+                self?.applyClamp(attempt: attempt + 1)
             }
         }
     }

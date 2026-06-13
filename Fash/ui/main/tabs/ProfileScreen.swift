@@ -59,7 +59,7 @@ struct ProfileScreen: View {
             } else {
                 ZStack {
                     profileCollapsingScroll
-                        .refreshable {
+                        .fashFeedPullRefresh(isRefreshing: $viewModel.isRefreshing) {
                             await viewModel.refresh(deps: deps, activeTab: selectedProfileTab)
                         }
                 }

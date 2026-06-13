@@ -294,7 +294,7 @@ struct ExploreScreen: View {
             }
         }
         .animation(.easeInOut(duration: 0.22), value: showsStickyChromeOverlay)
-        .refreshable {
+        .fashFeedPullRefresh(isRefreshing: $viewModel.isRefreshing) {
             masonryColumnAssignments = [:]
             await viewModel.pullToRefresh(deps: deps, isGuestMode: isGuestMode)
         }
@@ -434,7 +434,9 @@ struct ExploreScreen: View {
             }
         }
         .animation(.easeInOut(duration: 0.22), value: showsStickyChromeOverlay)
-        .refreshable { await viewModel.pullToRefresh(deps: deps, isGuestMode: isGuestMode) }
+        .fashFeedPullRefresh(isRefreshing: $viewModel.isRefreshing) {
+            await viewModel.pullToRefresh(deps: deps, isGuestMode: isGuestMode)
+        }
     }
 }
 

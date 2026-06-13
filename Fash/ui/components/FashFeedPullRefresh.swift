@@ -36,8 +36,9 @@ struct FashFeedPullRefreshIndicator: View {
 
 private struct FashFeedPullRefreshModifier: ViewModifier {
     @Binding var isRefreshing: Bool
-    @Binding var pullProgress: CGFloat
     var onRefresh: () async -> Void
+
+    @State private var pullProgress: CGFloat = 0
 
     func body(content: Content) -> some View {
         content
@@ -88,9 +89,11 @@ private struct FashFeedPullRefreshHost: UIViewRepresentable {
 
     func updateUIView(_ uiView: AnchorView, context: Context) {
         context.coordinator.onRefresh = onRefresh
-        if isRefreshing {
+        let wasRefreshing = context.coordinator.wasRefreshing
+        context.coordinator.wasRefreshing = isRefreshing
+        if isRefreshing, !wasRefreshing {
             context.coordinator.syncExternalRefreshingState()
-        } else {
+        } else if !isRefreshing, wasRefreshing {
             context.coordinator.clearRefreshingInsetIfNeeded(animated: true)
         }
         uiView.coordinator = context.coordinator
@@ -119,6 +122,7 @@ private struct FashFeedPullRefreshHost: UIViewRepresentable {
         @Binding var isRefreshing: Bool
         @Binding var pullProgress: CGFloat
         var onRefresh: () async -> Void
+        var wasRefreshing = false
 
         private weak var scrollView: UIScrollView?
         private var offsetObservation: NSKeyValueObservation?
@@ -171,7 +175,7 @@ private struct FashFeedPullRefreshHost: UIViewRepresentable {
         }
 
         private func reportProgress(_ progress: CGFloat) {
-            guard abs(progress - lastReportedProgress) > 0.015 || progress == 0 else { return }
+            guard abs(progress - lastReportedProgress) > 0.04 || progress == 0 else { return }
             lastReportedProgress = progress
             pullProgress = progress
         }
@@ -186,7 +190,6 @@ private struct FashFeedPullRefreshHost: UIViewRepresentable {
 
             refreshTask?.cancel()
             refreshTask = Task { @MainActor in
-                // Pinterest: snap open and hold while the brief threshold pause runs.
                 snapToRefreshingHold(on: scrollView, animated: true)
                 try? await Task.sleep(for: FashFeedPullRefreshHost.holdBeforeRefresh)
                 guard !Task.isCancelled, !isRefreshing else { return }
@@ -207,7 +210,6 @@ private struct FashFeedPullRefreshHost: UIViewRepresentable {
             releaseRefreshingHold(on: scrollView, animated: true)
         }
 
-        /// Hold scroll pulled open with spinner visible — Pinterest-style refresh posture.
         private func snapToRefreshingHold(on scrollView: UIScrollView, animated: Bool) {
             if baselineContentInsetTop == 0 {
                 baselineContentInsetTop = scrollView.contentInset.top
@@ -269,13 +271,11 @@ extension View {
     /// Elastic pull-to-refresh — Pinterest-style hold at threshold, feed-first refresh callback.
     func fashFeedPullRefresh(
         isRefreshing: Binding<Bool>,
-        pullProgress: Binding<CGFloat> = .constant(0),
         onRefresh: @escaping () async -> Void
     ) -> some View {
         modifier(
             FashFeedPullRefreshModifier(
                 isRefreshing: isRefreshing,
-                pullProgress: pullProgress,
                 onRefresh: onRefresh
             )
         )

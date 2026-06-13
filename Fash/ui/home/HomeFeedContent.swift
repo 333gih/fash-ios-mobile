@@ -48,28 +48,26 @@ struct HomeFeedContent: View {
         isGuestMode ? nil : viewModel.homeUxPersonalization.exploreShortcut
     }
 
-    /// Avoid collapsed empty gap while tab content swaps during horizontal swipe.
+    /// Skeleton min-height only when the active tab has no cached rows yet.
     private var homeFeedMinHeight: CGFloat {
         if !viewModel.items.isEmpty { return 0 }
         if viewModel.hasCachedItems(for: viewModel.selectedFeedTab) { return 0 }
         if viewModel.isRefreshing { return 0 }
         if viewModel.isShellLoading || viewModel.isTabLoading(viewModel.selectedFeedTab) {
-            return 420
+            return 360
         }
-        return 240
+        return 0
     }
 
     @State private var homeHeaderHeight: CGFloat = 0
-    @State private var homeScrollAnchorMinY: CGFloat = 0
+    @State private var homeTabRowMinY: CGFloat = .infinity
+    @State private var homeScrollClampToken = 0
     @State private var masonryColumnAssignmentsByTab: [String: [String: Bool]] = [:]
     @State private var listingInteractionEnabled = true
-    @State private var tabSlideDirection: Int = 0
-    @State private var homePullProgress: CGFloat = 0
 
-    /// Header scrolled away — tab bar is pinned; preserve feed offset on horizontal tab swap only.
-    private var isHomeHeaderCollapsed: Bool {
-        guard homeHeaderHeight > 1 else { return false }
-        return homeScrollAnchorMinY <= -(homeHeaderHeight - 12)
+    /// Android `showStickyTabs` — overlay duplicate tab row when in-scroll row scrolled off screen.
+    private var showStickyTabs: Bool {
+        homeTabRowMinY < -1
     }
 
     private var masonryColumnAssignments: Binding<[String: Bool]> {
@@ -80,23 +78,22 @@ struct HomeFeedContent: View {
     }
 
     var body: some View {
-        ZStack(alignment: .bottom) {
+        ZStack(alignment: .top) {
             ScrollViewReader { scrollProxy in
                 ScrollView {
-                    LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
-                        Section {
-                            homeScrollAwayHeader
-                                .homeFeedHeaderHeightReporting()
-                        }
-                        Section {
-                            feedBody
-                                .id(HomeScrollIds.feedContent)
-                                .frame(minHeight: homeFeedMinHeight, alignment: .top)
-                            HomeBrandFooterStrip()
-                        } header: {
-                            homeFeedTabsBar
-                                .id(HomeScrollIds.pinnedTabs)
-                        }
+                    LazyVStack(spacing: 0) {
+                        homeScrollAwayHeader
+                            .homeFeedHeaderHeightReporting()
+
+                        homeFeedTabsBar(sticky: false)
+                            .id(HomeScrollIds.pinnedTabs)
+                            .homeTabRowScrollReporting()
+
+                        feedBodyContent
+                            .id(HomeScrollIds.feedContent)
+                            .frame(minHeight: homeFeedMinHeight, alignment: .top)
+
+                        HomeBrandFooterStrip()
                     }
                     .padding(.bottom, promoDockInset + spacing.spacing2)
                     .fashScrollViewTabSwipe(
@@ -109,22 +106,19 @@ struct HomeFeedContent: View {
                             }
                         }
                     ) { index in
-                        tabSlideDirection = FashTabSwipeMotion.slideDirection(
-                            oldIndex: selectedTabIndex,
-                            newIndex: index
-                        )
                         viewModel.selectFeedTab(tabs[index], deps: deps, isGuestMode: isGuestMode)
                     }
                 }
                 .coordinateSpace(name: "homeFeedScroll")
-                .onPreferenceChange(HomeFeedScrollOffsetKey.self) { minY in
-                    homeScrollAnchorMinY = minY
+                .onPreferenceChange(HomeTabRowMinYKey.self) { minY in
+                    homeTabRowMinY = minY
                 }
                 .background {
                     HomeFeedScrollToTopHelper(token: viewModel.homeScrollToTopToken)
+                    HomeFeedScrollClampHelper(clampToken: homeScrollClampToken)
                 }
                 .onHomeHeaderHeightChange($homeHeaderHeight)
-                .fashFeedPullRefresh(isRefreshing: $viewModel.isRefreshing, pullProgress: $homePullProgress) {
+                .fashFeedPullRefresh(isRefreshing: $viewModel.isRefreshing) {
                     await viewModel.pullToRefresh(deps: deps, isGuestMode: isGuestMode)
                 }
                 .onChange(of: viewModel.homeScrollToTopToken) { _, _ in
@@ -132,16 +126,25 @@ struct HomeFeedContent: View {
                 }
                 .onChange(of: viewModel.selectedFeedTabKey) { oldKey, newKey in
                     guard oldKey != newKey else { return }
-                    preservePinnedScrollOnTabSwap(using: scrollProxy, tabKey: newKey)
+                    onHomeFeedTabChanged(to: newKey)
                 }
+            }
+
+            if showStickyTabs {
+                homeFeedTabsBar(sticky: true)
+                    .transition(.opacity)
+                    .zIndex(2)
             }
 
             if !promoSlides.isEmpty {
                 FashPromoSliderAdFooterView(slides: promoSlides) { slide, _ in
                     router.handlePromoSlideClick(slide)
                 }
+                .frame(maxHeight: .infinity, alignment: .bottom)
+                .zIndex(1)
             }
         }
+        .animation(.easeOut(duration: 0.18), value: showStickyTabs)
         .task {
             viewModel.normalizeSelectedFeedTab(isGuestMode: isGuestMode, deps: deps)
             await viewModel.loadShell(deps: deps, isGuestMode: isGuestMode, skipIfFresh: true)
@@ -214,8 +217,8 @@ struct HomeFeedContent: View {
         }
     }
 
-    /// Tab row — pinned at top once header scrolls away (Android `showStickyTabs` overlay).
-    private var homeFeedTabsBar: some View {
+    /// Tab row — in-scroll copy; sticky overlay shown separately when scrolled off (Android parity).
+    private func homeFeedTabsBar(sticky: Bool) -> some View {
         VStack(spacing: 0) {
             HomeFeedTabSwitcher(
                 tabs: tabs,
@@ -223,13 +226,6 @@ struct HomeFeedContent: View {
                 scrollToSelectedToken: viewModel.homeTabBarScrollToken,
                 isGuestBrowse: isGuestMode,
                 onSelect: { tab in
-                    if let oldIdx = tabs.firstIndex(of: viewModel.selectedFeedTab),
-                       let newIdx = tabs.firstIndex(of: tab), oldIdx != newIdx {
-                        tabSlideDirection = FashTabSwipeMotion.slideDirection(
-                            oldIndex: oldIdx,
-                            newIndex: newIdx
-                        )
-                    }
                     viewModel.selectFeedTab(tab, deps: deps, isGuestMode: isGuestMode)
                 }
             )
@@ -237,21 +233,7 @@ struct HomeFeedContent: View {
                 .overlay(FashColors.outlineMuted.opacity(0.35))
         }
         .background(FashColors.screen)
-        .shadow(color: .black.opacity(0.06), radius: 2, y: 1)
-    }
-
-    @ViewBuilder
-    private var feedBody: some View {
-        Group {
-            feedBodyContent
-        }
-        .id(viewModel.selectedFeedTabKey)
-        .allowsHitTesting(listingInteractionEnabled)
-        .animation(
-            viewModel.isRefreshing ? nil : FashTabSwipeMotion.contentAnimation,
-            value: viewModel.selectedFeedTabKey
-        )
-        .transition(FashTabSwipeMotion.contentTransition)
+        .shadow(color: sticky ? .black.opacity(0.06) : .clear, radius: 2, y: 1)
     }
 
     @ViewBuilder
@@ -377,6 +359,7 @@ struct HomeFeedContent: View {
             .padding(.top, spacing.spacing2)
             .padding(.bottom, spacing.spacing4)
         }
+        .allowsHitTesting(listingInteractionEnabled)
     }
 
     private func guestLoginReason(for tab: HomeFeedTab) -> String {
@@ -389,17 +372,10 @@ struct HomeFeedContent: View {
         }
     }
 
-    /// Swap tab body only — when header is collapsed, one soft scroll to pinned tabs (no UIKit offset fixer).
-    private func preservePinnedScrollOnTabSwap(using scrollProxy: ScrollViewProxy, tabKey: String) {
+    private func onHomeFeedTabChanged(to tabKey: String) {
         let tab = HomeFeedTab(rawValue: tabKey) ?? viewModel.selectedFeedTab
         viewModel.syncVisibleItemsForTab(tab)
-        guard isHomeHeaderCollapsed else { return }
-        guard !viewModel.isRefreshing else { return }
-        var transaction = Transaction()
-        transaction.disablesAnimations = true
-        withTransaction(transaction) {
-            scrollProxy.scrollTo(HomeScrollIds.pinnedTabs, anchor: .top)
-        }
+        homeScrollClampToken += 1
     }
 
     private func scrollHomeToTop(using scrollProxy: ScrollViewProxy) {

@@ -167,7 +167,9 @@ struct NotificationScreen: View {
                 .padding(.bottom, showPromoFooter ? FashStickyPromoDockHeight : 16)
             }
         }
-        .refreshable { await viewModel.refresh() }
+        .fashFeedPullRefresh(isRefreshing: notificationRefreshing) {
+            await viewModel.refresh()
+        }
     }
 
     private var groupDetail: some View {
@@ -198,7 +200,16 @@ struct NotificationScreen: View {
             }
         }
         .listStyle(.plain)
-        .refreshable { await viewModel.refresh() }
+        .fashFeedPullRefresh(isRefreshing: notificationRefreshing) {
+            await viewModel.refresh()
+        }
+    }
+
+    private var notificationRefreshing: Binding<Bool> {
+        Binding(
+            get: { viewModel.isRefreshing },
+            set: { viewModel.isRefreshing = $0 }
+        )
     }
 
     @ViewBuilder

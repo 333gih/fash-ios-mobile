@@ -64,7 +64,6 @@ struct ChatScreen: View {
         }
         .background(FashColors.screen)
         .task { await viewModel.loadConversationsWhenNeeded(deps: deps) }
-        .refreshable { await viewModel.pullToRefresh(deps: deps) }
         .onChange(of: viewModel.chatScrollToTopToken) { _, _ in
             chatScrollTopId = UUID()
         }
@@ -95,7 +94,9 @@ struct ChatScreen: View {
     private var flatList: some View {
         ChatInboxScrollContainer(
             scrollTopId: chatScrollTopId,
-            scrollToTopToken: viewModel.chatScrollToTopToken
+            scrollToTopToken: viewModel.chatScrollToTopToken,
+            isRefreshing: $viewModel.isRefreshing,
+            onRefresh: { await viewModel.pullToRefresh(deps: deps) }
         ) {
             ForEach(viewModel.conversations) { item in
                 ChatConversationRow(
@@ -112,7 +113,9 @@ struct ChatScreen: View {
     private var groupedList: some View {
         ChatInboxScrollContainer(
             scrollTopId: chatScrollTopId,
-            scrollToTopToken: viewModel.chatScrollToTopToken
+            scrollToTopToken: viewModel.chatScrollToTopToken,
+            isRefreshing: $viewModel.isRefreshing,
+            onRefresh: { await viewModel.pullToRefresh(deps: deps) }
         ) {
             ForEach(viewModel.displayGroups) { group in
                 ChatListingGroupHeader(
@@ -142,6 +145,8 @@ struct ChatScreen: View {
 private struct ChatInboxScrollContainer<Content: View>: View {
     let scrollTopId: UUID
     let scrollToTopToken: Int
+    @Binding var isRefreshing: Bool
+    var onRefresh: () async -> Void
     @ViewBuilder var content: () -> Content
 
     var body: some View {
@@ -153,6 +158,7 @@ private struct ChatInboxScrollContainer<Content: View>: View {
                 }
                 .padding(.bottom, 8)
             }
+            .fashFeedPullRefresh(isRefreshing: $isRefreshing, onRefresh: onRefresh)
             .onChange(of: scrollToTopToken) { _, _ in
                 var transaction = Transaction()
                 transaction.disablesAnimations = true

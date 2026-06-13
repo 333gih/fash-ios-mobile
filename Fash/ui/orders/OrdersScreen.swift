@@ -32,7 +32,6 @@ struct OrdersScreen: View {
             }
         }
         .task { await activeVM.refresh(deps: deps) }
-        .refreshable { await activeVM.pullToRefresh(deps: deps) }
         .onChange(of: activeVM.ordersScrollToTopToken) { _, _ in
             ordersScrollTopId = UUID()
         }
@@ -103,6 +102,9 @@ struct OrdersScreen: View {
                                 .padding(.horizontal, spacing.editorialStart)
                                 .padding(.vertical, 16)
                             }
+                            .fashFeedPullRefresh(isRefreshing: bindableRefreshing) {
+                                await activeVM.pullToRefresh(deps: deps)
+                            }
                             .onChange(of: activeVM.ordersScrollToTopToken) { _, _ in
                                 var transaction = Transaction()
                                 transaction.disablesAnimations = true
@@ -153,6 +155,13 @@ struct OrdersScreen: View {
         Binding(
             get: { activeVM.selectedRole },
             set: { activeVM.selectedRole = $0 }
+        )
+    }
+
+    private var bindableRefreshing: Binding<Bool> {
+        Binding(
+            get: { activeVM.isRefreshing },
+            set: { activeVM.isRefreshing = $0 }
         )
     }
 }
