@@ -59,16 +59,12 @@ struct HomeFeedContent: View {
         return 0
     }
 
-    @State private var homeHeaderHeight: CGFloat = 0
-    @State private var homeTabRowMinY: CGFloat = .infinity
     @State private var showStickyTabs = false
     @State private var masonryColumnAssignmentsByTab: [String: [String: Bool]] = [:]
     @State private var listingInteractionEnabled = true
 
-    /// Android `showStickyTabs` — overlay duplicate tab row when in-scroll row scrolled off screen.
-    /// Hysteresis avoids rapid toggle at the threshold (prevents scroll snap-back).
+    /// Only flip `@State` when crossing hysteresis — never on every scroll frame.
     private func updateStickyTabs(for minY: CGFloat) {
-        homeTabRowMinY = minY
         if minY < -14 {
             if !showStickyTabs { showStickyTabs = true }
         } else if minY > 2 {
@@ -84,12 +80,13 @@ struct HomeFeedContent: View {
     }
 
     var body: some View {
-        ZStack(alignment: .top) {
+        ZStack(alignment: .bottom) {
             ScrollViewReader { scrollProxy in
                 ScrollView {
-                    LazyVStack(spacing: 0) {
+                    // VStack (not LazyVStack) — lazy-unloaded header/tabs shrink contentSize when
+                    // pinned, which blocks scrolling back up until many drag attempts.
+                    VStack(spacing: 0) {
                         homeScrollAwayHeader
-                            .homeFeedHeaderHeightReporting()
 
                         homeFeedTabsBar(sticky: false)
                             .id(HomeScrollIds.pinnedTabs)
@@ -120,10 +117,14 @@ struct HomeFeedContent: View {
                 .onPreferenceChange(HomeTabRowMinYKey.self) { minY in
                     updateStickyTabs(for: minY)
                 }
+                .overlay(alignment: .top) {
+                    homeFeedTabsBar(sticky: true)
+                        .opacity(showStickyTabs ? 1 : 0)
+                        .allowsHitTesting(showStickyTabs)
+                }
                 .background {
                     HomeFeedScrollToTopHelper(token: viewModel.homeScrollToTopToken)
                 }
-                .onHomeHeaderHeightChange($homeHeaderHeight)
                 .fashFeedPullRefresh(isRefreshing: $viewModel.isRefreshing) {
                     await viewModel.pullToRefresh(deps: deps, isGuestMode: isGuestMode)
                 }
@@ -137,18 +138,10 @@ struct HomeFeedContent: View {
                 }
             }
 
-            if showStickyTabs {
-                homeFeedTabsBar(sticky: true)
-                    .transition(.opacity)
-                    .zIndex(2)
-            }
-
             if !promoSlides.isEmpty {
                 FashPromoSliderAdFooterView(slides: promoSlides) { slide, _ in
                     router.handlePromoSlideClick(slide)
                 }
-                .frame(maxHeight: .infinity, alignment: .bottom)
-                .zIndex(1)
             }
         }
         .task {

@@ -172,6 +172,7 @@ private struct FashFeedPullRefreshHost: UIViewRepresentable {
 
             guard !isRefreshing, !refreshingInsetApplied else { return }
             let pull = currentPullDistance(on: scrollView)
+            if pull <= 0, lastReportedProgress <= 0 { return }
             let progress = min(1, pull / FashFeedPullRefreshHost.triggerDistance)
             reportProgress(progress)
         }
