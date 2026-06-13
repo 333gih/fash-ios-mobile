@@ -7,9 +7,10 @@ struct FashAppPromoOverlayDialog: View {
     var onPrimaryClick: (AppPromoCampaign) -> Void
     var onSecondaryClick: ((AppPromoCampaign) -> Void)?
 
-    private let cardMaxWidth: CGFloat = 380
-    private let cardWidthFraction: CGFloat = 0.88
-    private let cardMaxHeightFraction: CGFloat = 0.82
+    private let cardMaxWidth: CGFloat = 340
+    private let cardWidthFraction: CGFloat = 0.84
+    private let cardMaxHeightFraction: CGFloat = 0.68
+    private let cardAbsoluteMaxHeight: CGFloat = 460
 
     var body: some View {
         if let layout = AppPromoDialogLayout.resolve(campaign: campaign) {
@@ -24,103 +25,117 @@ struct FashAppPromoOverlayDialog: View {
     private func promoCard(layout: AppPromoDialogLayout) -> some View {
         GeometryReader { geo in
             let cardWidth = min(geo.size.width * cardWidthFraction, cardMaxWidth)
+            let maxCardHeight = min(geo.size.height * cardMaxHeightFraction, cardAbsoluteMaxHeight)
             let heroHeight = layout.heroHeight(cardWidth: cardWidth)
-            let bodyTop = heroHeight != nil ? 18.0 : 14.0
-            let ctaTop = heroHeight != nil ? 18.0 : (layout.showMessage ? 16.0 : 14.0)
 
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 0) {
-                    if let heroHeight {
-                        promoHero(layout: layout, width: cardWidth, height: heroHeight)
+            Group {
+                if layout.prefersScrollableBody {
+                    ScrollView(showsIndicators: true) {
+                        promoCardBody(layout: layout, cardWidth: cardWidth)
                     }
-                    if layout.showBadgeInline || layout.showTitle || layout.showMessage {
-                        VStack(alignment: .leading, spacing: 0) {
-                            if layout.showBadgeInline, let badge = layout.badge {
-                                promoInlineBadge(badge)
-                                    .padding(.bottom, 10)
-                            }
-                            if layout.showTitle {
-                                Text(layout.title)
-                                    .font(FashTypography.titleLarge.weight(.bold))
-                                    .foregroundStyle(FashColors.textPrimary)
-                                    .lineLimit(3)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                            }
-                            if layout.showMessage, let message = layout.message {
-                                if layout.showTitle {
-                                    Spacer().frame(height: 6)
-                                }
-                                Text(message)
-                                    .font(FashTypography.bodyMedium)
-                                    .foregroundStyle(FashColors.textSecondary)
-                                    .fixedSize(horizontal: false, vertical: true)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                            }
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.top, bodyTop)
-                    }
-                    VStack(spacing: 2) {
-                        Button(action: { onPrimaryClick(campaign) }) {
-                            Text(layout.primaryLabel)
-                                .font(FashTypography.labelLarge.weight(.semibold))
-                                .foregroundStyle(FashColors.readableOnBrandPrimary)
-                                .lineLimit(2)
-                                .multilineTextAlignment(.center)
-                                .frame(maxWidth: .infinity)
-                                .frame(minHeight: 48)
-                                .background(
-                                    LinearGradient(
-                                        colors: [
-                                            FashColors.brandPrimary,
-                                            FashColors.brandPrimary.opacity(0.82),
-                                        ],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    ),
-                                    in: RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                )
-                        }
-                        if layout.showSecondary, let secondary = layout.secondaryLabel {
-                            Button {
-                                if let onSecondaryClick {
-                                    onSecondaryClick(campaign)
-                                } else {
-                                    onDismiss()
-                                }
-                            } label: {
-                                Text(secondary)
-                                    .font(FashTypography.labelLarge)
-                                    .foregroundStyle(FashColors.textSecondary)
-                                    .lineLimit(1)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 6)
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.top, ctaTop)
-                    .padding(.bottom, 20)
+                    .scrollBounceBehavior(.basedOnSize, axes: .vertical)
+                    .frame(maxHeight: maxCardHeight)
+                } else {
+                    promoCardBody(layout: layout, cardWidth: cardWidth)
                 }
             }
             .frame(width: cardWidth)
-            .frame(maxHeight: geo.size.height * cardMaxHeightFraction)
             .background(FashColors.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
             .overlay(alignment: .topTrailing) {
                 Button(action: onDismiss) {
                     Image(systemName: "xmark")
                         .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(heroHeight != nil ? .white : FashColors.textPrimary)
-                        .frame(width: 36, height: 36)
+                        .frame(width: 32, height: 32)
                         .background(
                             (heroHeight != nil ? Color.black.opacity(0.42) : FashColors.surfaceContainerHigh),
                             in: Circle()
                         )
                 }
-                .padding(10)
+                .padding(8)
             }
             .shadow(color: .black.opacity(0.22), radius: 20, y: 8)
-            .position(x: geo.size.width / 2, y: geo.size.height / 2)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        }
+    }
+
+    private func promoCardBody(layout: AppPromoDialogLayout, cardWidth: CGFloat) -> some View {
+        let heroHeight = layout.heroHeight(cardWidth: cardWidth)
+        let bodyTop = heroHeight != nil ? 14.0 : 12.0
+        let ctaTop = heroHeight != nil ? 14.0 : (layout.showMessage ? 12.0 : 10.0)
+
+        return VStack(spacing: 0) {
+            if let heroHeight {
+                promoHero(layout: layout, width: cardWidth, height: heroHeight)
+            }
+            if layout.showBadgeInline || layout.showTitle || layout.showMessage {
+                VStack(alignment: .leading, spacing: 0) {
+                    if layout.showBadgeInline, let badge = layout.badge {
+                        promoInlineBadge(badge)
+                            .padding(.bottom, 8)
+                    }
+                    if layout.showTitle {
+                        Text(layout.title)
+                            .font(FashTypography.titleMedium.weight(.bold))
+                            .foregroundStyle(FashColors.textPrimary)
+                            .lineLimit(3)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    if layout.showMessage, let message = layout.message {
+                        if layout.showTitle {
+                            Spacer().frame(height: 4)
+                        }
+                        Text(message)
+                            .font(FashTypography.bodyMedium)
+                            .foregroundStyle(FashColors.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+                .padding(.horizontal, 18)
+                .padding(.top, bodyTop)
+            }
+            VStack(spacing: 2) {
+                Button(action: { onPrimaryClick(campaign) }) {
+                    Text(layout.primaryLabel)
+                        .font(FashTypography.labelLarge.weight(.semibold))
+                        .foregroundStyle(FashColors.readableOnBrandPrimary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+                        .frame(minHeight: 44)
+                        .background(
+                            LinearGradient(
+                                colors: [
+                                    FashColors.brandPrimary,
+                                    FashColors.brandPrimary.opacity(0.82),
+                                ],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            ),
+                            in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        )
+                }
+                if layout.showSecondary, let secondary = layout.secondaryLabel {
+                    Button {
+                        if let onSecondaryClick {
+                            onSecondaryClick(campaign)
+                        } else {
+                            onDismiss()
+                        }
+                    } label: {
+                        Text(secondary)
+                            .font(FashTypography.labelLarge)
+                            .foregroundStyle(FashColors.textSecondary)
+                            .lineLimit(1)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 4)
+                    }
+                }
+            }
+            .padding(.horizontal, 18)
+            .padding(.top, ctaTop)
+            .padding(.bottom, 16)
         }
     }
 

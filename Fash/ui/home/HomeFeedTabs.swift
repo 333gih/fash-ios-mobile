@@ -98,8 +98,14 @@ struct HomeFeedTabSwitcher: View {
     @Namespace private var tabIndicator
     let tabs: [HomeFeedTab]
     let selectedTab: HomeFeedTab
+    /// Bumps when UX personalization reorders tabs or changes default — re-centers the selected chip.
+    var scrollToSelectedToken: Int = 0
     var isGuestBrowse: Bool = false
     let onSelect: (HomeFeedTab) -> Void
+
+    private var tabsSignature: String {
+        tabs.map(\.id).joined(separator: "|")
+    }
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -141,19 +147,32 @@ struct HomeFeedTabSwitcher: View {
                 .padding(.horizontal, spacing.editorialStart)
             }
             .background(FashColors.screen)
-            .animation(FashTabSwipeMotion.contentAnimation, value: selectedTab.id)
+            .animation(FashTabSwipeMotion.tabBarAnimation, value: selectedTab.id)
             .onChange(of: selectedTab.id) { _, newId in
-                scrollTabBarTo(newId, proxy: proxy, animated: true)
+                centerSelectedTab(newId, proxy: proxy, animated: true)
+            }
+            .onChange(of: tabsSignature) { _, _ in
+                centerSelectedTab(selectedTab.id, proxy: proxy, animated: false)
+            }
+            .onChange(of: scrollToSelectedToken) { _, _ in
+                centerSelectedTab(selectedTab.id, proxy: proxy, animated: true)
             }
             .onAppear {
-                scrollTabBarTo(selectedTab.id, proxy: proxy, animated: false)
+                scheduleCenterSelectedTab(selectedTab.id, proxy: proxy, animated: false)
             }
         }
     }
 
-    private func scrollTabBarTo(_ tabId: String, proxy: ScrollViewProxy, animated: Bool) {
+    private func scheduleCenterSelectedTab(_ tabId: String, proxy: ScrollViewProxy, animated: Bool) {
+        centerSelectedTab(tabId, proxy: proxy, animated: animated)
+        DispatchQueue.main.async {
+            centerSelectedTab(tabId, proxy: proxy, animated: false)
+        }
+    }
+
+    private func centerSelectedTab(_ tabId: String, proxy: ScrollViewProxy, animated: Bool) {
         if animated {
-            withAnimation(FashTabSwipeMotion.contentAnimation) {
+            withAnimation(FashTabSwipeMotion.tabBarAnimation) {
                 proxy.scrollTo(tabId, anchor: .center)
             }
         } else {

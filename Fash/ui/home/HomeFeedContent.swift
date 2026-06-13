@@ -54,9 +54,9 @@ struct HomeFeedContent: View {
         if viewModel.hasCachedItems(for: viewModel.selectedFeedTab) { return 0 }
         if viewModel.isRefreshing { return 0 }
         if viewModel.isShellLoading || viewModel.isTabLoading(viewModel.selectedFeedTab) {
-            return 520
+            return 420
         }
-        return 300
+        return 240
     }
 
     @State private var homeScrollPosition: String?
@@ -111,9 +111,7 @@ struct HomeFeedContent: View {
                             oldIndex: selectedTabIndex,
                             newIndex: index
                         )
-                        withAnimation(FashTabSwipeMotion.contentAnimation) {
-                            viewModel.selectFeedTab(tabs[index], deps: deps, isGuestMode: isGuestMode)
-                        }
+                        viewModel.selectFeedTab(tabs[index], deps: deps, isGuestMode: isGuestMode)
                     }
                 }
                 .coordinateSpace(name: "homeFeedScroll")
@@ -241,6 +239,7 @@ struct HomeFeedContent: View {
             HomeFeedTabSwitcher(
                 tabs: tabs,
                 selectedTab: viewModel.selectedFeedTab,
+                scrollToSelectedToken: viewModel.homeTabBarScrollToken,
                 isGuestBrowse: isGuestMode,
                 onSelect: { tab in
                     if let oldIdx = tabs.firstIndex(of: viewModel.selectedFeedTab),
@@ -250,9 +249,7 @@ struct HomeFeedContent: View {
                             newIndex: newIdx
                         )
                     }
-                    withAnimation(FashTabSwipeMotion.contentAnimation) {
-                        viewModel.selectFeedTab(tab, deps: deps, isGuestMode: isGuestMode)
-                    }
+                    viewModel.selectFeedTab(tab, deps: deps, isGuestMode: isGuestMode)
                 }
             )
             Divider()

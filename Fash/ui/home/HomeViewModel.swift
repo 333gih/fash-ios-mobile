@@ -29,6 +29,7 @@ final class HomeViewModel {
     var buyerStats = BuyerHomeStats()
     var showSizingBanner = false
     private(set) var homeScrollToTopToken = 0
+    private(set) var homeTabBarScrollToken = 0
 
     private var sections = HomeRecommendationSections()
     private var followingItems: [ListingFeedItem] = []
@@ -126,7 +127,12 @@ final class HomeViewModel {
         selectedFeedTabKey = tab.rawValue
         syncVisibleItemsForTab(tab)
         ensureTabLoaded(tab, deps: deps, isGuestMode: isGuestMode)
-        prefetchAdjacentTabs(around: tab, deps: deps, isGuestMode: isGuestMode)
+        homeTabBarScrollToken &+= 1
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(180))
+            guard selectedFeedTab == tab else { return }
+            prefetchAdjacentTabs(around: tab, deps: deps, isGuestMode: isGuestMode)
+        }
     }
 
     /// Bottom-nav re-tap / pull-to-refresh — scroll feed to top (Android `requestScrollHomeToTop`).
@@ -518,7 +524,11 @@ final class HomeViewModel {
             clientHour: UxPersonalizationLocalStore.currentClientHour()
         )
         guard case .success(let bundle) = result else { return }
+        let previousOrder = homeUxPersonalization.tabOrder
         homeUxPersonalization = bundle.home
+        if previousOrder != bundle.home.tabOrder {
+            homeTabBarScrollToken &+= 1
+        }
         UxPersonalizationLocalStore.writeHomeDefaultTab(userId: uid, tabKey: bundle.home.defaultTabKey)
         if let tab = UxPersonalizationMapping.homeFeedTab(from: bundle.home.defaultTabKey) {
             applyPreferredHomeTab(tab, deps: deps, isGuestMode: isGuestMode)
@@ -534,6 +544,7 @@ final class HomeViewModel {
         if homeUxApplied && selectedFeedTab == tab { return }
         homeUxApplied = true
         selectedFeedTabKey = tab.rawValue
+        homeTabBarScrollToken &+= 1
         deps.uxTabTracker.onTabOpened(scope: "home", tabKey: UxPersonalizationMapping.uxTabKey(for: tab))
         ensureTabLoaded(tab, deps: deps, isGuestMode: isGuestMode, force: !loadedTabs.contains(tab.rawValue))
     }
@@ -709,15 +720,18 @@ final class HomeViewModel {
     /// Immediate tab body swap from per-tab cache — avoids white flash while a tab reloads.
     func syncVisibleItemsForTab(_ tab: HomeFeedTab) {
         let cached = itemsForTab(tab)
-        if !cached.isEmpty {
-            items = cached
-        }
+        guard !cached.isEmpty, cached.map(\.id) != items.map(\.id) else { return }
+        items = cached
     }
 
     private func syncItemsForSelectedTab() {
         let tab = selectedFeedTab
         let cached = itemsForTab(tab)
         if loadedTabs.contains(tab.rawValue), !tabsLoading.contains(tab.rawValue) {
+            guard cached.map(\.id) != items.map(\.id) else {
+                if !items.isEmpty { errorMessage = nil }
+                return
+            }
             items = cached
             if !items.isEmpty {
                 errorMessage = nil
@@ -726,12 +740,17 @@ final class HomeViewModel {
             return
         }
         if !cached.isEmpty {
+            guard cached.map(\.id) != items.map(\.id) else { return }
             items = cached
             return
         }
         if isRefreshing { return }
         if tabsLoading.contains(tab.rawValue) {
-            items = cached.isEmpty ? [] : cached
+            if cached.isEmpty, !items.isEmpty {
+                items = []
+            } else if !cached.isEmpty, cached.map(\.id) != items.map(\.id) {
+                items = cached
+            }
         }
     }
 

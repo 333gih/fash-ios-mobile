@@ -21,10 +21,15 @@ struct AppPromoDialogLayout {
 
     func heroHeight(cardWidth: CGFloat) -> CGFloat? {
         if showImageHero {
-            return min(max(cardWidth * 0.52, 120), 200)
+            return min(max(cardWidth * 0.48, 112), 180)
         }
-        if showIconHero { return 88 }
+        if showIconHero { return 60 }
         return nil
+    }
+
+    /// Long copy should scroll inside the card instead of forcing a tall dialog.
+    var prefersScrollableBody: Bool {
+        (message?.count ?? 0) > 180
     }
 
     static func resolve(campaign: AppPromoCampaign) -> AppPromoDialogLayout? {
