@@ -29,10 +29,13 @@ final class HomeViewModel {
     private(set) var homeScrollToTopToken = 0
     private(set) var homeTabBarScrollToken = 0
 
+    private(set) var feedTrimScrollToken = 0
+    private(set) var feedTrimScrollDelta: CGFloat = 0
+
     private var sections = HomeRecommendationSections()
-    private var followingItems: [ListingFeedItem] = []
-    /// Absolute API offset after the last successful following fetch.
-    private var followingServerOffset = 0
+    private var followingWindow = FeedSlidingWindow()
+    private var followingItemIds = Set<String>()
+    private var followingNextCursor: String?
     private var loadedTabs: Set<String> = []
     private var recommendationSectionsFetched = false
     private var tabLoadTasks: [String: Task<Void, Never>] = [:]
@@ -88,8 +91,9 @@ final class HomeViewModel {
         errorMessage = nil
         featuredSellers = []
         featuredSellersLoading = false
-        followingItems = []
-        followingServerOffset = 0
+        followingWindow.reset(with: [])
+        followingItemIds = []
+        followingNextCursor = nil
         followingHasMore = false
         buyerStats = BuyerHomeStats()
         showSizingBanner = false
@@ -317,41 +321,59 @@ final class HomeViewModel {
         guard selectedFeedTab == .following else { return }
         guard !isLoadingMoreFollowing, followingHasMore else { return }
         guard !isShellLoading, !isRefreshing, !isTabLoading(.following) else { return }
-        let offset = followingServerOffset
-        guard offset > 0 else { return }
+        guard followingNextCursor != nil else { return }
         if let last = lastFollowFeedLoadMoreAt, Date().timeIntervalSince(last) < 0.9 { return }
         lastFollowFeedLoadMoreAt = Date()
         isLoadingMoreFollowing = true
+        let cursor = followingNextCursor
         Task {
             defer { isLoadingMoreFollowing = false }
-            let result = await FeedPerformance.measure("Home following loadMore @\(offset)") {
-                await deps.listingRepository.getHomeFeed(
-                    limit: HomeFeedConstants.followPageSize,
-                    offset: offset
-                )
+            let result = await FeedPerformance.measure("Home following loadMore cursor=\(cursor ?? "nil")") {
+                await fetchHomeFeedPageWithRetry(deps: deps, cursor: cursor)
             }
             guard case .success(let page) = result else { return }
-            if page.isEmpty {
-                followingHasMore = false
+            followingHasMore = page.hasMore
+            followingNextCursor = page.nextCursor
+            if page.items.isEmpty {
                 if selectedFeedTab == .following { syncItemsForSelectedTab() }
                 return
             }
-
-            followingServerOffset += page.count
-            followingHasMore = page.count >= HomeFeedConstants.followPageSize
-            let existing = Set(followingItems.map(\.id))
-            let fresh = page.filter { !existing.contains($0.id) }
-            guard !fresh.isEmpty else {
+            let added = followingWindow.appendUnique(page.items, knownIds: &followingItemIds)
+            guard added > 0 else {
                 if selectedFeedTab == .following { syncItemsForSelectedTab() }
                 return
             }
-
-            followingItems.append(contentsOf: fresh)
             if selectedFeedTab == .following {
                 syncItemsForSelectedTab()
             }
-            FeedPerformance.log("Home following append -> items=\(followingItems.count)")
+            FeedPerformance.log("Home following append +\(added) window=\(followingWindow.items.count) hasMore=\(followingHasMore)")
         }
+    }
+
+    /// Prefetch + sliding-window trim with scroll compensation.
+    func notifyFollowingCellVisible(
+        index: Int,
+        columnWidth: CGFloat,
+        deps: AppDependencies,
+        isGuestMode: Bool
+    ) {
+        guard selectedFeedTab == .following else { return }
+        requestLoadMoreFollowingIfNeeded(
+            appearedIndex: index,
+            deps: deps,
+            isGuestMode: isGuestMode
+        )
+        guard columnWidth > 1 else { return }
+        guard let trim = followingWindow.trimFrontIfNeeded(
+            visibleIndex: index,
+            columnWidth: columnWidth
+        ) else { return }
+        feedTrimScrollDelta = trim.scrollDeltaY
+        feedTrimScrollToken &+= 1
+        if selectedFeedTab == .following {
+            syncItemsForSelectedTab()
+        }
+        FeedPerformance.log("Home following trim -\(trim.removedCount) window=\(followingWindow.items.count)")
     }
 
     /// Tile-anchored pagination — same policy as Explore (within 8 rows of end).
@@ -363,7 +385,7 @@ final class HomeViewModel {
         guard selectedFeedTab == .following else { return }
         guard FeedPaginationPolicy.shouldPrefetchNextPage(
             appearedIndex: appearedIndex,
-            totalCount: followingItems.count
+            totalCount: followingWindow.items.count
         ) else { return }
         loadMoreFollowing(deps: deps, isGuestMode: isGuestMode)
     }
@@ -464,8 +486,9 @@ final class HomeViewModel {
         loadedTabs.removeAll()
         recommendationSectionsFetched = false
         sections = HomeRecommendationSections()
-        followingItems = []
-        followingServerOffset = 0
+        followingWindow.reset(with: [])
+        followingItemIds = []
+        followingNextCursor = nil
         followingHasMore = false
         tabsLoading = []
         tabsLoadError = []
@@ -691,17 +714,36 @@ final class HomeViewModel {
 
     private func loadFollowingTab(deps: AppDependencies, isGuestMode: Bool, force: Bool) async -> Bool {
         if isGuestMode { return true }
-        if !force && loadedTabs.contains(HomeFeedTabKeys.following) && !followingItems.isEmpty { return true }
+        if !force && loadedTabs.contains(HomeFeedTabKeys.following) && !followingWindow.items.isEmpty { return true }
         let result = await FeedPerformance.measure("Home following first page") {
-            await fetchHomeFeedWithRetry(deps: deps, offset: 0)
+            await fetchHomeFeedPageWithRetry(deps: deps, cursor: nil)
         }
-        guard case .success(let feed) = result else { return false }
-        followingItems = feed
-        followingServerOffset = feed.count
-        followingHasMore = feed.count >= HomeFeedConstants.followPageSize
+        guard case .success(let page) = result else { return false }
+        followingWindow.reset(with: page.items)
+        followingItemIds = Set(page.items.map(\.id))
+        followingNextCursor = page.nextCursor
+        followingHasMore = page.hasMore
         if selectedFeedTab == .following { syncItemsForSelectedTab() }
-        FeedPerformance.log("Home following items=\(followingItems.count) serverOffset=\(followingServerOffset)")
+        FeedPerformance.log("Home following items=\(followingWindow.items.count) hasMore=\(followingHasMore)")
         return true
+    }
+
+    private func fetchHomeFeedPageWithRetry(
+        deps: AppDependencies,
+        cursor: String?
+    ) async -> Result<HomeFeedPage, Error> {
+        func once() async -> Result<HomeFeedPage, Error> {
+            await deps.listingRepository.getHomeFeedPage(
+                limit: HomeFeedConstants.followPageSize,
+                cursor: cursor
+            )
+        }
+        var result = await once()
+        if case .failure = result {
+            try? await Task.sleep(for: .milliseconds(400))
+            result = await once()
+        }
+        return result
     }
 
     private func loadRecommendationSections(deps: AppDependencies, isGuestMode: Bool, force: Bool) async -> Bool {
@@ -731,21 +773,6 @@ final class HomeViewModel {
         recommendationSectionsFetched = true
         syncItemsForSelectedTab()
         return true
-    }
-
-    private func fetchHomeFeedWithRetry(
-        deps: AppDependencies,
-        offset: Int
-    ) async -> Result<[ListingFeedItem], Error> {
-        func once() async -> Result<[ListingFeedItem], Error> {
-            await deps.listingRepository.getHomeFeed(limit: HomeFeedConstants.followPageSize, offset: offset)
-        }
-        var result = await once()
-        if case .failure = result {
-            try? await Task.sleep(for: .milliseconds(400))
-            result = await once()
-        }
-        return result
     }
 
     func hasCachedItems(for tab: HomeFeedTab) -> Bool {
@@ -795,7 +822,7 @@ final class HomeViewModel {
         case .stylePicks: return sections.stylePicks
         case .similarSaved: return sections.similarToSaved
         case .seasonalNearYou: return sections.seasonalNearYou
-        case .following: return followingItems
+        case .following: return followingWindow.items
         case .huntToday: return sections.huntToday
         }
     }
@@ -896,7 +923,7 @@ final class HomeViewModel {
     }
 
     private func patchListingInFeeds(_ id: String, transform: (ListingFeedItem) -> ListingFeedItem) {
-        followingItems = followingItems.map { $0.id == id ? transform($0) : $0 }
+        followingWindow.mapItems { $0.id == id ? transform($0) : $0 }
         sections.huntToday = sections.huntToday.map { $0.id == id ? transform($0) : $0 }
         sections.forYou = sections.forYou.map { $0.id == id ? transform($0) : $0 }
         sections.stylePicks = sections.stylePicks.map { $0.id == id ? transform($0) : $0 }

@@ -102,6 +102,8 @@ struct HomeFeedScrollCoordinator: UIViewRepresentable {
     var scrollToTopToken: Int
     var itemsCount: Int
     var isLoadingMore: Bool
+    var trimScrollToken: Int = 0
+    var trimScrollDelta: CGFloat = 0
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
@@ -124,6 +126,11 @@ struct HomeFeedScrollCoordinator: UIViewRepresentable {
             coordinator.scrollToTopGeneration += 1
             scrollToTopJustFired = true
             uiView.runScrollToTop(generation: coordinator.scrollToTopGeneration)
+        }
+
+        if trimScrollToken > 0, trimScrollToken != coordinator.lastTrimScrollToken {
+            coordinator.lastTrimScrollToken = trimScrollToken
+            uiView.applyTrimScrollAdjustment(deltaY: trimScrollDelta)
         }
 
         if isLoadingMore, !coordinator.wasLoadingMore {
@@ -161,6 +168,7 @@ struct HomeFeedScrollCoordinator: UIViewRepresentable {
         var wasLoadingMore = false
         var preserveGeneration = 0
         var scrollToTopGeneration = 0
+        var lastTrimScrollToken = 0
 
         weak var scrollView: UIScrollView?
         var offsetObservation: NSKeyValueObservation?
@@ -249,6 +257,18 @@ struct HomeFeedScrollCoordinator: UIViewRepresentable {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) { [weak self] in
                 guard let self, coordinator?.preserveGeneration == generation else { return }
                 applyPreserveAfterAppend(anchorOffset: anchorOffset, anchorHeight: anchorHeight)
+            }
+        }
+
+        /// Compensate scroll when sliding window drops rows above the viewport.
+        func applyTrimScrollAdjustment(deltaY: CGFloat) {
+            guard deltaY > 0.5 else { return }
+            guard let scrollView = coordinator?.scrollView ?? enclosingScrollView() else { return }
+            scrollView.layoutIfNeeded()
+            let minY = -scrollView.adjustedContentInset.top
+            let targetY = max(minY, scrollView.contentOffset.y - deltaY)
+            if abs(scrollView.contentOffset.y - targetY) > 0.5 {
+                scrollView.setContentOffset(CGPoint(x: 0, y: targetY), animated: false)
             }
         }
 

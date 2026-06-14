@@ -79,6 +79,13 @@ struct HomeFeedContent: View {
         }
     }
 
+    private var masonryColumnWidth: CGFloat {
+        ListingMasonryGrid.feedGridColumnWidth(
+            containerWidth: UIScreen.main.bounds.width,
+            spacing: spacing
+        )
+    }
+
     private var masonryColumnAssignments: Binding<[String: Bool]> {
         Binding(
             get: { masonryColumnAssignmentsByTab[viewModel.selectedFeedTabKey] ?? [:] },
@@ -136,7 +143,9 @@ struct HomeFeedContent: View {
                     HomeFeedScrollCoordinator(
                         scrollToTopToken: viewModel.homeScrollToTopToken,
                         itemsCount: viewModel.items.count,
-                        isLoadingMore: viewModel.isLoadingMoreFollowing
+                        isLoadingMore: viewModel.isLoadingMoreFollowing,
+                        trimScrollToken: viewModel.feedTrimScrollToken,
+                        trimScrollDelta: viewModel.feedTrimScrollDelta
                     )
                 }
                 .fashFeedPullRefresh(isRefreshing: $viewModel.isRefreshing) {
@@ -308,8 +317,9 @@ struct HomeFeedContent: View {
                         imageAspectRatio: ListingMasonryGrid.masonryAspectRatio(for: item),
                         onPrefetchLoadMore: viewModel.selectedFeedTab == .following
                             ? {
-                                viewModel.requestLoadMoreFollowingIfNeeded(
-                                    appearedIndex: index,
+                                viewModel.notifyFollowingCellVisible(
+                                    index: index,
+                                    columnWidth: masonryColumnWidth,
                                     deps: deps,
                                     isGuestMode: isGuestMode
                                 )

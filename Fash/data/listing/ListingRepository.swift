@@ -45,6 +45,30 @@ final class ListingRepository {
         return .failure(URLError(.cannotConnectToHost))
     }
 
+    /// Cursor-paginated home feed — `GET /listings/home?pagination=cursor`.
+    func getHomeFeedPage(limit: Int = 20, cursor: String? = nil) async -> Result<HomeFeedPage, Error> {
+        var path = "api/v1/listings/home?limit=\(limit)&pagination=cursor"
+        if let cursor, !cursor.isEmpty {
+            let encoded = cursor.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? cursor
+            path += "&cursor=\(encoded)"
+        }
+        let urls = AppEnvironment.coreApiCandidateURLs(path)
+        for urlString in urls {
+            guard let url = URL(string: urlString) else { continue }
+            var req = URLRequest(url: url)
+            req.httpMethod = "GET"
+            do {
+                let (data, http) = try await client.data(for: req)
+                guard (200..<300).contains(http.statusCode) else { continue }
+                let page = try await ListingFeedParseSupport.parseHomeFeedPage(data, pageSize: limit)
+                return .success(page)
+            } catch {
+                continue
+            }
+        }
+        return .failure(URLError(.cannotConnectToHost))
+    }
+
     func getListingDetail(listingId: String, publicBrowse: Bool = false) async -> Result<ListingFeedItem, Error> {
         switch await fetchListingDetailPayload(listingId: listingId, publicBrowse: publicBrowse) {
         case .success(let data):

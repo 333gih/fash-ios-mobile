@@ -163,6 +163,24 @@ enum ListingFeedJsonParser {
         return extractListingRows(from: root).compactMap(parseRow)
     }
 
+    /// Home feed cursor page — `{ listings, has_more, next_cursor }` or legacy bare array.
+    static func parseHomeFeedPage(_ data: Data, pageSize: Int) throws -> HomeFeedPage {
+        let root = try JSONSerialization.jsonObject(with: data)
+        if let obj = root as? [String: Any], obj["has_more"] != nil || obj["next_cursor"] != nil {
+            let rows = listingRows(in: obj)
+            let items = rows.compactMap(parseRow)
+            let hasMore = (obj["has_more"] as? Bool) ?? (obj["HasMore"] as? Bool) ?? false
+            let cursor = RepositoryHttp.optString(obj, "next_cursor", "NextCursor").nilIfEmpty
+            return HomeFeedPage(items: items, hasMore: hasMore, nextCursor: cursor)
+        }
+        let items = try parseFeed(data)
+        return HomeFeedPage(
+            items: items,
+            hasMore: items.count >= pageSize,
+            nextCursor: nil
+        )
+    }
+
     /// Wishlist, seller listings, search — Android [extractListingsArray] / [parseFeedArray].
     private static func extractListingRows(from root: Any) -> [[String: Any]] {
         if let arr = root as? [[String: Any]] { return arr }
