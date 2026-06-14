@@ -297,9 +297,7 @@ struct HomeFeedContent: View {
                            viewModel.followingHasMore || viewModel.isLoadingMoreFollowing {
                             FeedLoadMoreFooter(
                                 enabled: viewModel.followingHasMore,
-                                isLoadingMore: viewModel.isLoadingMoreFollowing,
-                                triggersLoadOnAppear: false,
-                                rearmAfterLoadComplete: false
+                                isLoadingMore: viewModel.isLoadingMoreFollowing
                             ) {
                                 viewModel.loadMoreFollowing(deps: deps, isGuestMode: isGuestMode)
                             }

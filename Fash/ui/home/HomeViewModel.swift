@@ -318,15 +318,15 @@ final class HomeViewModel {
         guard selectedFeedTab == .following else { return }
         guard !isLoadingMoreFollowing, followingHasMore else { return }
         guard !isShellLoading, !isRefreshing, !isTabLoading(.following) else { return }
-        guard followingNextCursor != nil else { return }
         if let last = lastFollowFeedLoadMoreAt, Date().timeIntervalSince(last) < 0.9 { return }
         lastFollowFeedLoadMoreAt = Date()
         isLoadingMoreFollowing = true
         let cursor = followingNextCursor
+        let offsetFallback = cursor == nil ? followingWindow.items.count : nil
         Task {
             defer { isLoadingMoreFollowing = false }
-            let result = await FeedPerformance.measure("Home following loadMore cursor=\(cursor ?? "nil")") {
-                await fetchHomeFeedPageWithRetry(deps: deps, cursor: cursor)
+            let result = await FeedPerformance.measure("Home following loadMore cursor=\(cursor ?? "offset:\(offsetFallback ?? 0)")") {
+                await fetchFollowingPage(deps: deps, cursor: cursor, offsetFallback: offsetFallback)
             }
             guard case .success(let page) = result else { return }
             followingHasMore = page.hasMore
@@ -368,6 +368,7 @@ final class HomeViewModel {
         isGuestMode: Bool
     ) {
         guard selectedFeedTab == .following else { return }
+        guard !isShellLoading, !isRefreshing, !isTabLoading(.following) else { return }
         guard FeedPaginationPolicy.shouldPrefetchNextPage(
             appearedIndex: appearedIndex,
             totalCount: followingWindow.items.count
@@ -729,6 +730,41 @@ final class HomeViewModel {
             result = await once()
         }
         return result
+    }
+
+    /// Cursor API first; offset fallback when backend returns legacy bare array (`next_cursor` nil).
+    private func fetchFollowingPage(
+        deps: AppDependencies,
+        cursor: String?,
+        offsetFallback: Int?
+    ) async -> Result<HomeFeedPage, Error> {
+        if cursor != nil {
+            return await fetchHomeFeedPageWithRetry(deps: deps, cursor: cursor)
+        }
+        if let offset = offsetFallback {
+            func onceOffset() async -> Result<HomeFeedPage, Error> {
+                switch await deps.listingRepository.getHomeFeed(
+                    limit: HomeFeedConstants.followPageSize,
+                    offset: offset
+                ) {
+                case .success(let items):
+                    return .success(HomeFeedPage(
+                        items: items,
+                        hasMore: items.count >= HomeFeedConstants.followPageSize,
+                        nextCursor: nil
+                    ))
+                case .failure(let error):
+                    return .failure(error)
+                }
+            }
+            var result = await onceOffset()
+            if case .failure = result {
+                try? await Task.sleep(for: .milliseconds(400))
+                result = await onceOffset()
+            }
+            return result
+        }
+        return await fetchHomeFeedPageWithRetry(deps: deps, cursor: nil)
     }
 
     private func loadRecommendationSections(deps: AppDependencies, isGuestMode: Bool, force: Bool) async -> Bool {
