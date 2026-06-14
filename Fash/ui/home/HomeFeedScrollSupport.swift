@@ -97,26 +97,9 @@ enum HomeFeedScrollReset {
     }
 }
 
-private enum HomeFeedScrollMath {
-    static func isNearBottom(scrollView: UIScrollView, offsetY: CGFloat) -> Bool {
-        scrollView.layoutIfNeeded()
-        let maxOffset = max(
-            0,
-            scrollView.contentSize.height
-                - scrollView.bounds.height
-                + scrollView.adjustedContentInset.bottom
-        )
-        return offsetY >= maxOffset - 160
-    }
-}
-
-/// Single UIKit owner for home scroll — scroll-to-top and load-more anchor preserve.
+/// UIKit scroll-to-top only — no preserve/trim hooks that fight upward scrolling.
 struct HomeFeedScrollCoordinator: UIViewRepresentable {
     var scrollToTopToken: Int
-    var itemsCount: Int
-    var isLoadingMore: Bool
-    var trimScrollToken: Int = 0
-    var trimScrollDelta: CGFloat = 0
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
@@ -131,104 +114,20 @@ struct HomeFeedScrollCoordinator: UIViewRepresentable {
         uiView.coordinator = coordinator
         coordinator.installIfNeeded(from: uiView)
 
-        var scrollToTopJustFired = false
-        if scrollToTopToken > 0, scrollToTopToken != coordinator.lastScrollToTopToken {
-            coordinator.lastScrollToTopToken = scrollToTopToken
-            coordinator.cancelPreserveWork()
-            coordinator.clearLoadAnchor()
-            coordinator.scrollToTopGeneration += 1
-            scrollToTopJustFired = true
-            uiView.runScrollToTop(generation: coordinator.scrollToTopGeneration)
-        }
-
-        if trimScrollToken > 0, trimScrollToken != coordinator.lastTrimScrollToken {
-            coordinator.lastTrimScrollToken = trimScrollToken
-            uiView.applyTrimScrollAdjustment(deltaY: trimScrollDelta)
-        }
-
-        if isLoadingMore, !coordinator.wasLoadingMore {
-            coordinator.cancelPreserveWork()
-            coordinator.captureLoadAnchor(from: uiView)
-        } else if !isLoadingMore, coordinator.wasLoadingMore {
-            coordinator.cancelPreserveWork()
-            coordinator.clearLoadAnchor()
-        }
-
-        let countIncreased = itemsCount > coordinator.lastItemsCount
-        if countIncreased,
-           !scrollToTopJustFired,
-           coordinator.lastItemsCount > 0,
-           coordinator.loadAnchorOffset != nil,
-           coordinator.loadStartedNearBottom,
-           !coordinator.userScrolledUpDuringLoad,
-           isLoadingMore {
-            let generation = coordinator.preserveGeneration
-            uiView.preserveAfterAppend(
-                generation: generation,
-                anchorOffset: coordinator.loadAnchorOffset!,
-                anchorHeight: coordinator.loadAnchorContentHeight
-                    ?? coordinator.lastContentHeight
-            )
-        }
-
-        coordinator.lastItemsCount = itemsCount
-        coordinator.wasLoadingMore = isLoadingMore
+        guard scrollToTopToken > 0, scrollToTopToken != coordinator.lastScrollToTopToken else { return }
+        coordinator.lastScrollToTopToken = scrollToTopToken
+        coordinator.scrollToTopGeneration += 1
+        uiView.runScrollToTop(generation: coordinator.scrollToTopGeneration)
     }
 
     final class Coordinator {
         var lastScrollToTopToken = 0
-        var lastItemsCount = 0
-        var wasLoadingMore = false
-        var preserveGeneration = 0
         var scrollToTopGeneration = 0
-        var lastTrimScrollToken = 0
-
         weak var scrollView: UIScrollView?
-        var offsetObservation: NSKeyValueObservation?
-        var sizeObservation: NSKeyValueObservation?
-        var lastContentOffsetY: CGFloat = 0
-        var lastContentHeight: CGFloat = 0
-        var loadAnchorOffset: CGFloat?
-        var loadAnchorContentHeight: CGFloat?
-        var loadStartedNearBottom = false
-        var userScrolledUpDuringLoad = false
-
-        func cancelPreserveWork() {
-            preserveGeneration += 1
-        }
-
-        func captureLoadAnchor(from anchorView: AnchorView) {
-            guard let scrollView = scrollView ?? anchorView.enclosingScrollView() else { return }
-            loadAnchorOffset = lastContentOffsetY
-            loadAnchorContentHeight = lastContentHeight
-            loadStartedNearBottom = HomeFeedScrollMath.isNearBottom(scrollView: scrollView, offsetY: lastContentOffsetY)
-            userScrolledUpDuringLoad = false
-        }
-
-        func clearLoadAnchor() {
-            loadAnchorOffset = nil
-            loadAnchorContentHeight = nil
-            loadStartedNearBottom = false
-            userScrolledUpDuringLoad = false
-        }
 
         func installIfNeeded(from anchor: UIView) {
-            guard let scrollView = anchor.enclosingScrollView() else { return }
-            if self.scrollView === scrollView, offsetObservation != nil { return }
-            offsetObservation?.invalidate()
-            sizeObservation?.invalidate()
+            guard scrollView == nil, let scrollView = anchor.enclosingScrollView() else { return }
             self.scrollView = scrollView
-            offsetObservation = scrollView.observe(\.contentOffset, options: [.new]) { [weak self] sv, _ in
-                guard let self else { return }
-                let y = sv.contentOffset.y
-                if y < self.lastContentOffsetY - 1.5 {
-                    self.userScrolledUpDuringLoad = true
-                }
-                self.lastContentOffsetY = y
-            }
-            sizeObservation = scrollView.observe(\.contentSize, options: [.new]) { [weak self] sv, _ in
-                self?.lastContentHeight = sv.contentSize.height
-            }
         }
     }
 
@@ -254,26 +153,6 @@ struct HomeFeedScrollCoordinator: UIViewRepresentable {
             }
         }
 
-        /// One delayed pass after layout — avoids fighting upward scroll with repeated nudges.
-        func preserveAfterAppend(generation: Int, anchorOffset: CGFloat, anchorHeight: CGFloat) {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) { [weak self] in
-                guard let self, coordinator?.preserveGeneration == generation else { return }
-                applyPreserveAfterAppend(anchorOffset: anchorOffset, anchorHeight: anchorHeight)
-            }
-        }
-
-        /// Compensate scroll when sliding window drops rows above the viewport.
-        func applyTrimScrollAdjustment(deltaY: CGFloat) {
-            guard deltaY > 0.5 else { return }
-            guard let scrollView = coordinator?.scrollView ?? enclosingScrollView() else { return }
-            scrollView.layoutIfNeeded()
-            let minY = -scrollView.adjustedContentInset.top
-            let targetY = max(minY, scrollView.contentOffset.y - deltaY)
-            if abs(scrollView.contentOffset.y - targetY) > 0.5 {
-                scrollView.setContentOffset(CGPoint(x: 0, y: targetY), animated: false)
-            }
-        }
-
         private func applyScrollToTop() {
             guard let scrollView = coordinator?.scrollView ?? enclosingScrollView() else { return }
             scrollView.layoutIfNeeded()
@@ -281,33 +160,6 @@ struct HomeFeedScrollCoordinator: UIViewRepresentable {
             let top = -scrollView.adjustedContentInset.top
             if abs(scrollView.contentOffset.y - top) > 0.5 {
                 scrollView.setContentOffset(CGPoint(x: 0, y: top), animated: false)
-            }
-        }
-
-        /// Undo SwiftUI snapping to the new bottom after append — only when user stayed near bottom.
-        private func applyPreserveAfterAppend(anchorOffset: CGFloat, anchorHeight: CGFloat) {
-            guard let coordinator else { return }
-            guard coordinator.loadStartedNearBottom, !coordinator.userScrolledUpDuringLoad else { return }
-            guard let scrollView = coordinator.scrollView ?? enclosingScrollView() else { return }
-            guard !scrollView.isDragging, !scrollView.isTracking, !scrollView.isDecelerating else { return }
-            scrollView.layoutIfNeeded()
-            let delta = scrollView.contentSize.height - anchorHeight
-            guard delta > 0.5 else { return }
-            let maxOffset = max(
-                0,
-                scrollView.contentSize.height
-                    - scrollView.bounds.height
-                    + scrollView.adjustedContentInset.bottom
-            )
-            let currentY = scrollView.contentOffset.y
-            if currentY < anchorOffset - 12 { return }
-            let jumpedToNewBottom = currentY >= maxOffset - 2
-                && anchorOffset < maxOffset - delta + 2
-            guard jumpedToNewBottom else { return }
-            guard HomeFeedScrollMath.isNearBottom(scrollView: scrollView, offsetY: currentY) else { return }
-            let targetY = min(anchorOffset, maxOffset)
-            if abs(currentY - targetY) > 0.5 {
-                scrollView.setContentOffset(CGPoint(x: 0, y: targetY), animated: false)
             }
         }
 

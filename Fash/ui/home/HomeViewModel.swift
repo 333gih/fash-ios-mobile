@@ -29,9 +29,6 @@ final class HomeViewModel {
     private(set) var homeScrollToTopToken = 0
     private(set) var homeTabBarScrollToken = 0
 
-    private(set) var feedTrimScrollToken = 0
-    private(set) var feedTrimScrollDelta: CGFloat = 0
-
     private var sections = HomeRecommendationSections()
     private var followingWindow = FeedSlidingWindow()
     private var followingItemIds = Set<String>()
@@ -350,10 +347,9 @@ final class HomeViewModel {
         }
     }
 
-    /// Prefetch + sliding-window trim with scroll compensation.
+    /// Tile prefetch only — never trim on cell appear (trim while scrolling up caused void / stuck scroll).
     func notifyFollowingCellVisible(
         index: Int,
-        columnWidth: CGFloat,
         deps: AppDependencies,
         isGuestMode: Bool
     ) {
@@ -363,17 +359,6 @@ final class HomeViewModel {
             deps: deps,
             isGuestMode: isGuestMode
         )
-        guard columnWidth > 1 else { return }
-        guard let trim = followingWindow.trimFrontIfNeeded(
-            visibleIndex: index,
-            columnWidth: columnWidth
-        ) else { return }
-        feedTrimScrollDelta = trim.scrollDeltaY
-        feedTrimScrollToken &+= 1
-        if selectedFeedTab == .following {
-            syncItemsForSelectedTab()
-        }
-        FeedPerformance.log("Home following trim -\(trim.removedCount) window=\(followingWindow.items.count)")
     }
 
     /// Tile-anchored pagination — same policy as Explore (within 8 rows of end).

@@ -141,11 +141,7 @@ struct HomeFeedContent: View {
                 }
                 .background {
                     HomeFeedScrollCoordinator(
-                        scrollToTopToken: viewModel.homeScrollToTopToken,
-                        itemsCount: viewModel.items.count,
-                        isLoadingMore: viewModel.isLoadingMoreFollowing,
-                        trimScrollToken: viewModel.feedTrimScrollToken,
-                        trimScrollDelta: viewModel.feedTrimScrollDelta
+                        scrollToTopToken: viewModel.homeScrollToTopToken
                     )
                 }
                 .fashFeedPullRefresh(isRefreshing: $viewModel.isRefreshing) {
@@ -319,7 +315,6 @@ struct HomeFeedContent: View {
                             ? {
                                 viewModel.notifyFollowingCellVisible(
                                     index: index,
-                                    columnWidth: masonryColumnWidth,
                                     deps: deps,
                                     isGuestMode: isGuestMode
                                 )

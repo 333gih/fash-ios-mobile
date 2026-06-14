@@ -39,7 +39,7 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
     }
 
     var body: some View {
-        LazyVStack(spacing: gap) {
+        VStack(spacing: gap) {
             widthProbe
             ForEach(feedChunks) { chunk in
                 feedChunkRow(chunk)
@@ -47,13 +47,13 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
             }
             footer()
         }
-        .onAppear { scheduleLayoutRefresh(forceFull: true) }
+        .onAppear { refreshLayout(forceFull: true) }
         .onChange(of: items.map(\.id)) { oldIds, newIds in
             guard oldIds != newIds else { return }
             if Self.isTrailingIdAppend(oldIds: oldIds, newIds: newIds) {
                 refreshLayout(forceFull: false)
             } else {
-                scheduleLayoutRefresh(forceFull: true)
+                refreshLayout(forceFull: true)
             }
         }
         .onChange(of: engagementLayoutSignature) { _, _ in
