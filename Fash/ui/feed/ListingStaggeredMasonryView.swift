@@ -65,7 +65,11 @@ struct ListingStaggeredMasonryView<Cell: View, Footer: View>: View {
             refreshLayout()
         }
         .onAppear { refreshLayout() }
-        .onChange(of: itemIdsSignature) { _, _ in refreshLayout() }
+        .onChange(of: itemIdsSignature) { oldIds, newIds in
+            guard oldIds != newIds else { return }
+            let isAppend = Self.isTrailingIdAppend(oldIds: oldIds, newIds: newIds)
+            refreshLayout(forceFull: !isAppend)
+        }
         .onChange(of: engagementLayoutSignature) { _, _ in refreshLayout() }
     }
 
@@ -101,14 +105,23 @@ struct ListingStaggeredMasonryView<Cell: View, Footer: View>: View {
         Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0) })
     }
 
-    private func refreshLayout() {
+    private static func isTrailingIdAppend(oldIds: [String], newIds: [String]) -> Bool {
+        guard !oldIds.isEmpty, newIds.count >= oldIds.count else { return false }
+        return Array(newIds.prefix(oldIds.count)) == oldIds
+    }
+
+    private func refreshLayout(forceFull: Bool = false) {
         guard !items.isEmpty else {
             layout = .empty
             layoutedItemCount = 0
             return
         }
         var assignments = columnAssignments
-        let fullRelayout = layout.isEmpty || items.count < layoutedItemCount || columnWidth <= 1
+        let fullRelayout = forceFull
+            || layout.isEmpty
+            || items.count < layoutedItemCount
+            || columnWidth <= 1
+            || !layoutMatchesCurrentItems()
         if fullRelayout {
             layout = ListingMasonryGrid.makeStableColumnLayout(
                 items: items,
@@ -134,6 +147,13 @@ struct ListingStaggeredMasonryView<Cell: View, Footer: View>: View {
         Task { @MainActor in
             columnAssignments = pending
         }
+    }
+
+    private func layoutMatchesCurrentItems() -> Bool {
+        guard !layout.isEmpty, layoutedItemCount == items.count else { return false }
+        let layoutIds = layout.left.map(\.item.id) + layout.right.map(\.item.id)
+        guard layoutIds.count == items.count else { return false }
+        return zip(layoutIds, items.map(\.id)).allSatisfy { $0.0 == $0.1 }
     }
 
     @ViewBuilder

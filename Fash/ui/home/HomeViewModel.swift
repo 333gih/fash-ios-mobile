@@ -488,7 +488,12 @@ final class HomeViewModel {
             tabLoadTasks[tab.rawValue]?.cancel()
             tabLoadTasks[tab.rawValue] = nil
         }
-        if !force && loadedTabs.contains(tab.rawValue) { return }
+        if !force && loadedTabs.contains(tab.rawValue) {
+            if tab == selectedFeedTab {
+                syncItemsForSelectedTab()
+            }
+            return
+        }
         if tabLoadTasks[tab.rawValue] != nil { return }
         if !force && tab == .huntToday && recommendationSectionsFetched && !sections.huntToday.isEmpty {
             loadedTabs.insert(tab.rawValue)
@@ -752,7 +757,7 @@ final class HomeViewModel {
     /// Immediate tab body swap from per-tab cache — avoids white flash while a tab reloads.
     func syncVisibleItemsForTab(_ tab: HomeFeedTab) {
         let cached = itemsForTab(tab)
-        guard !cached.isEmpty, cached.map(\.id) != items.map(\.id) else { return }
+        guard cached.map(\.id) != items.map(\.id) else { return }
         items = cached
     }
 

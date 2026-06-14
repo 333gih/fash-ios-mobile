@@ -281,6 +281,7 @@ struct HomeFeedContent: View {
                 .padding(.top, spacing.spacing2)
         } else if viewModel.items.isEmpty {
             HomeFeedTabGenericEmpty(tab: viewModel.selectedFeedTab)
+                .frame(maxWidth: .infinity, minHeight: 320)
         } else {
             VStack(spacing: 0) {
                 FeedMasonryChunkedGrid(
@@ -370,6 +371,7 @@ struct HomeFeedContent: View {
             }
             .padding(.top, spacing.spacing2)
             .padding(.bottom, spacing.spacing4)
+            .id(viewModel.selectedFeedTabKey)
         }
     }
 

@@ -49,10 +49,11 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
         }
         .onAppear { scheduleLayoutRefresh(forceFull: true) }
         .onChange(of: items.map(\.id)) { oldIds, newIds in
-            if newIds.count < oldIds.count {
-                scheduleLayoutRefresh(forceFull: true)
-            } else if newIds.count > oldIds.count {
+            guard oldIds != newIds else { return }
+            if Self.isTrailingIdAppend(oldIds: oldIds, newIds: newIds) {
                 refreshLayout(forceFull: false)
+            } else {
+                scheduleLayoutRefresh(forceFull: true)
             }
         }
         .onChange(of: engagementLayoutSignature) { _, _ in
@@ -145,6 +146,12 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
         }
     }
 
+    /// Load-more appends rows at the end; tab switches replace the whole id list.
+    private static func isTrailingIdAppend(oldIds: [String], newIds: [String]) -> Bool {
+        guard !oldIds.isEmpty, newIds.count >= oldIds.count else { return false }
+        return Array(newIds.prefix(oldIds.count)) == oldIds
+    }
+
     private func refreshLayout(forceFull: Bool) {
         guard !items.isEmpty else {
             layout = .empty
@@ -155,6 +162,7 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
             || layout.isEmpty
             || items.count < layoutedItemCount
             || columnWidth <= 1
+            || !layoutMatchesCurrentItems()
 
         if fullRelayout {
             var assignments = columnAssignments
@@ -187,6 +195,13 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
             columnAssignments = assignments
         }
         layoutedItemCount = items.count
+    }
+
+    private func layoutMatchesCurrentItems() -> Bool {
+        guard !layout.isEmpty, layoutedItemCount == items.count else { return false }
+        let layoutIds = layout.left.map(\.item.id) + layout.right.map(\.item.id)
+        guard layoutIds.count == items.count else { return false }
+        return zip(layoutIds, items.map(\.id)).allSatisfy { $0.0 == $0.1 }
     }
 }
 
