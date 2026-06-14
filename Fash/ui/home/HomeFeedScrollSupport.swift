@@ -97,7 +97,7 @@ enum HomeFeedScrollReset {
     }
 }
 
-/// Single UIKit owner for home scroll — scroll-to-top, load-more anchor preserve (never fights upward scroll).
+/// Single UIKit owner for home scroll — scroll-to-top and load-more anchor preserve.
 struct HomeFeedScrollCoordinator: UIViewRepresentable {
     var scrollToTopToken: Int
     var itemsCount: Int
@@ -128,7 +128,7 @@ struct HomeFeedScrollCoordinator: UIViewRepresentable {
 
         if isLoadingMore, !coordinator.wasLoadingMore {
             coordinator.cancelPreserveWork()
-            coordinator.captureLoadAnchor()
+            coordinator.captureLoadAnchor(from: uiView)
         } else if !isLoadingMore, coordinator.wasLoadingMore {
             coordinator.cancelPreserveWork()
             coordinator.clearLoadAnchor()
@@ -139,6 +139,8 @@ struct HomeFeedScrollCoordinator: UIViewRepresentable {
            !scrollToTopJustFired,
            coordinator.lastItemsCount > 0,
            coordinator.loadAnchorOffset != nil,
+           coordinator.loadStartedNearBottom,
+           !coordinator.userScrolledUpDuringLoad,
            isLoadingMore {
             let generation = coordinator.preserveGeneration
             uiView.preserveAfterAppend(
@@ -167,19 +169,26 @@ struct HomeFeedScrollCoordinator: UIViewRepresentable {
         var lastContentHeight: CGFloat = 0
         var loadAnchorOffset: CGFloat?
         var loadAnchorContentHeight: CGFloat?
+        var loadStartedNearBottom = false
+        var userScrolledUpDuringLoad = false
 
         func cancelPreserveWork() {
             preserveGeneration += 1
         }
 
-        func captureLoadAnchor() {
+        func captureLoadAnchor(from anchorView: AnchorView) {
+            guard let scrollView = scrollView ?? anchorView.enclosingScrollView() else { return }
             loadAnchorOffset = lastContentOffsetY
             loadAnchorContentHeight = lastContentHeight
+            loadStartedNearBottom = Self.isNearBottom(scrollView: scrollView, offsetY: lastContentOffsetY)
+            userScrolledUpDuringLoad = false
         }
 
         func clearLoadAnchor() {
             loadAnchorOffset = nil
             loadAnchorContentHeight = nil
+            loadStartedNearBottom = false
+            userScrolledUpDuringLoad = false
         }
 
         func installIfNeeded(from anchor: UIView) {
@@ -189,11 +198,27 @@ struct HomeFeedScrollCoordinator: UIViewRepresentable {
             sizeObservation?.invalidate()
             self.scrollView = scrollView
             offsetObservation = scrollView.observe(\.contentOffset, options: [.new]) { [weak self] sv, _ in
-                self?.lastContentOffsetY = sv.contentOffset.y
+                guard let self else { return }
+                let y = sv.contentOffset.y
+                if y < self.lastContentOffsetY - 1.5 {
+                    self.userScrolledUpDuringLoad = true
+                }
+                self.lastContentOffsetY = y
             }
             sizeObservation = scrollView.observe(\.contentSize, options: [.new]) { [weak self] sv, _ in
                 self?.lastContentHeight = sv.contentSize.height
             }
+        }
+
+        private static func isNearBottom(scrollView: UIScrollView, offsetY: CGFloat) -> Bool {
+            scrollView.layoutIfNeeded()
+            let maxOffset = max(
+                0,
+                scrollView.contentSize.height
+                    - scrollView.bounds.height
+                    + scrollView.adjustedContentInset.bottom
+            )
+            return offsetY >= maxOffset - 160
         }
     }
 
@@ -219,13 +244,11 @@ struct HomeFeedScrollCoordinator: UIViewRepresentable {
             }
         }
 
+        /// One delayed pass after layout — avoids fighting upward scroll with repeated nudges.
         func preserveAfterAppend(generation: Int, anchorOffset: CGFloat, anchorHeight: CGFloat) {
-            for attempt in 0..<4 {
-                let delay = 0.03 + Double(attempt) * 0.05
-                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-                    guard let self, coordinator?.preserveGeneration == generation else { return }
-                    applyPreserveAfterAppend(anchorOffset: anchorOffset, anchorHeight: anchorHeight)
-                }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) { [weak self] in
+                guard let self, coordinator?.preserveGeneration == generation else { return }
+                applyPreserveAfterAppend(anchorOffset: anchorOffset, anchorHeight: anchorHeight)
             }
         }
 
@@ -239,9 +262,11 @@ struct HomeFeedScrollCoordinator: UIViewRepresentable {
             }
         }
 
-        /// Undo SwiftUI snapping to the new bottom after append — never while the user scrolls up.
+        /// Undo SwiftUI snapping to the new bottom after append — only when user stayed near bottom.
         private func applyPreserveAfterAppend(anchorOffset: CGFloat, anchorHeight: CGFloat) {
-            guard let scrollView = coordinator?.scrollView ?? enclosingScrollView() else { return }
+            guard let coordinator else { return }
+            guard coordinator.loadStartedNearBottom, !coordinator.userScrolledUpDuringLoad else { return }
+            guard let scrollView = coordinator.scrollView ?? enclosingScrollView() else { return }
             guard !scrollView.isDragging, !scrollView.isTracking, !scrollView.isDecelerating else { return }
             scrollView.layoutIfNeeded()
             let delta = scrollView.contentSize.height - anchorHeight
@@ -257,6 +282,7 @@ struct HomeFeedScrollCoordinator: UIViewRepresentable {
             let jumpedToNewBottom = currentY >= maxOffset - 2
                 && anchorOffset < maxOffset - delta + 2
             guard jumpedToNewBottom else { return }
+            guard Coordinator.isNearBottom(scrollView: scrollView, offsetY: currentY) else { return }
             let targetY = min(anchorOffset, maxOffset)
             if abs(currentY - targetY) > 0.5 {
                 scrollView.setContentOffset(CGPoint(x: 0, y: targetY), animated: false)

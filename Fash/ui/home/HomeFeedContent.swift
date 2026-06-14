@@ -292,7 +292,9 @@ struct HomeFeedContent: View {
                            viewModel.followingHasMore || viewModel.isLoadingMoreFollowing {
                             FeedLoadMoreFooter(
                                 enabled: viewModel.followingHasMore,
-                                isLoadingMore: viewModel.isLoadingMoreFollowing
+                                isLoadingMore: viewModel.isLoadingMoreFollowing,
+                                triggersLoadOnAppear: false,
+                                rearmAfterLoadComplete: false
                             ) {
                                 viewModel.loadMoreFollowing(deps: deps, isGuestMode: isGuestMode)
                             }
@@ -304,6 +306,15 @@ struct HomeFeedContent: View {
                         index: index,
                         surface: analyticsSurface,
                         imageAspectRatio: ListingMasonryGrid.masonryAspectRatio(for: item),
+                        onPrefetchLoadMore: viewModel.selectedFeedTab == .following
+                            ? {
+                                viewModel.requestLoadMoreFollowingIfNeeded(
+                                    appearedIndex: index,
+                                    deps: deps,
+                                    isGuestMode: isGuestMode
+                                )
+                            }
+                            : nil,
                         onTap: {
                             viewModel.reportListingClick(
                                 item: item,
@@ -408,6 +419,7 @@ private struct HomeFeedListingCell: View {
     let index: Int
     let surface: String
     let imageAspectRatio: CGFloat
+    var onPrefetchLoadMore: (() -> Void)? = nil
     let onTap: () -> Void
     let onLike: () -> Void
     var onSave: (() -> Void)? = nil
@@ -435,6 +447,7 @@ private struct HomeFeedListingCell: View {
                 guard !Task.isCancelled else { return }
                 onRecordView()
             }
+            onPrefetchLoadMore?()
         }
         .onDisappear {
             recordViewTask?.cancel()

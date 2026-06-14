@@ -26,6 +26,8 @@ struct FeedLoadMoreFooter: View {
     let isLoadingMore: Bool
     /// When false, only shows loading UI — parent detects scroll proximity (profile/seller grids).
     var triggersLoadOnAppear: Bool = true
+    /// Re-arm auto-load after a page completes — disable for home following (tile prefetch owns triggers).
+    var rearmAfterLoadComplete: Bool = true
     let onLoadMore: () -> Void
 
     private static let sentinelHeight: CGFloat = 48
@@ -52,6 +54,7 @@ struct FeedLoadMoreFooter: View {
             triggerLoadIfNeeded()
         }
         .onChange(of: isLoadingMore) { wasLoading, loading in
+            guard rearmAfterLoadComplete else { return }
             guard wasLoading, !loading else { return }
             guard enabled else { return }
             // Re-arm at footer after a page lands — user often stays at the bottom while scrolling the grid.

@@ -40,8 +40,8 @@ description: >-
 | **Edit listing** | Fetch listing detail **in parallel** with catalog (brands/countries/tags). Show form when detail returns. |
 | **PDP** | Set `isLoading = false` after detail; discovery rails + `recordView` in background `Task`. |
 | **Profile grid** | `ListingStaggeredMasonryView` + `masonryEagerLayout: true` for own profile; paginate with `FeedLoadMoreFooter`. |
-| **Home load-more** | Preserve scroll anchor via `HomeFeedScrollCoordinator`; batch append in VM. |
-| **Home tab switch** | `syncVisibleItemsForTab` always swaps cache (including empty); masonry full-relayout when ids change (not load-more append). |
+| **Home load-more** | Tile prefetch (8 rows from end, like Explore); footer is spinner only; no front-trim (Android parity). |
+| **Home scroll preserve** | Only when load started near bottom and user did not scroll up during fetch. |
 
 ## GitHub Actions troubleshooting
 

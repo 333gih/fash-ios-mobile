@@ -5,8 +5,6 @@ private enum HomeFeedConstants {
     static let followPageSize = 20
     static let huntTodayLimit = 12
     static let staleThreshold: TimeInterval = 60
-    /// Cap in-memory following feed — keeps scroll smooth beyond ~2000 server rows.
-    static let maxFollowingItemsInMemory = 280
 }
 
 @Observable
@@ -33,9 +31,8 @@ final class HomeViewModel {
 
     private var sections = HomeRecommendationSections()
     private var followingItems: [ListingFeedItem] = []
-    /// Absolute API offset after the last successful following fetch (survives front-trim).
+    /// Absolute API offset after the last successful following fetch.
     private var followingServerOffset = 0
-    private var followingTrimmedCount = 0
     private var loadedTabs: Set<String> = []
     private var recommendationSectionsFetched = false
     private var tabLoadTasks: [String: Task<Void, Never>] = [:]
@@ -93,7 +90,6 @@ final class HomeViewModel {
         featuredSellersLoading = false
         followingItems = []
         followingServerOffset = 0
-        followingTrimmedCount = 0
         followingHasMore = false
         buyerStats = BuyerHomeStats()
         showSizingBanner = false
@@ -323,7 +319,7 @@ final class HomeViewModel {
         guard !isShellLoading, !isRefreshing, !isTabLoading(.following) else { return }
         let offset = followingServerOffset
         guard offset > 0 else { return }
-        if let last = lastFollowFeedLoadMoreAt, Date().timeIntervalSince(last) < 1.4 { return }
+        if let last = lastFollowFeedLoadMoreAt, Date().timeIntervalSince(last) < 0.9 { return }
         lastFollowFeedLoadMoreAt = Date()
         isLoadingMoreFollowing = true
         Task {
@@ -356,6 +352,20 @@ final class HomeViewModel {
             }
             FeedPerformance.log("Home following append -> items=\(followingItems.count)")
         }
+    }
+
+    /// Tile-anchored pagination — same policy as Explore (within 8 rows of end).
+    func requestLoadMoreFollowingIfNeeded(
+        appearedIndex: Int,
+        deps: AppDependencies,
+        isGuestMode: Bool
+    ) {
+        guard selectedFeedTab == .following else { return }
+        guard FeedPaginationPolicy.shouldPrefetchNextPage(
+            appearedIndex: appearedIndex,
+            totalCount: followingItems.count
+        ) else { return }
+        loadMoreFollowing(deps: deps, isGuestMode: isGuestMode)
     }
 
     /// Brand footer only when the active tab finished loading and has no more pages.
@@ -456,7 +466,6 @@ final class HomeViewModel {
         sections = HomeRecommendationSections()
         followingItems = []
         followingServerOffset = 0
-        followingTrimmedCount = 0
         followingHasMore = false
         tabsLoading = []
         tabsLoadError = []
@@ -689,8 +698,6 @@ final class HomeViewModel {
         guard case .success(let feed) = result else { return false }
         followingItems = feed
         followingServerOffset = feed.count
-        followingTrimmedCount = 0
-        trimFollowingItemsIfNeeded()
         followingHasMore = feed.count >= HomeFeedConstants.followPageSize
         if selectedFeedTab == .following { syncItemsForSelectedTab() }
         FeedPerformance.log("Home following items=\(followingItems.count) serverOffset=\(followingServerOffset)")
@@ -739,15 +746,6 @@ final class HomeViewModel {
             result = await once()
         }
         return result
-    }
-
-    private func trimFollowingItemsIfNeeded() {
-        let cap = HomeFeedConstants.maxFollowingItemsInMemory
-        guard followingItems.count > cap else { return }
-        let overflow = followingItems.count - cap
-        followingItems.removeFirst(overflow)
-        followingTrimmedCount += overflow
-        FeedPerformance.log("Home following trimmed \(overflow) (window \(cap))")
     }
 
     func hasCachedItems(for tab: HomeFeedTab) -> Bool {
