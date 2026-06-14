@@ -31,7 +31,7 @@ description: >-
 - **Never** use single `AppEnvironment.apiPath` for GET listing detail — use `RepositoryHttp.executeCoreGet` (tries locale-prefixed + fallback URLs).
 - Listing detail: `GET api/v1/listings/{id}` — one payload for PDP and edit.
 - Profile tabs paginate: `GET api/v1/users/me/listings?status=active&limit=20&offset=N`.
-- Match Android parity when unsure: `fash-android-mobile` equivalent ViewModel.
+- Profile / Seller screens: **`useStaggeredMasonryGrid` / `masonryEagerLayout` must appear before `showGridLoading`** in `ProfileCollapsingScrollLayout(...)` — Swift memberwise init order.
 
 ## Performance conventions
 
