@@ -103,8 +103,10 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     /// When true, hide "active"/"inactive" chips (seller storefront); own profile passes false.
     var suppressActiveStatusOnGrid: Bool = true
     var additionalBottomInset: CGFloat = 0
-    /// Seller storefront: lazy two-column masonry (no chunked rows) — lighter than paginated chunks.
+    /// Seller storefront / own profile: two-column staggered masonry (see [masonryEagerLayout]).
     var useStaggeredMasonryGrid: Bool = false
+    /// Nested in parent `ScrollView` — `true` lays out all tiles; `false` shows ~one lazy tile until scroll.
+    var masonryEagerLayout: Bool = false
     /// Skeleton grid (Explore-style) while the first page loads.
     var showGridLoading: Bool = false
     var showGridLoadRetry: Bool = false
@@ -329,13 +331,25 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             .animation(showGridLoading ? nil : FashTabSwipeMotion.contentAnimation, value: selectedTab)
             .transition(FashTabSwipeMotion.contentTransition)
             .onAppear { scheduleProfileMasonryLayoutRefresh() }
-            .onChange(of: items.map(\.id)) { _, _ in scheduleProfileMasonryLayoutRefresh() }
-            .onChange(of: selectedTab) { _, _ in scheduleProfileMasonryLayoutRefresh() }
+            .onChange(of: items.map(\.id)) { oldIds, newIds in
+                let forceImmediate = newIds.count != oldIds.count
+                    || !Set(oldIds).isSubset(of: Set(newIds))
+                scheduleProfileMasonryLayoutRefresh(forceImmediate: forceImmediate)
+            }
+            .onChange(of: selectedTab) { _, _ in
+                profileMasonryLayout = .empty
+                profileLayoutedItemCount = 0
+                scheduleProfileMasonryLayoutRefresh(forceImmediate: true)
+            }
             .onDisappear { masonryLayoutRefreshTask?.cancel() }
     }
 
-    private func scheduleProfileMasonryLayoutRefresh() {
+    private func scheduleProfileMasonryLayoutRefresh(forceImmediate: Bool = false) {
         masonryLayoutRefreshTask?.cancel()
+        if forceImmediate {
+            refreshProfileMasonryLayout()
+            return
+        }
         masonryLayoutRefreshTask = Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(48))
             guard !Task.isCancelled else { return }
@@ -495,7 +509,10 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     private func evaluateScrollProximityLoadMore(headerMinY: CGFloat) {
         guard let onLoadMore else { return }
         let scrolled = max(0, -headerMinY)
-        guard scrolled > max(headerHeight * 0.35, 120) else { return }
+        let minScroll = items.count <= 24
+            ? max(headerHeight * 0.2, 48)
+            : max(headerHeight * 0.35, 120)
+        guard scrolled > minScroll else { return }
         let now = Date()
         guard now.timeIntervalSince(lastProximityLoadMoreAt) >= 0.9 else { return }
         guard FeedScrollPaginationPolicy.shouldLoadMore(
@@ -656,7 +673,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             ListingStaggeredMasonryView(
                 items: items,
                 columnAssignments: masonryColumnAssignments,
-                eagerLayout: true,
+                eagerLayout: masonryEagerLayout,
                 footer: { profilePaginationFooter }
             ) { item, index in
                 profileListingGridCard(item: item, index: index)

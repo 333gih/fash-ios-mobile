@@ -2,11 +2,21 @@ import SwiftUI
 
 /// Compact Pinterest-style spinner — fixed height so scroll position stays stable while loading.
 struct FashFeedLoadMoreIndicator: View {
+    @State private var isPulsing = false
+
     var body: some View {
         ProgressView()
             .controlSize(.regular)
             .tint(FashColors.brandPrimary)
+            .scaleEffect(isPulsing ? 1.08 : 0.92)
+            .opacity(isPulsing ? 1 : 0.72)
+            .animation(
+                .easeInOut(duration: 0.9).repeatForever(autoreverses: true),
+                value: isPulsing
+            )
             .frame(maxWidth: .infinity)
+            .onAppear { isPulsing = true }
+            .onDisappear { isPulsing = false }
     }
 }
 
@@ -42,9 +52,15 @@ struct FeedLoadMoreFooter: View {
             triggerLoadIfNeeded()
         }
         .onChange(of: isLoadingMore) { wasLoading, loading in
-            guard wasLoading, !loading, enabled else { return }
-            // After a page lands, wait until the user leaves and returns — avoids hammering at the footer.
-            mayAutoLoad = false
+            guard wasLoading, !loading else { return }
+            guard enabled else { return }
+            // Re-arm at footer after a page lands — user often stays at the bottom while scrolling the grid.
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(380))
+                guard enabled, !isLoadingMore else { return }
+                mayAutoLoad = true
+                triggerLoadIfNeeded()
+            }
         }
     }
 

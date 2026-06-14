@@ -71,8 +71,9 @@ struct SellerProfileScreen: View {
                             showQuickActions: true,
                             showStatusOverlay: true,
                             additionalBottomInset: promoBottomInset,
-                            useStaggeredMasonryGrid: true,
-                            showGridLoading: showListingGridLoading,
+            useStaggeredMasonryGrid: true,
+            masonryEagerLayout: true,
+            showGridLoading: showListingGridLoading,
                             showGridLoadRetry: showListingGridLoadRetry,
                             onRetryGridLoad: {
                                 Task {

@@ -14,6 +14,7 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
     @State private var layoutedItemCount = 0
     @State private var containerWidth: CGFloat = 0
     @State private var layoutRefreshTask: Task<Void, Never>?
+    @State private var revealedChunkIds: Set<Int> = []
 
     private var gap: CGFloat { spacing.spacing2 }
 
@@ -39,18 +40,31 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
     }
 
     var body: some View {
-        LazyVStack(spacing: 0) {
+        LazyVStack(spacing: gap) {
             widthProbe
             ForEach(feedChunks) { chunk in
                 feedChunkRow(chunk)
                     .id("masonry_chunk_\(chunk.id)")
-                    .transition(.opacity)
+                    .opacity(revealedChunkIds.contains(chunk.id) ? 1 : 0)
+                    .offset(y: revealedChunkIds.contains(chunk.id) ? 0 : 8)
+                    .onAppear {
+                        guard !revealedChunkIds.contains(chunk.id) else { return }
+                        withAnimation(.easeOut(duration: 0.22)) {
+                            revealedChunkIds.insert(chunk.id)
+                        }
+                    }
             }
             footer()
         }
-        .onAppear { scheduleLayoutRefresh(forceFull: true) }
+        .onAppear {
+            scheduleLayoutRefresh(forceFull: true)
+            if revealedChunkIds.isEmpty, !feedChunks.isEmpty {
+                revealedChunkIds = Set(feedChunks.map(\.id))
+            }
+        }
         .onChange(of: items.map(\.id)) { oldIds, newIds in
             if newIds.count < oldIds.count {
+                revealedChunkIds = []
                 scheduleLayoutRefresh(forceFull: true)
             } else {
                 scheduleLayoutRefresh(forceFull: false)
@@ -140,7 +154,7 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
     private func scheduleLayoutRefresh(forceFull: Bool) {
         layoutRefreshTask?.cancel()
         layoutRefreshTask = Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(forceFull ? 0 : 96))
+            try? await Task.sleep(for: .milliseconds(forceFull ? 0 : 48))
             guard !Task.isCancelled else { return }
             refreshLayout(forceFull: forceFull)
         }

@@ -428,8 +428,10 @@ final class ProfileViewModel {
                 state.hasMore = true
                 state.nextOffset = 0
             }
-        } else if loadedListingTabs.contains(tab.rawValue) {
-            return
+        } else {
+            if loadedListingTabs.contains(tab.rawValue) { return }
+            let p = pagination(for: tab)
+            if p.isLoadingFirstPage || p.isReloading { return }
         }
 
         let generation = pagination(for: tab).fetchGeneration
@@ -463,6 +465,7 @@ final class ProfileViewModel {
                 $0.nextOffset = page.rawCount
                 $0.hasMore = page.rawCount >= profileListingPageSize
             }
+            FeedPerformance.log("Profile \(tab) first page -> items=\(page.items.count) hasMore=\(page.rawCount >= profileListingPageSize)")
             FeedListingImagePrefetch.prefetch(items: page.items)
             prefetchAdjacentProfileTabs(around: tab, deps: deps)
         case .failure:
@@ -506,7 +509,11 @@ final class ProfileViewModel {
                 state.nextOffset += page.rawCount
                 state.hasMore = page.rawCount >= profileListingPageSize
             }
+            FeedPerformance.log(
+                "Profile \(tab) loadMore @\(offset) -> +\(fresh.count) total=\(listings(for: tab).count) hasMore=\(page.rawCount >= profileListingPageSize)"
+            )
         case .failure:
+            FeedPerformance.log("Profile \(tab) loadMore @\(offset) failed")
             break
         }
     }

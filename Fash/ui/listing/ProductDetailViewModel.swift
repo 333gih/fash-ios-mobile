@@ -90,22 +90,43 @@ final class ProductDetailViewModel {
             detail = d
             isFollowing = d.sellerIsFollowing ?? false
             applyBottomModeFromDetail(d, listingId: id, deps: deps)
-            isDiscoveryLoading = true
-            if let sid = d.sellerId?.nilIfEmpty ?? d.sellerUsername?.nilIfEmpty {
-                await loadSellerAndMore(sellerKey: sid, excludeListingId: id, publicBrowse: guestBrowse, deps: deps)
-            } else {
-                isDiscoveryLoading = false
-            }
-            if !guestBrowse {
-                _ = await deps.listingRepository.recordView(listingId: id)
-                maybeShowPurchaseGuide(d, deps: deps)
-                startListingRealtime(listingId: id, deps: deps)
+            isLoading = false
+            let sid = d.sellerId?.nilIfEmpty ?? d.sellerUsername?.nilIfEmpty
+            Task { @MainActor in
+                await self.loadPostDetailSideEffects(
+                    listingId: id,
+                    detail: d,
+                    sellerKey: sid,
+                    publicBrowse: guestBrowse,
+                    deps: deps
+                )
             }
         case .failure(let error):
             loadError = FashErrorPresentation.userMessage(for: error)
             isDiscoveryLoading = false
+            isLoading = false
         }
-        isLoading = false
+    }
+
+    /// Discovery rails, view record, and realtime — after PDP shell is visible.
+    private func loadPostDetailSideEffects(
+        listingId id: String,
+        detail d: ListingDetail,
+        sellerKey sid: String?,
+        publicBrowse guestBrowse: Bool,
+        deps: AppDependencies
+    ) async {
+        if let sid {
+            isDiscoveryLoading = true
+            await loadSellerAndMore(sellerKey: sid, excludeListingId: id, publicBrowse: guestBrowse, deps: deps)
+        } else {
+            isDiscoveryLoading = false
+        }
+        if !guestBrowse {
+            _ = await deps.listingRepository.recordView(listingId: id)
+            maybeShowPurchaseGuide(d, deps: deps)
+            startListingRealtime(listingId: id, deps: deps)
+        }
     }
 
     func clearForSignedOut(deps: AppDependencies) {

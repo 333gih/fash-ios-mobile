@@ -233,6 +233,10 @@ Provisioning profile phải khớp bundle id **ProdRelease**: `com.pc.fash-ios-m
 | Archive: `Multiple commands produce .../Fash.app/README.md` | Không đặt `README.md` / `*.md` trong `Fash/` — doc ở `docs/`; `project.yml` exclude `**/*.md`; CI fail sớm nếu pbxproj vẫn tham chiếu README |
 | TestFlight `90022` / `90713` / `90023` missing app icon | `Assets.xcassets` trong `sources` (actool); sync từ Android: `scripts/sync_app_icon_from_android.ps1` → commit `AppIcon-*.png` (gồm iPad 152px) |
 | Hết phút macOS (private repo) | Đổi repo public hoặc nâng gói GitHub |
+| **Preflight** fail `validate_swift_syntax.py` | Chạy local trước push; sửa lỗi cú pháp Swift |
+| **Preflight** fail `ci_swift_compile_preflight.sh` | Import/type lỗi — không cần Mac, script dùng `swiftc -typecheck` partial |
+| PDP / edit listing lỗi mạng ngẫu nhiên | `ListingRepository` phải dùng `executeCoreGet` + retry — **không** `AppEnvironment.apiPath` một URL |
+| Agent skill iOS (no Mac) | Đọc `.cursor/skills/fash-ios-mobile/SKILL.md` trước khi sửa Swift/CI |
 
 ## 8. Build local (Mac)
 

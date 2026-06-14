@@ -137,6 +137,8 @@ struct ProfileScreen: View {
             scrollToTopToken: viewModel.profileScrollToTopToken,
             scrollToListingId: viewModel.focusListingId,
             scrollToListingToken: viewModel.focusListingScrollToken,
+            useStaggeredMasonryGrid: true,
+            masonryEagerLayout: true,
             enableScrollProximityLoadMore: true,
             onListingClick: handleListingTap,
             onLike: profileWishlistLikeHandler,

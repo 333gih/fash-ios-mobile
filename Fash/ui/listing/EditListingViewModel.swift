@@ -66,19 +66,12 @@ final class EditListingViewModel {
         loadError = nil
         detail = nil
 
-        if case .success(let page) = await deps.commonCatalogRepository.getBrands(limit: 50) {
-            brandsFeatured = page.items
-            brandsSearch = page.items
-        }
-        if case .success(let list) = await deps.commonCatalogRepository.getCountries(all: true) {
-            countries = list
-            countrySearch = list
-        }
-        if case .success(let catalog) = await deps.commonCatalogRepository.getAestheticTags(all: true) {
-            catalogTags = catalog
-        }
+        async let brandsTask = deps.commonCatalogRepository.getBrands(limit: 50)
+        async let countriesTask = deps.commonCatalogRepository.getCountries(all: true)
+        async let tagsTask = deps.commonCatalogRepository.getAestheticTags(all: true)
+        async let detailTask = deps.listingRepository.getListingDetailFull(listingId: id)
 
-        switch await deps.listingRepository.getListingDetailFull(listingId: id) {
+        switch await detailTask {
         case .success(let d):
             detail = d
             let selectedIds = baselineTagIdsFromDetail(d, catalog: catalogTags)
@@ -115,6 +108,22 @@ final class EditListingViewModel {
             )
         case .failure(let err):
             loadError = editListingNonEmpty(FashErrorPresentation.userMessage(for: err)) ?? L10n.editListingLoadError
+        }
+
+        if case .success(let page) = await brandsTask {
+            brandsFeatured = page.items
+            brandsSearch = page.items
+        }
+        if case .success(let list) = await countriesTask {
+            countries = list
+            countrySearch = list
+        }
+        if case .success(let catalog) = await tagsTask {
+            catalogTags = catalog
+            if let d = detail {
+                baselineTagIds = baselineTagIdsFromDetail(d, catalog: catalog)
+                form.selectedTagIds = baselineTagIds
+            }
         }
         isLoading = false
     }

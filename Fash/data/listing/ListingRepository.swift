@@ -46,105 +46,89 @@ final class ListingRepository {
     }
 
     func getListingDetail(listingId: String, publicBrowse: Bool = false) async -> Result<ListingFeedItem, Error> {
-        let urlString: String
-        if publicBrowse {
-            urlString = PublicBrowseHttp.publicApiPath("listings/\(listingId)")
-        } else {
-            urlString = AppEnvironment.apiPath("api/v1/listings/\(listingId)")
-        }
-        guard let url = URL(string: urlString) else { return .failure(URLError(.badURL)) }
-        var req = URLRequest(url: url)
-        req.httpMethod = "GET"
-        if publicBrowse {
-            PublicBrowseHttp.applyGuestHeaders(&req)
-        }
-        do {
-            let (data, http): (Data, HTTPURLResponse)
-            if publicBrowse {
-                let (d, r) = try await URLSession.shared.data(for: req)
-                guard let h = r as? HTTPURLResponse else { throw URLError(.badServerResponse) }
-                data = d; http = h
-            } else {
-                (data, http) = try await client.data(for: req)
+        switch await fetchListingDetailPayload(listingId: listingId, publicBrowse: publicBrowse) {
+        case .success(let data):
+            do {
+                if let item = try ListingFeedJsonParser.parseListingDetail(data) {
+                    return .success(item)
+                }
+                return .failure(URLError(.cannotParseResponse))
+            } catch {
+                return .failure(error)
             }
-            guard (200..<300).contains(http.statusCode) else {
-                throw CoreServiceHttpException(statusCode: http.statusCode, message: CoreServiceErrors.parseMessage(data: data, statusCode: http.statusCode))
-            }
-            if let item = try ListingFeedJsonParser.parseListingDetail(data) {
-                return .success(item)
-            }
-            return .failure(URLError(.cannotParseResponse))
-        } catch {
+        case .failure(let error):
             return .failure(error)
         }
     }
 
     func getListingDetailFull(listingId: String, publicBrowse: Bool = false) async -> Result<ListingDetail, Error> {
-        let urlString: String
-        if publicBrowse {
-            urlString = PublicBrowseHttp.publicApiPath("listings/\(listingId)")
-        } else {
-            urlString = AppEnvironment.apiPath("api/v1/listings/\(listingId)")
-        }
-        guard let url = URL(string: urlString) else { return .failure(URLError(.badURL)) }
-        var req = URLRequest(url: url)
-        req.httpMethod = "GET"
-        if publicBrowse {
-            PublicBrowseHttp.applyGuestHeaders(&req)
-        }
-        do {
-            let (data, http): (Data, HTTPURLResponse)
-            if publicBrowse {
-                let (d, r) = try await URLSession.shared.data(for: req)
-                guard let h = r as? HTTPURLResponse else { throw URLError(.badServerResponse) }
-                data = d
-                http = h
-            } else {
-                (data, http) = try await client.data(for: req)
+        switch await fetchListingDetailPayload(listingId: listingId, publicBrowse: publicBrowse) {
+        case .success(let data):
+            do {
+                if let detail = try ListingFeedJsonParser.parseFullListingDetail(data) {
+                    return .success(detail)
+                }
+                return .failure(URLError(.cannotParseResponse))
+            } catch {
+                return .failure(error)
             }
-            guard (200..<300).contains(http.statusCode) else {
-                throw CoreServiceHttpException(
-                    statusCode: http.statusCode,
-                    message: CoreServiceErrors.parseMessage(data: data, statusCode: http.statusCode)
-                )
-            }
-            if let detail = try ListingFeedJsonParser.parseFullListingDetail(data) {
-                return .success(detail)
-            }
-            return .failure(URLError(.cannotParseResponse))
-        } catch {
+        case .failure(let error):
             return .failure(error)
         }
     }
 
+    /// Candidate core URLs + one retry on transient failures (PDP/edit used single URL before — intermittent errors).
+    private func fetchListingDetailPayload(
+        listingId: String,
+        publicBrowse: Bool
+    ) async -> Result<Data, Error> {
+        let id = listingId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !id.isEmpty else { return .failure(URLError(.badURL)) }
+        let seg = id.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? id
+        let relativePath = "api/v1/listings/\(seg)"
+        var lastError: Error = URLError(.cannotConnectToHost)
+        for attempt in 0..<2 {
+            if attempt > 0 {
+                try? await Task.sleep(for: .milliseconds(300))
+            }
+            do {
+                let data = try await RepositoryHttp.executeCoreGet(
+                    relativePath: relativePath,
+                    client: client,
+                    publicBrowse: publicBrowse
+                )
+                return .success(data)
+            } catch {
+                lastError = error
+                if !shouldRetryListingDetailFetch(error) { break }
+            }
+        }
+        return .failure(lastError)
+    }
+
+    private func shouldRetryListingDetailFetch(_ error: Error) -> Bool {
+        if error is URLError { return true }
+        if let http = error as? CoreServiceHttpException {
+            switch http.statusCode {
+            case 408, 429, 500...599:
+                return true
+            default:
+                return false
+            }
+        }
+        return false
+    }
+
     func getListingPreviewDetail(listingId: String, publicBrowse: Bool = false) async -> Result<ListingPreviewDetail?, Error> {
-        let urlString: String
-        if publicBrowse {
-            urlString = PublicBrowseHttp.publicApiPath("listings/\(listingId)")
-        } else {
-            urlString = AppEnvironment.apiPath("api/v1/listings/\(listingId)")
-        }
-        guard let url = URL(string: urlString) else { return .failure(URLError(.badURL)) }
-        var req = URLRequest(url: url)
-        req.httpMethod = "GET"
-        if publicBrowse {
-            PublicBrowseHttp.applyGuestHeaders(&req)
-        }
-        do {
-            let (data, http): (Data, HTTPURLResponse)
-            if publicBrowse {
-                let (d, r) = try await URLSession.shared.data(for: req)
-                guard let h = r as? HTTPURLResponse else { throw URLError(.badServerResponse) }
-                data = d; http = h
-            } else {
-                (data, http) = try await client.data(for: req)
+        switch await fetchListingDetailPayload(listingId: listingId, publicBrowse: publicBrowse) {
+        case .success(let data):
+            do {
+                let obj = try HttpJson.dictionary(data)
+                return .success(ListingPreviewDetail.parse(obj))
+            } catch {
+                return .failure(error)
             }
-            guard (200..<300).contains(http.statusCode) else {
-                throw CoreServiceHttpException(statusCode: http.statusCode, message: CoreServiceErrors.parseMessage(data: data, statusCode: http.statusCode))
-            }
-            let obj = try HttpJson.dictionary(data)
-            return .success(ListingPreviewDetail.parse(obj))
-        } catch {
+        case .failure(let error):
             return .failure(error)
         }
     }
