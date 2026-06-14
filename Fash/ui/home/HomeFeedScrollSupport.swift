@@ -97,6 +97,19 @@ enum HomeFeedScrollReset {
     }
 }
 
+private enum HomeFeedScrollMath {
+    static func isNearBottom(scrollView: UIScrollView, offsetY: CGFloat) -> Bool {
+        scrollView.layoutIfNeeded()
+        let maxOffset = max(
+            0,
+            scrollView.contentSize.height
+                - scrollView.bounds.height
+                + scrollView.adjustedContentInset.bottom
+        )
+        return offsetY >= maxOffset - 160
+    }
+}
+
 /// Single UIKit owner for home scroll — scroll-to-top and load-more anchor preserve.
 struct HomeFeedScrollCoordinator: UIViewRepresentable {
     var scrollToTopToken: Int
@@ -188,7 +201,7 @@ struct HomeFeedScrollCoordinator: UIViewRepresentable {
             guard let scrollView = scrollView ?? anchorView.enclosingScrollView() else { return }
             loadAnchorOffset = lastContentOffsetY
             loadAnchorContentHeight = lastContentHeight
-            loadStartedNearBottom = Self.isNearBottom(scrollView: scrollView, offsetY: lastContentOffsetY)
+            loadStartedNearBottom = HomeFeedScrollMath.isNearBottom(scrollView: scrollView, offsetY: lastContentOffsetY)
             userScrolledUpDuringLoad = false
         }
 
@@ -216,17 +229,6 @@ struct HomeFeedScrollCoordinator: UIViewRepresentable {
             sizeObservation = scrollView.observe(\.contentSize, options: [.new]) { [weak self] sv, _ in
                 self?.lastContentHeight = sv.contentSize.height
             }
-        }
-
-        private static func isNearBottom(scrollView: UIScrollView, offsetY: CGFloat) -> Bool {
-            scrollView.layoutIfNeeded()
-            let maxOffset = max(
-                0,
-                scrollView.contentSize.height
-                    - scrollView.bounds.height
-                    + scrollView.adjustedContentInset.bottom
-            )
-            return offsetY >= maxOffset - 160
         }
     }
 
@@ -302,7 +304,7 @@ struct HomeFeedScrollCoordinator: UIViewRepresentable {
             let jumpedToNewBottom = currentY >= maxOffset - 2
                 && anchorOffset < maxOffset - delta + 2
             guard jumpedToNewBottom else { return }
-            guard Coordinator.isNearBottom(scrollView: scrollView, offsetY: currentY) else { return }
+            guard HomeFeedScrollMath.isNearBottom(scrollView: scrollView, offsetY: currentY) else { return }
             let targetY = min(anchorOffset, maxOffset)
             if abs(currentY - targetY) > 0.5 {
                 scrollView.setContentOffset(CGPoint(x: 0, y: targetY), animated: false)

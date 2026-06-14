@@ -170,7 +170,8 @@ enum ListingFeedJsonParser {
             let rows = listingRows(in: obj)
             let items = rows.compactMap(parseRow)
             let hasMore = (obj["has_more"] as? Bool) ?? (obj["HasMore"] as? Bool) ?? false
-            let cursor = RepositoryHttp.optString(obj, "next_cursor", "NextCursor").nilIfEmpty
+            let rawCursor = RepositoryHttp.optString(obj, "next_cursor", "NextCursor")
+            let cursor = rawCursor.isEmpty ? nil : rawCursor
             return HomeFeedPage(items: items, hasMore: hasMore, nextCursor: cursor)
         }
         let items = try parseFeed(data)
