@@ -844,15 +844,14 @@ struct ProfileTabSwitcher: View {
                                     }
                                 }
                             }
-                            .frame(minWidth: tabMinWidth)
-                            .padding(.horizontal, 8)
-                            .padding(.top, 10)
+                            .fashScrollableTabChipStyle(minWidth: tabMinWidth)
                         }
                         .buttonStyle(.plain)
                         .id(logicalIndex)
                     }
                 }
                 .padding(.horizontal, spacing.editorialStart)
+                .padding(.vertical, 2)
             }
             .background(FashColors.screen)
             .animation(FashTabSwipeMotion.contentAnimation, value: selectedTab)
@@ -883,6 +882,6 @@ struct ProfileTabSwitcher: View {
         let screen = UIScreen.main.bounds.width
         let edge = spacing.editorialStart * 2
         let slots = min(3, CGFloat(max(orderedTabIndices.count, 1)))
-        return max((screen - edge) / slots, 96)
+        return max((screen - edge) / slots, 108)
     }
 }

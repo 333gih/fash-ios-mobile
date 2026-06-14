@@ -110,7 +110,7 @@ struct HomeFeedTabSwitcher: View {
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 4) {
+                HStack(spacing: FashScrollableTabMetrics.interTabSpacing) {
                     ForEach(tabs) { tab in
                         let selected = tab == selectedTab
                         Button {
@@ -128,8 +128,6 @@ struct HomeFeedTabSwitcher: View {
                                     .foregroundStyle(selected ? FashColors.textPrimary : FashColors.textSecondary.opacity(0.75))
                                     .lineLimit(1)
                             }
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 12)
                             .background(alignment: .bottom) {
                                 if selected {
                                     Capsule()
@@ -139,12 +137,14 @@ struct HomeFeedTabSwitcher: View {
                                         .matchedGeometryEffect(id: "home_tab_indicator", in: tabIndicator)
                                 }
                             }
+                            .fashScrollableTabChipStyle()
                         }
                         .buttonStyle(.plain)
                         .id(tab.id)
                     }
                 }
                 .padding(.horizontal, spacing.editorialStart)
+                .padding(.vertical, 2)
             }
             .background(FashColors.screen)
             .animation(FashTabSwipeMotion.tabBarAnimation, value: selectedTab.id)
