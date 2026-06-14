@@ -61,6 +61,7 @@ struct HomeFeedContent: View {
 
     @State private var showStickyTabs = false
     @State private var stickyScrollSample = HomeStickyScrollSample()
+    @State private var homeScrollBoundary = HomeFeedScrollBoundary()
     @State private var masonryColumnAssignmentsByTab: [String: [String: Bool]] = [:]
     @State private var listingInteractionEnabled = true
 
@@ -141,7 +142,8 @@ struct HomeFeedContent: View {
                 }
                 .background {
                     HomeFeedScrollCoordinator(
-                        scrollToTopToken: viewModel.homeScrollToTopToken
+                        scrollToTopToken: viewModel.homeScrollToTopToken,
+                        scrollBoundary: homeScrollBoundary
                     )
                 }
                 .fashFeedPullRefresh(isRefreshing: $viewModel.isRefreshing) {
@@ -171,6 +173,7 @@ struct HomeFeedContent: View {
             viewModel.ensureSelectedFeedTabLoaded(deps: deps, isGuestMode: isGuestMode)
         }
         .onAppear {
+            viewModel.homeScrollBoundary = homeScrollBoundary
             viewModel.ensureSelectedFeedTabLoaded(deps: deps, isGuestMode: isGuestMode)
         }
         .onChange(of: isGuestMode) { _, guest in
@@ -297,7 +300,8 @@ struct HomeFeedContent: View {
                            viewModel.followingHasMore || viewModel.isLoadingMoreFollowing {
                             FeedLoadMoreFooter(
                                 enabled: viewModel.followingHasMore,
-                                isLoadingMore: viewModel.isLoadingMoreFollowing
+                                isLoadingMore: viewModel.isLoadingMoreFollowing,
+                                canAutoLoad: { homeScrollBoundary.allowsFollowingLoadMore }
                             ) {
                                 viewModel.loadMoreFollowing(deps: deps, isGuestMode: isGuestMode)
                             }

@@ -97,11 +97,81 @@ enum HomeFeedScrollReset {
     }
 }
 
-/// UIKit scroll-to-top only — no preserve/trim hooks that fight upward scrolling.
+enum HomeFeedScrollMath {
+    static func isAtTop(contentOffsetY: CGFloat, adjustedInsetTop: CGFloat, tolerance: CGFloat = 28) -> Bool {
+        contentOffsetY <= -adjustedInsetTop + tolerance
+    }
+
+    static func isNearBottom(
+        contentOffsetY: CGFloat,
+        contentHeight: CGFloat,
+        viewportHeight: CGFloat,
+        adjustedInsetBottom: CGFloat
+    ) -> Bool {
+        guard contentHeight > 1, viewportHeight > 1 else { return true }
+        let maxOffset = max(
+            0,
+            contentHeight - viewportHeight + adjustedInsetBottom
+        )
+        if maxOffset <= 48 { return true }
+        let distanceFromBottom = maxOffset - contentOffsetY
+        let threshold = max(520, viewportHeight * 1.35)
+        return distanceFromBottom <= threshold
+    }
+}
+
+/// UIKit scroll boundary — gates Following load-more so upward scroll is not fighting pagination.
+@Observable
+@MainActor
+final class HomeFeedScrollBoundary {
+    private(set) var isNearBottom = false
+    private(set) var isAtTop = true
+    private(set) var isScrollingUp = false
+
+    /// Load-more when near the feed bottom and not actively scrolling up toward the header.
+    var allowsFollowingLoadMore: Bool {
+        guard !isScrollingUp else { return false }
+        return isNearBottom
+    }
+
+    fileprivate func apply(
+        contentOffsetY: CGFloat,
+        contentHeight: CGFloat,
+        viewportHeight: CGFloat,
+        adjustedInsetTop: CGFloat,
+        adjustedInsetBottom: CGFloat,
+        deltaY: CGFloat
+    ) {
+        let atTop = HomeFeedScrollMath.isAtTop(
+            contentOffsetY: contentOffsetY,
+            adjustedInsetTop: adjustedInsetTop
+        )
+        let nearBottom = HomeFeedScrollMath.isNearBottom(
+            contentOffsetY: contentOffsetY,
+            contentHeight: contentHeight,
+            viewportHeight: viewportHeight,
+            adjustedInsetBottom: adjustedInsetBottom
+        )
+        if atTop != isAtTop { isAtTop = atTop }
+        if nearBottom != isNearBottom { isNearBottom = nearBottom }
+        if abs(deltaY) > 3.5 {
+            let scrollingUp = deltaY < 0
+            if scrollingUp != isScrollingUp { isScrollingUp = scrollingUp }
+        }
+        if atTop, isScrollingUp { isScrollingUp = false }
+    }
+
+    fileprivate func clearScrollingUpIfIdle() {
+        if isScrollingUp { isScrollingUp = false }
+    }
+}
+
+/// Scroll-to-top + boundary tracking on the home feed `UIScrollView`.
 struct HomeFeedScrollCoordinator: UIViewRepresentable {
     var scrollToTopToken: Int
+    var scrollBoundary: HomeFeedScrollBoundary
 
-    func makeCoordinator() -> Coordinator { Coordinator() }
+    func makeCoordinator() -> Coordinator { Coordinator(boundary: scrollBoundary) }
 
     func makeUIView(context: Context) -> AnchorView {
         let view = AnchorView()
@@ -111,6 +181,7 @@ struct HomeFeedScrollCoordinator: UIViewRepresentable {
 
     func updateUIView(_ uiView: AnchorView, context: Context) {
         let coordinator = context.coordinator
+        coordinator.boundary = scrollBoundary
         uiView.coordinator = coordinator
         coordinator.installIfNeeded(from: uiView)
 
@@ -121,13 +192,54 @@ struct HomeFeedScrollCoordinator: UIViewRepresentable {
     }
 
     final class Coordinator {
+        var boundary: HomeFeedScrollBoundary
         var lastScrollToTopToken = 0
         var scrollToTopGeneration = 0
         weak var scrollView: UIScrollView?
+        private var offsetObservation: NSKeyValueObservation?
+        private var lastContentOffsetY: CGFloat?
+        private var scrollIdleTask: Task<Void, Never>?
+
+        init(boundary: HomeFeedScrollBoundary) {
+            self.boundary = boundary
+        }
 
         func installIfNeeded(from anchor: UIView) {
-            guard scrollView == nil, let scrollView = anchor.enclosingScrollView() else { return }
+            guard let scrollView = anchor.enclosingScrollView() else { return }
+            if self.scrollView === scrollView, offsetObservation != nil { return }
+
+            offsetObservation?.invalidate()
             self.scrollView = scrollView
+            lastContentOffsetY = scrollView.contentOffset.y
+            reportBoundary(on: scrollView, deltaY: 0)
+
+            offsetObservation = scrollView.observe(\.contentOffset, options: [.new]) { [weak self] sv, _ in
+                Task { @MainActor in
+                    guard let self else { return }
+                    let y = sv.contentOffset.y
+                    let delta = y - (self.lastContentOffsetY ?? y)
+                    self.lastContentOffsetY = y
+                    self.reportBoundary(on: sv, deltaY: delta)
+                }
+            }
+        }
+
+        @MainActor
+        private func reportBoundary(on scrollView: UIScrollView, deltaY: CGFloat) {
+            boundary.apply(
+                contentOffsetY: scrollView.contentOffset.y,
+                contentHeight: scrollView.contentSize.height,
+                viewportHeight: scrollView.bounds.height,
+                adjustedInsetTop: scrollView.adjustedContentInset.top,
+                adjustedInsetBottom: scrollView.adjustedContentInset.bottom,
+                deltaY: deltaY
+            )
+            scrollIdleTask?.cancel()
+            scrollIdleTask = Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(200))
+                guard !Task.isCancelled else { return }
+                boundary.clearScrollingUpIfIdle()
+            }
         }
     }
 

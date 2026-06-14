@@ -28,6 +28,8 @@ struct FeedLoadMoreFooter: View {
     var triggersLoadOnAppear: Bool = true
     /// Re-arm auto-load after a page completes — disable for home following (tile prefetch owns triggers).
     var rearmAfterLoadComplete: Bool = true
+    /// Extra gate — e.g. home feed only loads more near scroll bottom while moving down.
+    var canAutoLoad: () -> Bool = { true }
     let onLoadMore: () -> Void
 
     private static let sentinelHeight: CGFloat = 48
@@ -60,7 +62,7 @@ struct FeedLoadMoreFooter: View {
             // Re-arm at footer after a page lands — user often stays at the bottom while scrolling the grid.
             Task { @MainActor in
                 try? await Task.sleep(for: .milliseconds(380))
-                guard enabled, !isLoadingMore else { return }
+                guard enabled, !isLoadingMore, canAutoLoad() else { return }
                 mayAutoLoad = true
                 triggerLoadIfNeeded()
             }
@@ -68,7 +70,7 @@ struct FeedLoadMoreFooter: View {
     }
 
     private func triggerLoadIfNeeded() {
-        guard triggersLoadOnAppear, enabled, !isLoadingMore, mayAutoLoad else { return }
+        guard triggersLoadOnAppear, enabled, !isLoadingMore, mayAutoLoad, canAutoLoad() else { return }
         mayAutoLoad = false
         onLoadMore()
     }

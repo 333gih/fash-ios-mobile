@@ -40,6 +40,11 @@ final class HomeViewModel {
     private var homeUxApplied = false
     private var lastSuccessfulRefreshAt: Date?
     private var lastFollowFeedLoadMoreAt: Date?
+    private var followingDuplicatePageCount = 0
+
+    /// Scroll boundary from [HomeFeedScrollCoordinator] — gates Following pagination while scrolling up.
+    @ObservationIgnored
+    var homeScrollBoundary: HomeFeedScrollBoundary?
 
     var selectedFeedTab: HomeFeedTab {
         HomeFeedTab(rawValue: selectedFeedTabKey) ?? .huntToday
@@ -92,6 +97,7 @@ final class HomeViewModel {
         followingItemIds = []
         followingNextCursor = nil
         followingHasMore = false
+        followingDuplicatePageCount = 0
         buyerStats = BuyerHomeStats()
         showSizingBanner = false
     }
@@ -318,6 +324,7 @@ final class HomeViewModel {
         guard selectedFeedTab == .following else { return }
         guard !isLoadingMoreFollowing, followingHasMore else { return }
         guard !isShellLoading, !isRefreshing, !isTabLoading(.following) else { return }
+        guard homeScrollBoundary?.allowsFollowingLoadMore ?? false else { return }
         if let last = lastFollowFeedLoadMoreAt, Date().timeIntervalSince(last) < 0.9 { return }
         lastFollowFeedLoadMoreAt = Date()
         isLoadingMoreFollowing = true
@@ -332,14 +339,21 @@ final class HomeViewModel {
             followingHasMore = page.hasMore
             followingNextCursor = page.nextCursor
             if page.items.isEmpty {
+                followingHasMore = false
+                followingDuplicatePageCount = 0
                 if selectedFeedTab == .following { syncItemsForSelectedTab() }
                 return
             }
             let added = followingWindow.appendUnique(page.items, knownIds: &followingItemIds)
             guard added > 0 else {
+                followingDuplicatePageCount += 1
+                if followingDuplicatePageCount >= 2 || page.items.isEmpty {
+                    followingHasMore = false
+                }
                 if selectedFeedTab == .following { syncItemsForSelectedTab() }
                 return
             }
+            followingDuplicatePageCount = 0
             if selectedFeedTab == .following {
                 syncItemsForSelectedTab()
             }
@@ -369,6 +383,7 @@ final class HomeViewModel {
     ) {
         guard selectedFeedTab == .following else { return }
         guard !isShellLoading, !isRefreshing, !isTabLoading(.following) else { return }
+        guard homeScrollBoundary?.allowsFollowingLoadMore ?? false else { return }
         guard FeedPaginationPolicy.shouldPrefetchNextPage(
             appearedIndex: appearedIndex,
             totalCount: followingWindow.items.count
@@ -476,6 +491,7 @@ final class HomeViewModel {
         followingItemIds = []
         followingNextCursor = nil
         followingHasMore = false
+        followingDuplicatePageCount = 0
         tabsLoading = []
         tabsLoadError = []
         tabsLoadStalled = []
