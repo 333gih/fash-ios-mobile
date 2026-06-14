@@ -86,6 +86,7 @@ extension View {
 }
 
 enum HomeFeedScrollReset {
+    /// SwiftUI fallback — primary scroll-to-top is UIKit via [HomeFeedScrollCoordinator].
     @MainActor
     static func scrollToTop(proxy: ScrollViewProxy) {
         var transaction = Transaction()
@@ -93,75 +94,12 @@ enum HomeFeedScrollReset {
         withTransaction(transaction) {
             proxy.scrollTo(HomeScrollIds.top, anchor: .top)
         }
-
-        Task { @MainActor in
-            for delayMs in [60, 140, 260, 420, 640] {
-                try? await Task.sleep(for: .milliseconds(delayMs))
-                var followUp = Transaction()
-                followUp.disablesAnimations = true
-                withTransaction(followUp) {
-                    proxy.scrollTo(HomeScrollIds.top, anchor: .top)
-                }
-            }
-        }
     }
 }
 
-/// One-shot scroll-to-top on Home re-tap.
-struct HomeFeedScrollToTopHelper: UIViewRepresentable {
-    var token: Int
-
-    func makeCoordinator() -> Coordinator { Coordinator() }
-
-    func makeUIView(context: Context) -> AnchorView {
-        let view = AnchorView()
-        view.coordinator = context.coordinator
-        return view
-    }
-
-    func updateUIView(_ uiView: AnchorView, context: Context) {
-        uiView.coordinator = context.coordinator
-        guard token > 0, token != context.coordinator.lastAppliedToken else { return }
-        context.coordinator.lastAppliedToken = token
-        uiView.scheduleScrollToTop(attempt: 0)
-    }
-
-    final class Coordinator {
-        var lastAppliedToken = 0
-    }
-
-    final class AnchorView: UIView {
-        weak var coordinator: Coordinator?
-
-        func scheduleScrollToTop(attempt: Int) {
-            DispatchQueue.main.async { [weak self] in
-                self?.applyScrollToTop(attempt: attempt)
-            }
-        }
-
-        private func applyScrollToTop(attempt: Int) {
-            guard let scrollView = enclosingScrollView() else { return }
-            scrollView.layoutIfNeeded()
-            if scrollView.contentInset.top > 0.5 {
-                scrollView.contentInset.top = 0
-                var inset = scrollView.verticalScrollIndicatorInsets
-                inset.top = 0
-                scrollView.verticalScrollIndicatorInsets = inset
-            }
-            let visualTop = -scrollView.adjustedContentInset.top
-            if abs(scrollView.contentOffset.y - visualTop) > 1.5 {
-                scrollView.setContentOffset(CGPoint(x: 0, y: visualTop), animated: attempt == 0)
-            }
-            guard attempt < 10 else { return }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) { [weak self] in
-                self?.applyScrollToTop(attempt: attempt + 1)
-            }
-        }
-    }
-}
-
-/// Keeps viewport stable when load-more appends rows at the bottom — new tiles appear below, not jumped into view.
-struct HomeFeedLoadMoreScrollPreserver: UIViewRepresentable {
+/// Single UIKit owner for home scroll — scroll-to-top, load-more anchor preserve (never fights upward scroll).
+struct HomeFeedScrollCoordinator: UIViewRepresentable {
+    var scrollToTopToken: Int
     var itemsCount: Int
     var isLoadingMore: Bool
 
@@ -178,9 +116,23 @@ struct HomeFeedLoadMoreScrollPreserver: UIViewRepresentable {
         uiView.coordinator = coordinator
         coordinator.installIfNeeded(from: uiView)
 
+        var scrollToTopJustFired = false
+        if scrollToTopToken > 0, scrollToTopToken != coordinator.lastScrollToTopToken {
+            coordinator.lastScrollToTopToken = scrollToTopToken
+            coordinator.cancelPreserveWork()
+            coordinator.scrollToTopGeneration += 1
+            scrollToTopJustFired = true
+            uiView.runScrollToTop(generation: coordinator.scrollToTopGeneration)
+        }
+
         let countIncreased = itemsCount > coordinator.lastItemsCount
-        if countIncreased, coordinator.lastItemsCount > 0, isLoadingMore || coordinator.wasLoadingMore {
-            uiView.preserveScrollAfterAppend(
+        if countIncreased,
+           !scrollToTopJustFired,
+           coordinator.lastItemsCount > 0,
+           isLoadingMore || coordinator.wasLoadingMore {
+            let generation = coordinator.preserveGeneration
+            uiView.preserveAfterAppend(
+                generation: generation,
                 anchorOffset: coordinator.lastContentOffsetY,
                 anchorHeight: coordinator.lastContentHeight
             )
@@ -191,13 +143,21 @@ struct HomeFeedLoadMoreScrollPreserver: UIViewRepresentable {
     }
 
     final class Coordinator {
+        var lastScrollToTopToken = 0
         var lastItemsCount = 0
-        var lastContentOffsetY: CGFloat = 0
-        var lastContentHeight: CGFloat = 0
         var wasLoadingMore = false
+        var preserveGeneration = 0
+        var scrollToTopGeneration = 0
+
         weak var scrollView: UIScrollView?
         var offsetObservation: NSKeyValueObservation?
         var sizeObservation: NSKeyValueObservation?
+        var lastContentOffsetY: CGFloat = 0
+        var lastContentHeight: CGFloat = 0
+
+        func cancelPreserveWork() {
+            preserveGeneration += 1
+        }
 
         func installIfNeeded(from anchor: UIView) {
             guard let scrollView = anchor.enclosingScrollView() else { return }
@@ -226,16 +186,38 @@ struct HomeFeedLoadMoreScrollPreserver: UIViewRepresentable {
             }
         }
 
-        func preserveScrollAfterAppend(anchorOffset: CGFloat, anchorHeight: CGFloat) {
-            for attempt in 0..<6 {
-                let delay = Double(attempt) * 0.05
+        func runScrollToTop(generation: Int) {
+            for attempt in 0..<14 {
+                let delay = Double(attempt) * 0.055
                 DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-                    self?.applyPreserve(anchorOffset: anchorOffset, anchorHeight: anchorHeight)
+                    guard let self, coordinator?.scrollToTopGeneration == generation else { return }
+                    applyScrollToTop()
                 }
             }
         }
 
-        private func applyPreserve(anchorOffset: CGFloat, anchorHeight: CGFloat) {
+        func preserveAfterAppend(generation: Int, anchorOffset: CGFloat, anchorHeight: CGFloat) {
+            for attempt in 0..<3 {
+                let delay = 0.04 + Double(attempt) * 0.06
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                    guard let self, coordinator?.preserveGeneration == generation else { return }
+                    applyPreserveAfterAppend(anchorOffset: anchorOffset, anchorHeight: anchorHeight)
+                }
+            }
+        }
+
+        private func applyScrollToTop() {
+            guard let scrollView = coordinator?.scrollView ?? enclosingScrollView() else { return }
+            scrollView.layoutIfNeeded()
+            resetPullRefreshInset(on: scrollView)
+            let top = -scrollView.adjustedContentInset.top
+            if abs(scrollView.contentOffset.y - top) > 0.5 {
+                scrollView.setContentOffset(CGPoint(x: 0, y: top), animated: false)
+            }
+        }
+
+        /// Only undo SwiftUI snapping to the *new* bottom after append — never pull the user down while scrolling up.
+        private func applyPreserveAfterAppend(anchorOffset: CGFloat, anchorHeight: CGFloat) {
             guard let scrollView = coordinator?.scrollView ?? enclosingScrollView() else { return }
             guard !scrollView.isDragging, !scrollView.isTracking else { return }
             scrollView.layoutIfNeeded()
@@ -247,64 +229,18 @@ struct HomeFeedLoadMoreScrollPreserver: UIViewRepresentable {
                     - scrollView.bounds.height
                     + scrollView.adjustedContentInset.bottom
             )
-            // SwiftUI often snaps to the new bottom after append — restore the pre-append viewport.
-            let jumpedToNewBottom = scrollView.contentOffset.y >= maxOffset - 4
-                && anchorOffset < maxOffset - delta + 4
-            if jumpedToNewBottom || abs(scrollView.contentOffset.y - anchorOffset) > delta * 0.35 {
-                scrollView.setContentOffset(CGPoint(x: 0, y: min(anchorOffset, maxOffset)), animated: false)
-            }
-        }
-    }
-}
-
-/// One-shot max-offset trim when tab body height shrinks — never blocks scrolling up.
-struct HomeFeedScrollClampHelper: UIViewRepresentable {
-    var clampToken: Int
-
-    func makeCoordinator() -> Coordinator { Coordinator() }
-
-    func makeUIView(context: Context) -> AnchorView {
-        let view = AnchorView()
-        view.coordinator = context.coordinator
-        return view
-    }
-
-    func updateUIView(_ uiView: AnchorView, context: Context) {
-        uiView.coordinator = context.coordinator
-        guard clampToken > 0, clampToken != context.coordinator.lastAppliedToken else { return }
-        context.coordinator.lastAppliedToken = clampToken
-        uiView.scheduleClamp(attempt: 0)
-    }
-
-    final class Coordinator {
-        var lastAppliedToken = 0
-    }
-
-    final class AnchorView: UIView {
-        weak var coordinator: Coordinator?
-
-        func scheduleClamp(attempt: Int) {
-            DispatchQueue.main.async { [weak self] in
-                self?.applyClamp(attempt: attempt)
-            }
+            let jumpedToNewBottom = scrollView.contentOffset.y >= maxOffset - 2
+                && anchorOffset < maxOffset - delta + 2
+            guard jumpedToNewBottom else { return }
+            scrollView.setContentOffset(CGPoint(x: 0, y: min(anchorOffset, maxOffset)), animated: false)
         }
 
-        private func applyClamp(attempt: Int) {
-            guard let scrollView = enclosingScrollView() else { return }
-            scrollView.layoutIfNeeded()
-            let maxOffset = max(
-                0,
-                scrollView.contentSize.height
-                    - scrollView.bounds.height
-                    + scrollView.adjustedContentInset.bottom
-            )
-            if scrollView.contentOffset.y > maxOffset + 1.5 {
-                scrollView.setContentOffset(CGPoint(x: 0, y: maxOffset), animated: false)
-            }
-            guard attempt < 3 else { return }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { [weak self] in
-                self?.applyClamp(attempt: attempt + 1)
-            }
+        private func resetPullRefreshInset(on scrollView: UIScrollView) {
+            guard scrollView.contentInset.top > 0.5 else { return }
+            scrollView.contentInset.top = 0
+            var inset = scrollView.verticalScrollIndicatorInsets
+            inset.top = 0
+            scrollView.verticalScrollIndicatorInsets = inset
         }
     }
 }

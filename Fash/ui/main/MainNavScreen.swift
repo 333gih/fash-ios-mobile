@@ -519,7 +519,7 @@ struct MainNavScreen: View {
                     switch tab {
                     case .home:
                         homeVM.requestScrollHomeToTop()
-                        try? await Task.sleep(for: .milliseconds(120))
+                        try? await Task.sleep(for: .milliseconds(220))
                         await homeVM.pullToRefresh(deps: deps, isGuestMode: isGuestMode)
                     case .orders:
                         ordersVM.requestScrollOrdersToTop()

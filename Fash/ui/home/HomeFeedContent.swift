@@ -60,14 +60,21 @@ struct HomeFeedContent: View {
     }
 
     @State private var showStickyTabs = false
+    @State private var stickyScrollSample = HomeStickyScrollSample()
     @State private var masonryColumnAssignmentsByTab: [String: [String: Bool]] = [:]
     @State private var listingInteractionEnabled = true
 
-    /// Only flip `@State` when crossing hysteresis — never on every scroll frame.
-    private func updateStickyTabs(for minY: CGFloat) {
-        if minY < -14 {
+    /// Sticky overlay — unpin when top anchor visible; pin only when header scrolled away.
+    private func recomputeStickyTabs() {
+        let topMinY = stickyScrollSample.topMinY
+        let tabRowMinY = stickyScrollSample.tabRowMinY
+        if topMinY > -12 {
+            if showStickyTabs { showStickyTabs = false }
+            return
+        }
+        if tabRowMinY < -14 {
             if !showStickyTabs { showStickyTabs = true }
-        } else if minY > 2 {
+        } else if tabRowMinY > 2 {
             if showStickyTabs { showStickyTabs = false }
         }
     }
@@ -112,8 +119,13 @@ struct HomeFeedContent: View {
                     }
                 }
                 .coordinateSpace(name: "homeFeedScroll")
-                .onPreferenceChange(HomeTabRowMinYKey.self) { minY in
-                    updateStickyTabs(for: minY)
+                .onPreferenceChange(HomeFeedScrollOffsetKey.self) { topMinY in
+                    stickyScrollSample.topMinY = topMinY
+                    recomputeStickyTabs()
+                }
+                .onPreferenceChange(HomeTabRowMinYKey.self) { tabRowMinY in
+                    stickyScrollSample.tabRowMinY = tabRowMinY
+                    recomputeStickyTabs()
                 }
                 .overlay(alignment: .top) {
                     homeFeedTabsBar(sticky: true)
@@ -121,8 +133,8 @@ struct HomeFeedContent: View {
                         .allowsHitTesting(showStickyTabs)
                 }
                 .background {
-                    HomeFeedScrollToTopHelper(token: viewModel.homeScrollToTopToken)
-                    HomeFeedLoadMoreScrollPreserver(
+                    HomeFeedScrollCoordinator(
+                        scrollToTopToken: viewModel.homeScrollToTopToken,
                         itemsCount: viewModel.items.count,
                         isLoadingMore: viewModel.isLoadingMoreFollowing
                     )
@@ -381,6 +393,12 @@ struct HomeFeedContent: View {
     private func scrollHomeToTop(using scrollProxy: ScrollViewProxy) {
         HomeFeedScrollReset.scrollToTop(proxy: scrollProxy)
     }
+}
+
+/// Non-observed scroll samples — mutating this does not re-render the feed on every scroll frame.
+private final class HomeStickyScrollSample {
+    var topMinY: CGFloat = 0
+    var tabRowMinY: CGFloat = .infinity
 }
 
 private struct HomeFeedListingCell: View {
