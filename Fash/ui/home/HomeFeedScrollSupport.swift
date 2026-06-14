@@ -127,8 +127,10 @@ struct HomeFeedScrollCoordinator: UIViewRepresentable {
         }
 
         if isLoadingMore, !coordinator.wasLoadingMore {
+            coordinator.cancelPreserveWork()
             coordinator.captureLoadAnchor()
         } else if !isLoadingMore, coordinator.wasLoadingMore {
+            coordinator.cancelPreserveWork()
             coordinator.clearLoadAnchor()
         }
 
@@ -137,7 +139,7 @@ struct HomeFeedScrollCoordinator: UIViewRepresentable {
            !scrollToTopJustFired,
            coordinator.lastItemsCount > 0,
            coordinator.loadAnchorOffset != nil,
-           isLoadingMore || coordinator.wasLoadingMore {
+           isLoadingMore {
             let generation = coordinator.preserveGeneration
             uiView.preserveAfterAppend(
                 generation: generation,
@@ -218,7 +220,7 @@ struct HomeFeedScrollCoordinator: UIViewRepresentable {
         }
 
         func preserveAfterAppend(generation: Int, anchorOffset: CGFloat, anchorHeight: CGFloat) {
-            for attempt in 0..<10 {
+            for attempt in 0..<4 {
                 let delay = 0.03 + Double(attempt) * 0.05
                 DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
                     guard let self, coordinator?.preserveGeneration == generation else { return }
@@ -237,10 +239,10 @@ struct HomeFeedScrollCoordinator: UIViewRepresentable {
             }
         }
 
-        /// Hold viewport at the pre-fetch offset so new tiles render below the fold — user scrolls down to discover them.
+        /// Undo SwiftUI snapping to the new bottom after append — never while the user scrolls up.
         private func applyPreserveAfterAppend(anchorOffset: CGFloat, anchorHeight: CGFloat) {
             guard let scrollView = coordinator?.scrollView ?? enclosingScrollView() else { return }
-            guard !scrollView.isDragging, !scrollView.isTracking else { return }
+            guard !scrollView.isDragging, !scrollView.isTracking, !scrollView.isDecelerating else { return }
             scrollView.layoutIfNeeded()
             let delta = scrollView.contentSize.height - anchorHeight
             guard delta > 0.5 else { return }
@@ -251,7 +253,10 @@ struct HomeFeedScrollCoordinator: UIViewRepresentable {
                     + scrollView.adjustedContentInset.bottom
             )
             let currentY = scrollView.contentOffset.y
-            if currentY < anchorOffset - 36 { return }
+            if currentY < anchorOffset - 12 { return }
+            let jumpedToNewBottom = currentY >= maxOffset - 2
+                && anchorOffset < maxOffset - delta + 2
+            guard jumpedToNewBottom else { return }
             let targetY = min(anchorOffset, maxOffset)
             if abs(currentY - targetY) > 0.5 {
                 scrollView.setContentOffset(CGPoint(x: 0, y: targetY), animated: false)

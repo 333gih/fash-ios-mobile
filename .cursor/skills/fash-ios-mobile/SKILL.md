@@ -40,7 +40,7 @@ description: >-
 | **Edit listing** | Fetch listing detail **in parallel** with catalog (brands/countries/tags). Show form when detail returns. |
 | **PDP** | Set `isLoading = false` after detail; discovery rails + `recordView` in background `Task`. |
 | **Profile grid** | `ListingStaggeredMasonryView` + `masonryEagerLayout: true` for own profile; paginate with `FeedLoadMoreFooter`. |
-| **Home load-more** | Preserve scroll anchor via `HomeFeedScrollCoordinator`; batch append in VM. |
+| **Home** | `VStack` header (not `LazyVStack`); load-more preserve **only while loading** and only if SwiftUI jumped to new bottom; **never** `trimFollowingItemsIfNeeded` during load-more (causes void when scrolling up). |
 
 ## GitHub Actions troubleshooting
 

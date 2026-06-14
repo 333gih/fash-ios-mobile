@@ -350,18 +350,9 @@ final class HomeViewModel {
                 return
             }
 
-            let batchSize = 4
-            for batchStart in stride(from: 0, to: fresh.count, by: batchSize) {
-                let end = min(batchStart + batchSize, fresh.count)
-                let batch = Array(fresh[batchStart..<end])
-                followingItems.append(contentsOf: batch)
-                trimFollowingItemsIfNeeded()
-                if selectedFeedTab == .following {
-                    syncItemsForSelectedTab()
-                }
-                if end < fresh.count {
-                    try? await Task.sleep(for: .milliseconds(72))
-                }
+            followingItems.append(contentsOf: fresh)
+            if selectedFeedTab == .following {
+                syncItemsForSelectedTab()
             }
             FeedPerformance.log("Home following append -> items=\(followingItems.count)")
         }

@@ -14,7 +14,6 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
     @State private var layoutedItemCount = 0
     @State private var containerWidth: CGFloat = 0
     @State private var layoutRefreshTask: Task<Void, Never>?
-    @State private var revealedChunkIds: Set<Int> = []
 
     private var gap: CGFloat { spacing.spacing2 }
 
@@ -45,29 +44,15 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
             ForEach(feedChunks) { chunk in
                 feedChunkRow(chunk)
                     .id("masonry_chunk_\(chunk.id)")
-                    .opacity(revealedChunkIds.contains(chunk.id) ? 1 : 0)
-                    .offset(y: revealedChunkIds.contains(chunk.id) ? 0 : 8)
-                    .onAppear {
-                        guard !revealedChunkIds.contains(chunk.id) else { return }
-                        withAnimation(.easeOut(duration: 0.22)) {
-                            revealedChunkIds.insert(chunk.id)
-                        }
-                    }
             }
             footer()
         }
-        .onAppear {
-            scheduleLayoutRefresh(forceFull: true)
-            if revealedChunkIds.isEmpty, !feedChunks.isEmpty {
-                revealedChunkIds = Set(feedChunks.map(\.id))
-            }
-        }
+        .onAppear { scheduleLayoutRefresh(forceFull: true) }
         .onChange(of: items.map(\.id)) { oldIds, newIds in
             if newIds.count < oldIds.count {
-                revealedChunkIds = []
                 scheduleLayoutRefresh(forceFull: true)
-            } else {
-                scheduleLayoutRefresh(forceFull: false)
+            } else if newIds.count > oldIds.count {
+                refreshLayout(forceFull: false)
             }
         }
         .onChange(of: engagementLayoutSignature) { _, _ in
