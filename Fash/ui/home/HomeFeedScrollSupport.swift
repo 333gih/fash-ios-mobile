@@ -191,6 +191,7 @@ struct HomeFeedScrollCoordinator: UIViewRepresentable {
         uiView.runScrollToTop(generation: coordinator.scrollToTopGeneration)
     }
 
+    @MainActor
     final class Coordinator {
         var boundary: HomeFeedScrollBoundary
         var lastScrollToTopToken = 0
