@@ -64,6 +64,11 @@ struct HomeFeedContent: View {
     @State private var stickyScrollSample = HomeStickyScrollSample()
     @State private var homeScrollBoundary = HomeFeedScrollBoundary()
     @State private var homeHeaderHeight: CGFloat = 0
+    @State private var homeTabRowHeight: CGFloat = 48
+    @State private var feedContentBottomY: CGFloat = .infinity
+    @State private var scrollViewportHeight: CGFloat = 0
+    @State private var lastFollowingLoadMoreAt = Date.distantPast
+    @State private var homeScrollClampRevision = 0
     @State private var masonryColumnAssignmentsByTab: [String: [String: Bool]] = [:]
     @State private var listingInteractionEnabled = true
 
@@ -84,6 +89,22 @@ struct HomeFeedContent: View {
         let shouldShow = chromePinnedLatch
         if showStickyTabs != shouldShow {
             showStickyTabs = shouldShow
+        }
+    }
+
+    private var pinnedChromeHeight: CGFloat {
+        max(0, homeHeaderHeight + homeTabRowHeight)
+    }
+
+    private var homeViewportHeightReader: some View {
+        GeometryReader { geo in
+            Color.clear
+                .onAppear {
+                    if geo.size.height > 0 { scrollViewportHeight = geo.size.height }
+                }
+                .onChange(of: geo.size.height) { _, height in
+                    if height > 0 { scrollViewportHeight = height }
+                }
         }
     }
 
@@ -133,6 +154,14 @@ struct HomeFeedContent: View {
                         viewModel.selectFeedTab(tabs[index], deps: deps, isGuestMode: isGuestMode)
                     }
                     .background {
+                        homeViewportHeightReader
+                        PinnedTabScrollOffsetFixer(
+                            resetToken: viewModel.homePinnedScrollResetToken,
+                            trueTopToken: viewModel.homeScrollToTopToken,
+                            clampRevision: homeScrollClampRevision,
+                            headerHeight: pinnedChromeHeight,
+                            suspendDuringPull: viewModel.isRefreshing
+                        )
                         HomeFeedScrollCoordinator(
                             scrollBoundary: homeScrollBoundary,
                             scrollToTopToken: viewModel.homeScrollToTopToken
@@ -147,25 +176,43 @@ struct HomeFeedContent: View {
                 .onPreferenceChange(HomeFeedScrollOffsetKey.self) { topMinY in
                     stickyScrollSample.topMinY = topMinY
                     recomputeStickyTabs()
+                    evaluateFollowingScrollLoadMore(headerMinY: topMinY)
                 }
                 .onPreferenceChange(HomeTabRowMinYKey.self) { tabRowMinY in
                     stickyScrollSample.tabRowMinY = tabRowMinY
                     recomputeStickyTabs()
                 }
-                .overlay(alignment: .top) {
-                    homeFeedTabsBar(sticky: true)
-                        .opacity(showStickyTabs ? 1 : 0)
-                        .allowsHitTesting(showStickyTabs)
+                .onPreferenceChange(HomeTabRowHeightKey.self) { height in
+                    guard height > 1, abs(height - homeTabRowHeight) > 0.5 else { return }
+                    homeTabRowHeight = height
                 }
+                .onPreferenceChange(FeedContentBottomYKey.self) { bottomY in
+                    feedContentBottomY = bottomY
+                }
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    if showStickyTabs {
+                        homeFeedTabsBar(sticky: true)
+                            .transition(.opacity)
+                    }
+                }
+                .animation(.easeInOut(duration: 0.16), value: showStickyTabs)
                 .fashFeedPullRefresh(isRefreshing: $viewModel.isRefreshing) {
                     await viewModel.pullToRefresh(deps: deps, isGuestMode: isGuestMode)
                 }
                 .onChange(of: viewModel.homeScrollToTopToken) { _, _ in
                     applyHomeScrollToTop(using: scrollProxy)
                 }
+                .onChange(of: viewModel.homeScrollToFeedTopToken) { _, _ in
+                    applyHomeScrollToFeedTop(using: scrollProxy)
+                }
                 .onChange(of: viewModel.selectedFeedTabKey) { oldKey, newKey in
                     guard oldKey != newKey else { return }
                     onHomeFeedTabChanged(to: newKey)
+                }
+                .onChange(of: viewModel.items.count) { oldCount, newCount in
+                    guard viewModel.selectedFeedTab == .following else { return }
+                    guard newCount < oldCount, !viewModel.isRefreshing else { return }
+                    homeScrollClampRevision += 1
                 }
             }
 
@@ -400,6 +447,10 @@ struct HomeFeedContent: View {
                 if viewModel.showsHomeBrandFooter(isGuestMode: isGuestMode) {
                     HomeBrandFooterStrip()
                 }
+
+                if !viewModel.items.isEmpty {
+                    FeedScrollContentBottomReporter(coordinateSpace: "homeFeedScroll")
+                }
             }
             .padding(.top, spacing.spacing2)
             .padding(.bottom, spacing.spacing4)
@@ -420,14 +471,59 @@ struct HomeFeedContent: View {
     private func onHomeFeedTabChanged(to tabKey: String) {
         let tab = HomeFeedTab(rawValue: tabKey) ?? viewModel.selectedFeedTab
         viewModel.syncVisibleItemsForTab(tab)
-        chromePinnedLatch = false
-        showStickyTabs = false
+        feedContentBottomY = .infinity
+        lastFollowingLoadMoreAt = .distantPast
+        if chromePinnedLatch {
+            showStickyTabs = true
+        }
     }
 
     private func applyHomeScrollToTop(using scrollProxy: ScrollViewProxy) {
         chromePinnedLatch = false
         showStickyTabs = false
         HomeFeedScrollReset.scheduleScrollToTop(proxy: scrollProxy)
+    }
+
+    private func applyHomeScrollToFeedTop(using scrollProxy: ScrollViewProxy) {
+        if chromePinnedLatch {
+            showStickyTabs = true
+        }
+        HomeFeedScrollReset.scheduleScrollToFeedTop(proxy: scrollProxy)
+    }
+
+    private func evaluateFollowingScrollLoadMore(headerMinY: CGFloat) {
+        guard viewModel.selectedFeedTab == .following else { return }
+        guard viewModel.followingHasMore, !viewModel.isLoadingMoreFollowing else { return }
+        guard !viewModel.isShellLoading, !viewModel.isRefreshing else { return }
+        guard !viewModel.isTabLoading(.following), !viewModel.items.isEmpty else { return }
+
+        let now = Date()
+        guard now.timeIntervalSince(lastFollowingLoadMoreAt) >= 0.65 else { return }
+
+        let scrolled = max(0, -headerMinY)
+        let minScroll = pinnedChromeHeight > 24
+            ? max(pinnedChromeHeight * 0.25, 72)
+            : 96
+        guard scrolled > minScroll else { return }
+
+        let shouldLoad = FeedScrollPaginationPolicy.shouldLoadMore(
+            headerMinY: headerMinY,
+            contentBottomY: feedContentBottomY,
+            viewportHeight: scrollViewportHeight,
+            hasItems: true,
+            hasMore: viewModel.followingHasMore,
+            isLoadingMore: viewModel.isLoadingMoreFollowing,
+            isLoadingFirstPage: viewModel.isTabLoading(.following)
+        ) || FeedScrollPaginationPolicy.isAtScrollBottom(
+            headerMinY: headerMinY,
+            contentBottomY: feedContentBottomY,
+            viewportHeight: scrollViewportHeight,
+            tolerance: 48
+        )
+        guard shouldLoad else { return }
+
+        lastFollowingLoadMoreAt = now
+        viewModel.loadMoreFollowing(deps: deps, isGuestMode: isGuestMode, fromScrollEdge: true)
     }
 }
 

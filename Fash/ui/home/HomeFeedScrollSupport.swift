@@ -24,6 +24,15 @@ struct HomeTabRowMinYKey: PreferenceKey {
     }
 }
 
+struct HomeTabRowHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 48
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        let next = nextValue()
+        if next > 0 { value = next }
+    }
+}
+
 struct HomeFeedScrollOffsetAnchor: View {
     var body: some View {
         Color.clear
@@ -49,10 +58,12 @@ extension View {
     func homeTabRowScrollReporting(space: String = "homeFeedScroll") -> some View {
         background {
             GeometryReader { geo in
-                Color.clear.preference(
-                    key: HomeTabRowMinYKey.self,
-                    value: geo.frame(in: .named(space)).minY
-                )
+                Color.clear
+                    .preference(
+                        key: HomeTabRowMinYKey.self,
+                        value: geo.frame(in: .named(space)).minY
+                    )
+                    .preference(key: HomeTabRowHeightKey.self, value: geo.size.height)
             }
             .allowsHitTesting(false)
         }
@@ -107,6 +118,31 @@ enum HomeFeedScrollReset {
             for delayMs in delaysMs where delayMs > 0 {
                 try? await Task.sleep(for: .milliseconds(delayMs))
                 scrollToTop(proxy: proxy)
+            }
+        }
+    }
+
+    @MainActor
+    static func scrollToFeedTop(proxy: ScrollViewProxy) {
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            proxy.scrollTo(HomeScrollIds.pinnedTabs, anchor: .top)
+        }
+    }
+
+    /// Tab swipe / different tab — pinned tab row + feed start (Profile `scrollToPinnedContent` parity).
+    @MainActor
+    static func scheduleScrollToFeedTop(
+        proxy: ScrollViewProxy,
+        delaysMs: [Int] = [0, 80, 200, 320]
+    ) {
+        scrollToFeedTop(proxy: proxy)
+        guard delaysMs.contains(where: { $0 > 0 }) else { return }
+        Task { @MainActor in
+            for delayMs in delaysMs where delayMs > 0 {
+                try? await Task.sleep(for: .milliseconds(delayMs))
+                scrollToFeedTop(proxy: proxy)
             }
         }
     }

@@ -27,6 +27,9 @@ final class HomeViewModel {
     var buyerStats = BuyerHomeStats()
     var showSizingBanner = false
     private(set) var homeScrollToTopToken = 0
+    /// Tab tap/swipe — scroll to pinned tab row + feed start (not full header).
+    private(set) var homeScrollToFeedTopToken = 0
+    private(set) var homePinnedScrollResetToken = 0
     private(set) var homeTabBarScrollToken = 0
     var homeFeedTrimToken = 0
     private(set) var homeFeedTrimSignedDeltaY: CGFloat = 0
@@ -133,7 +136,7 @@ final class HomeViewModel {
         deps.uxTabTracker.onTabOpened(scope: "home", tabKey: UxPersonalizationMapping.uxTabKey(for: tab))
         selectedFeedTabKey = tab.rawValue
         syncVisibleItemsForTab(tab)
-        requestScrollHomeToTop()
+        requestScrollHomeFeedToTop()
         ensureTabLoaded(tab, deps: deps, isGuestMode: isGuestMode)
         homeTabBarScrollToken &+= 1
         Task { @MainActor in
@@ -143,9 +146,15 @@ final class HomeViewModel {
         }
     }
 
-    /// Bottom-nav re-tap / pull-to-refresh — scroll feed to top (Android `requestScrollHomeToTop`).
+    /// Bottom-nav re-tap / same-tab reselect — scroll to full header top (Android `requestScrollHomeToTop`).
     func requestScrollHomeToTop() {
         homeScrollToTopToken &+= 1
+    }
+
+    /// Horizontal swipe or different tab tap — align pinned tabs + first rows of that tab.
+    func requestScrollHomeFeedToTop() {
+        homeScrollToFeedTopToken &+= 1
+        homePinnedScrollResetToken &+= 1
     }
 
     func normalizeSelectedFeedTab(isGuestMode: Bool, deps: AppDependencies) {
@@ -330,12 +339,14 @@ final class HomeViewModel {
         ensureTabLoaded(tab, deps: deps, isGuestMode: isGuestMode, force: true)
     }
 
-    func loadMoreFollowing(deps: AppDependencies, isGuestMode: Bool) {
+    func loadMoreFollowing(deps: AppDependencies, isGuestMode: Bool, fromScrollEdge: Bool = false) {
         guard !isGuestMode else { return }
         guard selectedFeedTab == .following else { return }
         guard !isLoadingMoreFollowing, followingHasMore else { return }
         guard !isShellLoading, !isRefreshing, !isTabLoading(.following) else { return }
-        guard homeScrollBoundary?.allowsFollowingLoadMore ?? false else { return }
+        if !fromScrollEdge {
+            guard homeScrollBoundary?.allowsFollowingLoadMore ?? false else { return }
+        }
         if let last = lastFollowFeedLoadMoreAt, Date().timeIntervalSince(last) < 0.9 { return }
         lastFollowFeedLoadMoreAt = Date()
         isLoadingMoreFollowing = true
