@@ -854,7 +854,7 @@ final class HomeViewModel {
     /// Immediate tab body swap from per-tab cache — avoids white flash while a tab reloads.
     func syncVisibleItemsForTab(_ tab: HomeFeedTab) {
         let cached = itemsForTab(tab)
-        guard cached.map(\.id) != items.map(\.id) else { return }
+        guard cached != items else { return }
         items = cached
     }
 
@@ -862,7 +862,7 @@ final class HomeViewModel {
         let tab = selectedFeedTab
         let cached = itemsForTab(tab)
         if loadedTabs.contains(tab.rawValue), !tabsLoading.contains(tab.rawValue) {
-            guard cached.map(\.id) != items.map(\.id) else {
+            guard cached != items else {
                 if !items.isEmpty { errorMessage = nil }
                 return
             }
@@ -874,7 +874,7 @@ final class HomeViewModel {
             return
         }
         if !cached.isEmpty {
-            guard cached.map(\.id) != items.map(\.id) else { return }
+            guard cached != items else { return }
             items = cached
             return
         }
@@ -882,7 +882,7 @@ final class HomeViewModel {
         if tabsLoading.contains(tab.rawValue) {
             if cached.isEmpty, !items.isEmpty {
                 items = []
-            } else if !cached.isEmpty, cached.map(\.id) != items.map(\.id) {
+            } else if cached != items {
                 items = cached
             }
         }
@@ -1001,7 +1001,11 @@ final class HomeViewModel {
         sections.stylePicks = sections.stylePicks.map { $0.id == id ? transform($0) : $0 }
         sections.similarToSaved = sections.similarToSaved.map { $0.id == id ? transform($0) : $0 }
         sections.seasonalNearYou = sections.seasonalNearYou.map { $0.id == id ? transform($0) : $0 }
-        syncItemsForSelectedTab()
+        if items.contains(where: { $0.id == id }) {
+            items = items.map { $0.id == id ? transform($0) : $0 }
+        } else {
+            syncItemsForSelectedTab()
+        }
     }
 }
 

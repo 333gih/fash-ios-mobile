@@ -27,6 +27,7 @@ struct ProfileScreen: View {
     @State private var profileScrollBoundary = HomeFeedScrollBoundary()
     /// Home journey → wishlist / in-review: pin grid after refresh settles (Android `pendingExternalGridScroll`).
     @State private var pendingExternalGridScroll = false
+    @State private var externalGridScrollTask: Task<Void, Never>?
 
     private var showBlockingLoadError: Bool {
         viewModel.loadError && viewModel.profile == nil && !viewModel.isLoading && !viewModel.isRefreshing
@@ -220,12 +221,29 @@ struct ProfileScreen: View {
 
     /// Scroll listing grid to pinned tabs once refresh + first-page load settle (Android `LaunchedEffect(pendingExternalGridScroll, …)`).
     private func tryApplyPendingExternalGridScroll() {
-        guard pendingExternalGridScroll else { return }
+        guard pendingExternalGridScroll else {
+            externalGridScrollTask?.cancel()
+            externalGridScrollTask = nil
+            return
+        }
         guard viewModel.hasCompletedInitialLoad else { return }
         guard !viewModel.isRefreshing else { return }
         guard !showListingGridLoading else { return }
-        pendingExternalGridScroll = false
-        scrollToGridToken += 1
+        guard externalGridScrollTask == nil else { return }
+
+        externalGridScrollTask = Task { @MainActor in
+            defer { externalGridScrollTask = nil }
+            // Retry while masonry + tab body settle — mirrors Android `scrollProfileToPinnedGrid` repeat loop.
+            for delayMs in [0, 80, 160, 320, 520, 720] {
+                if delayMs > 0 {
+                    try? await Task.sleep(for: .milliseconds(delayMs))
+                }
+                guard !Task.isCancelled, pendingExternalGridScroll else { return }
+                guard !viewModel.isRefreshing, !showListingGridLoading else { continue }
+                scrollToGridToken += 1
+            }
+            pendingExternalGridScroll = false
+        }
     }
 
     @ViewBuilder

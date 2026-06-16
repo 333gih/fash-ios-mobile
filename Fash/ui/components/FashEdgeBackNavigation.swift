@@ -1,6 +1,20 @@
 import SwiftUI
 import UIKit
 
+/// Dismisses the software keyboard / first responder before edge-back navigation.
+enum FashKeyboard {
+    /// Returns `true` when a first responder was resigned (keyboard likely dismissed).
+    @MainActor
+    static func dismissIfNeeded() -> Bool {
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil,
+            from: nil,
+            for: nil
+        )
+    }
+}
+
 /// Live edge-back drag state — drives the chevron affordance without re-rendering the whole tree every frame.
 @Observable
 @MainActor
@@ -108,6 +122,9 @@ struct FashEdgeBackNavigation: UIViewRepresentable {
                 Task { @MainActor in
                     coordinator.gestureState.reset()
                     if shouldCommit {
+                        if FashKeyboard.dismissIfNeeded() {
+                            return
+                        }
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         coordinator.onBack()
                     }
@@ -193,7 +210,8 @@ extension AppRouter {
         if loginStep == .otp {
             return true
         }
-        if selectedTab != .home {
+        // Post tab owns edge-back (prev step / discard dialog) via CreateListingFlowScreen.
+        if selectedTab != .home, selectedTab != .post {
             return true
         }
         _ = notificationsViewModel
@@ -242,7 +260,7 @@ extension AppRouter {
             loginStep = .email
             return true
         }
-        if selectedTab != .home {
+        if selectedTab != .home, selectedTab != .post {
             selectedTab = .home
             return true
         }

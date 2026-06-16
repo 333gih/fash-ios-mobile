@@ -54,14 +54,6 @@ struct ProductDetailScreen: View {
         } message: {
             Text(buyNowEnabled ? L10n.productPurchaseGuideBody : L10n.productPurchaseGuideBodyNoBuyNow)
         }
-        .alert(L10n.dialogTitleInfo, isPresented: Binding(
-            get: { viewModel.snackbarMessage != nil },
-            set: { if !$0 { viewModel.snackbarMessage = nil } }
-        )) {
-            Button(L10n.dialogOk) { viewModel.snackbarMessage = nil }
-        } message: {
-            Text(viewModel.snackbarMessage ?? "")
-        }
         .sheet(item: $sharePayload) { payload in
             ActivityShareSheet(items: payload.items) { completed in
                 FashActivityShare.showSuccessIfNeeded(

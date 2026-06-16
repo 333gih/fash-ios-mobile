@@ -126,32 +126,61 @@ enum ProductDetailComponents {
                     }
                 }
                 Spacer(minLength: 8)
-                VStack(spacing: 8) {
+                HStack(spacing: 8) {
                     if isFollowing {
-                        Button(L10n.productActionFollowingSeller, action: onUnfollow)
-                            .font(FashTypography.labelMedium.weight(.semibold))
-                            .foregroundStyle(FashColors.textSecondary)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .overlay(Capsule().stroke(FashColors.outlineMuted, lineWidth: 1))
+                        sellerActionPill(
+                            title: L10n.productActionFollowingSeller,
+                            foreground: FashColors.textSecondary,
+                            background: Color.clear,
+                            border: FashColors.outlineMuted,
+                            action: onUnfollow
+                        )
                     } else {
-                        Button(L10n.productActionFollowSeller, action: onFollow)
-                            .font(FashTypography.labelMedium.weight(.semibold))
-                            .foregroundStyle(FashColors.onBrandPrimary)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .background(FashColors.brandPrimary)
-                            .clipShape(Capsule())
+                        sellerActionPill(
+                            title: L10n.productActionFollowSeller,
+                            foreground: FashColors.onBrandPrimary,
+                            background: FashColors.brandPrimary,
+                            border: nil,
+                            action: onFollow
+                        )
                     }
-                    Button(L10n.productVisitShop, action: onVisitShop)
-                        .font(FashTypography.labelMedium.weight(.semibold))
-                        .foregroundStyle(FashColors.brandPrimary)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .overlay(Capsule().stroke(FashColors.brandPrimary, lineWidth: 1))
+                    sellerActionPill(
+                        title: L10n.productVisitShop,
+                        foreground: FashColors.brandPrimary,
+                        background: Color.clear,
+                        border: FashColors.brandPrimary,
+                        action: onVisitShop
+                    )
                 }
+                .fixedSize(horizontal: true, vertical: false)
             }
         }
+    }
+
+    private static func sellerActionPill(
+        title: String,
+        foreground: Color,
+        background: Color,
+        border: Color?,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(FashTypography.labelSmall.weight(.semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+                .foregroundStyle(foreground)
+                .frame(minWidth: 92, minHeight: 34)
+                .padding(.horizontal, 10)
+                .background(background)
+                .clipShape(Capsule())
+                .overlay {
+                    if let border {
+                        Capsule().stroke(border, lineWidth: 1)
+                    }
+                }
+        }
+        .buttonStyle(.plain)
     }
 
     static func priceInfoCard(

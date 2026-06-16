@@ -206,7 +206,8 @@ final class ProfileViewModel {
     func refresh(
         deps: AppDependencies,
         force: Bool = true,
-        activeTab: ProfileListingTab? = nil
+        activeTab: ProfileListingTab? = nil,
+        scrollToTop: Bool = true
     ) async {
         if !force,
            let last = lastSuccessfulRefreshAt,
@@ -221,7 +222,9 @@ final class ProfileViewModel {
             hasCompletedInitialLoad = false
             isLoading = true
         } else {
-            requestScrollProfileToTop()
+            if scrollToTop {
+                requestScrollProfileToTop()
+            }
             isRefreshing = true
         }
         loadError = false
@@ -778,10 +781,11 @@ final class ProfileViewModel {
 
     private func requestOpenProfileTab(fromHome tab: ProfileListingTab, deps: AppDependencies) {
         requestOpenProfileTab(tab, scrollToGrid: true)
-        Task { await refresh(deps: deps, force: true, activeTab: tab) }
+        Task { await refresh(deps: deps, force: true, activeTab: tab, scrollToTop: false) }
     }
 
     private func requestOpenProfileTab(_ tab: ProfileListingTab, scrollToGrid: Bool) {
+        lastSelectedProfileTab = tab.rawValue
         profileTabOpenRequest = ProfileTabOpenRequest(tab: tab, scrollToGrid: scrollToGrid)
         profileTabOpenGeneration += 1
     }

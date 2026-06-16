@@ -41,7 +41,6 @@ final class ProductDetailViewModel {
     var buyerActiveOrder: BuyerActiveOrder?
     var showPurchaseGuide = false
     var isOpeningChat = false
-    var snackbarMessage: String?
     var galleryIndex = 0
 
     private var activeListingId = ""
@@ -204,10 +203,10 @@ final class ProductDetailViewModel {
             let delta = (saved && !d.isSaved) ? 1 : ((!saved && d.isSaved) ? -1 : 0)
             detail = d.copyMutating(isSaved: saved, saveCount: max(0, d.saveCount + delta))
             if saved { deps.feedEventReporter.save(listingId: d.id, surface: "pdp") }
-            snackbarMessage = FeedEngagementFeedback.saveMessage(saved: saved)
+            deps.showSnackbar(FeedEngagementFeedback.saveMessage(saved: saved))
             return saved && delta > 0
         case .failure(let error):
-            snackbarMessage = FeedEngagementFeedback.actionErrorMessage(for: error)
+            deps.showSnackbar(FeedEngagementFeedback.actionErrorMessage(for: error))
             return false
         }
     }
@@ -222,11 +221,8 @@ final class ProductDetailViewModel {
                 deps.feedEventReporter.followSeller(listingId: id, surface: "pdp")
             }
             deps.showSnackbar(L10n.followSuccess)
-            snackbarMessage = L10n.followSuccess
         case .failure(let error):
-            let msg = FeedEngagementFeedback.actionErrorMessage(for: error)
-            deps.showSnackbar(msg)
-            snackbarMessage = msg
+            deps.showSnackbar(FeedEngagementFeedback.actionErrorMessage(for: error))
         }
     }
 
@@ -237,7 +233,7 @@ final class ProductDetailViewModel {
             isFollowing = false
             detail = detail?.copyMutating(sellerIsFollowing: false)
         case .failure(let error):
-            snackbarMessage = FashErrorPresentation.userMessage(for: error)
+            deps.showSnackbar(FashErrorPresentation.userMessage(for: error))
         }
     }
 
@@ -250,7 +246,7 @@ final class ProductDetailViewModel {
         case .success(let convId):
             return convId
         case .failure(let error):
-            snackbarMessage = FashErrorPresentation.userMessage(for: error)
+            deps.showSnackbar(FashErrorPresentation.userMessage(for: error))
             return nil
         }
     }
@@ -313,7 +309,7 @@ final class ProductDetailViewModel {
                 self.detail = self.detail?.copyMutating(status: "active")
                 self.bottomBarMode = .normal
                 self.buyerActiveOrder = nil
-                self.snackbarMessage = L10n.productListingAvailableSnackbar
+                deps.showSnackbar(L10n.productListingAvailableSnackbar)
             case .listingSold(let lid) where self.listingIdMatches(lid):
                 self.detail = self.detail?.copyMutating(status: "sold")
                 self.bottomBarMode = .sold
@@ -489,21 +485,12 @@ final class ProductDetailViewModel {
             }
             if liked { deps.feedEventReporter.like(listingId: itemId, surface: surface) }
             let message = FeedEngagementFeedback.likeMessage(liked: liked)
-            if itemId == detail?.id {
-                snackbarMessage = message
-            } else {
-                deps.showSnackbar(message)
-            }
+            deps.showSnackbar(message)
         case .failure(let error):
             if let snapshot {
                 patchRails(itemId) { _ in snapshot }
             }
-            let message = FeedEngagementFeedback.actionErrorMessage(for: error)
-            if itemId == detail?.id {
-                snackbarMessage = message
-            } else {
-                deps.showSnackbar(message)
-            }
+            deps.showSnackbar(FeedEngagementFeedback.actionErrorMessage(for: error))
         }
     }
 

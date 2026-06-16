@@ -452,6 +452,9 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         guard oldTab != newTab else { return }
         feedContentBottomY = .infinity
         lastProximityLoadMoreAt = .distantPast
+        if suppressScrollClamp {
+            scheduleClampAfterTabContentLayout()
+        }
         guard !isRefreshing, !lockScroll else { return }
         let oldVisual = resolvedTabIndices.firstIndex(of: oldTab) ?? 0
         let newVisual = resolvedTabIndices.firstIndex(of: newTab) ?? 0
@@ -459,9 +462,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         if chromePinnedLatch || reportedTabsPinned {
             profileScrollResetToken += 1
         }
-        if suppressScrollClamp {
-            scheduleClampAfterTabContentLayout()
-        } else {
+        if !suppressScrollClamp {
             scrollClampRevision += 1
         }
     }
@@ -506,6 +507,9 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             contentId: listingGridScrollId,
             followUpDelaysMs: [120, 280]
         )
+        if suppressScrollClamp {
+            scheduleClampAfterTabContentLayout()
+        }
     }
 
     /// After tab body height changes, clamp only if offset is past content end — never scroll up to pinned target.

@@ -53,11 +53,24 @@ struct CreateListingFlowScreen: View {
             .fashEdgeBackNavigation { showAddAddress = false }
         }
         .fashEdgeBackNavigation {
-            if postVM.step > createListingModeStep {
-                postVM.prevStep()
-            } else {
-                handleCloseAttempt()
-            }
+            handleCreateListingEdgeBack()
+        }
+    }
+
+    /// Mirrors header back / system back — prev step inside the flow, discard prompt when exiting.
+    private func handleCreateListingEdgeBack() {
+        if showDiscardDialog {
+            showDiscardDialog = false
+            return
+        }
+        if showAddAddress {
+            showAddAddress = false
+            return
+        }
+        if postVM.step > createListingModeStep {
+            postVM.prevStep()
+        } else {
+            handleCloseAttempt()
         }
     }
 
