@@ -406,7 +406,7 @@ final class SellerProfileViewModel {
         trimTasks[tab.rawValue] = Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(240))
             guard !Task.isCancelled else { return }
-            guard selectedFeedTab == tab else { return }
+            guard SellerProfileTab(rawValue: selectedTab) == tab else { return }
             guard !(scrollBoundary?.isUserInteracting ?? false) else { return }
             guard !isLoadingMoreListings(for: tab) else { return }
 
