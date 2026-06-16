@@ -229,14 +229,14 @@ struct HomeFeedContent: View {
                 )
             }
 
-            if viewModel.featuredSellersLoading {
-                HomeRecommendedSellersSkeleton()
-            } else if !viewModel.featuredSellers.isEmpty {
+            if !viewModel.featuredSellers.isEmpty {
                 HomeRecommendedSellersSection(
                     sellers: viewModel.featuredSellers,
                     onSellerClick: onFeaturedSellerClick,
                     onSeeAllClick: onOpenFeaturedSellersAll
                 )
+            } else if viewModel.featuredSellersLoading {
+                HomeRecommendedSellersSkeleton()
             }
 
             if let exploreShortcut {

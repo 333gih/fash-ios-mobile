@@ -242,8 +242,16 @@ final class HomeViewModel {
     }
 
     func loadFeaturedSellers(deps: AppDependencies, isGuestMode: Bool) async {
-        featuredSellersLoading = true
-        defer { featuredSellersLoading = false }
+        // Stale-while-revalidate — keep "Shop nên ghé" visible during nav re-tap / pull-to-refresh.
+        let shouldShowLoadingShell = featuredSellers.isEmpty
+        if shouldShowLoadingShell {
+            featuredSellersLoading = true
+        }
+        defer {
+            if shouldShowLoadingShell {
+                featuredSellersLoading = false
+            }
+        }
         switch await fetchFeaturedSellersWithRetry(deps: deps, isGuestMode: isGuestMode) {
         case .success(let sellers):
             featuredSellers = sellers

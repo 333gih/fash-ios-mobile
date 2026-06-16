@@ -518,6 +518,8 @@ struct MainNavScreen: View {
                     switch tab {
                     case .home:
                         homeVM.requestScrollHomeToTop()
+                        // Let scroll-to-top settle before refresh to avoid header/tab layout jump.
+                        try? await Task.sleep(for: .milliseconds(120))
                         await homeVM.pullToRefresh(deps: deps, isGuestMode: isGuestMode)
                     case .orders:
                         ordersVM.requestScrollOrdersToTop()
