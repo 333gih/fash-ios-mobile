@@ -104,7 +104,8 @@ struct HomeFeedContent: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            ScrollView {
+            ScrollViewReader { scrollProxy in
+                ScrollView {
                     // VStack (not LazyVStack) — lazy-unloaded header/tabs shrink contentSize when
                     // pinned, which blocks scrolling back up until many drag attempts.
                     VStack(spacing: 0) {
@@ -132,6 +133,16 @@ struct HomeFeedContent: View {
                     ) { index in
                         viewModel.selectFeedTab(tabs[index], deps: deps, isGuestMode: isGuestMode)
                     }
+                    .background {
+                        HomeFeedScrollCoordinator(scrollBoundary: homeScrollBoundary)
+                        PinnedTabScrollOffsetFixer(
+                            resetToken: 0,
+                            trueTopToken: viewModel.homeScrollToTopToken,
+                            clampRevision: homeScrollClampRevision,
+                            headerHeight: homeHeaderHeight,
+                            suspendDuringPull: viewModel.isRefreshing
+                        )
+                    }
                 }
                 .coordinateSpace(name: "homeFeedScroll")
                 .onPreferenceChange(HomeFeedScrollOffsetKey.self) { topMinY in
@@ -147,24 +158,11 @@ struct HomeFeedContent: View {
                         .opacity(showStickyTabs ? 1 : 0)
                         .allowsHitTesting(showStickyTabs)
                 }
-                .background {
-                    HomeFeedScrollCoordinator(scrollBoundary: homeScrollBoundary)
-                }
-                .background {
-                    PinnedTabScrollOffsetFixer(
-                        resetToken: 0,
-                        trueTopToken: viewModel.homeScrollToTopToken,
-                        clampRevision: homeScrollClampRevision,
-                        headerHeight: homeHeaderHeight,
-                        suspendDuringPull: viewModel.isRefreshing
-                    )
-                }
                 .fashFeedPullRefresh(isRefreshing: $viewModel.isRefreshing) {
                     await viewModel.pullToRefresh(deps: deps, isGuestMode: isGuestMode)
                 }
                 .onChange(of: viewModel.homeScrollToTopToken) { _, _ in
-                    chromePinnedLatch = false
-                    showStickyTabs = false
+                    applyHomeScrollToTop(using: scrollProxy)
                 }
                 .onChange(of: viewModel.selectedFeedTabKey) { oldKey, newKey in
                     guard oldKey != newKey else { return }
@@ -174,6 +172,7 @@ struct HomeFeedContent: View {
                     guard !viewModel.isRefreshing, newCount < oldCount else { return }
                     homeScrollClampRevision += 1
                 }
+            }
 
             if !promoSlides.isEmpty {
                 FashPromoSliderAdFooterView(slides: promoSlides) { slide, _ in
@@ -427,7 +426,12 @@ struct HomeFeedContent: View {
         viewModel.syncVisibleItemsForTab(tab)
         chromePinnedLatch = false
         showStickyTabs = false
-        homeScrollClampRevision += 1
+    }
+
+    private func applyHomeScrollToTop(using scrollProxy: ScrollViewProxy) {
+        chromePinnedLatch = false
+        showStickyTabs = false
+        HomeFeedScrollReset.scheduleScrollToTop(proxy: scrollProxy)
     }
 }
 

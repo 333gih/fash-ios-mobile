@@ -86,13 +86,28 @@ extension View {
 }
 
 enum HomeFeedScrollReset {
-    /// SwiftUI fallback — primary scroll-to-top is UIKit via [PinnedTabScrollOffsetFixer].
     @MainActor
     static func scrollToTop(proxy: ScrollViewProxy) {
         var transaction = Transaction()
         transaction.disablesAnimations = true
         withTransaction(transaction) {
             proxy.scrollTo(HomeScrollIds.top, anchor: .top)
+        }
+    }
+
+    /// Retries until masonry/header layout settles — matches Profile + Android `animateScrollToItem(0)`.
+    @MainActor
+    static func scheduleScrollToTop(
+        proxy: ScrollViewProxy,
+        delaysMs: [Int] = [0, 50, 120, 220, 360, 520]
+    ) {
+        scrollToTop(proxy: proxy)
+        guard delaysMs.contains(where: { $0 > 0 }) else { return }
+        Task { @MainActor in
+            for delayMs in delaysMs where delayMs > 0 {
+                try? await Task.sleep(for: .milliseconds(delayMs))
+                scrollToTop(proxy: proxy)
+            }
         }
     }
 }
@@ -127,10 +142,12 @@ final class HomeFeedScrollBoundary {
     private(set) var isNearBottom = false
     private(set) var isAtTop = true
     private(set) var isScrollingUp = false
+    private(set) var isUserInteracting = false
 
     /// Load-more when near the feed bottom and not actively scrolling up toward the header.
     var allowsFollowingLoadMore: Bool {
         guard !isScrollingUp else { return false }
+        guard !isUserInteracting else { return false }
         return isNearBottom
     }
 
@@ -140,7 +157,8 @@ final class HomeFeedScrollBoundary {
         viewportHeight: CGFloat,
         adjustedInsetTop: CGFloat,
         adjustedInsetBottom: CGFloat,
-        deltaY: CGFloat
+        deltaY: CGFloat,
+        isUserInteracting: Bool
     ) {
         let atTop = HomeFeedScrollMath.isAtTop(
             contentOffsetY: contentOffsetY,
@@ -154,6 +172,7 @@ final class HomeFeedScrollBoundary {
         )
         if atTop != isAtTop { isAtTop = atTop }
         if nearBottom != isNearBottom { isNearBottom = nearBottom }
+        if isUserInteracting != self.isUserInteracting { self.isUserInteracting = isUserInteracting }
         if abs(deltaY) > 3.5 {
             if deltaY < 0 {
                 if !isScrollingUp { isScrollingUp = true }
@@ -165,12 +184,15 @@ final class HomeFeedScrollBoundary {
     }
 
     fileprivate func clearScrollingUpIfIdle() {
-        // Only release the scroll-up latch at the top — mid-feed idle still blocks load-more.
-        if isScrollingUp, isAtTop { isScrollingUp = false }
+        guard isScrollingUp else { return }
+        // Release when back at top, or when user scrolled up away from the pagination zone.
+        if isAtTop || !isNearBottom {
+            isScrollingUp = false
+        }
     }
 }
 
-/// Boundary tracking on the home feed `UIScrollView` (scroll-to-top uses [PinnedTabScrollOffsetFixer]).
+/// Boundary tracking on the home feed `UIScrollView` — anchor must live inside scroll content.
 struct HomeFeedScrollCoordinator: UIViewRepresentable {
     var scrollBoundary: HomeFeedScrollBoundary
 
@@ -223,13 +245,17 @@ struct HomeFeedScrollCoordinator: UIViewRepresentable {
 
         @MainActor
         private func reportBoundary(on scrollView: UIScrollView, deltaY: CGFloat) {
+            let interacting = scrollView.isDragging
+                || scrollView.isTracking
+                || scrollView.isDecelerating
             boundary.apply(
                 contentOffsetY: scrollView.contentOffset.y,
                 contentHeight: scrollView.contentSize.height,
                 viewportHeight: scrollView.bounds.height,
                 adjustedInsetTop: scrollView.adjustedContentInset.top,
                 adjustedInsetBottom: scrollView.adjustedContentInset.bottom,
-                deltaY: deltaY
+                deltaY: deltaY,
+                isUserInteracting: interacting
             )
             scrollIdleTask?.cancel()
             scrollIdleTask = Task { @MainActor in

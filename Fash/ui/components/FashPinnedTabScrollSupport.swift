@@ -91,10 +91,8 @@ struct PinnedTabScrollOffsetFixer: UIViewRepresentable {
             scrollView.layoutIfNeeded()
             clearPullRefreshInsetIfNeeded(on: scrollView)
             let visualTop = -scrollView.adjustedContentInset.top
-            if scrollView.contentOffset.y > visualTop + 1.5 {
-                scrollView.setContentOffset(CGPoint(x: 0, y: visualTop), animated: false)
-            }
-            guard attempt < 5 else { return }
+            scrollView.setContentOffset(CGPoint(x: 0, y: visualTop), animated: false)
+            guard attempt < 10 else { return }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) { [weak self] in
                 self?.applyTrueTop(attempt: attempt + 1)
             }
