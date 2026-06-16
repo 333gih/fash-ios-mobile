@@ -137,6 +137,13 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     var enableTilePrefetchLoadMore: Bool = false
     /// Skeleton rows at grid bottom while the next page loads (seller storefront).
     var loadMoreSkeletonRows: Int = 0
+    /// Sliding-window storefront — skip UIKit clamp that fights trim / tab swaps.
+    var suppressScrollClamp: Bool = false
+    /// Load next page only when feed bottom reaches the viewport (not mid-grid prefetch).
+    var loadMoreAtScrollBottom: Bool = false
+    var bottomLoadMoreTolerance: CGFloat = 40
+    /// Optional scroll boundary for sliding-window trim gating (seller storefront).
+    var feedScrollBoundary: HomeFeedScrollBoundary? = nil
     /// Sliding-window trim/prepend — keeps viewport stable after rows drop above the fold.
     var feedTrimCompensationToken: Int = 0
     var feedTrimCompensationSignedDeltaY: CGFloat = 0
@@ -191,11 +198,13 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         .scrollDisabled(lockScroll)
         .background(profileViewportHeightReader)
         .background {
-            PinnedTabScrollOffsetFixer(
-                resetToken: profileScrollResetToken,
-                clampRevision: scrollClampRevision,
-                headerHeight: headerHeight
-            )
+            if !suppressScrollClamp {
+                PinnedTabScrollOffsetFixer(
+                    resetToken: profileScrollResetToken,
+                    clampRevision: scrollClampRevision,
+                    headerHeight: headerHeight
+                )
+            }
         }
         .coordinateSpace(name: ProfileScrollIds.coordinateSpaceName)
         .onAppear(perform: resetProfileScrollChromeState)
@@ -210,6 +219,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             handleSelectedTabChange(from: oldTab, to: newTab)
         }
         .onChange(of: items.count) { oldCount, newCount in
+            guard !suppressScrollClamp else { return }
             guard !isRefreshing, !showGridLoading, showEmptyState else { return }
             guard newCount < oldCount else { return }
             scrollClampRevision += 1
@@ -414,12 +424,18 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         if enableScrollProximityLoadMore {
             evaluateScrollProximityLoadMore(headerMinY: offset)
         }
+        if loadMoreAtScrollBottom {
+            evaluateBottomEdgeLoadMore(headerMinY: offset)
+        }
     }
 
     private func handleFeedContentBottomY(_ bottomY: CGFloat) {
         feedContentBottomY = bottomY
         if enableScrollProximityLoadMore {
             evaluateScrollProximityLoadMore(headerMinY: lastScrollOffset)
+        }
+        if loadMoreAtScrollBottom {
+            evaluateBottomEdgeLoadMore(headerMinY: lastScrollOffset)
         }
     }
 
@@ -439,6 +455,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         let oldVisual = resolvedTabIndices.firstIndex(of: oldTab) ?? 0
         let newVisual = resolvedTabIndices.firstIndex(of: newTab) ?? 0
         tabSlideDirection = FashTabSwipeMotion.slideDirection(oldIndex: oldVisual, newIndex: newVisual)
+        guard !suppressScrollClamp else { return }
         scrollClampRevision += 1
     }
 
@@ -529,6 +546,21 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             hasMore: hasMoreListings,
             isLoadingMore: isLoadingMoreListings,
             isLoadingFirstPage: showGridLoading
+        ) else { return }
+        lastProximityLoadMoreAt = now
+        onLoadMore()
+    }
+
+    private func evaluateBottomEdgeLoadMore(headerMinY: CGFloat) {
+        guard loadMoreAtScrollBottom, let onLoadMore else { return }
+        guard hasMoreListings, !isLoadingMoreListings, !showGridLoading, !items.isEmpty else { return }
+        let now = Date()
+        guard now.timeIntervalSince(lastProximityLoadMoreAt) >= 0.65 else { return }
+        guard FeedScrollPaginationPolicy.isAtScrollBottom(
+            headerMinY: headerMinY,
+            contentBottomY: feedContentBottomY,
+            viewportHeight: scrollViewportHeight,
+            tolerance: bottomLoadMoreTolerance
         ) else { return }
         lastProximityLoadMoreAt = now
         onLoadMore()
@@ -641,7 +673,10 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             FeedLoadMoreFooter(
                 enabled: hasMoreListings,
                 isLoadingMore: isLoadingMoreListings,
-                triggersLoadOnAppear: !enableTilePrefetchLoadMore && !enableScrollProximityLoadMore,
+                triggersLoadOnAppear: !loadMoreAtScrollBottom
+                    && !enableTilePrefetchLoadMore
+                    && !enableScrollProximityLoadMore,
+                rearmAfterLoadComplete: !loadMoreAtScrollBottom,
                 loadingPresentation: loadMoreSkeletonRows > 0
                     ? .skeleton(rows: loadMoreSkeletonRows)
                     : .spinner,
@@ -675,8 +710,11 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                     token: feedTrimCompensationToken,
                     signedDeltaY: feedTrimCompensationSignedDeltaY
                 )
+                if let feedScrollBoundary {
+                    HomeFeedScrollCoordinator(scrollBoundary: feedScrollBoundary)
+                }
             }
-            if enableScrollProximityLoadMore {
+            if enableScrollProximityLoadMore || loadMoreAtScrollBottom {
                 FeedScrollContentBottomReporter(coordinateSpace: ProfileScrollIds.coordinateSpaceName)
             }
         }

@@ -45,4 +45,17 @@ enum FeedScrollPaginationPolicy {
         let visibleBottom = scrolled + viewportHeight
         return contentBottomY <= visibleBottom + proximityThreshold
     }
+
+    /// True when the feed bottom edge is visible — seller storefront end-of-screen pagination.
+    static func isAtScrollBottom(
+        headerMinY: CGFloat,
+        contentBottomY: CGFloat,
+        viewportHeight: CGFloat,
+        tolerance: CGFloat = 40
+    ) -> Bool {
+        guard viewportHeight > 64, contentBottomY.isFinite, contentBottomY < .infinity else { return false }
+        let scrolled = max(0, -headerMinY)
+        let visibleBottom = scrolled + viewportHeight
+        return contentBottomY <= visibleBottom + tolerance
+    }
 }

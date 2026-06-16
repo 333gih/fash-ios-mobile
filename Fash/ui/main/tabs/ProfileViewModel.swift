@@ -148,14 +148,8 @@ final class ProfileViewModel {
 
     func shouldShowListingGridSkeleton(for tab: ProfileListingTab) -> Bool {
         if isListingTabStalled(tab) { return false }
-        if isFirstPageLoading(for: tab) || isReloadingListings(for: tab) { return true }
-        if profile == nil { return isLoading }
-        if !hasCompletedInitialLoad, isLoading || isRefreshing { return true }
-        if listings(for: tab).isEmpty,
-           !loadedListingTabs.contains(tab.rawValue),
-           !isListingTabStalled(tab) {
-            return true
-        }
+        if listings(for: tab).isEmpty && isFirstPageLoading(for: tab) { return true }
+        if profile == nil, isLoading, !hasCompletedInitialLoad { return true }
         return false
     }
 

@@ -37,6 +37,7 @@ final class SellerProfileViewModel {
     private var tabPagination: [Int: SellerTabPagination] = [:]
     private var loadMoreTasks: [Int: Task<Void, Never>] = [:]
     private var backfillTasks: [Int: Task<Void, Never>] = [:]
+    private var trimTasks: [Int: Task<Void, Never>] = [:]
     private var listingWindows: [Int: SellerListingWindowState] = [:]
     private let listingStallWatch = FeedLoadStallWatch()
 
@@ -63,6 +64,10 @@ final class SellerProfileViewModel {
         let items: [ListingFeedItem]
         let rawCount: Int
     }
+
+    /// Scroll boundary from [HomeFeedScrollCoordinator] — gates trim/backfill while finger is on screen.
+    @ObservationIgnored
+    var scrollBoundary: HomeFeedScrollBoundary?
 
     func loadForSeller(_ username: String, deps: AppDependencies, isGuestMode: Bool, force: Bool = false) async {
         let key = username.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: "@", with: "")
@@ -92,6 +97,8 @@ final class SellerProfileViewModel {
             loadMoreTasks = [:]
             backfillTasks.values.forEach { $0.cancel() }
             backfillTasks = [:]
+            trimTasks.values.forEach { $0.cancel() }
+            trimTasks = [:]
             listingWindows = [:]
         }
         let showBlocking = profile == nil
@@ -119,6 +126,8 @@ final class SellerProfileViewModel {
             loadMoreTasks = [:]
             backfillTasks.values.forEach { $0.cancel() }
             backfillTasks = [:]
+            trimTasks.values.forEach { $0.cancel() }
+            trimTasks = [:]
             listingWindows = [:]
         }
 
@@ -368,7 +377,7 @@ final class SellerProfileViewModel {
         }
     }
 
-    /// TikTok-style window — trim far-above rows; backfill when scrolling toward header.
+    /// TikTok-style window — trim/backfill only after scroll idle (never while dragging).
     func notifyListingCellVisible(
         tab: SellerProfileTab,
         visibleIndex: Int,
@@ -377,28 +386,52 @@ final class SellerProfileViewModel {
         isGuestMode: Bool
     ) {
         guard columnWidth > 1 else { return }
-        var state = listingWindowState(for: tab)
-
-        if let trim = state.window.trimFrontIfNeeded(
-            visibleIndex: visibleIndex,
-            columnWidth: columnWidth,
-            policy: SellerStorefrontConstants.slidingWindowPolicy
-        ) {
-            listingWindows[tab.rawValue] = state
-            syncListingsFromWindow(tab)
-            applyScrollCompensation(-trim.scrollDeltaY)
-            FeedPerformance.log(
-                "Seller \(tab) trim -\(trim.removedCount) window=\(state.window.items.count) logical=\(state.window.logicalStartIndex)"
-            )
-        }
-
-        requestBackfillIfNeeded(
+        scheduleDeferredWindowMaintenance(
             tab: tab,
             visibleIndex: visibleIndex,
             columnWidth: columnWidth,
             deps: deps,
             isGuestMode: isGuestMode
         )
+    }
+
+    private func scheduleDeferredWindowMaintenance(
+        tab: SellerProfileTab,
+        visibleIndex: Int,
+        columnWidth: CGFloat,
+        deps: AppDependencies,
+        isGuestMode: Bool
+    ) {
+        trimTasks[tab.rawValue]?.cancel()
+        trimTasks[tab.rawValue] = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(240))
+            guard !Task.isCancelled else { return }
+            guard selectedFeedTab == tab else { return }
+            guard !(scrollBoundary?.isUserInteracting ?? false) else { return }
+            guard !isLoadingMoreListings(for: tab) else { return }
+
+            var state = listingWindowState(for: tab)
+            if let trim = state.window.trimFrontIfNeeded(
+                visibleIndex: visibleIndex,
+                columnWidth: columnWidth,
+                policy: SellerStorefrontConstants.slidingWindowPolicy
+            ) {
+                listingWindows[tab.rawValue] = state
+                syncListingsFromWindow(tab)
+                applyScrollCompensation(-trim.scrollDeltaY)
+                FeedPerformance.log(
+                    "Seller \(tab) trim -\(trim.removedCount) window=\(state.window.items.count)"
+                )
+            }
+
+            requestBackfillIfNeeded(
+                tab: tab,
+                visibleIndex: visibleIndex,
+                columnWidth: columnWidth,
+                deps: deps,
+                isGuestMode: isGuestMode
+            )
+        }
     }
 
     func patchListingEngagement(_ id: String, transform: (ListingFeedItem) -> ListingFeedItem) {
@@ -713,6 +746,7 @@ final class SellerProfileViewModel {
         guard state.window.logicalStartIndex > 0 else { return }
         guard !state.isBackfilling else { return }
         guard backfillTasks[tab.rawValue] == nil else { return }
+        guard !(scrollBoundary?.isUserInteracting ?? false) else { return }
 
         state.isBackfilling = true
         listingWindows[tab.rawValue] = state

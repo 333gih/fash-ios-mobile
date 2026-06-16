@@ -124,7 +124,7 @@ struct ProfileScreen: View {
             showStatusOverlay: true,
             suppressActiveStatusOnGrid: false,
             useStaggeredMasonryGrid: true,
-            masonryEagerLayout: true,
+            masonryEagerLayout: false,
             showGridLoading: showListingGridLoading,
             showGridLoadRetry: showListingGridLoadRetry,
             onRetryGridLoad: profileRetryGridLoad,

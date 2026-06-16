@@ -18,6 +18,7 @@ struct SellerProfileScreen: View {
     ) -> Void = { _, _, _, _, _, _ in }
 
     @State private var viewModel = SellerProfileViewModel()
+    @State private var sellerScrollBoundary = HomeFeedScrollBoundary()
     @State private var promoSlides: [FashPromoSlideDef] = []
     @State private var showPromoFooter = false
     @State private var showGuestLoginSheet = false
@@ -104,6 +105,10 @@ struct SellerProfileScreen: View {
                             enableScrollProximityLoadMore: false,
                             enableTilePrefetchLoadMore: false,
                             loadMoreSkeletonRows: 2,
+                            suppressScrollClamp: true,
+                            loadMoreAtScrollBottom: true,
+                            bottomLoadMoreTolerance: 36,
+                            feedScrollBoundary: sellerScrollBoundary,
                             feedTrimCompensationToken: viewModel.listingScrollTrimToken,
                             feedTrimCompensationSignedDeltaY: viewModel.listingScrollTrimSignedDeltaY,
                             onListingCellVisible: { index in
@@ -184,6 +189,9 @@ struct SellerProfileScreen: View {
             if case .success(let response) = await deps.advertisingRepository.getSlides(publicBrowse: isGuestMode) {
                 promoSlides = response.items.map(FashPromoSlideDef.fromAdvertising)
             }
+        }
+        .onAppear {
+            viewModel.scrollBoundary = sellerScrollBoundary
         }
         .guestLoginSheet(
             isPresented: $showGuestLoginSheet,
