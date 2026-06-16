@@ -51,6 +51,7 @@ struct ListingPreviewOverlay: View {
                         )
                     )
                     .shadow(color: .black.opacity(0.2), radius: 12, y: -4)
+                    .safeAreaPadding(.bottom, 4)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }

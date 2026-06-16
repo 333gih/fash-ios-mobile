@@ -103,9 +103,9 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     /// When true, hide "active"/"inactive" chips (seller storefront); own profile passes false.
     var suppressActiveStatusOnGrid: Bool = true
     var additionalBottomInset: CGFloat = 0
-    /// Seller storefront / own profile: two-column staggered masonry (see [masonryEagerLayout]).
+    /// Legacy flag — profile grid always uses hoisted chunked masonry rows in `LazyVStack`.
     var useStaggeredMasonryGrid: Bool = false
-    /// Nested in parent `ScrollView` — own profile forces eager layout (tall header); seller may pass `false`.
+    /// Legacy flag — retained for call-site compatibility; layout uses chunked rows.
     var masonryEagerLayout: Bool = false
     /// Skeleton grid (Explore-style) while the first page loads.
     var showGridLoading: Bool = false
@@ -277,7 +277,25 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                     .background(profileHeaderOffsetReader)
             }
             Section {
-                profileListingGridRows
+                profileGridWidthProbe
+                    .onAppear { scheduleProfileMasonryLayoutRefresh(forceImmediate: true) }
+                    .onChange(of: items.map(\.id)) { oldIds, newIds in
+                        let forceImmediate = newIds.count != oldIds.count
+                            || !Set(oldIds).isSubset(of: Set(newIds))
+                        scheduleProfileMasonryLayoutRefresh(forceImmediate: forceImmediate)
+                    }
+                    .onChange(of: selectedTab) { _, _ in
+                        profileMasonryLayout = .empty
+                        profileLayoutedItemCount = 0
+                        scheduleProfileMasonryLayoutRefresh(forceImmediate: true)
+                    }
+                    .onDisappear { masonryLayoutRefreshTask?.cancel() }
+
+                Color.clear
+                    .frame(height: 0)
+                    .id(listingGridScrollId)
+
+                profileListingGridStatusBlock
                     .profileTabSwipe(
                         enabled: profileTabSwipeEnabled,
                         currentIndex: visualTabIndex,
@@ -287,7 +305,27 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                     ) { visualIndex in
                         commitProfileTabSwipe(toVisualIndex: visualIndex)
                     }
+
+                if shouldShowProfileMasonryChunks {
+                    ForEach(profileFeedChunks) { chunk in
+                        profileMasonryChunkRow(chunk)
+                    }
+                }
+
+                profilePaginationFooter
+
+                profileGridScrollInfrastructure
+
                 Color.clear.frame(height: max(120, additionalBottomInset + 80))
+                    .profileTabSwipe(
+                        enabled: profileTabSwipeEnabled,
+                        currentIndex: visualTabIndex,
+                        tabCount: resolvedTabIndices.count,
+                        listingInteractionEnabled: $listingInteractionEnabled,
+                        onHorizontalSwipeActive: onTabHorizontalSwipeActive
+                    ) { visualIndex in
+                        commitProfileTabSwipe(toVisualIndex: visualIndex)
+                    }
             } header: {
                 stickyChrome(scrollProxy: scrollProxy)
                     .profileTabSwipe(
@@ -337,28 +375,60 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     }
 
     private var profileFeedChunks: [ListingMasonryFeedPages.FeedOrderChunk] {
-        ListingMasonryFeedPages.feedOrderChunks(items: items)
+        ListingMasonryFeedPages.feedOrderChunks(
+            items: items,
+            pageSize: ListingMasonryFeedPages.profileLazyStackChunkPageSize
+        )
     }
 
-    @ViewBuilder
-    private var profileListingGridRows: some View {
-        profileListingGridBody
-            .id(listingGridScrollId)
+    /// Each chunk is its own `LazyVStack` row — one nested grid cell only lays out ~one tile (Home uses `VStack`).
+    private var shouldShowProfileMasonryChunks: Bool {
+        !showGridLoading
+            && !(showGridLoadRetry && items.isEmpty)
+            && !items.isEmpty
+    }
+
+    private func profileMasonryChunkRow(_ chunk: ListingMasonryFeedPages.FeedOrderChunk) -> some View {
+        profileFeedChunkRow(chunk)
+            .id("\(listingGridScrollId)_chunk_\(chunk.id)")
+            .padding(.top, chunk.id == profileFeedChunks.first?.id ? spacing.spacing2 : 0)
+            .overlay(alignment: .top) {
+                if chunk.id == profileFeedChunks.first?.id {
+                    profileListingReloadOverlay
+                }
+            }
             .allowsHitTesting(listingInteractionEnabled)
             .animation(showGridLoading ? nil : FashTabSwipeMotion.contentAnimation, value: selectedTab)
             .transition(FashTabSwipeMotion.contentTransition)
-            .onAppear { scheduleProfileMasonryLayoutRefresh() }
-            .onChange(of: items.map(\.id)) { oldIds, newIds in
-                let forceImmediate = newIds.count != oldIds.count
-                    || !Set(oldIds).isSubset(of: Set(newIds))
-                scheduleProfileMasonryLayoutRefresh(forceImmediate: forceImmediate)
+            .profileTabSwipe(
+                enabled: profileTabSwipeEnabled,
+                currentIndex: visualTabIndex,
+                tabCount: resolvedTabIndices.count,
+                listingInteractionEnabled: $listingInteractionEnabled,
+                onHorizontalSwipeActive: onTabHorizontalSwipeActive
+            ) { visualIndex in
+                commitProfileTabSwipe(toVisualIndex: visualIndex)
             }
-            .onChange(of: selectedTab) { _, _ in
-                profileMasonryLayout = .empty
-                profileLayoutedItemCount = 0
-                scheduleProfileMasonryLayoutRefresh(forceImmediate: true)
+    }
+
+    @ViewBuilder
+    private var profileGridScrollInfrastructure: some View {
+        if shouldShowProfileMasonryChunks {
+            Color.clear
+                .frame(height: 0)
+                .background {
+                    FeedScrollTrimCompensator(
+                        token: feedTrimCompensationToken,
+                        signedDeltaY: feedTrimCompensationSignedDeltaY
+                    )
+                    if let feedScrollBoundary {
+                        HomeFeedScrollCoordinator(scrollBoundary: feedScrollBoundary)
+                    }
+                }
+            if enableScrollProximityLoadMore || loadMoreAtScrollBottom {
+                FeedScrollContentBottomReporter(coordinateSpace: ProfileScrollIds.coordinateSpaceName)
             }
-            .onDisappear { masonryLayoutRefreshTask?.cancel() }
+        }
     }
 
     private func scheduleProfileMasonryLayoutRefresh(forceImmediate: Bool = false) {
@@ -542,14 +612,6 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         resolvedTabIndices.firstIndex(of: selectedTab) ?? 0
     }
 
-    /// Own profile has a taller collapsing header — lazy masonry nested in `ScrollView` only lays out ~one tile.
-    private var effectiveMasonryEagerLayout: Bool {
-        switch tabSet {
-        case .ownProfile: return true
-        case .sellerStorefront: return masonryEagerLayout
-        }
-    }
-
     private func evaluateScrollProximityLoadMore(headerMinY: CGFloat) {
         guard let onLoadMore else { return }
         let scrolled = max(0, -headerMinY)
@@ -707,7 +769,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     }
 
     @ViewBuilder
-    private var profileListingGridBody: some View {
+    private var profileListingGridStatusBlock: some View {
         if showGridLoadRetry, items.isEmpty, let onRetryGridLoad {
             FashEmptyStateView(
                 title: L10n.feedLoadError,
@@ -720,47 +782,6 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             profileListingLoadingBlock
         } else if items.isEmpty, showEmptyState {
             emptyBlock
-        } else if !items.isEmpty {
-            ZStack(alignment: .top) {
-                profileListingMasonryContent
-                    .padding(.top, spacing.spacing2)
-                profileListingReloadOverlay
-            }
-            .background {
-                FeedScrollTrimCompensator(
-                    token: feedTrimCompensationToken,
-                    signedDeltaY: feedTrimCompensationSignedDeltaY
-                )
-                if let feedScrollBoundary {
-                    HomeFeedScrollCoordinator(scrollBoundary: feedScrollBoundary)
-                }
-            }
-            if enableScrollProximityLoadMore || loadMoreAtScrollBottom {
-                FeedScrollContentBottomReporter(coordinateSpace: ProfileScrollIds.coordinateSpaceName)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var profileListingMasonryContent: some View {
-        if useStaggeredMasonryGrid {
-            ListingStaggeredMasonryView(
-                items: items,
-                columnAssignments: masonryColumnAssignments,
-                eagerLayout: effectiveMasonryEagerLayout,
-                footer: { profilePaginationFooter }
-            ) { item, index in
-                profileListingGridCard(item: item, index: index)
-            }
-        } else {
-            VStack(spacing: 0) {
-                profileGridWidthProbe
-                ForEach(profileFeedChunks) { chunk in
-                    profileFeedChunkRow(chunk)
-                        .id("\(listingGridScrollId)_chunk_\(chunk.id)")
-                }
-                profilePaginationFooter
-            }
         }
     }
 

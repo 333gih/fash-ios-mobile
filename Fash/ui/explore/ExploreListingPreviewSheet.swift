@@ -16,11 +16,24 @@ struct ExploreListingPreviewSheet: View {
     @State private var showScrollHint = true
     @State private var canScrollFurther = false
 
+    private enum Metrics {
+        static let edgeLeading: CGFloat = 16
+        static let edgeTrailing: CGFloat = 12
+        static let thumbWidth: CGFloat = 96
+        static let thumbHeight: CGFloat = 72
+        static let avatarSize: CGFloat = 28
+        static let actionIconSize: CGFloat = 38
+        static let scrollHintHeight: CGFloat = 44
+    }
+
     var body: some View {
         VStack(spacing: 0) {
+            dragHandle
+
             ZStack(alignment: .bottom) {
                 ScrollView {
                     sheetContent
+                        .padding(.bottom, scrollContentBottomInset)
                         .background(
                             GeometryReader { proxy in
                                 Color.clear.preference(
@@ -38,18 +51,21 @@ struct ExploreListingPreviewSheet: View {
                             }
                         )
                 }
-                .coordinateSpace(name: "previewScroll")
-                .onPreferenceChange(PreviewScrollOffsetKey.self) { offset in
-                    if offset < -8 { showScrollHint = false }
-                }
-                .onPreferenceChange(PreviewScrollHeightKey.self) { height in
-                    canScrollFurther = height > 180
-                }
 
                 if showScrollHint && canScrollFurther {
                     scrollMoreHint
+                        .allowsHitTesting(false)
                 }
             }
+            .coordinateSpace(name: "previewScroll")
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .onPreferenceChange(PreviewScrollOffsetKey.self) { offset in
+                if offset < -8 { showScrollHint = false }
+            }
+            .onPreferenceChange(PreviewScrollHeightKey.self) { height in
+                canScrollFurther = height > 180
+            }
+
             Divider().opacity(0.35)
             actionBar
         }
@@ -57,6 +73,19 @@ struct ExploreListingPreviewSheet: View {
         .onChange(of: feedItem.id) { _, _ in
             showScrollHint = true
         }
+    }
+
+    private var scrollContentBottomInset: CGFloat {
+        showScrollHint && canScrollFurther ? Metrics.scrollHintHeight + 4 : 8
+    }
+
+    private var dragHandle: some View {
+        Capsule()
+            .fill(FashColors.outlineMuted.opacity(0.45))
+            .frame(width: 36, height: 4)
+            .padding(.top, 8)
+            .padding(.bottom, 4)
+            .frame(maxWidth: .infinity)
     }
 
     private var scrollMoreHint: some View {
@@ -74,14 +103,13 @@ struct ExploreListingPreviewSheet: View {
         .background(FashColors.brandPrimary.opacity(0.1), in: Capsule())
         .padding(.bottom, 4)
         .frame(maxWidth: .infinity)
+        .frame(height: Metrics.scrollHintHeight, alignment: .bottom)
         .background(
             LinearGradient(
                 colors: [.clear, FashColors.screen.opacity(0.78), FashColors.screen],
                 startPoint: .top,
                 endPoint: .bottom
             )
-            .frame(height: 44),
-            alignment: .bottom
         )
     }
 
@@ -104,16 +132,20 @@ struct ExploreListingPreviewSheet: View {
 
             HStack(alignment: .top, spacing: 10) {
                 PreviewImageThumb(urls: resolvedImageURLs, title: displayTitle)
-                    .frame(width: 96, height: 72)
+                    .frame(width: Metrics.thumbWidth, height: Metrics.thumbHeight)
+
                 VStack(alignment: .leading, spacing: 4) {
                     priceRow
                     Text(displayTitle)
                         .font(FashTypography.bodyMedium.weight(.bold))
                         .foregroundStyle(FashColors.textPrimary)
                         .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                     metaChips
                         .padding(.top, 2)
                 }
+                .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
+                .layoutPriority(1)
             }
 
             sellerRow
@@ -132,14 +164,16 @@ struct ExploreListingPreviewSheet: View {
                 .font(.caption)
                 .foregroundStyle(FashColors.brandPrimary.opacity(0.88))
                 .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 6)
 
             detailTeaser
                 .padding(.top, 8)
                 .padding(.bottom, 4)
         }
-        .padding(.horizontal, 16)
-        .padding(.trailing, 4)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.leading, Metrics.edgeLeading)
+        .padding(.trailing, Metrics.edgeTrailing)
     }
 
     private var priceRow: some View {
@@ -147,11 +181,13 @@ struct ExploreListingPreviewSheet: View {
             Text(FeedPriceFormat.format(resolvedPrice))
                 .font(.system(size: 15, weight: .bold))
                 .foregroundStyle(FashColors.brandPrimary)
+                .lineLimit(1)
             if let original = detail?.listPriceVnd, original > resolvedPrice {
                 Text(FeedPriceFormat.format(original))
                     .font(.caption)
                     .foregroundStyle(FashColors.textSecondary)
                     .strikethrough()
+                    .lineLimit(1)
             }
         }
     }
@@ -172,6 +208,7 @@ struct ExploreListingPreviewSheet: View {
                         .overlay(Capsule().stroke(FashColors.outlineMuted.opacity(0.35), lineWidth: 1))
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -180,8 +217,7 @@ struct ExploreListingPreviewSheet: View {
             onOpenSeller?()
         } label: {
             HStack(spacing: 6) {
-                sellerAvatar
-                    .frame(width: 28, height: 28)
+                FashAvatarCircle(url: resolvedSellerAvatarURL, size: Metrics.avatarSize)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(sellerHeadline)
                         .font(.caption.weight(.semibold))
@@ -192,38 +228,29 @@ struct ExploreListingPreviewSheet: View {
                         .foregroundStyle(FashColors.textSecondary)
                         .lineLimit(1)
                 }
-                Spacer(minLength: 0)
-                if onOpenSeller != nil {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(FashColors.textSecondary.opacity(0.7))
-                }
+                .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
             }
         }
         .buttonStyle(.plain)
         .disabled(onOpenSeller == nil)
     }
 
-    private var sellerAvatar: some View {
-        FashAvatarCircle(url: detail?.sellerAvatarURL, size: 40)
-    }
-
     private var socialRow: some View {
         HStack(spacing: 10) {
             socialStat(
-                systemName: (detail?.isLiked ?? false) ? "heart.fill" : "heart",
-                value: FeedEngagementFormat.short(detail?.likeCount ?? 0),
-                tint: (detail?.isLiked ?? false) ? FashColors.brandPrimary : FashColors.textSecondary
+                systemName: resolvedIsLiked ? "heart.fill" : "heart",
+                value: FeedEngagementFormat.short(resolvedLikeCount),
+                tint: resolvedIsLiked ? FashColors.brandPrimary : FashColors.textSecondary
             )
             socialStat(
-                systemName: (detail?.isSaved ?? false) ? "bookmark.fill" : "bookmark",
-                value: FeedEngagementFormat.short(detail?.saveCount ?? 0),
-                tint: (detail?.isSaved ?? false) ? FashColors.brandPrimary : FashColors.textSecondary
+                systemName: resolvedIsSaved ? "bookmark.fill" : "bookmark",
+                value: FeedEngagementFormat.short(resolvedSaveCount),
+                tint: resolvedIsSaved ? FashColors.brandPrimary : FashColors.textSecondary
             )
-            if let views = detail?.viewCount, views > 0 {
+            if resolvedViewCount > 0 {
                 socialStat(
                     systemName: "eye",
-                    value: FeedEngagementFormat.short(views),
+                    value: FeedEngagementFormat.short(resolvedViewCount),
                     tint: FashColors.textSecondary
                 )
             }
@@ -234,7 +261,9 @@ struct ExploreListingPreviewSheet: View {
     private var descriptionBlock: some View {
         if isDetailLoading, detail?.description?.isEmpty != false {
             HStack(spacing: 6) {
-                FashSkeleton.box(width: 120, height: 12, cornerRadius: 4)
+                ProgressView()
+                    .controlSize(.small)
+                    .tint(FashColors.brandPrimary)
                 Text(L10n.explorePreviewLoading)
                     .font(.caption)
                     .foregroundStyle(FashColors.textSecondary)
@@ -245,6 +274,7 @@ struct ExploreListingPreviewSheet: View {
                 .font(.caption)
                 .foregroundStyle(FashColors.textPrimary)
                 .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -276,11 +306,12 @@ struct ExploreListingPreviewSheet: View {
                         .foregroundStyle(FashColors.textSecondary)
                         .lineLimit(1)
                 }
-                Spacer(minLength: 4)
+                .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
                 HStack(spacing: 1) {
                     Text(L10n.explorePreviewDetailNudgeCta)
                         .font(.caption.weight(.bold))
                         .foregroundStyle(FashColors.brandPrimary)
+                        .lineLimit(1)
                     Image(systemName: "chevron.right")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(FashColors.brandPrimary)
@@ -301,17 +332,17 @@ struct ExploreListingPreviewSheet: View {
         VStack(spacing: 6) {
             HStack(spacing: 6) {
                 actionIconButton(
-                    systemName: feedItem.isLiked ? "heart.fill" : "heart",
+                    systemName: resolvedIsLiked ? "heart.fill" : "heart",
                     label: L10n.like,
-                    active: feedItem.isLiked,
+                    active: resolvedIsLiked,
                     action: {
                         if isGuestMode { onRequestLogin?() } else { onLike() }
                     }
                 )
                 actionIconButton(
-                    systemName: feedItem.isSaved ? "bookmark.fill" : "bookmark",
+                    systemName: resolvedIsSaved ? "bookmark.fill" : "bookmark",
                     label: L10n.save,
-                    active: feedItem.isSaved,
+                    active: resolvedIsSaved,
                     action: {
                         if isGuestMode { onRequestLogin?() } else { onSave() }
                     }
@@ -320,8 +351,9 @@ struct ExploreListingPreviewSheet: View {
                     Text(L10n.explorePreviewViewDetail)
                         .font(.caption.weight(.bold))
                         .lineLimit(1)
+                        .minimumScaleFactor(0.85)
                         .frame(maxWidth: .infinity)
-                        .frame(minHeight: 38)
+                        .frame(minHeight: Metrics.actionIconSize)
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(FashColors.brandPrimary)
@@ -334,14 +366,15 @@ struct ExploreListingPreviewSheet: View {
                         .font(.system(size: 14))
                     Text(messageButtonTitle)
                         .font(.caption.weight(.semibold))
+                        .lineLimit(1)
                 }
                 .frame(maxWidth: .infinity, minHeight: 34)
             }
             .buttonStyle(.bordered)
             .tint(FashColors.brandPrimary)
         }
-        .padding(.horizontal, 16)
-        .padding(.trailing, 4)
+        .padding(.leading, Metrics.edgeLeading)
+        .padding(.trailing, Metrics.edgeTrailing)
         .padding(.top, 6)
         .padding(.bottom, 8)
     }
@@ -364,12 +397,13 @@ struct ExploreListingPreviewSheet: View {
             Image(systemName: systemName)
                 .font(.system(size: 18))
                 .foregroundStyle(active ? FashColors.brandPrimary : FashColors.textPrimary)
-                .frame(width: 38, height: 38)
+                .frame(width: Metrics.actionIconSize, height: Metrics.actionIconSize)
                 .overlay(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .stroke(FashColors.outlineMuted.opacity(0.4), lineWidth: 1)
                 )
         }
+        .buttonStyle(.plain)
         .accessibilityLabel(label)
     }
 
@@ -383,6 +417,7 @@ struct ExploreListingPreviewSheet: View {
                     Text(value)
                         .font(.caption.weight(.medium))
                         .foregroundStyle(FashColors.textSecondary)
+                        .lineLimit(1)
                 }
             }
         }
@@ -397,10 +432,38 @@ struct ExploreListingPreviewSheet: View {
         detail?.priceVnd ?? feedItem.price
     }
 
+    private var resolvedIsLiked: Bool {
+        detail?.isLiked ?? feedItem.isLiked
+    }
+
+    private var resolvedIsSaved: Bool {
+        detail?.isSaved ?? feedItem.isSaved
+    }
+
+    private var resolvedLikeCount: Int {
+        detail?.likeCount ?? feedItem.likeCount
+    }
+
+    private var resolvedSaveCount: Int {
+        detail?.saveCount ?? feedItem.saveCount
+    }
+
+    private var resolvedViewCount: Int {
+        detail?.viewCount ?? 0
+    }
+
+    private var resolvedSellerAvatarURL: String? {
+        guard let raw = detail?.sellerAvatarURL?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !raw.isEmpty else { return nil }
+        return FeedImageUrl.resolveProfileImageUrlOrNil(raw)
+    }
+
     private var resolvedImageURLs: [String] {
         if let urls = detail?.imageURLs.filter({ !$0.isEmpty }), !urls.isEmpty {
             return urls.compactMap { FeedImageUrl.resolveListingImageUrlOrNil($0) }
         }
+        let feedUrls = feedItem.imageUrls.compactMap { FeedImageUrl.resolveListingImageUrlOrNil($0) }
+        if !feedUrls.isEmpty { return feedUrls }
         if let url = feedItem.imageURL, !url.isEmpty,
            let resolved = FeedImageUrl.resolveListingImageUrlOrNil(url) {
             return [resolved]
@@ -413,7 +476,9 @@ struct ExploreListingPreviewSheet: View {
     }
 
     private var resolvedStatus: String {
-        (detail?.status ?? "").lowercased()
+        let fromDetail = (detail?.status ?? "").lowercased()
+        if !fromDetail.isEmpty { return fromDetail }
+        return (feedItem.listingStatus ?? "").lowercased()
     }
 
     private var isSold: Bool { resolvedStatus == "sold" }
@@ -450,12 +515,20 @@ struct ExploreListingPreviewSheet: View {
 
     private var metaChipLabels: [String] {
         var chips: [String] = []
-        if let condition = previewConditionLabel(detail?.condition) { chips.append(condition) }
-        if let size = detail?.size?.trimmingCharacters(in: .whitespacesAndNewlines), !size.isEmpty { chips.append(size) }
-        if let brand = detail?.brand?.trimmingCharacters(in: .whitespacesAndNewlines), !brand.isEmpty { chips.append(brand) }
-        if let category = detail?.category?.trimmingCharacters(in: .whitespacesAndNewlines), !category.isEmpty { chips.append(category) }
-        if let tag = detail?.aestheticTag?.trimmingCharacters(in: .whitespacesAndNewlines), !tag.isEmpty { chips.append(tag) }
+        let conditionRaw = detail?.condition ?? feedItem.condition
+        if let condition = previewConditionLabel(conditionRaw.isEmpty ? nil : conditionRaw) {
+            chips.append(condition)
+        }
+        if let size = nonEmpty(detail?.size ?? feedItem.size) { chips.append(size) }
+        if let brand = nonEmpty(detail?.brand ?? feedItem.brand) { chips.append(brand) }
+        if let category = nonEmpty(detail?.category ?? feedItem.categoryName) { chips.append(category) }
+        if let tag = nonEmpty(detail?.aestheticTag ?? feedItem.listingAestheticTag) { chips.append(tag) }
         return chips
+    }
+
+    private func nonEmpty(_ raw: String?) -> String? {
+        let trimmed = raw?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmed.isEmpty ? nil : trimmed
     }
 
     private func previewConditionLabel(_ raw: String?) -> String? {
@@ -510,13 +583,13 @@ private struct PreviewImageThumb: View {
                         .foregroundStyle(FashColors.textSecondary)
                 }
             } else if urls.count == 1 {
-                FashAsyncImage(url: urls[0])
+                FashAsyncImage(url: urls[0], contentMode: .fill)
                     .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                     .accessibilityLabel(title)
             } else {
                 TabView(selection: $page) {
                     ForEach(Array(urls.enumerated()), id: \.offset) { index, url in
-                        FashAsyncImage(url: url)
+                        FashAsyncImage(url: url, contentMode: .fill)
                             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                             .accessibilityLabel(L10n.explorePreviewImagePagerCd(index + 1, urls.count))
                             .tag(index)
@@ -552,17 +625,21 @@ private enum FeedEngagementFormat {
     }
 }
 
-/// Simple horizontal flow for meta chips (Android FlowRow).
+/// Horizontal flow for meta chips — Android `FlowRow`.
 private struct PreviewMetaFlowLayout: Layout {
     var spacing: CGFloat = 4
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let rows = arrange(proposal: proposal, subviews: subviews)
-        return CGSize(width: proposal.width ?? rows.width, height: rows.height)
+        let maxWidth = proposal.width ?? 0
+        guard maxWidth > 0 else {
+            return CGSize(width: proposal.width ?? 0, height: 0)
+        }
+        let rows = arrange(maxWidth: maxWidth, subviews: subviews)
+        return CGSize(width: maxWidth, height: rows.height)
     }
 
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        let rows = arrange(proposal: proposal, subviews: subviews)
+        let rows = arrange(maxWidth: bounds.width, subviews: subviews)
         for placement in rows.placements {
             subviews[placement.index].place(
                 at: CGPoint(x: bounds.minX + placement.x, y: bounds.minY + placement.y),
@@ -571,15 +648,19 @@ private struct PreviewMetaFlowLayout: Layout {
         }
     }
 
-    private func arrange(proposal: ProposedViewSize, subviews: Subviews) -> Arrangement {
-        let maxWidth = proposal.width ?? .infinity
+    private func arrange(maxWidth: CGFloat, subviews: Subviews) -> Arrangement {
+        guard maxWidth > 0 else {
+            return Arrangement(width: 0, height: 0, placements: [])
+        }
         var x: CGFloat = 0
         var y: CGFloat = 0
         var rowHeight: CGFloat = 0
         var placements: [Placement] = []
 
         for index in subviews.indices {
-            let size = subviews[index].sizeThatFits(.unspecified)
+            let size = subviews[index].sizeThatFits(
+                ProposedViewSize(width: maxWidth, height: nil)
+            )
             if x + size.width > maxWidth, x > 0 {
                 x = 0
                 y += rowHeight + spacing
@@ -612,7 +693,7 @@ private struct PreviewMetaFlowLayout: Layout {
         ExploreListingPreviewSheet(
             feedItem: ListingFeedItem(
                 id: "1",
-                title: "Vintage jacket",
+                title: "Vintage jacket with a longer title that should wrap cleanly",
                 price: 250_000,
                 imageURL: nil,
                 sellerUsername: "seller"
@@ -625,5 +706,6 @@ private struct PreviewMetaFlowLayout: Layout {
             onSave: {},
             onMessageSeller: {}
         )
+        .frame(height: 280)
     }
 }

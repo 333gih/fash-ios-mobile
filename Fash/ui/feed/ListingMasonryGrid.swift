@@ -128,6 +128,8 @@ enum ListingMasonryFeedPages {
     static let defaultChunkSize = 16
     /// Profile collapsing scroll — page size for [feedOrderChunks] (Android `DEFAULT_CHUNK_SIZE`).
     static let profileChunkPageSize = 20
+    /// `LazyVStack` profile grid — smaller slices so each chunk is its own scroll row (not one 20-tile cell).
+    static let profileLazyStackChunkPageSize = 4
 
     /// One lazy `LazyVStack` row; entries are a slice of feed order (Android [ListingMasonryFeedPages.chunks]).
     struct FeedOrderChunk: Identifiable {

@@ -48,30 +48,16 @@ enum ProductDetailComponents {
                                 .tag(index)
                         }
                     }
-                    .tabViewStyle(.page(indexDisplayMode: .automatic))
+                    .tabViewStyle(.page(indexDisplayMode: .never))
                     .frame(height: UIScreen.main.bounds.width)
                     .onAppear { galleryIndex.wrappedValue = safe }
                 }
             }
             .clipShape(shape)
 
-            HStack {
-                HStack(spacing: 10) {
-                    statPill(icon: "eye", count: detail.viewCount)
-                    Button(action: onLike) {
-                        statPill(icon: detail.isLiked ? "heart.fill" : "heart", count: detail.likeCount, highlighted: detail.isLiked)
-                    }
-                    .buttonStyle(.plain)
-                    Button(action: onSave) {
-                        statPill(icon: detail.isSaved ? "bookmark.fill" : "bookmark", count: detail.saveCount, highlighted: detail.isSaved)
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(Color.black.opacity(0.55))
-                .clipShape(Capsule())
-                Spacer()
+            HStack(alignment: .bottom) {
+                passiveStatPill(icon: "eye", count: detail.viewCount)
+                Spacer(minLength: 0)
                 if !urls.isEmpty {
                     Text("\(min(max(galleryIndex.wrappedValue, 0), urls.count - 1) + 1)/\(urls.count)")
                         .font(FashTypography.labelSmall.weight(.semibold))
@@ -83,17 +69,75 @@ enum ProductDetailComponents {
                 }
             }
             .padding(12)
+            .allowsHitTesting(false)
+        }
+        .overlay(alignment: .topTrailing) {
+            HStack(spacing: 10) {
+                heroEngagementButton(
+                    systemName: detail.isLiked ? "heart.fill" : "heart",
+                    count: detail.likeCount,
+                    highlighted: detail.isLiked,
+                    accessibilityLabel: L10n.like,
+                    action: onLike
+                )
+                heroEngagementButton(
+                    systemName: detail.isSaved ? "bookmark.fill" : "bookmark",
+                    count: detail.saveCount,
+                    highlighted: detail.isSaved,
+                    accessibilityLabel: L10n.save,
+                    action: onSave
+                )
+            }
+            .padding(12)
         }
     }
 
-    private static func statPill(icon: String, count: Int, highlighted: Bool = false) -> some View {
+    private static func passiveStatPill(icon: String, count: Int) -> some View {
         HStack(spacing: 4) {
             Image(systemName: icon)
                 .font(.system(size: 12, weight: .semibold))
             Text("\(count)")
                 .font(FashTypography.labelSmall.weight(.semibold))
         }
-        .foregroundStyle(highlighted ? FashColors.brandPrimary : .white)
+        .foregroundStyle(.white)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(Color.black.opacity(0.55))
+        .clipShape(Capsule())
+    }
+
+    private static func heroEngagementButton(
+        systemName: String,
+        count: Int,
+        highlighted: Bool,
+        accessibilityLabel: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            VStack(spacing: 3) {
+                Image(systemName: systemName)
+                    .font(.system(size: 20, weight: .semibold))
+                Text("\(count)")
+                    .font(FashTypography.labelSmall.weight(.semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            .foregroundStyle(highlighted ? FashColors.brandPrimary : .white)
+            .frame(minWidth: 48, minHeight: 48)
+            .padding(.horizontal, 6)
+            .background(Color.black.opacity(highlighted ? 0.72 : 0.58))
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(
+                        highlighted ? FashColors.brandPrimary.opacity(0.95) : Color.white.opacity(0.38),
+                        lineWidth: highlighted ? 1.5 : 1
+                    )
+            }
+        }
+        .buttonStyle(.plain)
+        .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .accessibilityLabel(accessibilityLabel)
     }
 
     static func sellerCard(
@@ -106,7 +150,7 @@ enum ProductDetailComponents {
     ) -> some View {
         sectionCard {
             sectionTitle(L10n.productSectionSeller, icon: "storefront")
-            HStack(spacing: 12) {
+            HStack(alignment: .center, spacing: 12) {
                 let avatar = detail.sellerAvatarUrl?.nilIfEmpty
                     ?? profile?.avatarUrl.nilIfEmpty
                 FashAvatarCircle(url: avatar.flatMap { FeedImageUrl.resolveListingImageUrlOrNil($0) }, size: 52)
@@ -114,18 +158,23 @@ enum ProductDetailComponents {
                     Text(profile?.displayName.nilIfEmpty ?? detail.sellerDisplayName?.nilIfEmpty ?? detail.sellerUsername?.nilIfEmpty ?? "—")
                         .font(FashTypography.titleSmall.weight(.semibold))
                         .foregroundStyle(FashColors.textPrimary)
+                        .lineLimit(1)
                     if let count = detail.sellerListingCount ?? profile?.productCount {
                         Text(L10n.productSellerProductsCount(count))
                             .font(FashTypography.bodySmall)
                             .foregroundStyle(FashColors.textSecondary)
+                            .lineLimit(1)
                     }
                     if let u = detail.sellerUsername?.nilIfEmpty {
                         Text("@\(u)")
                             .font(FashTypography.bodySmall)
                             .foregroundStyle(FashColors.textSecondary)
+                            .lineLimit(1)
                     }
                 }
-                Spacer(minLength: 8)
+                .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
+                .layoutPriority(1)
+
                 HStack(spacing: 8) {
                     if isFollowing {
                         sellerActionPill(
@@ -152,7 +201,7 @@ enum ProductDetailComponents {
                         action: onVisitShop
                     )
                 }
-                .fixedSize(horizontal: true, vertical: false)
+                .fixedSize(horizontal: true, vertical: true)
             }
         }
     }
@@ -170,8 +219,8 @@ enum ProductDetailComponents {
                 .lineLimit(1)
                 .minimumScaleFactor(0.85)
                 .foregroundStyle(foreground)
-                .frame(minWidth: 92, minHeight: 34)
                 .padding(.horizontal, 10)
+                .padding(.vertical, 8)
                 .background(background)
                 .clipShape(Capsule())
                 .overlay {
@@ -181,6 +230,7 @@ enum ProductDetailComponents {
                 }
         }
         .buttonStyle(.plain)
+        .fixedSize(horizontal: true, vertical: true)
     }
 
     static func priceInfoCard(
