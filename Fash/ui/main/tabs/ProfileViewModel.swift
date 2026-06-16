@@ -1,9 +1,15 @@
 import Foundation
 import Observation
+import SwiftUI
 
 private let profileStaleThresholdSeconds: TimeInterval = 60
-/// Paginated per tab — same page size as [SellerProfileViewModel] for stable scroll performance.
-private let profileListingPageSize = 20
+
+/// Paginated per tab — same page size and window policy as [SellerProfileViewModel].
+private enum ProfileListingConstants {
+    static let listingPageSize = 20
+    static let imagePrefetchCap = 8
+    static let slidingWindowPolicy = FeedSlidingWindowPolicy.sellerStorefront
+}
 
 struct ProfileTabOpenRequest: Equatable {
     let tab: ProfileListingTab
@@ -54,6 +60,22 @@ final class ProfileViewModel {
     private(set) var focusListingId: String?
     /// Bottom-nav re-tap — scroll profile list to top (Android `scrollProfileToTop`).
     private(set) var profileScrollToTopToken = 0
+    var listingScrollTrimToken = 0
+    private(set) var listingScrollTrimSignedDeltaY: CGFloat = 0
+
+    private var listingWindows: [Int: ProfileListingWindowState] = [:]
+    private var backfillTasks: [Int: Task<Void, Never>] = [:]
+    private var trimTasks: [Int: Task<Void, Never>] = [:]
+
+    private struct ProfileListingWindowState {
+        var window = FeedSlidingWindow()
+        var knownIds = Set<String>()
+        var isBackfilling = false
+    }
+
+    /// Scroll boundary from [HomeFeedScrollCoordinator] — gates trim/backfill while finger is on screen.
+    @ObservationIgnored
+    var scrollBoundary: HomeFeedScrollBoundary?
 
     func requestScrollProfileToTop() {
         profileScrollToTopToken &+= 1
@@ -107,6 +129,22 @@ final class ProfileViewModel {
         }
     }
 
+    /// TikTok-style window — trim/backfill only after scroll idle (never while dragging).
+    func notifyListingCellVisible(
+        tab: ProfileListingTab,
+        visibleIndex: Int,
+        columnWidth: CGFloat,
+        deps: AppDependencies
+    ) {
+        guard columnWidth > 1 else { return }
+        scheduleDeferredWindowMaintenance(
+            tab: tab,
+            visibleIndex: visibleIndex,
+            columnWidth: columnWidth,
+            deps: deps
+        )
+    }
+
     func refreshIfStale(deps: AppDependencies) async {
         if let last = lastSuccessfulRefreshAt,
            Date().timeIntervalSince(last) < profileStaleThresholdSeconds {
@@ -157,6 +195,11 @@ final class ProfileViewModel {
         listingTabsStalled.remove(tab.rawValue)
         listingStallWatch.cancel(key: String(tab.rawValue))
         loadedListingTabs.remove(tab.rawValue)
+        trimTasks[tab.rawValue]?.cancel()
+        trimTasks[tab.rawValue] = nil
+        backfillTasks[tab.rawValue]?.cancel()
+        backfillTasks[tab.rawValue] = nil
+        listingWindows[tab.rawValue] = nil
         await fetchListingsFirstPage(tab, deps: deps, force: true)
     }
 
@@ -300,6 +343,11 @@ final class ProfileViewModel {
         tabPagination = [:]
         loadMoreTasks.values.forEach { $0.cancel() }
         loadMoreTasks = [:]
+        backfillTasks.values.forEach { $0.cancel() }
+        backfillTasks = [:]
+        trimTasks.values.forEach { $0.cancel() }
+        trimTasks = [:]
+        listingWindows = [:]
         loadError = false
         lastSuccessfulRefreshAt = nil
         hasCompletedInitialLoad = false
@@ -401,6 +449,11 @@ final class ProfileViewModel {
         for tab in ProfileListingTab.allCases where tab != activeTab {
             loadedListingTabs.remove(tab.rawValue)
             mutatePagination(for: tab) { $0 = ProfileTabPagination() }
+            trimTasks[tab.rawValue]?.cancel()
+            trimTasks[tab.rawValue] = nil
+            backfillTasks[tab.rawValue]?.cancel()
+            backfillTasks[tab.rawValue] = nil
+            listingWindows[tab.rawValue] = nil
             setListings([], for: tab)
         }
         await fetchListingsFirstPage(activeTab, deps: deps, force: true)
@@ -457,10 +510,10 @@ final class ProfileViewModel {
             setListings(page.items, for: tab)
             mutatePagination(for: tab) {
                 $0.nextOffset = page.rawCount
-                $0.hasMore = page.rawCount >= profileListingPageSize
+                $0.hasMore = page.rawCount >= ProfileListingConstants.listingPageSize
             }
-            FeedPerformance.log("Profile \(tab) first page -> items=\(page.items.count) hasMore=\(page.rawCount >= profileListingPageSize)")
-            FeedListingImagePrefetch.prefetch(items: page.items)
+            FeedPerformance.log("Profile \(tab) first page -> items=\(page.items.count) hasMore=\(page.rawCount >= ProfileListingConstants.listingPageSize)")
+            prefetchProfileImages(page.items)
             prefetchAdjacentProfileTabs(around: tab, deps: deps)
         case .failure:
             loadedListingTabs.remove(tab.rawValue)
@@ -493,18 +546,19 @@ final class ProfileViewModel {
                 mutatePagination(for: tab) { $0.hasMore = false }
                 return
             }
-            var seen = Set(listings(for: tab).map(\.id))
-            let fresh = page.items.filter { seen.insert($0.id).inserted }
-            if !fresh.isEmpty {
-                appendListings(fresh, for: tab)
-                FeedListingImagePrefetch.prefetch(items: fresh)
+            var state = listingWindowState(for: tab)
+            let added = state.window.appendUnique(page.items, knownIds: &state.knownIds)
+            listingWindows[tab.rawValue] = state
+            if added > 0 {
+                syncListingsFromWindow(tab)
+                prefetchProfileImages(Array(state.window.items.suffix(added)))
             }
             mutatePagination(for: tab) { state in
                 state.nextOffset += page.rawCount
-                state.hasMore = page.rawCount >= profileListingPageSize
+                state.hasMore = page.rawCount >= ProfileListingConstants.listingPageSize
             }
             FeedPerformance.log(
-                "Profile \(tab) loadMore @\(offset) -> +\(fresh.count) total=\(listings(for: tab).count) hasMore=\(page.rawCount >= profileListingPageSize)"
+                "Profile \(tab) loadMore @\(offset) -> +\(added) window=\(listings(for: tab).count) logical=\(state.window.logicalStartIndex)"
             )
         case .failure:
             FeedPerformance.log("Profile \(tab) loadMore @\(offset) failed")
@@ -521,31 +575,31 @@ final class ProfileViewModel {
         switch tab {
         case .wishlist:
             result = await deps.listingRepository.getWishlistListings(
-                limit: profileListingPageSize,
+                limit: ProfileListingConstants.listingPageSize,
                 offset: offset
             )
         case .active:
             result = await deps.listingRepository.getMyListings(
                 status: "active",
-                limit: profileListingPageSize,
+                limit: ProfileListingConstants.listingPageSize,
                 offset: offset
             )
         case .inReview:
             result = await deps.listingRepository.getMyListings(
                 status: "in_review",
-                limit: profileListingPageSize,
+                limit: ProfileListingConstants.listingPageSize,
                 offset: offset
             )
         case .rejected:
             result = await deps.listingRepository.getMyListings(
                 status: "rejected",
-                limit: profileListingPageSize,
+                limit: ProfileListingConstants.listingPageSize,
                 offset: offset
             )
         case .sold:
             result = await deps.listingRepository.getMyListings(
                 status: "sold",
-                limit: profileListingPageSize,
+                limit: ProfileListingConstants.listingPageSize,
                 offset: offset
             )
         }
@@ -559,12 +613,21 @@ final class ProfileViewModel {
 
     /// Cap client work when the API returns more than `limit` — keeps masonry layout predictable.
     private func normalizeProfileListingsPage(_ rawPage: [ListingFeedItem]) -> ListingPagePayload {
-        let items = Array(rawPage.prefix(profileListingPageSize))
-        let deliveredCount = min(rawPage.count, profileListingPageSize)
+        let items = Array(rawPage.prefix(ProfileListingConstants.listingPageSize))
+        let deliveredCount = min(rawPage.count, ProfileListingConstants.listingPageSize)
         return ListingPagePayload(items: items, rawCount: deliveredCount)
     }
 
     private func setListings(_ items: [ListingFeedItem], for tab: ProfileListingTab) {
+        var state = ProfileListingWindowState()
+        state.knownIds = Set(items.map(\.id))
+        state.window.reset(with: items)
+        listingWindows[tab.rawValue] = state
+        syncListingsFromWindow(tab)
+    }
+
+    private func syncListingsFromWindow(_ tab: ProfileListingTab) {
+        let items = listingWindows[tab.rawValue]?.window.items ?? []
         switch tab {
         case .active: sellingListings = items
         case .inReview: inReviewListings = items
@@ -574,13 +637,103 @@ final class ProfileViewModel {
         }
     }
 
-    private func appendListings(_ items: [ListingFeedItem], for tab: ProfileListingTab) {
-        switch tab {
-        case .active: sellingListings.append(contentsOf: items)
-        case .inReview: inReviewListings.append(contentsOf: items)
-        case .rejected: rejectedListings.append(contentsOf: items)
-        case .sold: soldListings.append(contentsOf: items)
-        case .wishlist: wishlistListings.append(contentsOf: items)
+    private func listingWindowState(for tab: ProfileListingTab) -> ProfileListingWindowState {
+        listingWindows[tab.rawValue] ?? ProfileListingWindowState()
+    }
+
+    private func applyScrollCompensation(_ signedDeltaY: CGFloat) {
+        guard abs(signedDeltaY) > 0.5 else { return }
+        listingScrollTrimSignedDeltaY = signedDeltaY
+        listingScrollTrimToken += 1
+    }
+
+    private func prefetchProfileImages(_ items: [ListingFeedItem]) {
+        let cap = min(items.count, ProfileListingConstants.imagePrefetchCap)
+        guard cap > 0 else { return }
+        FeedListingImagePrefetch.prefetch(items: Array(items.prefix(cap)))
+    }
+
+    private func scheduleDeferredWindowMaintenance(
+        tab: ProfileListingTab,
+        visibleIndex: Int,
+        columnWidth: CGFloat,
+        deps: AppDependencies
+    ) {
+        trimTasks[tab.rawValue]?.cancel()
+        trimTasks[tab.rawValue] = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(240))
+            guard !Task.isCancelled else { return }
+            guard ProfileListingTab(rawValue: lastSelectedProfileTab) == tab else { return }
+            guard !(scrollBoundary?.isUserInteracting ?? false) else { return }
+            guard !isLoadingMoreListings(for: tab) else { return }
+
+            var state = listingWindowState(for: tab)
+            if let trim = state.window.trimFrontIfNeeded(
+                visibleIndex: visibleIndex,
+                columnWidth: columnWidth,
+                policy: ProfileListingConstants.slidingWindowPolicy
+            ) {
+                listingWindows[tab.rawValue] = state
+                syncListingsFromWindow(tab)
+                applyScrollCompensation(-trim.scrollDeltaY)
+                FeedPerformance.log(
+                    "Profile \(tab) trim -\(trim.removedCount) window=\(state.window.items.count)"
+                )
+            }
+
+            requestBackfillIfNeeded(
+                tab: tab,
+                visibleIndex: visibleIndex,
+                columnWidth: columnWidth,
+                deps: deps
+            )
+        }
+    }
+
+    private func requestBackfillIfNeeded(
+        tab: ProfileListingTab,
+        visibleIndex: Int,
+        columnWidth: CGFloat,
+        deps: AppDependencies
+    ) {
+        let policy = ProfileListingConstants.slidingWindowPolicy
+        guard visibleIndex < policy.backfillVisibleThreshold else { return }
+        var state = listingWindowState(for: tab)
+        guard state.window.logicalStartIndex > 0 else { return }
+        guard !state.isBackfilling else { return }
+        guard backfillTasks[tab.rawValue] == nil else { return }
+        guard !(scrollBoundary?.isUserInteracting ?? false) else { return }
+
+        state.isBackfilling = true
+        listingWindows[tab.rawValue] = state
+        let logicalStart = state.window.logicalStartIndex
+        let generation = pagination(for: tab).fetchGeneration
+
+        backfillTasks[tab.rawValue] = Task { @MainActor in
+            defer {
+                var s = self.listingWindowState(for: tab)
+                s.isBackfilling = false
+                self.listingWindows[tab.rawValue] = s
+                self.backfillTasks[tab.rawValue] = nil
+            }
+            let offset = max(0, logicalStart - ProfileListingConstants.listingPageSize)
+            let result = await self.fetchListingsPage(tab: tab, offset: offset, deps: deps)
+            guard generation == self.pagination(for: tab).fetchGeneration else { return }
+            guard case .success(let page) = result, !page.items.isEmpty else { return }
+
+            var s = self.listingWindowState(for: tab)
+            guard let prepend = s.window.prependUnique(
+                page.items,
+                knownIds: &s.knownIds,
+                columnWidth: columnWidth
+            ) else { return }
+            self.listingWindows[tab.rawValue] = s
+            self.syncListingsFromWindow(tab)
+            self.applyScrollCompensation(prepend.scrollDeltaY)
+            self.prefetchProfileImages(Array(page.items.prefix(ProfileListingConstants.imagePrefetchCap)))
+            FeedPerformance.log(
+                "Profile \(tab) backfill @\(offset) +\(prepend.addedCount) window=\(s.window.items.count) logical=\(s.window.logicalStartIndex)"
+            )
         }
     }
 
@@ -657,14 +810,19 @@ final class ProfileViewModel {
         case .success(let saved):
             patchListing(item.id) { _ in snapshot.applyingSaveToggle(saved) }
             if !saved && snapshot.isSaved {
-                wishlistListings.removeAll { $0.id == item.id }
+                var state = listingWindowState(for: .wishlist)
+                state.window.removeItems(withIds: [item.id], knownIds: &state.knownIds)
+                listingWindows[ProfileListingTab.wishlist.rawValue] = state
+                syncListingsFromWindow(.wishlist)
                 tabCounts.wishlist = max(0, tabCounts.wishlist - 1)
             } else if saved {
                 let patched = snapshot.applyingSaveToggle(true)
-                if !wishlistListings.contains(where: { $0.id == item.id }) {
-                    wishlistListings.insert(patched, at: 0)
+                var state = listingWindowState(for: .wishlist)
+                if state.window.insertUniqueAtTop(patched, knownIds: &state.knownIds) {
+                    listingWindows[ProfileListingTab.wishlist.rawValue] = state
+                    syncListingsFromWindow(.wishlist)
+                    tabCounts.wishlist += 1
                 }
-                tabCounts.wishlist += 1
             }
             deps.showSnackbar(FeedEngagementFeedback.saveMessage(saved: saved))
         case .failure(let error):
@@ -674,10 +832,11 @@ final class ProfileViewModel {
     }
 
     private func patchListing(_ id: String, transform: (ListingFeedItem) -> ListingFeedItem) {
-        sellingListings = sellingListings.map { $0.id == id ? transform($0) : $0 }
-        inReviewListings = inReviewListings.map { $0.id == id ? transform($0) : $0 }
-        rejectedListings = rejectedListings.map { $0.id == id ? transform($0) : $0 }
-        soldListings = soldListings.map { $0.id == id ? transform($0) : $0 }
-        wishlistListings = wishlistListings.map { $0.id == id ? transform($0) : $0 }
+        for tab in ProfileListingTab.allCases {
+            guard var state = listingWindows[tab.rawValue] else { continue }
+            state.window.mapItems { $0.id == id ? transform($0) : $0 }
+            listingWindows[tab.rawValue] = state
+            syncListingsFromWindow(tab)
+        }
     }
 }

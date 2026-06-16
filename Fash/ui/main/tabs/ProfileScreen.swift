@@ -1,6 +1,8 @@
 import SwiftUI
+import UIKit
 
 struct ProfileScreen: View {
+    @Environment(\.fashSpacing) private var spacing
     @Environment(AppDependencies.self) private var deps
     @Bindable var viewModel: ProfileViewModel
     var onEditProfile: () -> Void
@@ -22,6 +24,7 @@ struct ProfileScreen: View {
 
     @State private var selectedTab = 0
     @State private var scrollToGridToken = 0
+    @State private var profileScrollBoundary = HomeFeedScrollBoundary()
     /// Home journey → wishlist / in-review: pin grid after refresh settles (Android `pendingExternalGridScroll`).
     @State private var pendingExternalGridScroll = false
 
@@ -71,6 +74,7 @@ struct ProfileScreen: View {
             await viewModel.ensureListingsLoaded(for: selectedProfileTab, deps: deps)
         }
         .onAppear {
+            viewModel.scrollBoundary = profileScrollBoundary
             syncSelectedTabFromViewModel()
             _ = applyProfileTabOpenRequestIfNeeded()
             tryApplyPendingExternalGridScroll()
@@ -139,7 +143,26 @@ struct ProfileScreen: View {
             scrollToTopToken: viewModel.profileScrollToTopToken,
             scrollToListingId: viewModel.focusListingId,
             scrollToListingToken: viewModel.focusListingScrollToken,
-            enableScrollProximityLoadMore: true,
+            enableScrollProximityLoadMore: false,
+            enableTilePrefetchLoadMore: false,
+            loadMoreSkeletonRows: 2,
+            suppressScrollClamp: true,
+            loadMoreAtScrollBottom: true,
+            bottomLoadMoreTolerance: 36,
+            feedScrollBoundary: profileScrollBoundary,
+            feedTrimCompensationToken: viewModel.listingScrollTrimToken,
+            feedTrimCompensationSignedDeltaY: viewModel.listingScrollTrimSignedDeltaY,
+            onListingCellVisible: { index in
+                viewModel.notifyListingCellVisible(
+                    tab: selectedProfileTab,
+                    visibleIndex: index,
+                    columnWidth: ListingMasonryGrid.feedGridColumnWidth(
+                        containerWidth: UIScreen.main.bounds.width,
+                        spacing: spacing
+                    ),
+                    deps: deps
+                )
+            },
             onListingClick: handleListingTap,
             onLike: profileWishlistLikeHandler,
             onSave: profileWishlistSaveHandler,

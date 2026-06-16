@@ -108,6 +108,20 @@ struct FeedSlidingWindow {
         items = items.map(transform)
     }
 
+    /// Engagement / edit — drop rows without shifting [logicalStartIndex].
+    mutating func removeItems(withIds ids: Set<String>, knownIds: inout Set<String>) {
+        guard !ids.isEmpty else { return }
+        items.removeAll { ids.contains($0.id) }
+        knownIds.subtract(ids)
+    }
+
+    @discardableResult
+    mutating func insertUniqueAtTop(_ item: ListingFeedItem, knownIds: inout Set<String>) -> Bool {
+        guard knownIds.insert(item.id).inserted else { return false }
+        items.insert(item, at: 0)
+        return true
+    }
+
     static func estimateMasonryHeight(items: [ListingFeedItem], columnWidth: CGFloat) -> CGFloat {
         guard !items.isEmpty, columnWidth > 1 else { return 0 }
         let gap: CGFloat = 8
