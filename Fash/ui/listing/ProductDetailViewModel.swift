@@ -170,48 +170,54 @@ final class ProductDetailViewModel {
         deps.feedEventReporter.chatInitiate(listingId: id, surface: "pdp")
     }
 
-    func toggleLike(deps: AppDependencies) async {
+    func toggleLike(deps: AppDependencies) {
         guard let d = detail else { return }
-        await toggleLike(itemId: d.id, snapshot: nil, deps: deps, surface: "pdp")
+        toggleLike(itemId: d.id, snapshot: nil, deps: deps, surface: "pdp")
     }
 
-    func toggleLikeRailItem(_ item: ListingFeedItem, deps: AppDependencies) async {
-        await toggleLike(itemId: item.id, snapshot: item, deps: deps, surface: "pdp_rail")
+    func toggleLikeRailItem(_ item: ListingFeedItem, deps: AppDependencies) {
+        toggleLike(itemId: item.id, snapshot: item, deps: deps, surface: "pdp_rail")
     }
 
-    func toggleSaveRailItem(_ item: ListingFeedItem, deps: AppDependencies) async {
+    func toggleSaveRailItem(_ item: ListingFeedItem, deps: AppDependencies) {
         guard deps.listingEngagement.beginSaveToggle(listingId: item.id) else { return }
+        let wasSaved = item.isSaved
         patchRails(item.id) { _ in item.toggledSave }
-        defer { deps.listingEngagement.endSaveToggle(listingId: item.id) }
-        switch await deps.listingRepository.toggleSave(listingId: item.id, currentlySaved: item.isSaved) {
-        case .success(let saved):
-            patchRails(item.id) { _ in item.applyingSaveToggle(saved) }
-            if saved { deps.feedEventReporter.save(listingId: item.id, surface: "pdp_rail") }
-            deps.showSnackbar(FeedEngagementFeedback.saveMessage(saved: saved))
-        case .failure(let error):
-            patchRails(item.id) { _ in item }
-            deps.showSnackbar(FeedEngagementFeedback.actionErrorMessage(for: error))
+        let listingId = item.id
+        Task {
+            defer { deps.listingEngagement.endSaveToggle(listingId: listingId) }
+            switch await deps.listingRepository.toggleSave(listingId: listingId, currentlySaved: wasSaved) {
+            case .success(let saved):
+                patchRails(listingId) { current in current.applyingSaveToggle(saved) }
+                if saved { deps.feedEventReporter.save(listingId: listingId, surface: "pdp_rail") }
+                deps.showSnackbar(FeedEngagementFeedback.saveMessage(saved: saved))
+            case .failure(let error):
+                deps.showSnackbar(FeedEngagementFeedback.actionErrorMessage(for: error))
+            }
         }
     }
 
-    func toggleSave(deps: AppDependencies) async -> Bool {
+    /// Toggles save UI immediately; returns whether listing is now saved (for save nudge).
+    func toggleSave(deps: AppDependencies) -> Bool {
         guard let d = detail else { return false }
         guard deps.listingEngagement.beginSaveToggle(listingId: d.id) else { return d.isSaved }
-        let snapshot = d
-        detail = snapshot.toggledSave
-        defer { deps.listingEngagement.endSaveToggle(listingId: d.id) }
-        switch await deps.listingRepository.toggleSave(listingId: d.id, currentlySaved: snapshot.isSaved) {
-        case .success(let saved):
-            let delta = (saved && !snapshot.isSaved) ? 1 : ((!saved && snapshot.isSaved) ? -1 : 0)
-            detail = snapshot.copyMutating(isSaved: saved, saveCount: max(0, snapshot.saveCount + delta))
-            if saved { deps.feedEventReporter.save(listingId: d.id, surface: "pdp") }
-            deps.showSnackbar(FeedEngagementFeedback.saveMessage(saved: saved))
-            return saved && delta > 0
-        case .failure(let error):
-            detail = snapshot
-            deps.showSnackbar(FeedEngagementFeedback.actionErrorMessage(for: error))
-            return false
+        let wasSaved = d.isSaved
+        detail = d.toggledSave
+        let listingId = d.id
+        Task {
+            defer { deps.listingEngagement.endSaveToggle(listingId: listingId) }
+            switch await deps.listingRepository.toggleSave(listingId: listingId, currentlySaved: wasSaved) {
+            case .success(let saved):
+                if let current = detail, current.id == listingId {
+                    detail = current.applyingSaveToggle(saved)
+                }
+                if saved { deps.feedEventReporter.save(listingId: listingId, surface: "pdp") }
+                deps.showSnackbar(FeedEngagementFeedback.saveMessage(saved: saved))
+            case .failure(let error):
+                deps.showSnackbar(FeedEngagementFeedback.actionErrorMessage(for: error))
+            }
         }
+        return !wasSaved
     }
 
     func follow(deps: AppDependencies) async {
@@ -471,34 +477,31 @@ final class ProductDetailViewModel {
         snapshot: ListingFeedItem?,
         deps: AppDependencies,
         surface: String
-    ) async {
+    ) {
         guard deps.listingEngagement.beginLikeToggle(listingId: itemId) else { return }
-        let detailSnapshot = detail
         if let snapshot {
             patchRails(itemId) { _ in snapshot.toggledLike }
-        } else if let detailSnapshot, itemId == detailSnapshot.id {
-            detail = detailSnapshot.toggledLike
+        } else if let d = detail, itemId == d.id {
+            detail = d.toggledLike
+        } else {
+            deps.listingEngagement.endLikeToggle(listingId: itemId)
+            return
         }
-        defer { deps.listingEngagement.endLikeToggle(listingId: itemId) }
-        switch await deps.listingRepository.toggleLike(listingId: itemId) {
-        case .success(let liked):
-            if let snapshot {
-                patchRails(itemId) { _ in snapshot.applyingLikeToggle(liked) }
+        Task {
+            defer { deps.listingEngagement.endLikeToggle(listingId: itemId) }
+            switch await deps.listingRepository.toggleLike(listingId: itemId) {
+            case .success(let liked):
+                if let snapshot {
+                    patchRails(itemId) { current in current.applyingLikeToggle(liked) }
+                }
+                if let current = detail, itemId == current.id {
+                    detail = current.applyingLikeToggle(liked)
+                }
+                if liked { deps.feedEventReporter.like(listingId: itemId, surface: surface) }
+                deps.showSnackbar(FeedEngagementFeedback.likeMessage(liked: liked))
+            case .failure(let error):
+                deps.showSnackbar(FeedEngagementFeedback.actionErrorMessage(for: error))
             }
-            if let detailSnapshot, itemId == detailSnapshot.id {
-                detail = detailSnapshot.applyingLikeToggle(liked)
-            }
-            if liked { deps.feedEventReporter.like(listingId: itemId, surface: surface) }
-            let message = FeedEngagementFeedback.likeMessage(liked: liked)
-            deps.showSnackbar(message)
-        case .failure(let error):
-            if let snapshot {
-                patchRails(itemId) { _ in snapshot }
-            }
-            if let detailSnapshot, itemId == detailSnapshot.id {
-                detail = detailSnapshot
-            }
-            deps.showSnackbar(FeedEngagementFeedback.actionErrorMessage(for: error))
         }
     }
 

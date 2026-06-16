@@ -80,14 +80,12 @@ struct ProductDetailScreen: View {
                     ProductDetailComponents.heroImage(
                         detail: detail,
                         galleryIndex: $viewModel.galleryIndex,
-                        onLike: { guestGate(L10n.guestLoginReasonLike) { Task { await viewModel.toggleLike(deps: deps) } } },
+                        onLike: { guestGate(L10n.guestLoginReasonLike) { viewModel.toggleLike(deps: deps) } },
                         onSave: {
                             guestGate(L10n.guestLoginReasonSaved) {
-                                Task {
-                                    let wasSaved = detail.isSaved
-                                    let added = await viewModel.toggleSave(deps: deps)
-                                    if added, !wasSaved { showSaveNudge = true }
-                                }
+                                let wasSaved = detail.isSaved
+                                let added = viewModel.toggleSave(deps: deps)
+                                if added, !wasSaved { showSaveNudge = true }
                             }
                         }
                     )
@@ -138,8 +136,8 @@ struct ProductDetailScreen: View {
                         entries: viewModel.discoveryFeed,
                         isLoading: viewModel.isDiscoveryLoading,
                         onListingTap: onListingClick,
-                        onLike: { item in guestGate(L10n.guestLoginReasonLike) { Task { await viewModel.toggleLikeRailItem(item, deps: deps) } } },
-                        onSave: { item in guestGate(L10n.guestLoginReasonSaved) { Task { await viewModel.toggleSaveRailItem(item, deps: deps) } } }
+                        onLike: { item in guestGate(L10n.guestLoginReasonLike) { viewModel.toggleLikeRailItem(item, deps: deps) } },
+                        onSave: { item in guestGate(L10n.guestLoginReasonSaved) { viewModel.toggleSaveRailItem(item, deps: deps) } }
                     )
                     if showSaveNudge {
                         saveNudge

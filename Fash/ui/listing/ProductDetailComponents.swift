@@ -64,6 +64,7 @@ enum ProductDetailComponents {
                     accessibilityLabel: L10n.like,
                     action: onLike
                 )
+                .animation(.easeInOut(duration: 0.18), value: detail.isLiked)
                 heroEngagementButton(
                     systemName: detail.isSaved ? "bookmark.fill" : "bookmark",
                     count: detail.saveCount,
@@ -71,6 +72,7 @@ enum ProductDetailComponents {
                     accessibilityLabel: L10n.save,
                     action: onSave
                 )
+                .animation(.easeInOut(duration: 0.18), value: detail.isSaved)
                 Spacer(minLength: 0)
                 if !urls.isEmpty {
                     Text("\(min(max(galleryIndex.wrappedValue, 0), urls.count - 1) + 1)/\(urls.count)")
