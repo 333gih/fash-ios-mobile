@@ -166,6 +166,7 @@ struct HomeFeedContent: View {
                         .background {
                             homeViewportHeightReader
                             PinnedTabScrollOffsetFixer(
+                                resetToken: 0,
                                 trueTopToken: viewModel.homeScrollToTopToken,
                                 clampRevision: homeScrollClampRevision,
                                 headerHeight: pinnedChromeHeight,
