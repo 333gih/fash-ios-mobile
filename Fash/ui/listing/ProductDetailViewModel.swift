@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import UIKit
 
 struct BuyerActiveOrder: Equatable {
     let orderId: String
@@ -172,6 +173,7 @@ final class ProductDetailViewModel {
 
     func toggleLike(deps: AppDependencies) {
         guard let d = detail else { return }
+        ProductDetailEngagementFeedback.tap()
         toggleLike(itemId: d.id, snapshot: nil, deps: deps, surface: "pdp")
     }
 
@@ -201,6 +203,7 @@ final class ProductDetailViewModel {
     func toggleSave(deps: AppDependencies) -> Bool {
         guard let d = detail else { return false }
         guard deps.listingEngagement.beginSaveToggle(listingId: d.id) else { return d.isSaved }
+        ProductDetailEngagementFeedback.tap()
         let wasSaved = d.isSaved
         detail = d.toggledSave
         let listingId = d.id
@@ -566,5 +569,12 @@ private extension String {
     var nilIfEmpty: String? {
         let t = trimmingCharacters(in: .whitespacesAndNewlines)
         return t.isEmpty ? nil : t
+    }
+}
+
+private enum ProductDetailEngagementFeedback {
+    @MainActor
+    static func tap() {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
     }
 }

@@ -38,6 +38,15 @@ struct ProductDetailScreen: View {
                 topBar
             }
         }
+        .overlay(alignment: .topTrailing) {
+            ProductDetailHeroEngagementOverlay(
+                viewModel: viewModel,
+                showTopBar: showTopBar,
+                isGuestMode: isGuestMode,
+                onRequestLogin: onRequestLogin,
+                onSaveAdded: { showSaveNudge = true }
+            )
+        }
         .background(FashColors.screen)
         .safeAreaInset(edge: .bottom) { bottomBar }
         .task(id: listingId) { await viewModel.load(listingId: listingId, deps: deps) }
@@ -79,15 +88,7 @@ struct ProductDetailScreen: View {
                 VStack(alignment: .leading, spacing: spacing.spacing3) {
                     ProductDetailComponents.heroImage(
                         detail: detail,
-                        galleryIndex: $viewModel.galleryIndex,
-                        onLike: { guestGate(L10n.guestLoginReasonLike) { viewModel.toggleLike(deps: deps) } },
-                        onSave: {
-                            guestGate(L10n.guestLoginReasonSaved) {
-                                let wasSaved = detail.isSaved
-                                let added = viewModel.toggleSave(deps: deps)
-                                if added, !wasSaved { showSaveNudge = true }
-                            }
-                        }
+                        galleryIndex: $viewModel.galleryIndex
                     )
                     if viewModel.bottomBarMode != .normal {
                         ProductDetailComponents.statusBanner(mode: viewModel.bottomBarMode)
@@ -282,6 +283,46 @@ struct ProductDetailScreen: View {
         detail.sellerUsername?.nilIfEmpty
             ?? detail.sellerDisplayName?.nilIfEmpty
             ?? L10n.explorePreviewSellerUsernameFallback
+    }
+
+    private func guestGate(_ reason: String, _ action: () -> Void) {
+        if isGuestMode { onRequestLogin(reason) } else { action() }
+    }
+}
+
+/// `@Bindable` overlay — keeps like/save rail in sync when `detail` mutates (plain `@State` parent misses updates).
+private struct ProductDetailHeroEngagementOverlay: View {
+    @Environment(AppDependencies.self) private var deps
+    @Bindable var viewModel: ProductDetailViewModel
+    var showTopBar: Bool
+    var isGuestMode: Bool
+    var onRequestLogin: (String) -> Void
+    var onSaveAdded: () -> Void
+
+    var body: some View {
+        if let detail = viewModel.detail {
+            ProductDetailComponents.heroEngagementRail(
+                isLiked: detail.isLiked,
+                isSaved: detail.isSaved,
+                likeCount: detail.likeCount,
+                saveCount: detail.saveCount,
+                onLike: {
+                    guestGate(L10n.guestLoginReasonLike) {
+                        viewModel.toggleLike(deps: deps)
+                    }
+                },
+                onSave: {
+                    guestGate(L10n.guestLoginReasonSaved) {
+                        let wasSaved = viewModel.detail?.isSaved ?? false
+                        let added = viewModel.toggleSave(deps: deps)
+                        if added, !wasSaved { onSaveAdded() }
+                    }
+                }
+            )
+            .padding(.top, showTopBar ? 64 : 14)
+            .padding(.trailing, 14)
+            .allowsHitTesting(true)
+        }
     }
 
     private func guestGate(_ reason: String, _ action: () -> Void) {

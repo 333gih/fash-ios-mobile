@@ -24,9 +24,7 @@ enum ProductDetailComponents {
     @ViewBuilder
     static func heroImage(
         detail: ListingDetail,
-        galleryIndex: Binding<Int>,
-        onLike: @escaping () -> Void,
-        onSave: @escaping () -> Void
+        galleryIndex: Binding<Int>
     ) -> some View {
         let urls = detail.imageUrls.compactMap { FeedImageUrl.resolveListingImageUrlOrNil($0) }
         let shape = RoundedRectangle(cornerRadius: 0, style: .continuous)
@@ -55,24 +53,8 @@ enum ProductDetailComponents {
             }
             .clipShape(shape)
 
-            HStack(alignment: .bottom, spacing: 10) {
+            HStack(alignment: .bottom) {
                 passiveStatPill(icon: "eye", count: detail.viewCount)
-                heroEngagementButton(
-                    systemName: detail.isLiked ? "heart.fill" : "heart",
-                    count: detail.likeCount,
-                    highlighted: detail.isLiked,
-                    accessibilityLabel: L10n.like,
-                    action: onLike
-                )
-                .animation(.easeInOut(duration: 0.18), value: detail.isLiked)
-                heroEngagementButton(
-                    systemName: detail.isSaved ? "bookmark.fill" : "bookmark",
-                    count: detail.saveCount,
-                    highlighted: detail.isSaved,
-                    accessibilityLabel: L10n.save,
-                    action: onSave
-                )
-                .animation(.easeInOut(duration: 0.18), value: detail.isSaved)
                 Spacer(minLength: 0)
                 if !urls.isEmpty {
                     Text("\(min(max(galleryIndex.wrappedValue, 0), urls.count - 1) + 1)/\(urls.count)")
@@ -80,13 +62,96 @@ enum ProductDetailComponents {
                         .foregroundStyle(.white)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
-                        .background(Color.black.opacity(0.55))
+                        .background(Color.black.opacity(0.45))
                         .clipShape(Capsule())
                         .allowsHitTesting(false)
                 }
             }
             .padding(12)
+            .allowsHitTesting(false)
         }
+    }
+
+    /// Fixed top-trailing rail — lives outside hero `TabView` so taps are never swallowed.
+    static func heroEngagementRail(
+        isLiked: Bool,
+        isSaved: Bool,
+        likeCount: Int,
+        saveCount: Int,
+        onLike: @escaping () -> Void,
+        onSave: @escaping () -> Void
+    ) -> some View {
+        VStack(spacing: 6) {
+            heroEngagementChip(
+                systemName: isLiked ? "heart.fill" : "heart",
+                count: likeCount,
+                active: isLiked,
+                accessibilityLabel: L10n.like,
+                action: onLike
+            )
+            heroEngagementChip(
+                systemName: isSaved ? "bookmark.fill" : "bookmark",
+                count: saveCount,
+                active: isSaved,
+                accessibilityLabel: L10n.save,
+                action: onSave
+            )
+        }
+        .padding(.vertical, 6)
+        .padding(.horizontal, 5)
+        .background {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .shadow(color: .black.opacity(0.14), radius: 12, y: 4)
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.28), lineWidth: 0.5)
+        }
+    }
+
+    private static func heroEngagementChip(
+        systemName: String,
+        count: Int,
+        active: Bool,
+        accessibilityLabel: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            VStack(spacing: 2) {
+                Image(systemName: systemName)
+                    .font(.system(size: 18, weight: .semibold))
+                    .contentTransition(.symbolEffect(.replace))
+                Text(heroEngagementCountLabel(count))
+                    .font(.system(size: 11, weight: .medium))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+            }
+            .foregroundStyle(active ? FashColors.brandPrimary : Color.primary.opacity(0.82))
+            .frame(width: 46, height: 46)
+            .background {
+                if active {
+                    Circle()
+                        .fill(FashColors.brandPrimary.opacity(0.12))
+                }
+            }
+            .contentShape(Circle())
+        }
+        .buttonStyle(HeroEngagementPressStyle())
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityAddTraits(active ? .isSelected : [])
+    }
+
+    private static func heroEngagementCountLabel(_ count: Int) -> String {
+        if count >= 10_000 {
+            return String(format: "%.1fK", Double(count) / 1_000)
+        }
+        if count >= 1_000 {
+            let rounded = (Double(count) / 100).rounded() / 10
+            return String(format: "%.1fK", rounded)
+        }
+        return "\(max(0, count))"
     }
 
     private static func passiveStatPill(icon: String, count: Int) -> some View {
@@ -101,40 +166,6 @@ enum ProductDetailComponents {
         .padding(.vertical, 6)
         .background(Color.black.opacity(0.55))
         .clipShape(Capsule())
-    }
-
-    private static func heroEngagementButton(
-        systemName: String,
-        count: Int,
-        highlighted: Bool,
-        accessibilityLabel: String,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            VStack(spacing: 3) {
-                Image(systemName: systemName)
-                    .font(.system(size: 20, weight: .semibold))
-                Text("\(count)")
-                    .font(FashTypography.labelSmall.weight(.semibold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            }
-            .foregroundStyle(highlighted ? FashColors.brandPrimary : .white)
-            .frame(minWidth: 48, minHeight: 48)
-            .padding(.horizontal, 6)
-            .background(Color.black.opacity(highlighted ? 0.72 : 0.58))
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(
-                        highlighted ? FashColors.brandPrimary.opacity(0.95) : Color.white.opacity(0.38),
-                        lineWidth: highlighted ? 1.5 : 1
-                    )
-            }
-        }
-        .buttonStyle(.plain)
-        .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .accessibilityLabel(accessibilityLabel)
     }
 
     static func sellerCard(
@@ -525,6 +556,14 @@ private struct ProductDetailTagFlowLayout: Layout {
             x += size.width + spacing
         }
         return (CGSize(width: maxWidth, height: y + rowHeight), frames)
+    }
+}
+
+private struct HeroEngagementPressStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.9 : 1)
+            .animation(.spring(response: 0.24, dampingFraction: 0.62), value: configuration.isPressed)
     }
 }
 
