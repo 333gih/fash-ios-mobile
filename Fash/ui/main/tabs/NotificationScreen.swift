@@ -106,6 +106,17 @@ struct NotificationScreen: View {
             }
         }
         .background(FashColors.screen)
+        .fashEdgeBackNavigation {
+            if viewModel.selectedDetailId != nil {
+                viewModel.closeDetail()
+            } else if let detailId, !detailId.isEmpty {
+                viewModel.closeDetail()
+            } else if viewModel.selectedGroup != nil {
+                viewModel.closeGroup()
+            } else {
+                onDismiss()
+            }
+        }
     }
 
     @ViewBuilder

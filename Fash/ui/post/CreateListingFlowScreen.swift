@@ -50,6 +50,14 @@ struct CreateListingFlowScreen: View {
                     Task { await postVM.loadShippingAddresses(deps: deps) }
                 }
             )
+            .fashEdgeBackNavigation { showAddAddress = false }
+        }
+        .fashEdgeBackNavigation {
+            if postVM.step > createListingModeStep {
+                postVM.prevStep()
+            } else {
+                handleCloseAttempt()
+            }
         }
     }
 

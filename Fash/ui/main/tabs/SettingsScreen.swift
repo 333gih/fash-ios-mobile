@@ -86,6 +86,7 @@ struct SettingsScreen: View {
                 }
             }
         }
+        .fashEdgeBackNavigation(onBack: onBack)
     }
 
     private func openAppNotificationSettings() {

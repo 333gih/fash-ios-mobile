@@ -108,6 +108,7 @@ struct FashEdgeBackNavigation: UIViewRepresentable {
                 Task { @MainActor in
                     coordinator.gestureState.reset()
                     if shouldCommit {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         coordinator.onBack()
                     }
                 }
@@ -170,6 +171,35 @@ private struct FashEdgeBackIndicator: View {
 }
 
 extension AppRouter {
+    /// Whether a left-edge swipe can pop the current layer (main tab, overlay, or PDP stack).
+    func canEdgeBack(notificationsViewModel: NotificationsViewModel? = nil) -> Bool {
+        if showNotificationScreen {
+            return true
+        }
+        if showSettingsScreen
+            || showChangePasswordScreen
+            || showNotificationPreferencesScreen {
+            return true
+        }
+        if showExploreOverlay {
+            return true
+        }
+        if listingDetailRootId != nil {
+            return true
+        }
+        if hasBlockingOverlay {
+            return true
+        }
+        if loginStep == .otp {
+            return true
+        }
+        if selectedTab != .home {
+            return true
+        }
+        _ = notificationsViewModel
+        return false
+    }
+
     /// Handles edge-swipe / back: overlays first, then Home tab. Returns whether navigation was consumed.
     @discardableResult
     func handleEdgeBack(notificationsViewModel: NotificationsViewModel?) -> Bool {
@@ -195,13 +225,21 @@ extension AppRouter {
             showNotificationPreferencesScreen = false
             return true
         }
-        if showExploreOverlay {
+        if showExploreOverlay, exploreOverlayListingId == nil {
             showExploreOverlay = false
             exploreSearchExpanded = false
             return true
         }
+        if listingDetailRootId != nil {
+            popListingDetail()
+            return true
+        }
         if hasBlockingOverlay {
             popOverlay()
+            return true
+        }
+        if loginStep == .otp {
+            loginStep = .email
             return true
         }
         if selectedTab != .home {
@@ -213,25 +251,34 @@ extension AppRouter {
 }
 
 extension View {
+    /// Custom back action — use on full-screen covers and sheets.
+    func fashEdgeBackNavigation(
+        isEnabled: Bool = true,
+        onBack: @escaping () -> Void
+    ) -> some View {
+        modifier(FashEdgeBackNavigationModifier(isEnabled: isEnabled, onBack: onBack))
+    }
+
+    /// App-router back stack — main shell, tabs, and router-owned overlays.
     func fashEdgeBackNavigation(
         router: AppRouter,
         notificationsViewModel: NotificationsViewModel?,
-        isEnabled: Bool = true
+        isEnabled: Bool? = nil
     ) -> some View {
         modifier(
             FashEdgeBackNavigationModifier(
-                router: router,
-                notificationsViewModel: notificationsViewModel,
-                isEnabled: isEnabled
+                isEnabled: isEnabled ?? router.canEdgeBack(notificationsViewModel: notificationsViewModel),
+                onBack: {
+                    _ = router.handleEdgeBack(notificationsViewModel: notificationsViewModel)
+                }
             )
         )
     }
 }
 
 private struct FashEdgeBackNavigationModifier: ViewModifier {
-    let router: AppRouter
-    let notificationsViewModel: NotificationsViewModel?
     let isEnabled: Bool
+    let onBack: () -> Void
 
     @State private var gestureState = FashEdgeBackGestureState()
 
@@ -242,7 +289,7 @@ private struct FashEdgeBackNavigationModifier: ViewModifier {
                     isEnabled: isEnabled,
                     gestureState: gestureState
                 ) {
-                    _ = router.handleEdgeBack(notificationsViewModel: notificationsViewModel)
+                    onBack()
                 }
                 .frame(width: 0, height: 0)
                 .allowsHitTesting(false)

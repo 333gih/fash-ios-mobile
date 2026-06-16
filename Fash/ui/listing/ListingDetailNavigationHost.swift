@@ -8,6 +8,8 @@ struct ListingDetailNavigationHost: View {
     let rootListingId: String
     var isGuestMode: Bool
     var dismissExploreOverlayOnClose: Bool = false
+    /// When false, parent `fullScreenCover` owns edge-back (`dismissFullScreen`).
+    var enablesEdgeBack: Bool = true
     @State private var shareItems: [Any] = []
     @State private var showShareSheet = false
     @State private var showGuestLoginSheet = false
@@ -39,6 +41,9 @@ struct ListingDetailNavigationHost: View {
             reason: guestLoginReason,
             router: router
         )
+        .fashEdgeBackNavigation(isEnabled: enablesEdgeBack) {
+            router.popListingDetail()
+        }
     }
 
     private func presentGuestSignIn(reason: String) {

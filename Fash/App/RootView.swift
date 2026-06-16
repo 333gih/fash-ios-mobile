@@ -24,11 +24,6 @@ struct RootView: View {
         FashTheme {
             ZStack {
                 rootContent
-                    .fashEdgeBackNavigation(
-                        router: router,
-                        notificationsViewModel: nil,
-                        isEnabled: router.listingDetailPath.isEmpty
-                    )
                 FashGlobalDialogHost()
                 if let message = deps.snackbarMessage {
                     VStack {
@@ -56,6 +51,12 @@ struct RootView: View {
                 .environment(\.locale, AppLocale.locale)
                 .fashSnackbarOverlay()
                 .fashInAppNotificationOverlay()
+                .fashEdgeBackNavigation(
+                    isEnabled: router.exploreOverlayListingId == nil
+                ) {
+                    router.showExploreOverlay = false
+                    router.exploreSearchExpanded = false
+                }
             }
             .onChange(of: router.showExploreOverlay) { wasShowing, isShowing in
                 guard wasShowing, !isShowing else { return }
@@ -69,6 +70,9 @@ struct RootView: View {
                 fullScreenContent(route)
                     .fashSnackbarOverlay()
                     .fashInAppNotificationOverlay()
+                    .fashEdgeBackNavigation {
+                        router.dismissFullScreen()
+                    }
             }
             .onOpenURL { url in
                 if GoogleSignInClients.handle(url: url) { return }
@@ -178,7 +182,8 @@ struct RootView: View {
             ListingDetailNavigationHost(
                 router: router,
                 rootListingId: rootId,
-                isGuestMode: router.isGuestMode
+                isGuestMode: router.isGuestMode,
+                enablesEdgeBack: false
             )
         case .seller(let user):
             SellerProfileScreen(
@@ -387,6 +392,9 @@ struct RootView: View {
                 },
                 onBack: { router.loginStep = .email }
             )
+            .fashEdgeBackNavigation {
+                router.loginStep = .email
+            }
         }
     }
 
@@ -395,22 +403,29 @@ struct RootView: View {
         let onStepComplete: () -> Void = {
             Task { await handleOnboardingStepComplete() }
         }
-        switch onboardingVM.onboardingStep {
-        case .setupPassword:
-            SetupPasswordOnboardScreen(viewModel: onboardingVM, onStepComplete: onStepComplete)
-        case .aestheticTags:
-            OnboardingScreen(viewModel: onboardingVM, onStepComplete: onStepComplete)
-        case .shoppingPreferences:
-            ShoppingPreferencesOnboardScreen(viewModel: onboardingVM, onStepComplete: onStepComplete)
-        case .profilePhoto:
-            ProfilePhotoOnboardScreen(viewModel: onboardingVM, onStepComplete: onStepComplete)
-        case .sizingReference:
-            SizingReferenceScreen(viewModel: onboardingVM, onStepComplete: onStepComplete)
-        case .username:
-            UsernameOnboardScreen(viewModel: onboardingVM, onStepComplete: onStepComplete)
-        case .completed:
-            FashWaitingScreen()
-                .task { await finishOnboardingIfReady() }
+        Group {
+            switch onboardingVM.onboardingStep {
+            case .setupPassword:
+                SetupPasswordOnboardScreen(viewModel: onboardingVM, onStepComplete: onStepComplete)
+            case .aestheticTags:
+                OnboardingScreen(viewModel: onboardingVM, onStepComplete: onStepComplete)
+            case .shoppingPreferences:
+                ShoppingPreferencesOnboardScreen(viewModel: onboardingVM, onStepComplete: onStepComplete)
+            case .profilePhoto:
+                ProfilePhotoOnboardScreen(viewModel: onboardingVM, onStepComplete: onStepComplete)
+            case .sizingReference:
+                SizingReferenceScreen(viewModel: onboardingVM, onStepComplete: onStepComplete)
+            case .username:
+                UsernameOnboardScreen(viewModel: onboardingVM, onStepComplete: onStepComplete)
+            case .completed:
+                FashWaitingScreen()
+                    .task { await finishOnboardingIfReady() }
+            }
+        }
+        .fashEdgeBackNavigation(
+            isEnabled: onboardingVM.canNavigateBack(deps: deps)
+        ) {
+            _ = onboardingVM.goBack(deps: deps)
         }
     }
 
