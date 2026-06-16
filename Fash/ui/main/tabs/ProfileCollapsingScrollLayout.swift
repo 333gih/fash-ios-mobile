@@ -105,7 +105,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     var additionalBottomInset: CGFloat = 0
     /// Seller storefront / own profile: two-column staggered masonry (see [masonryEagerLayout]).
     var useStaggeredMasonryGrid: Bool = false
-    /// Nested in parent `ScrollView` — `true` lays out all tiles; `false` shows ~one lazy tile until scroll.
+    /// Nested in parent `ScrollView` — own profile forces eager layout (tall header); seller may pass `false`.
     var masonryEagerLayout: Bool = false
     /// Skeleton grid (Explore-style) while the first page loads.
     var showGridLoading: Bool = false
@@ -137,7 +137,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     var enableTilePrefetchLoadMore: Bool = false
     /// Skeleton rows at grid bottom while the next page loads (seller storefront).
     var loadMoreSkeletonRows: Int = 0
-    /// Sliding-window storefront — skip UIKit clamp that fights trim / tab swaps.
+    /// Sliding-window feeds — skip clamp when tile count shrinks (trim); tab swipe still snaps to pinned grid.
     var suppressScrollClamp: Bool = false
     /// Load next page only when feed bottom reaches the viewport (not mid-grid prefetch).
     var loadMoreAtScrollBottom: Bool = false
@@ -198,13 +198,11 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         .scrollDisabled(lockScroll)
         .background(profileViewportHeightReader)
         .background {
-            if !suppressScrollClamp {
-                PinnedTabScrollOffsetFixer(
-                    resetToken: profileScrollResetToken,
-                    clampRevision: scrollClampRevision,
-                    headerHeight: headerHeight
-                )
-            }
+            PinnedTabScrollOffsetFixer(
+                resetToken: profileScrollResetToken,
+                clampRevision: scrollClampRevision,
+                headerHeight: headerHeight
+            )
         }
         .coordinateSpace(name: ProfileScrollIds.coordinateSpaceName)
         .onAppear(perform: resetProfileScrollChromeState)
@@ -217,6 +215,9 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         }
         .onChange(of: selectedTab) { oldTab, newTab in
             handleSelectedTabChange(from: oldTab, to: newTab)
+            guard oldTab != newTab, !isRefreshing, !lockScroll else { return }
+            guard chromePinnedLatch || reportedTabsPinned else { return }
+            scheduleApplyPinnedGridScroll(using: scrollProxy)
         }
         .onChange(of: items.count) { oldCount, newCount in
             guard !suppressScrollClamp else { return }
@@ -455,8 +456,14 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         let oldVisual = resolvedTabIndices.firstIndex(of: oldTab) ?? 0
         let newVisual = resolvedTabIndices.firstIndex(of: newTab) ?? 0
         tabSlideDirection = FashTabSwipeMotion.slideDirection(oldIndex: oldVisual, newIndex: newVisual)
-        guard !suppressScrollClamp else { return }
-        scrollClampRevision += 1
+        if chromePinnedLatch || reportedTabsPinned {
+            profileScrollResetToken += 1
+        }
+        if suppressScrollClamp {
+            scheduleClampAfterTabContentLayout()
+        } else {
+            scrollClampRevision += 1
+        }
     }
 
     private func applyScrollToTop(using scrollProxy: ScrollViewProxy) {
@@ -506,7 +513,9 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         let tab = selectedTab
         Task { @MainActor in
             for delayMs in [0, 80, 180, 320] {
-                try? await Task.sleep(for: .milliseconds(delayMs))
+                if delayMs > 0 {
+                    try? await Task.sleep(for: .milliseconds(delayMs))
+                }
                 guard selectedTab == tab else { return }
                 scrollClampRevision += 1
             }
@@ -527,6 +536,14 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
 
     private var visualTabIndex: Int {
         resolvedTabIndices.firstIndex(of: selectedTab) ?? 0
+    }
+
+    /// Own profile has a taller collapsing header — lazy masonry nested in `ScrollView` only lays out ~one tile.
+    private var effectiveMasonryEagerLayout: Bool {
+        switch tabSet {
+        case .ownProfile: return true
+        case .sellerStorefront: return masonryEagerLayout
+        }
     }
 
     private func evaluateScrollProximityLoadMore(headerMinY: CGFloat) {
@@ -726,7 +743,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             ListingStaggeredMasonryView(
                 items: items,
                 columnAssignments: masonryColumnAssignments,
-                eagerLayout: masonryEagerLayout,
+                eagerLayout: effectiveMasonryEagerLayout,
                 footer: { profilePaginationFooter }
             ) { item, index in
                 profileListingGridCard(item: item, index: index)
@@ -929,17 +946,31 @@ struct ProfileTabSwitcher: View {
             .animation(FashTabSwipeMotion.contentAnimation, value: selectedTab)
             .onChange(of: selectedTab) { _, tab in
                 guard orderedTabIndices.contains(tab) else { return }
-                withAnimation(FashTabSwipeMotion.contentAnimation) {
-                    proxy.scrollTo(tab, anchor: .center)
-                }
+                scrollProfileTabIntoView(tab, proxy: proxy)
             }
             .onAppear {
                 guard orderedTabIndices.contains(selectedTab) else { return }
-                proxy.scrollTo(selectedTab, anchor: .center)
+                scrollProfileTabIntoView(selectedTab, proxy: proxy, animated: false)
             }
             .onChange(of: orderedTabIndices) { _, indices in
                 guard indices.contains(selectedTab) else { return }
-                proxy.scrollTo(selectedTab, anchor: .center)
+                scrollProfileTabIntoView(selectedTab, proxy: proxy)
+            }
+        }
+    }
+
+    private func scrollProfileTabIntoView(
+        _ tab: Int,
+        proxy: ScrollViewProxy,
+        animated: Bool = true
+    ) {
+        DispatchQueue.main.async {
+            if animated {
+                withAnimation(FashTabSwipeMotion.tabBarAnimation) {
+                    proxy.scrollTo(tab, anchor: .center)
+                }
+            } else {
+                proxy.scrollTo(tab, anchor: .center)
             }
         }
     }
