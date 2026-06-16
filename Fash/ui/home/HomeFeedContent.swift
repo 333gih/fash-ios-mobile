@@ -152,6 +152,7 @@ struct HomeFeedContent: View {
                 }
                 .background {
                     PinnedTabScrollOffsetFixer(
+                        resetToken: 0,
                         trueTopToken: viewModel.homeScrollToTopToken,
                         clampRevision: homeScrollClampRevision,
                         headerHeight: homeHeaderHeight,
