@@ -99,7 +99,7 @@ enum HomeFeedScrollReset {
     @MainActor
     static func scheduleScrollToTop(
         proxy: ScrollViewProxy,
-        delaysMs: [Int] = [0, 50, 120, 220, 360, 520]
+        delaysMs: [Int] = [0, 80, 200]
     ) {
         scrollToTop(proxy: proxy)
         guard delaysMs.contains(where: { $0 > 0 }) else { return }
@@ -192,9 +192,10 @@ final class HomeFeedScrollBoundary {
     }
 }
 
-/// Boundary tracking on the home feed `UIScrollView` — anchor must live inside scroll content.
+/// Boundary tracking + one-shot UIKit scroll-to-top on the home feed `UIScrollView`.
 struct HomeFeedScrollCoordinator: UIViewRepresentable {
     var scrollBoundary: HomeFeedScrollBoundary
+    var scrollToTopToken: Int = 0
 
     func makeCoordinator() -> Coordinator { Coordinator(boundary: scrollBoundary) }
 
@@ -209,11 +210,16 @@ struct HomeFeedScrollCoordinator: UIViewRepresentable {
         coordinator.boundary = scrollBoundary
         uiView.coordinator = coordinator
         coordinator.installIfNeeded(from: uiView)
+        if scrollToTopToken > 0, scrollToTopToken != coordinator.lastScrollToTopToken {
+            coordinator.lastScrollToTopToken = scrollToTopToken
+            coordinator.scrollToTrueTop(on: uiView)
+        }
     }
 
     @MainActor
     final class Coordinator {
         var boundary: HomeFeedScrollBoundary
+        var lastScrollToTopToken = 0
         weak var scrollView: UIScrollView?
         private var offsetObservation: NSKeyValueObservation?
         private var lastContentOffsetY: CGFloat?
@@ -262,6 +268,21 @@ struct HomeFeedScrollCoordinator: UIViewRepresentable {
                 try? await Task.sleep(for: .milliseconds(200))
                 guard !Task.isCancelled else { return }
                 boundary.clearScrollingUpIfIdle()
+            }
+        }
+
+        func scrollToTrueTop(on anchor: AnchorView) {
+            DispatchQueue.main.async { [weak self] in
+                guard let self, let scrollView = anchor.enclosingScrollView() else { return }
+                scrollView.layoutIfNeeded()
+                if scrollView.contentInset.top > 0.5 {
+                    scrollView.contentInset.top = 0
+                    var inset = scrollView.verticalScrollIndicatorInsets
+                    inset.top = 0
+                    scrollView.verticalScrollIndicatorInsets = inset
+                }
+                let top = -scrollView.adjustedContentInset.top
+                scrollView.setContentOffset(CGPoint(x: 0, y: top), animated: false)
             }
         }
     }

@@ -28,6 +28,8 @@ final class HomeViewModel {
     var showSizingBanner = false
     private(set) var homeScrollToTopToken = 0
     private(set) var homeTabBarScrollToken = 0
+    var homeFeedTrimToken = 0
+    private(set) var homeFeedTrimSignedDeltaY: CGFloat = 0
 
     private var sections = HomeRecommendationSections()
     private var followingWindow = FeedSlidingWindow()
@@ -41,6 +43,7 @@ final class HomeViewModel {
     private var lastSuccessfulRefreshAt: Date?
     private var lastFollowFeedLoadMoreAt: Date?
     private var followingDuplicatePageCount = 0
+    private var followingTrimTask: Task<Void, Never>?
 
     /// Scroll boundary from [HomeFeedScrollCoordinator] — gates Following pagination while scrolling up.
     @ObservationIgnored
@@ -361,9 +364,10 @@ final class HomeViewModel {
         }
     }
 
-    /// Tile prefetch only — never trim on cell appear (trim while scrolling up caused void / stuck scroll).
+    /// Tile prefetch + sliding-window trim (idle only — never while finger is on screen).
     func notifyFollowingCellVisible(
         index: Int,
+        columnWidth: CGFloat,
         deps: AppDependencies,
         isGuestMode: Bool
     ) {
@@ -373,6 +377,28 @@ final class HomeViewModel {
             deps: deps,
             isGuestMode: isGuestMode
         )
+        scheduleFollowingWindowTrim(visibleIndex: index, columnWidth: columnWidth)
+    }
+
+    private func scheduleFollowingWindowTrim(visibleIndex: Int, columnWidth: CGFloat) {
+        followingTrimTask?.cancel()
+        followingTrimTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(160))
+            guard !Task.isCancelled else { return }
+            guard selectedFeedTab == .following else { return }
+            guard let boundary = homeScrollBoundary, !boundary.isUserInteracting else { return }
+            guard let trim = followingWindow.trimFrontIfNeeded(
+                visibleIndex: visibleIndex,
+                columnWidth: columnWidth,
+                policy: .homeFollowing
+            ) else { return }
+            syncItemsForSelectedTab()
+            homeFeedTrimSignedDeltaY = -trim.scrollDeltaY
+            homeFeedTrimToken += 1
+            FeedPerformance.log(
+                "Home following trim -\(trim.removedCount) window=\(followingWindow.items.count)"
+            )
+        }
     }
 
     /// Tile-anchored pagination — same policy as Explore (within 8 rows of end).

@@ -64,7 +64,6 @@ struct HomeFeedContent: View {
     @State private var stickyScrollSample = HomeStickyScrollSample()
     @State private var homeScrollBoundary = HomeFeedScrollBoundary()
     @State private var homeHeaderHeight: CGFloat = 0
-    @State private var homeScrollClampRevision = 0
     @State private var masonryColumnAssignmentsByTab: [String: [String: Bool]] = [:]
     @State private var listingInteractionEnabled = true
 
@@ -134,13 +133,13 @@ struct HomeFeedContent: View {
                         viewModel.selectFeedTab(tabs[index], deps: deps, isGuestMode: isGuestMode)
                     }
                     .background {
-                        HomeFeedScrollCoordinator(scrollBoundary: homeScrollBoundary)
-                        PinnedTabScrollOffsetFixer(
-                            resetToken: 0,
-                            trueTopToken: viewModel.homeScrollToTopToken,
-                            clampRevision: homeScrollClampRevision,
-                            headerHeight: homeHeaderHeight,
-                            suspendDuringPull: viewModel.isRefreshing
+                        HomeFeedScrollCoordinator(
+                            scrollBoundary: homeScrollBoundary,
+                            scrollToTopToken: viewModel.homeScrollToTopToken
+                        )
+                        FeedScrollTrimCompensator(
+                            token: viewModel.homeFeedTrimToken,
+                            signedDeltaY: viewModel.homeFeedTrimSignedDeltaY
                         )
                     }
                 }
@@ -167,10 +166,6 @@ struct HomeFeedContent: View {
                 .onChange(of: viewModel.selectedFeedTabKey) { oldKey, newKey in
                     guard oldKey != newKey else { return }
                     onHomeFeedTabChanged(to: newKey)
-                }
-                .onChange(of: viewModel.items.count) { oldCount, newCount in
-                    guard !viewModel.isRefreshing, newCount < oldCount else { return }
-                    homeScrollClampRevision += 1
                 }
             }
 
@@ -335,6 +330,7 @@ struct HomeFeedContent: View {
                             ? {
                                 viewModel.notifyFollowingCellVisible(
                                     index: index,
+                                    columnWidth: masonryColumnWidth,
                                     deps: deps,
                                     isGuestMode: isGuestMode
                                 )
