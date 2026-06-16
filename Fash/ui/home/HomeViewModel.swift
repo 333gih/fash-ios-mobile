@@ -615,6 +615,7 @@ final class HomeViewModel {
         if homeUxApplied && selectedFeedTab == tab { return }
         homeUxApplied = true
         selectedFeedTabKey = tab.rawValue
+        syncVisibleItemsForTab(tab)
         homeTabBarScrollToken &+= 1
         deps.uxTabTracker.onTabOpened(scope: "home", tabKey: UxPersonalizationMapping.uxTabKey(for: tab))
         ensureTabLoaded(tab, deps: deps, isGuestMode: isGuestMode, force: !loadedTabs.contains(tab.rawValue))

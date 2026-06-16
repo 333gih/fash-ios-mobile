@@ -86,7 +86,7 @@ extension View {
 }
 
 enum HomeFeedScrollReset {
-    /// SwiftUI fallback — primary scroll-to-top is UIKit via [HomeFeedScrollCoordinator].
+    /// SwiftUI fallback — primary scroll-to-top is UIKit via [PinnedTabScrollOffsetFixer].
     @MainActor
     static func scrollToTop(proxy: ScrollViewProxy) {
         var transaction = Transaction()
@@ -155,20 +155,23 @@ final class HomeFeedScrollBoundary {
         if atTop != isAtTop { isAtTop = atTop }
         if nearBottom != isNearBottom { isNearBottom = nearBottom }
         if abs(deltaY) > 3.5 {
-            let scrollingUp = deltaY < 0
-            if scrollingUp != isScrollingUp { isScrollingUp = scrollingUp }
+            if deltaY < 0 {
+                if !isScrollingUp { isScrollingUp = true }
+            } else if isScrollingUp {
+                isScrollingUp = false
+            }
         }
         if atTop, isScrollingUp { isScrollingUp = false }
     }
 
     fileprivate func clearScrollingUpIfIdle() {
-        if isScrollingUp { isScrollingUp = false }
+        // Only release the scroll-up latch at the top — mid-feed idle still blocks load-more.
+        if isScrollingUp, isAtTop { isScrollingUp = false }
     }
 }
 
-/// Scroll-to-top + boundary tracking on the home feed `UIScrollView`.
+/// Boundary tracking on the home feed `UIScrollView` (scroll-to-top uses [PinnedTabScrollOffsetFixer]).
 struct HomeFeedScrollCoordinator: UIViewRepresentable {
-    var scrollToTopToken: Int
     var scrollBoundary: HomeFeedScrollBoundary
 
     func makeCoordinator() -> Coordinator { Coordinator(boundary: scrollBoundary) }
@@ -184,18 +187,11 @@ struct HomeFeedScrollCoordinator: UIViewRepresentable {
         coordinator.boundary = scrollBoundary
         uiView.coordinator = coordinator
         coordinator.installIfNeeded(from: uiView)
-
-        guard scrollToTopToken > 0, scrollToTopToken != coordinator.lastScrollToTopToken else { return }
-        coordinator.lastScrollToTopToken = scrollToTopToken
-        coordinator.scrollToTopGeneration += 1
-        uiView.runScrollToTop(generation: coordinator.scrollToTopGeneration)
     }
 
     @MainActor
     final class Coordinator {
         var boundary: HomeFeedScrollBoundary
-        var lastScrollToTopToken = 0
-        var scrollToTopGeneration = 0
         weak var scrollView: UIScrollView?
         private var offsetObservation: NSKeyValueObservation?
         private var lastContentOffsetY: CGFloat?
@@ -254,34 +250,6 @@ struct HomeFeedScrollCoordinator: UIViewRepresentable {
                 guard let self, let coordinator else { return }
                 coordinator.installIfNeeded(from: self)
             }
-        }
-
-        func runScrollToTop(generation: Int) {
-            for attempt in 0..<14 {
-                let delay = Double(attempt) * 0.055
-                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-                    guard let self, coordinator?.scrollToTopGeneration == generation else { return }
-                    applyScrollToTop()
-                }
-            }
-        }
-
-        private func applyScrollToTop() {
-            guard let scrollView = coordinator?.scrollView ?? enclosingScrollView() else { return }
-            scrollView.layoutIfNeeded()
-            resetPullRefreshInset(on: scrollView)
-            let top = -scrollView.adjustedContentInset.top
-            if abs(scrollView.contentOffset.y - top) > 0.5 {
-                scrollView.setContentOffset(CGPoint(x: 0, y: top), animated: false)
-            }
-        }
-
-        private func resetPullRefreshInset(on scrollView: UIScrollView) {
-            guard scrollView.contentInset.top > 0.5 else { return }
-            scrollView.contentInset.top = 0
-            var inset = scrollView.verticalScrollIndicatorInsets
-            inset.top = 0
-            scrollView.verticalScrollIndicatorInsets = inset
         }
     }
 }

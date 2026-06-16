@@ -89,14 +89,23 @@ struct PinnedTabScrollOffsetFixer: UIViewRepresentable {
         private func applyTrueTop(attempt: Int) {
             guard let scrollView = enclosingScrollView() else { return }
             scrollView.layoutIfNeeded()
+            clearPullRefreshInsetIfNeeded(on: scrollView)
             let visualTop = -scrollView.adjustedContentInset.top
             if scrollView.contentOffset.y > visualTop + 1.5 {
                 scrollView.setContentOffset(CGPoint(x: 0, y: visualTop), animated: false)
             }
-            guard attempt < 12 else { return }
+            guard attempt < 5 else { return }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) { [weak self] in
                 self?.applyTrueTop(attempt: attempt + 1)
             }
+        }
+
+        private func clearPullRefreshInsetIfNeeded(on scrollView: UIScrollView) {
+            guard scrollView.contentInset.top > 0.5 else { return }
+            scrollView.contentInset.top = 0
+            var inset = scrollView.verticalScrollIndicatorInsets
+            inset.top = 0
+            scrollView.verticalScrollIndicatorInsets = inset
         }
 
         private func applyReset(headerHeight: CGFloat, mode: ResetMode, attempt: Int) {

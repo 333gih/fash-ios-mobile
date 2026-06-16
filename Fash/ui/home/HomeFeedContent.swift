@@ -60,23 +60,31 @@ struct HomeFeedContent: View {
     }
 
     @State private var showStickyTabs = false
+    @State private var chromePinnedLatch = false
     @State private var stickyScrollSample = HomeStickyScrollSample()
     @State private var homeScrollBoundary = HomeFeedScrollBoundary()
+    @State private var homeHeaderHeight: CGFloat = 0
+    @State private var homeScrollClampRevision = 0
     @State private var masonryColumnAssignmentsByTab: [String: [String: Bool]] = [:]
     @State private var listingInteractionEnabled = true
 
-    /// Sticky overlay — unpin when top anchor visible; pin only when header scrolled away.
+    /// Sticky overlay — hysteresis latch avoids rubber-band flicker (Profile parity).
     private func recomputeStickyTabs() {
         let topMinY = stickyScrollSample.topMinY
         let tabRowMinY = stickyScrollSample.tabRowMinY
         if topMinY > -12 {
+            chromePinnedLatch = false
             if showStickyTabs { showStickyTabs = false }
             return
         }
         if tabRowMinY < -14 {
-            if !showStickyTabs { showStickyTabs = true }
-        } else if tabRowMinY > 2 {
-            if showStickyTabs { showStickyTabs = false }
+            chromePinnedLatch = true
+        } else if chromePinnedLatch, tabRowMinY > 2 {
+            chromePinnedLatch = false
+        }
+        let shouldShow = chromePinnedLatch
+        if showStickyTabs != shouldShow {
+            showStickyTabs = shouldShow
         }
     }
 
@@ -96,8 +104,7 @@ struct HomeFeedContent: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            ScrollViewReader { scrollProxy in
-                ScrollView {
+            ScrollView {
                     // VStack (not LazyVStack) — lazy-unloaded header/tabs shrink contentSize when
                     // pinned, which blocks scrolling back up until many drag attempts.
                     VStack(spacing: 0) {
@@ -141,23 +148,31 @@ struct HomeFeedContent: View {
                         .allowsHitTesting(showStickyTabs)
                 }
                 .background {
-                    HomeFeedScrollCoordinator(
-                        scrollToTopToken: viewModel.homeScrollToTopToken,
-                        scrollBoundary: homeScrollBoundary
+                    HomeFeedScrollCoordinator(scrollBoundary: homeScrollBoundary)
+                }
+                .background {
+                    PinnedTabScrollOffsetFixer(
+                        trueTopToken: viewModel.homeScrollToTopToken,
+                        clampRevision: homeScrollClampRevision,
+                        headerHeight: homeHeaderHeight,
+                        suspendDuringPull: viewModel.isRefreshing
                     )
                 }
                 .fashFeedPullRefresh(isRefreshing: $viewModel.isRefreshing) {
                     await viewModel.pullToRefresh(deps: deps, isGuestMode: isGuestMode)
                 }
                 .onChange(of: viewModel.homeScrollToTopToken) { _, _ in
+                    chromePinnedLatch = false
                     showStickyTabs = false
-                    scrollHomeToTop(using: scrollProxy)
                 }
                 .onChange(of: viewModel.selectedFeedTabKey) { oldKey, newKey in
                     guard oldKey != newKey else { return }
                     onHomeFeedTabChanged(to: newKey)
                 }
-            }
+                .onChange(of: viewModel.items.count) { oldCount, newCount in
+                    guard !viewModel.isRefreshing, newCount < oldCount else { return }
+                    homeScrollClampRevision += 1
+                }
 
             if !promoSlides.isEmpty {
                 FashPromoSliderAdFooterView(slides: promoSlides) { slide, _ in
@@ -236,6 +251,8 @@ struct HomeFeedContent: View {
                 )
             }
         }
+        .homeFeedHeaderHeightReporting()
+        .onHomeHeaderHeightChange($homeHeaderHeight)
     }
 
     /// Tab row — in-scroll copy; sticky overlay shown separately when scrolled off (Android parity).
@@ -301,7 +318,8 @@ struct HomeFeedContent: View {
                             FeedLoadMoreFooter(
                                 enabled: viewModel.followingHasMore,
                                 isLoadingMore: viewModel.isLoadingMoreFollowing,
-                                canAutoLoad: { homeScrollBoundary.allowsFollowingLoadMore }
+                                triggersLoadOnAppear: false,
+                                rearmAfterLoadComplete: false
                             ) {
                                 viewModel.loadMoreFollowing(deps: deps, isGuestMode: isGuestMode)
                             }
@@ -406,12 +424,9 @@ struct HomeFeedContent: View {
     private func onHomeFeedTabChanged(to tabKey: String) {
         let tab = HomeFeedTab(rawValue: tabKey) ?? viewModel.selectedFeedTab
         viewModel.syncVisibleItemsForTab(tab)
+        chromePinnedLatch = false
         showStickyTabs = false
-        viewModel.requestScrollHomeToTop()
-    }
-
-    private func scrollHomeToTop(using scrollProxy: ScrollViewProxy) {
-        HomeFeedScrollReset.scrollToTop(proxy: scrollProxy)
+        homeScrollClampRevision += 1
     }
 }
 
