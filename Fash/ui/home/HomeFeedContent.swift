@@ -76,16 +76,25 @@ struct HomeFeedContent: View {
     private func recomputeStickyTabs() {
         let topMinY = stickyScrollSample.topMinY
         let tabRowMinY = stickyScrollSample.tabRowMinY
+
+        // Full header visible — hide sticky copy (bottom-nav re-tap lands here too).
         if topMinY > -12 {
-            chromePinnedLatch = false
-            if showStickyTabs { showStickyTabs = false }
+            if chromePinnedLatch || showStickyTabs {
+                chromePinnedLatch = false
+                showStickyTabs = false
+            }
             return
         }
-        if tabRowMinY < -14 {
+
+        guard tabRowMinY.isFinite else { return }
+
+        // In-scroll tab row scrolled off — show Android-style pinned strip (tab row not visible).
+        if tabRowMinY < -6 {
             chromePinnedLatch = true
-        } else if chromePinnedLatch, tabRowMinY > 2 {
+        } else if chromePinnedLatch, tabRowMinY >= -2 {
             chromePinnedLatch = false
         }
+
         let shouldShow = chromePinnedLatch
         if showStickyTabs != shouldShow {
             showStickyTabs = shouldShow
@@ -125,54 +134,61 @@ struct HomeFeedContent: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             ScrollViewReader { scrollProxy in
-                ScrollView {
-                    // VStack (not LazyVStack) — lazy-unloaded header/tabs shrink contentSize when
-                    // pinned, which blocks scrolling back up until many drag attempts.
-                    VStack(spacing: 0) {
-                        homeScrollAwayHeader
+                ZStack(alignment: .top) {
+                    ScrollView {
+                        // VStack (not LazyVStack) — lazy-unloaded header/tabs shrink contentSize when
+                        // pinned, which blocks scrolling back up until many drag attempts.
+                        VStack(spacing: 0) {
+                            homeScrollAwayHeader
 
-                        homeFeedTabsBar(sticky: false)
-                            .id(HomeScrollIds.pinnedTabs)
-                            .homeTabRowScrollReporting()
+                            homeFeedTabsBar(sticky: false)
+                                .id(HomeScrollIds.pinnedTabs)
+                                .homeTabRowScrollReporting()
 
-                        feedBodyContent
-                            .id(HomeScrollIds.feedContent)
-                            .allowsHitTesting(listingInteractionEnabled)
-                            .frame(minHeight: homeFeedMinHeight, alignment: .top)
-                    }
-                    .padding(.bottom, promoDockInset + spacing.spacing2)
-                    .fashScrollViewTabSwipe(
-                        currentIndex: selectedTabIndex,
-                        tabCount: tabs.count,
-                        listingInteractionEnabled: $listingInteractionEnabled,
-                        onHorizontalSwipeActive: { active in
-                            if active {
-                                deps.listingPreview.close(deps: deps, animated: false)
-                            }
+                            feedBodyContent
+                                .id(HomeScrollIds.feedContent)
+                                .allowsHitTesting(listingInteractionEnabled)
+                                .frame(minHeight: homeFeedMinHeight, alignment: .top)
                         }
-                    ) { index in
-                        viewModel.selectFeedTab(tabs[index], deps: deps, isGuestMode: isGuestMode)
+                        .padding(.bottom, promoDockInset + spacing.spacing2)
+                        .fashScrollViewTabSwipe(
+                            currentIndex: selectedTabIndex,
+                            tabCount: tabs.count,
+                            listingInteractionEnabled: $listingInteractionEnabled,
+                            onHorizontalSwipeActive: { active in
+                                if active {
+                                    deps.listingPreview.close(deps: deps, animated: false)
+                                }
+                            }
+                        ) { index in
+                            viewModel.selectFeedTab(tabs[index], deps: deps, isGuestMode: isGuestMode)
+                        }
+                        .background {
+                            homeViewportHeightReader
+                            PinnedTabScrollOffsetFixer(
+                                trueTopToken: viewModel.homeScrollToTopToken,
+                                clampRevision: homeScrollClampRevision,
+                                headerHeight: pinnedChromeHeight,
+                                suspendDuringPull: viewModel.isRefreshing
+                            )
+                            HomeFeedScrollCoordinator(
+                                scrollBoundary: homeScrollBoundary,
+                                scrollToTopToken: viewModel.homeScrollToTopToken
+                            )
+                            FeedScrollTrimCompensator(
+                                token: viewModel.homeFeedTrimToken,
+                                signedDeltaY: viewModel.homeFeedTrimSignedDeltaY
+                            )
+                        }
                     }
-                    .background {
-                        homeViewportHeightReader
-                        PinnedTabScrollOffsetFixer(
-                            resetToken: viewModel.homePinnedScrollResetToken,
-                            trueTopToken: viewModel.homeScrollToTopToken,
-                            clampRevision: homeScrollClampRevision,
-                            headerHeight: pinnedChromeHeight,
-                            suspendDuringPull: viewModel.isRefreshing
-                        )
-                        HomeFeedScrollCoordinator(
-                            scrollBoundary: homeScrollBoundary,
-                            scrollToTopToken: viewModel.homeScrollToTopToken
-                        )
-                        FeedScrollTrimCompensator(
-                            token: viewModel.homeFeedTrimToken,
-                            signedDeltaY: viewModel.homeFeedTrimSignedDeltaY
-                        )
+                    .coordinateSpace(name: "homeFeedScroll")
+
+                    if showStickyTabs {
+                        homeFeedTabsBar(sticky: true)
+                            .zIndex(20)
+                            .transition(.opacity)
                     }
                 }
-                .coordinateSpace(name: "homeFeedScroll")
                 .onPreferenceChange(HomeFeedScrollOffsetKey.self) { topMinY in
                     stickyScrollSample.topMinY = topMinY
                     recomputeStickyTabs()
@@ -189,13 +205,7 @@ struct HomeFeedContent: View {
                 .onPreferenceChange(FeedContentBottomYKey.self) { bottomY in
                     feedContentBottomY = bottomY
                 }
-                .safeAreaInset(edge: .top, spacing: 0) {
-                    if showStickyTabs {
-                        homeFeedTabsBar(sticky: true)
-                            .transition(.opacity)
-                    }
-                }
-                .animation(.easeInOut(duration: 0.16), value: showStickyTabs)
+                .animation(.easeInOut(duration: 0.14), value: showStickyTabs)
                 .fashFeedPullRefresh(isRefreshing: $viewModel.isRefreshing) {
                     await viewModel.pullToRefresh(deps: deps, isGuestMode: isGuestMode)
                 }
@@ -313,7 +323,7 @@ struct HomeFeedContent: View {
                 .overlay(FashColors.outlineMuted.opacity(0.35))
         }
         .background(FashColors.screen)
-        .shadow(color: sticky ? .black.opacity(0.06) : .clear, radius: 2, y: 1)
+        .shadow(color: sticky ? Color.black.opacity(0.08) : .clear, radius: 3, y: 1)
     }
 
     @ViewBuilder
@@ -473,9 +483,6 @@ struct HomeFeedContent: View {
         viewModel.syncVisibleItemsForTab(tab)
         feedContentBottomY = .infinity
         lastFollowingLoadMoreAt = .distantPast
-        if chromePinnedLatch {
-            showStickyTabs = true
-        }
     }
 
     private func applyHomeScrollToTop(using scrollProxy: ScrollViewProxy) {
@@ -485,9 +492,6 @@ struct HomeFeedContent: View {
     }
 
     private func applyHomeScrollToFeedTop(using scrollProxy: ScrollViewProxy) {
-        if chromePinnedLatch {
-            showStickyTabs = true
-        }
         HomeFeedScrollReset.scheduleScrollToFeedTop(proxy: scrollProxy)
     }
 

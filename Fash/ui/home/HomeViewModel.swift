@@ -154,7 +154,6 @@ final class HomeViewModel {
     /// Horizontal swipe or different tab tap — align pinned tabs + first rows of that tab.
     func requestScrollHomeFeedToTop() {
         homeScrollToFeedTopToken &+= 1
-        homePinnedScrollResetToken &+= 1
     }
 
     func normalizeSelectedFeedTab(isGuestMode: Bool, deps: AppDependencies) {
