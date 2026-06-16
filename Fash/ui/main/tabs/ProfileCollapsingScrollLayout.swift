@@ -135,6 +135,8 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     var enableScrollProximityLoadMore: Bool = false
     /// When false, tiles do not prefetch pages while scrolling mid-grid.
     var enableTilePrefetchLoadMore: Bool = false
+    /// Skeleton rows at grid bottom while the next page loads (seller storefront).
+    var loadMoreSkeletonRows: Int = 0
     /// Sliding-window trim/prepend — keeps viewport stable after rows drop above the fold.
     var feedTrimCompensationToken: Int = 0
     var feedTrimCompensationSignedDeltaY: CGFloat = 0
@@ -639,7 +641,10 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             FeedLoadMoreFooter(
                 enabled: hasMoreListings,
                 isLoadingMore: isLoadingMoreListings,
-                triggersLoadOnAppear: !enableTilePrefetchLoadMore,
+                triggersLoadOnAppear: !enableTilePrefetchLoadMore && !enableScrollProximityLoadMore,
+                loadingPresentation: loadMoreSkeletonRows > 0
+                    ? .skeleton(rows: loadMoreSkeletonRows)
+                    : .spinner,
                 onLoadMore: onLoadMore
             )
         }

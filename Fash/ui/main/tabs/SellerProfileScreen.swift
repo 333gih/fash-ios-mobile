@@ -101,8 +101,9 @@ struct SellerProfileScreen: View {
                                     deps.listingPreview.close(deps: deps, animated: false)
                                 }
                             },
-                            enableScrollProximityLoadMore: true,
-                            enableTilePrefetchLoadMore: true,
+                            enableScrollProximityLoadMore: false,
+                            enableTilePrefetchLoadMore: false,
+                            loadMoreSkeletonRows: 2,
                             feedTrimCompensationToken: viewModel.listingScrollTrimToken,
                             feedTrimCompensationSignedDeltaY: viewModel.listingScrollTrimSignedDeltaY,
                             onListingCellVisible: { index in

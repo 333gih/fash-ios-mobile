@@ -22,6 +22,11 @@ struct FashFeedLoadMoreIndicator: View {
 
 /// End-of-feed pagination — one auto-load per visit; re-arm after user scrolls away.
 struct FeedLoadMoreFooter: View {
+    enum LoadingPresentation {
+        case spinner
+        case skeleton(rows: Int)
+    }
+
     let enabled: Bool
     let isLoadingMore: Bool
     /// When false, only shows loading UI — parent detects scroll proximity (profile/seller grids).
@@ -30,20 +35,25 @@ struct FeedLoadMoreFooter: View {
     var rearmAfterLoadComplete: Bool = true
     /// Extra gate — e.g. home feed only loads more near scroll bottom while moving down.
     var canAutoLoad: () -> Bool = { true }
+    var loadingPresentation: LoadingPresentation = .spinner
     let onLoadMore: () -> Void
 
-    private static let sentinelHeight: CGFloat = 48
+    private static let spinnerHeight: CGFloat = 48
+    private static let sentinelHeight: CGFloat = 28
 
     @State private var mayAutoLoad = false
 
     var body: some View {
-        ZStack {
+        Group {
             if isLoadingMore {
-                FashFeedLoadMoreIndicator()
+                loadingMoreContent
+            } else {
+                Color.clear
+                    .frame(maxWidth: .infinity)
+                    .frame(height: Self.sentinelHeight)
             }
         }
         .frame(maxWidth: .infinity)
-        .frame(height: Self.sentinelHeight)
         .padding(.vertical, 4)
         .onAppear {
             mayAutoLoad = true
@@ -66,6 +76,20 @@ struct FeedLoadMoreFooter: View {
                 mayAutoLoad = true
                 triggerLoadIfNeeded()
             }
+        }
+    }
+
+    @ViewBuilder
+    private var loadingMoreContent: some View {
+        switch loadingPresentation {
+        case .spinner:
+            FashFeedLoadMoreIndicator()
+                .frame(height: Self.spinnerHeight)
+        case .skeleton(let rows):
+            FashSkeleton.listingGrid(rows: max(1, rows), staggered: true)
+                .frame(maxWidth: .infinity, alignment: .top)
+                .padding(.top, 4)
+                .padding(.bottom, 8)
         }
     }
 
