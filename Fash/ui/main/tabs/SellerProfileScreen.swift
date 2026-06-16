@@ -68,7 +68,7 @@ struct SellerProfileScreen: View {
                             showStatusOverlay: true,
                             additionalBottomInset: promoBottomInset,
                             useStaggeredMasonryGrid: true,
-                            masonryEagerLayout: true,
+                            masonryEagerLayout: false,
                             showGridLoading: showListingGridLoading,
                             showGridLoadRetry: showListingGridLoadRetry,
                             onRetryGridLoad: {
@@ -103,6 +103,20 @@ struct SellerProfileScreen: View {
                             },
                             enableScrollProximityLoadMore: true,
                             enableTilePrefetchLoadMore: true,
+                            feedTrimCompensationToken: viewModel.listingScrollTrimToken,
+                            feedTrimCompensationSignedDeltaY: viewModel.listingScrollTrimSignedDeltaY,
+                            onListingCellVisible: { index in
+                                viewModel.notifyListingCellVisible(
+                                    tab: selectedSellerTab,
+                                    visibleIndex: index,
+                                    columnWidth: ListingMasonryGrid.feedGridColumnWidth(
+                                        containerWidth: UIScreen.main.bounds.width,
+                                        spacing: spacing
+                                    ),
+                                    deps: deps,
+                                    isGuestMode: isGuestMode
+                                )
+                            },
                             onListingClick: { item in onListingClick(item) },
                             onLike: { item in
                                 if isGuestMode { presentGuestSignIn(reason: L10n.guestLoginReasonLike) }

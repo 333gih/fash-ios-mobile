@@ -135,6 +135,10 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     var enableScrollProximityLoadMore: Bool = false
     /// When false, tiles do not prefetch pages while scrolling mid-grid.
     var enableTilePrefetchLoadMore: Bool = false
+    /// Sliding-window trim/prepend — keeps viewport stable after rows drop above the fold.
+    var feedTrimCompensationToken: Int = 0
+    var feedTrimCompensationSignedDeltaY: CGFloat = 0
+    var onListingCellVisible: ((Int) -> Void)? = nil
     var onListingClick: (ListingFeedItem) -> Void
     var onLike: ((ListingFeedItem) -> Void)?
     var onSave: ((ListingFeedItem) -> Void)?
@@ -661,6 +665,12 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                     .padding(.top, spacing.spacing2)
                 profileListingReloadOverlay
             }
+            .background {
+                FeedScrollTrimCompensator(
+                    token: feedTrimCompensationToken,
+                    signedDeltaY: feedTrimCompensationSignedDeltaY
+                )
+            }
             if enableScrollProximityLoadMore {
                 FeedScrollContentBottomReporter(coordinateSpace: ProfileScrollIds.coordinateSpaceName)
             }
@@ -774,6 +784,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             onSave: onSave.map { h in { h(item) } }
         )
         .onAppear {
+            onListingCellVisible?(index)
             if enableTilePrefetchLoadMore {
                 profilePrefetchLoadMoreIfNeeded(appearedIndex: index)
             }

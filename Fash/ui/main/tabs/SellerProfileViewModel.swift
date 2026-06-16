@@ -4,7 +4,8 @@ import Observation
 /// Paginated storefront listings — page size aligned with own [ProfileViewModel].
 private enum SellerStorefrontConstants {
     static let listingPageSize = 20
-    static let imagePrefetchCap = 12
+    static let imagePrefetchCap = 8
+    static let slidingWindowPolicy = FeedSlidingWindowPolicy.sellerStorefront
 }
 
 @Observable
@@ -25,6 +26,8 @@ final class SellerProfileViewModel {
     var isFollowing = false
     var followInFlight = false
     var selectedTab = SellerProfileTab.selling.rawValue
+    var listingScrollTrimToken = 0
+    private(set) var listingScrollTrimSignedDeltaY: CGFloat = 0
 
     private var activeKey: String?
     private var activeSellerId: String?
@@ -33,7 +36,15 @@ final class SellerProfileViewModel {
     private var tabLoadState: [Int: SellerTabLoadState] = [:]
     private var tabPagination: [Int: SellerTabPagination] = [:]
     private var loadMoreTasks: [Int: Task<Void, Never>] = [:]
+    private var backfillTasks: [Int: Task<Void, Never>] = [:]
+    private var listingWindows: [Int: SellerListingWindowState] = [:]
     private let listingStallWatch = FeedLoadStallWatch()
+
+    private struct SellerListingWindowState {
+        var window = FeedSlidingWindow()
+        var knownIds = Set<String>()
+        var isBackfilling = false
+    }
 
     private struct SellerTabLoadState {
         var isLoadingFirstPage = false
@@ -79,6 +90,9 @@ final class SellerProfileViewModel {
             tabPagination = [:]
             loadMoreTasks.values.forEach { $0.cancel() }
             loadMoreTasks = [:]
+            backfillTasks.values.forEach { $0.cancel() }
+            backfillTasks = [:]
+            listingWindows = [:]
         }
         let showBlocking = profile == nil
         if showBlocking {
@@ -103,6 +117,9 @@ final class SellerProfileViewModel {
             tabPagination = [:]
             loadMoreTasks.values.forEach { $0.cancel() }
             loadMoreTasks = [:]
+            backfillTasks.values.forEach { $0.cancel() }
+            backfillTasks = [:]
+            listingWindows = [:]
         }
 
         async let tagsResult = deps.commonCatalogRepository.getAestheticTags(all: true)
@@ -331,6 +348,7 @@ final class SellerProfileViewModel {
         listingTabsStalled.remove(tab.rawValue)
         listingStallWatch.cancel(key: String(tab.rawValue))
         loadedListingTabs.remove(tab.rawValue)
+        listingWindows[tab.rawValue] = nil
         mutatePagination(for: tab) { $0 = SellerTabPagination() }
         await fetchListingsFirstPage(
             tab,
@@ -348,6 +366,39 @@ final class SellerProfileViewModel {
             defer { loadMoreTasks[tab.rawValue] = nil }
             await loadMoreListings(for: tab, deps: deps, isGuestMode: isGuestMode)
         }
+    }
+
+    /// TikTok-style window — trim far-above rows; backfill when scrolling toward header.
+    func notifyListingCellVisible(
+        tab: SellerProfileTab,
+        visibleIndex: Int,
+        columnWidth: CGFloat,
+        deps: AppDependencies,
+        isGuestMode: Bool
+    ) {
+        guard columnWidth > 1 else { return }
+        var state = listingWindowState(for: tab)
+
+        if let trim = state.window.trimFrontIfNeeded(
+            visibleIndex: visibleIndex,
+            columnWidth: columnWidth,
+            policy: SellerStorefrontConstants.slidingWindowPolicy
+        ) {
+            listingWindows[tab.rawValue] = state
+            syncListingsFromWindow(tab)
+            applyScrollCompensation(-trim.scrollDeltaY)
+            FeedPerformance.log(
+                "Seller \(tab) trim -\(trim.removedCount) window=\(state.window.items.count) logical=\(state.window.logicalStartIndex)"
+            )
+        }
+
+        requestBackfillIfNeeded(
+            tab: tab,
+            visibleIndex: visibleIndex,
+            columnWidth: columnWidth,
+            deps: deps,
+            isGuestMode: isGuestMode
+        )
     }
 
     func patchListingEngagement(_ id: String, transform: (ListingFeedItem) -> ListingFeedItem) {
@@ -463,18 +514,19 @@ final class SellerProfileViewModel {
                 mutatePagination(for: tab) { $0.hasMore = false }
                 return
             }
-            var seen = Set(listings(for: tab).map(\.id))
-            let fresh = page.items.filter { seen.insert($0.id).inserted }
-            if !fresh.isEmpty {
-                appendListings(fresh, for: tab)
-                prefetchStorefrontImages(fresh)
+            var state = listingWindowState(for: tab)
+            let added = state.window.appendUnique(page.items, knownIds: &state.knownIds)
+            listingWindows[tab.rawValue] = state
+            if added > 0 {
+                syncListingsFromWindow(tab)
+                prefetchStorefrontImages(Array(state.window.items.suffix(added)))
             }
             mutatePagination(for: tab) { state in
                 state.nextOffset += page.rawCount
                 state.hasMore = page.rawCount >= SellerStorefrontConstants.listingPageSize
             }
             FeedPerformance.log(
-                "Seller \(tab) loadMore @\(offset) -> +\(fresh.count) total=\(listings(for: tab).count)"
+                "Seller \(tab) loadMore @\(offset) -> +\(added) window=\(listings(for: tab).count) logical=\(state.window.logicalStartIndex)"
             )
         case .failure:
             FeedPerformance.log("Seller \(tab) loadMore @\(offset) failed")
@@ -630,28 +682,98 @@ final class SellerProfileViewModel {
         return Array(filtered.prefix(SellerStorefrontConstants.listingPageSize))
     }
 
-    private func appendListings(_ items: [ListingFeedItem], for tab: SellerProfileTab) {
-        switch tab {
-        case .selling: sellingListings.append(contentsOf: items)
-        case .sold: soldListings.append(contentsOf: items)
-        }
+    private func listingWindowState(for tab: SellerProfileTab) -> SellerListingWindowState {
+        listingWindows[tab.rawValue] ?? SellerListingWindowState()
     }
 
-    private func setListings(_ items: [ListingFeedItem], for tab: SellerProfileTab) {
+    private func syncListingsFromWindow(_ tab: SellerProfileTab) {
+        let items = listingWindows[tab.rawValue]?.window.items ?? []
         switch tab {
         case .selling: sellingListings = items
         case .sold: soldListings = items
         }
     }
 
-    private func patch(_ id: String, transform: (ListingFeedItem) -> ListingFeedItem) {
-        func map(_ items: [ListingFeedItem]) -> [ListingFeedItem] {
-            items.map { cur in
-                cur.id == id ? transform(cur) : cur
+    private func applyScrollCompensation(_ signedDeltaY: CGFloat) {
+        guard abs(signedDeltaY) > 0.5 else { return }
+        listingScrollTrimSignedDeltaY = signedDeltaY
+        listingScrollTrimToken += 1
+    }
+
+    private func requestBackfillIfNeeded(
+        tab: SellerProfileTab,
+        visibleIndex: Int,
+        columnWidth: CGFloat,
+        deps: AppDependencies,
+        isGuestMode: Bool
+    ) {
+        let policy = SellerStorefrontConstants.slidingWindowPolicy
+        guard visibleIndex < policy.backfillVisibleThreshold else { return }
+        var state = listingWindowState(for: tab)
+        guard state.window.logicalStartIndex > 0 else { return }
+        guard !state.isBackfilling else { return }
+        guard backfillTasks[tab.rawValue] == nil else { return }
+
+        state.isBackfilling = true
+        listingWindows[tab.rawValue] = state
+        let logicalStart = state.window.logicalStartIndex
+        let generation = pagination(for: tab).fetchGeneration
+
+        backfillTasks[tab.rawValue] = Task { @MainActor in
+            defer {
+                var s = self.listingWindowState(for: tab)
+                s.isBackfilling = false
+                self.listingWindows[tab.rawValue] = s
+                self.backfillTasks[tab.rawValue] = nil
             }
+            let offset = max(0, logicalStart - SellerStorefrontConstants.listingPageSize)
+            let result = await self.fetchStorefrontPage(
+                tab: tab,
+                offset: offset,
+                deps: deps,
+                isGuestMode: isGuestMode
+            )
+            guard generation == self.pagination(for: tab).fetchGeneration else { return }
+            guard case .success(let page) = result, !page.items.isEmpty else { return }
+
+            var s = self.listingWindowState(for: tab)
+            guard let prepend = s.window.prependUnique(
+                page.items,
+                knownIds: &s.knownIds,
+                columnWidth: columnWidth
+            ) else { return }
+            self.listingWindows[tab.rawValue] = s
+            self.syncListingsFromWindow(tab)
+            self.applyScrollCompensation(prepend.scrollDeltaY)
+            self.prefetchStorefrontImages(Array(page.items.prefix(SellerStorefrontConstants.imagePrefetchCap)))
+            FeedPerformance.log(
+                "Seller \(tab) backfill @\(offset) +\(prepend.addedCount) window=\(s.window.items.count) logical=\(s.window.logicalStartIndex)"
+            )
         }
-        sellingListings = map(sellingListings)
-        soldListings = map(soldListings)
+    }
+
+    private func appendListings(_ items: [ListingFeedItem], for tab: SellerProfileTab) {
+        var state = listingWindowState(for: tab)
+        _ = state.window.appendUnique(items, knownIds: &state.knownIds)
+        listingWindows[tab.rawValue] = state
+        syncListingsFromWindow(tab)
+    }
+
+    private func setListings(_ items: [ListingFeedItem], for tab: SellerProfileTab) {
+        var state = SellerListingWindowState()
+        state.knownIds = Set(items.map(\.id))
+        state.window.reset(with: items)
+        listingWindows[tab.rawValue] = state
+        syncListingsFromWindow(tab)
+    }
+
+    private func patch(_ id: String, transform: (ListingFeedItem) -> ListingFeedItem) {
+        for tab in [SellerProfileTab.selling, .sold] {
+            guard var state = listingWindows[tab.rawValue] else { continue }
+            state.window.mapItems { $0.id == id ? transform($0) : $0 }
+            listingWindows[tab.rawValue] = state
+            syncListingsFromWindow(tab)
+        }
     }
 
     private func copyProfile(_ prof: ProfileInfo, isFollowing: Bool, followerDelta: Int) -> ProfileInfo {
