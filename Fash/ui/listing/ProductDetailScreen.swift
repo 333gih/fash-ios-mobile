@@ -307,12 +307,16 @@ private struct ProductDetailHeroEngagementOverlay: View {
                 likeCount: detail.likeCount,
                 saveCount: detail.saveCount,
                 onLike: {
-                    guestGate(L10n.guestLoginReasonLike) {
+                    if isGuestMode {
+                        onRequestLogin(L10n.guestLoginReasonLike)
+                    } else {
                         viewModel.toggleLike(deps: deps)
                     }
                 },
                 onSave: {
-                    guestGate(L10n.guestLoginReasonSaved) {
+                    if isGuestMode {
+                        onRequestLogin(L10n.guestLoginReasonSaved)
+                    } else {
                         let wasSaved = viewModel.detail?.isSaved ?? false
                         let added = viewModel.toggleSave(deps: deps)
                         if added, !wasSaved { onSaveAdded() }
@@ -323,10 +327,6 @@ private struct ProductDetailHeroEngagementOverlay: View {
             .padding(.trailing, 14)
             .allowsHitTesting(true)
         }
-    }
-
-    private func guestGate(_ reason: String, _ action: () -> Void) {
-        if isGuestMode { onRequestLogin(reason) } else { action() }
     }
 }
 
