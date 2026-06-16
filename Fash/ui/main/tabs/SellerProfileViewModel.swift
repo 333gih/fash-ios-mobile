@@ -1,9 +1,9 @@
 import Foundation
 import Observation
 
-/// Android storefront: one batch per tab — no infinite scroll pagination.
+/// Paginated storefront listings — page size aligned with own [ProfileViewModel].
 private enum SellerStorefrontConstants {
-    static let listingLimit = 50
+    static let listingPageSize = 20
     static let imagePrefetchCap = 12
 }
 
@@ -31,11 +31,26 @@ final class SellerProfileViewModel {
     private var loadGeneration = 0
     private var loadedListingTabs = Set<Int>()
     private var tabLoadState: [Int: SellerTabLoadState] = [:]
+    private var tabPagination: [Int: SellerTabPagination] = [:]
+    private var loadMoreTasks: [Int: Task<Void, Never>] = [:]
     private let listingStallWatch = FeedLoadStallWatch()
 
     private struct SellerTabLoadState {
         var isLoadingFirstPage = false
         var isReloading = false
+    }
+
+    private struct SellerTabPagination {
+        var hasMore = true
+        var nextOffset = 0
+        var isLoadingMore = false
+        var fetchGeneration = 0
+        var loadMoreCooldownUntil: Date?
+    }
+
+    private struct ListingPagePayload {
+        let items: [ListingFeedItem]
+        let rawCount: Int
     }
 
     func loadForSeller(_ username: String, deps: AppDependencies, isGuestMode: Bool, force: Bool = false) async {
@@ -61,6 +76,9 @@ final class SellerProfileViewModel {
             listingTabsStalled = []
             listingStallWatch.cancelAll()
             tabLoadState = [:]
+            tabPagination = [:]
+            loadMoreTasks.values.forEach { $0.cancel() }
+            loadMoreTasks = [:]
         }
         let showBlocking = profile == nil
         if showBlocking {
@@ -77,6 +95,15 @@ final class SellerProfileViewModel {
             }
         }
         loadError = false
+
+        if force, profile != nil {
+            sellingListings = []
+            soldListings = []
+            loadedListingTabs = []
+            tabPagination = [:]
+            loadMoreTasks.values.forEach { $0.cancel() }
+            loadMoreTasks = [:]
+        }
 
         async let tagsResult = deps.commonCatalogRepository.getAestheticTags(all: true)
         let profileResult = await fetchSellerProfileWithRetry(
@@ -251,15 +278,13 @@ final class SellerProfileViewModel {
         }
     }
 
-    /// Storefront uses a single batch fetch (Android) — no scroll pagination.
+    /// True when another page is available for scroll pagination.
     func hasMoreListings(for tab: SellerProfileTab) -> Bool {
-        _ = tab
-        return false
+        pagination(for: tab).hasMore
     }
 
     func isLoadingMoreListings(for tab: SellerProfileTab) -> Bool {
-        _ = tab
-        return false
+        pagination(for: tab).isLoadingMore
     }
 
     func isReloadingListings(for tab: SellerProfileTab) -> Bool {
@@ -294,15 +319,8 @@ final class SellerProfileViewModel {
 
     func shouldShowListingGridSkeleton(for tab: SellerProfileTab) -> Bool {
         if isListingTabStalled(tab) { return false }
-        if isFirstPageLoading(for: tab) || isReloadingListings(for: tab) { return true }
-        if profile == nil { return isLoading }
-        if !hasCompletedInitialLoad { return true }
-        if listings(for: tab).isEmpty,
-           !loadedListingTabs.contains(tab.rawValue),
-           !isListingTabStalled(tab) {
-            return true
-        }
-        return false
+        // First-page only — load-more uses footer spinner at grid bottom.
+        return listings(for: tab).isEmpty && isFirstPageLoading(for: tab)
     }
 
     func retryListings(
@@ -313,17 +331,23 @@ final class SellerProfileViewModel {
         listingTabsStalled.remove(tab.rawValue)
         listingStallWatch.cancel(key: String(tab.rawValue))
         loadedListingTabs.remove(tab.rawValue)
-        await loadStorefrontListings(
+        mutatePagination(for: tab) { $0 = SellerTabPagination() }
+        await fetchListingsFirstPage(
+            tab,
             deps: deps,
             isGuestMode: isGuestMode,
             generation: loadGeneration,
-            reloadAll: true,
-            tabs: [tab]
+            force: true
         )
     }
 
     func requestLoadMore(for tab: SellerProfileTab, deps: AppDependencies, isGuestMode: Bool) {
-        _ = (tab, deps, isGuestMode)
+        guard canLoadMore(for: tab) else { return }
+        guard loadMoreTasks[tab.rawValue] == nil else { return }
+        loadMoreTasks[tab.rawValue] = Task { @MainActor in
+            defer { loadMoreTasks[tab.rawValue] = nil }
+            await loadMoreListings(for: tab, deps: deps, isGuestMode: isGuestMode)
+        }
     }
 
     func patchListingEngagement(_ id: String, transform: (ListingFeedItem) -> ListingFeedItem) {
@@ -345,7 +369,7 @@ final class SellerProfileViewModel {
         return id
     }
 
-    /// Loads selling + sold in parallel (max [SellerStorefrontConstants.listingLimit] each) — matches Android.
+    /// Loads selling + sold first pages in parallel on profile open; single-tab on tab switch.
     private func loadStorefrontListings(
         deps: AppDependencies,
         isGuestMode: Bool,
@@ -353,32 +377,129 @@ final class SellerProfileViewModel {
         reloadAll: Bool,
         tabs: [SellerProfileTab] = [.selling, .sold]
     ) async {
-        guard generation == loadGeneration, let sellerId = resolvedSellerId() else { return }
+        guard generation == loadGeneration, resolvedSellerId() != nil else { return }
         let toLoad = tabs.filter { reloadAll || !loadedListingTabs.contains($0.rawValue) }
         guard !toLoad.isEmpty else { return }
 
-        for tab in toLoad {
-            beginStorefrontTabLoad(tab)
+        await withTaskGroup(of: Void.self) { group in
+            for tab in toLoad {
+                group.addTask { @MainActor in
+                    await self.fetchListingsFirstPage(
+                        tab,
+                        deps: deps,
+                        isGuestMode: isGuestMode,
+                        generation: generation,
+                        force: reloadAll
+                    )
+                }
+            }
+        }
+    }
+
+    private func fetchListingsFirstPage(
+        _ tab: SellerProfileTab,
+        deps: AppDependencies,
+        isGuestMode: Bool,
+        generation: Int,
+        force: Bool
+    ) async {
+        guard generation == loadGeneration, resolvedSellerId() != nil else { return }
+        if force {
+            mutatePagination(for: tab) { state in
+                state.fetchGeneration += 1
+                state.hasMore = true
+                state.nextOffset = 0
+            }
+        } else if loadedListingTabs.contains(tab.rawValue) {
+            return
+        } else {
+            let p = pagination(for: tab)
+            if p.isLoadingMore || tabLoad(for: tab).isLoadingFirstPage || tabLoad(for: tab).isReloading {
+                return
+            }
         }
 
-        if toLoad.contains(.selling), toLoad.contains(.sold) {
-            async let sellingResult = fetchStorefrontListings(
-                sellerId: sellerId, tab: .selling, deps: deps, isGuestMode: isGuestMode
+        let pageGeneration = pagination(for: tab).fetchGeneration
+        beginStorefrontTabLoad(tab)
+
+        let result = await fetchStorefrontPage(
+            tab: tab,
+            offset: 0,
+            deps: deps,
+            isGuestMode: isGuestMode
+        )
+        guard generation == loadGeneration, pageGeneration == pagination(for: tab).fetchGeneration else { return }
+        finishStorefrontFirstPage(tab, result: result)
+    }
+
+    private func loadMoreListings(
+        for tab: SellerProfileTab,
+        deps: AppDependencies,
+        isGuestMode: Bool
+    ) async {
+        guard canLoadMore(for: tab) else { return }
+        let now = Date()
+        if let until = pagination(for: tab).loadMoreCooldownUntil, now < until { return }
+        mutatePagination(for: tab) { $0.loadMoreCooldownUntil = now.addingTimeInterval(0.4) }
+
+        let generation = pagination(for: tab).fetchGeneration
+        let offset = pagination(for: tab).nextOffset
+        guard offset > 0 else { return }
+
+        mutatePagination(for: tab) { $0.isLoadingMore = true }
+        defer { mutatePagination(for: tab) { $0.isLoadingMore = false } }
+
+        let result = await fetchStorefrontPage(
+            tab: tab,
+            offset: offset,
+            deps: deps,
+            isGuestMode: isGuestMode
+        )
+        guard generation == pagination(for: tab).fetchGeneration else { return }
+
+        switch result {
+        case .success(let page):
+            guard page.rawCount > 0 else {
+                mutatePagination(for: tab) { $0.hasMore = false }
+                return
+            }
+            var seen = Set(listings(for: tab).map(\.id))
+            let fresh = page.items.filter { seen.insert($0.id).inserted }
+            if !fresh.isEmpty {
+                appendListings(fresh, for: tab)
+                prefetchStorefrontImages(fresh)
+            }
+            mutatePagination(for: tab) { state in
+                state.nextOffset += page.rawCount
+                state.hasMore = page.rawCount >= SellerStorefrontConstants.listingPageSize
+            }
+            FeedPerformance.log(
+                "Seller \(tab) loadMore @\(offset) -> +\(fresh.count) total=\(listings(for: tab).count)"
             )
-            async let soldResult = fetchStorefrontListings(
-                sellerId: sellerId, tab: .sold, deps: deps, isGuestMode: isGuestMode
-            )
-            let (selling, sold) = await (sellingResult, soldResult)
-            guard generation == loadGeneration else { return }
-            finishStorefrontTabLoad(.selling, result: selling)
-            finishStorefrontTabLoad(.sold, result: sold)
-        } else if let tab = toLoad.first {
-            let result = await fetchStorefrontListings(
-                sellerId: sellerId, tab: tab, deps: deps, isGuestMode: isGuestMode
-            )
-            guard generation == loadGeneration else { return }
-            finishStorefrontTabLoad(tab, result: result)
+        case .failure:
+            FeedPerformance.log("Seller \(tab) loadMore @\(offset) failed")
         }
+    }
+
+    private func canLoadMore(for tab: SellerProfileTab) -> Bool {
+        let p = pagination(for: tab)
+        return p.hasMore
+            && p.nextOffset > 0
+            && !p.isLoadingMore
+            && !tabLoad(for: tab).isLoadingFirstPage
+            && !tabLoad(for: tab).isReloading
+            && !isRefreshing
+            && !listings(for: tab).isEmpty
+    }
+
+    private func pagination(for tab: SellerProfileTab) -> SellerTabPagination {
+        tabPagination[tab.rawValue] ?? SellerTabPagination()
+    }
+
+    private func mutatePagination(for tab: SellerProfileTab, _ transform: (inout SellerTabPagination) -> Void) {
+        var state = pagination(for: tab)
+        transform(&state)
+        tabPagination[tab.rawValue] = state
     }
 
     private func beginStorefrontTabLoad(_ tab: SellerProfileTab) {
@@ -391,7 +512,7 @@ final class SellerProfileViewModel {
         scheduleListingStallWatch(for: tab)
     }
 
-    private func finishStorefrontTabLoad(_ tab: SellerProfileTab, result: Result<[ListingFeedItem], Error>) {
+    private func finishStorefrontFirstPage(_ tab: SellerProfileTab, result: Result<ListingPagePayload, Error>) {
         mutateTabLoad(for: tab) { state in
             state.isLoadingFirstPage = false
             state.isReloading = false
@@ -400,14 +521,22 @@ final class SellerProfileViewModel {
         listingTabsStalled.remove(tab.rawValue)
 
         switch result {
-        case .success(let items):
+        case .success(let page):
             loadedListingTabs.insert(tab.rawValue)
-            setListings(items, for: tab)
-            prefetchStorefrontImages(items)
+            setListings(page.items, for: tab)
+            mutatePagination(for: tab) { state in
+                state.nextOffset = page.rawCount
+                state.hasMore = page.rawCount >= SellerStorefrontConstants.listingPageSize
+            }
+            prefetchStorefrontImages(page.items)
+            FeedPerformance.log(
+                "Seller \(tab) first page -> items=\(page.items.count) hasMore=\(page.rawCount >= SellerStorefrontConstants.listingPageSize)"
+            )
         case .failure:
             if listings(for: tab).isEmpty {
                 loadedListingTabs.remove(tab.rawValue)
                 setListings([], for: tab)
+                mutatePagination(for: tab) { $0.hasMore = false }
             }
         }
     }
@@ -419,12 +548,12 @@ final class SellerProfileViewModel {
         force: Bool
     ) async {
         if !force, loadedListingTabs.contains(tab.rawValue) { return }
-        await loadStorefrontListings(
+        await fetchListingsFirstPage(
+            tab,
             deps: deps,
             isGuestMode: isGuestMode,
             generation: loadGeneration,
-            reloadAll: force,
-            tabs: [tab]
+            force: force
         )
     }
 
@@ -449,19 +578,22 @@ final class SellerProfileViewModel {
         }
     }
 
-    private func fetchStorefrontListings(
-        sellerId: String,
+    private func fetchStorefrontPage(
         tab: SellerProfileTab,
+        offset: Int,
         deps: AppDependencies,
         isGuestMode: Bool
-    ) async -> Result<[ListingFeedItem], Error> {
+    ) async -> Result<ListingPagePayload, Error> {
+        guard let sellerId = resolvedSellerId() else {
+            return .failure(URLError(.badURL))
+        }
         let status = tab == .sold ? "sold" : "active"
-        let limit = SellerStorefrontConstants.listingLimit
+        let limit = SellerStorefrontConstants.listingPageSize
         var result = await deps.listingRepository.getListingsBySeller(
             sellerId: sellerId,
             status: status,
             limit: limit,
-            offset: 0,
+            offset: offset,
             publicBrowse: isGuestMode
         )
         if case .failure = result {
@@ -470,13 +602,16 @@ final class SellerProfileViewModel {
                 sellerId: sellerId,
                 status: status,
                 limit: limit,
-                offset: 0,
+                offset: offset,
                 publicBrowse: isGuestMode
             )
         }
         switch result {
         case .success(let rawPage):
-            return .success(normalizeStorefrontListings(rawPage, tab: tab))
+            let normalized = normalizeStorefrontListings(rawPage, tab: tab)
+            let items = Array(normalized.prefix(limit))
+            let delivered = min(rawPage.count, limit)
+            return .success(ListingPagePayload(items: items, rawCount: delivered))
         case .failure(let error):
             return .failure(error)
         }
@@ -492,7 +627,14 @@ final class SellerProfileViewModel {
         } else {
             filtered = rawPage
         }
-        return Array(filtered.prefix(SellerStorefrontConstants.listingLimit))
+        return Array(filtered.prefix(SellerStorefrontConstants.listingPageSize))
+    }
+
+    private func appendListings(_ items: [ListingFeedItem], for tab: SellerProfileTab) {
+        switch tab {
+        case .selling: sellingListings.append(contentsOf: items)
+        case .sold: soldListings.append(contentsOf: items)
+        }
     }
 
     private func setListings(_ items: [ListingFeedItem], for tab: SellerProfileTab) {

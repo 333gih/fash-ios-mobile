@@ -50,10 +50,6 @@ struct SellerProfileScreen: View {
         viewModel.isListingTabStalled(selectedSellerTab) && viewModel.listingsForSelectedTab.isEmpty
     }
 
-    private var showSellerBlockingLoader: Bool {
-        viewModel.profile == nil && viewModel.isLoading && !showBlockingLoadError
-    }
-
     var body: some View {
         VStack(spacing: 0) {
             sellerTopBar
@@ -71,9 +67,9 @@ struct SellerProfileScreen: View {
                             showQuickActions: true,
                             showStatusOverlay: true,
                             additionalBottomInset: promoBottomInset,
-            useStaggeredMasonryGrid: true,
-            masonryEagerLayout: true,
-            showGridLoading: showListingGridLoading,
+                            useStaggeredMasonryGrid: true,
+                            masonryEagerLayout: true,
+                            showGridLoading: showListingGridLoading,
                             showGridLoadRetry: showListingGridLoadRetry,
                             onRetryGridLoad: {
                                 Task {
@@ -84,10 +80,19 @@ struct SellerProfileScreen: View {
                                     )
                                 }
                             },
+                            hasMoreListings: viewModel.hasMoreListings(for: selectedSellerTab),
+                            isLoadingMoreListings: viewModel.isLoadingMoreListings(for: selectedSellerTab),
                             isReloadingListings: viewModel.isReloadingListings(for: selectedSellerTab),
+                            onLoadMore: {
+                                viewModel.requestLoadMore(
+                                    for: selectedSellerTab,
+                                    deps: deps,
+                                    isGuestMode: isGuestMode
+                                )
+                            },
                             showEmptyState: viewModel.hasCompletedInitialLoad,
                             isRefreshing: viewModel.isRefreshing,
-                            lockScroll: showSellerBlockingLoader,
+                            lockScroll: viewModel.profile == nil && viewModel.isLoading,
                             onTabsPinnedAtTopChange: { pinned in
                                 showPromoFooter = pinned
                             },
@@ -96,6 +101,8 @@ struct SellerProfileScreen: View {
                                     deps.listingPreview.close(deps: deps, animated: false)
                                 }
                             },
+                            enableScrollProximityLoadMore: true,
+                            enableTilePrefetchLoadMore: true,
                             onListingClick: { item in onListingClick(item) },
                             onLike: { item in
                                 if isGuestMode { presentGuestSignIn(reason: L10n.guestLoginReasonLike) }
@@ -110,15 +117,6 @@ struct SellerProfileScreen: View {
                         )
                         .fashFeedPullRefresh(isRefreshing: sellerRefreshBinding) {
                             await viewModel.loadForSeller(username, deps: deps, isGuestMode: isGuestMode, force: true)
-                        }
-                        .allowsHitTesting(!showSellerBlockingLoader)
-
-                        if showSellerBlockingLoader {
-                            FashSkeleton.listingGrid(rows: 5)
-                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                                .background(FashColors.screen.opacity(0.72))
-                                .ignoresSafeArea()
-                                .allowsHitTesting(true)
                         }
                     }
                 }

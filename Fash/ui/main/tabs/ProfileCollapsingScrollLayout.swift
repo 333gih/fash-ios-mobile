@@ -635,7 +635,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             FeedLoadMoreFooter(
                 enabled: hasMoreListings,
                 isLoadingMore: isLoadingMoreListings,
-                triggersLoadOnAppear: true,
+                triggersLoadOnAppear: !enableTilePrefetchLoadMore,
                 onLoadMore: onLoadMore
             )
         }
@@ -792,7 +792,8 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     }
 
     private var profileListingLoadingBlock: some View {
-        FashSkeleton.listingGrid(rows: 6, staggered: true)
+        FashSkeleton.listingGrid(rows: 3, staggered: true)
+            .frame(maxWidth: .infinity, alignment: .top)
             .padding(.top, 4)
             .padding(.bottom, 24)
     }
