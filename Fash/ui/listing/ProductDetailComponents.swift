@@ -55,24 +55,8 @@ enum ProductDetailComponents {
             }
             .clipShape(shape)
 
-            HStack(alignment: .bottom) {
+            HStack(alignment: .bottom, spacing: 10) {
                 passiveStatPill(icon: "eye", count: detail.viewCount)
-                Spacer(minLength: 0)
-                if !urls.isEmpty {
-                    Text("\(min(max(galleryIndex.wrappedValue, 0), urls.count - 1) + 1)/\(urls.count)")
-                        .font(FashTypography.labelSmall.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(Color.black.opacity(0.55))
-                        .clipShape(Capsule())
-                }
-            }
-            .padding(12)
-            .allowsHitTesting(false)
-        }
-        .overlay(alignment: .topTrailing) {
-            HStack(spacing: 10) {
                 heroEngagementButton(
                     systemName: detail.isLiked ? "heart.fill" : "heart",
                     count: detail.likeCount,
@@ -87,6 +71,17 @@ enum ProductDetailComponents {
                     accessibilityLabel: L10n.save,
                     action: onSave
                 )
+                Spacer(minLength: 0)
+                if !urls.isEmpty {
+                    Text("\(min(max(galleryIndex.wrappedValue, 0), urls.count - 1) + 1)/\(urls.count)")
+                        .font(FashTypography.labelSmall.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Color.black.opacity(0.55))
+                        .clipShape(Capsule())
+                        .allowsHitTesting(false)
+                }
             }
             .padding(12)
         }

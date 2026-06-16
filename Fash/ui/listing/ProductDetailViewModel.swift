@@ -197,15 +197,18 @@ final class ProductDetailViewModel {
     func toggleSave(deps: AppDependencies) async -> Bool {
         guard let d = detail else { return false }
         guard deps.listingEngagement.beginSaveToggle(listingId: d.id) else { return d.isSaved }
+        let snapshot = d
+        detail = snapshot.toggledSave
         defer { deps.listingEngagement.endSaveToggle(listingId: d.id) }
-        switch await deps.listingRepository.toggleSave(listingId: d.id, currentlySaved: d.isSaved) {
+        switch await deps.listingRepository.toggleSave(listingId: d.id, currentlySaved: snapshot.isSaved) {
         case .success(let saved):
-            let delta = (saved && !d.isSaved) ? 1 : ((!saved && d.isSaved) ? -1 : 0)
-            detail = d.copyMutating(isSaved: saved, saveCount: max(0, d.saveCount + delta))
+            let delta = (saved && !snapshot.isSaved) ? 1 : ((!saved && snapshot.isSaved) ? -1 : 0)
+            detail = snapshot.copyMutating(isSaved: saved, saveCount: max(0, snapshot.saveCount + delta))
             if saved { deps.feedEventReporter.save(listingId: d.id, surface: "pdp") }
             deps.showSnackbar(FeedEngagementFeedback.saveMessage(saved: saved))
             return saved && delta > 0
         case .failure(let error):
+            detail = snapshot
             deps.showSnackbar(FeedEngagementFeedback.actionErrorMessage(for: error))
             return false
         }
@@ -470,8 +473,11 @@ final class ProductDetailViewModel {
         surface: String
     ) async {
         guard deps.listingEngagement.beginLikeToggle(listingId: itemId) else { return }
+        let detailSnapshot = detail
         if let snapshot {
             patchRails(itemId) { _ in snapshot.toggledLike }
+        } else if let detailSnapshot, itemId == detailSnapshot.id {
+            detail = detailSnapshot.toggledLike
         }
         defer { deps.listingEngagement.endLikeToggle(listingId: itemId) }
         switch await deps.listingRepository.toggleLike(listingId: itemId) {
@@ -479,9 +485,8 @@ final class ProductDetailViewModel {
             if let snapshot {
                 patchRails(itemId) { _ in snapshot.applyingLikeToggle(liked) }
             }
-            if let d = detail, itemId == d.id {
-                let delta = (liked && !d.isLiked) ? 1 : ((!liked && d.isLiked) ? -1 : 0)
-                detail = d.copyMutating(isLiked: liked, likeCount: max(0, d.likeCount + delta))
+            if let detailSnapshot, itemId == detailSnapshot.id {
+                detail = detailSnapshot.applyingLikeToggle(liked)
             }
             if liked { deps.feedEventReporter.like(listingId: itemId, surface: surface) }
             let message = FeedEngagementFeedback.likeMessage(liked: liked)
@@ -489,6 +494,9 @@ final class ProductDetailViewModel {
         case .failure(let error):
             if let snapshot {
                 patchRails(itemId) { _ in snapshot }
+            }
+            if let detailSnapshot, itemId == detailSnapshot.id {
+                detail = detailSnapshot
             }
             deps.showSnackbar(FeedEngagementFeedback.actionErrorMessage(for: error))
         }
@@ -514,6 +522,24 @@ final class ProductDetailViewModel {
 }
 
 private extension ListingDetail {
+    var toggledLike: ListingDetail {
+        applyingLikeToggle(!isLiked)
+    }
+
+    var toggledSave: ListingDetail {
+        applyingSaveToggle(!isSaved)
+    }
+
+    func applyingLikeToggle(_ liked: Bool) -> ListingDetail {
+        let delta = (liked && !isLiked) ? 1 : ((!liked && isLiked) ? -1 : 0)
+        return copyMutating(isLiked: liked, likeCount: max(0, likeCount + delta))
+    }
+
+    func applyingSaveToggle(_ saved: Bool) -> ListingDetail {
+        let delta = (saved && !isSaved) ? 1 : ((!saved && isSaved) ? -1 : 0)
+        return copyMutating(isSaved: saved, saveCount: max(0, saveCount + delta))
+    }
+
     func copyMutating(
         isLiked: Bool? = nil,
         isSaved: Bool? = nil,
