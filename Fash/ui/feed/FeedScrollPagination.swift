@@ -59,3 +59,50 @@ enum FeedScrollPaginationPolicy {
         return contentBottomY <= visibleBottom + tolerance
     }
 }
+
+/// One-shot bottom pagination — re-arms only after the user scrolls up (avoids load loops when content grows).
+struct FeedBottomLoadMoreGate {
+    private(set) var isArmed = true
+    private var peakScrolled: CGFloat = 0
+    private var lastLoadAt = Date.distantPast
+    var cooldown: TimeInterval = 0.85
+    var rearmScrollDelta: CGFloat = 56
+
+    mutating func reset() {
+        isArmed = true
+        peakScrolled = 0
+        lastLoadAt = .distantPast
+    }
+
+    mutating func noteScrollOffset(headerMinY: CGFloat) {
+        let scrolled = max(0, -headerMinY)
+        if scrolled < peakScrolled - rearmScrollDelta {
+            isArmed = true
+            peakScrolled = scrolled
+        } else {
+            peakScrolled = max(peakScrolled, scrolled)
+        }
+    }
+
+    mutating func tryConsumeAtBottom(
+        headerMinY: CGFloat,
+        contentBottomY: CGFloat,
+        viewportHeight: CGFloat,
+        tolerance: CGFloat,
+        hasMore: Bool,
+        isLoadingMore: Bool
+    ) -> Bool {
+        guard hasMore, !isLoadingMore, isArmed else { return false }
+        let now = Date()
+        guard now.timeIntervalSince(lastLoadAt) >= cooldown else { return false }
+        guard FeedScrollPaginationPolicy.isAtScrollBottom(
+            headerMinY: headerMinY,
+            contentBottomY: contentBottomY,
+            viewportHeight: viewportHeight,
+            tolerance: tolerance
+        ) else { return false }
+        isArmed = false
+        lastLoadAt = now
+        return true
+    }
+}

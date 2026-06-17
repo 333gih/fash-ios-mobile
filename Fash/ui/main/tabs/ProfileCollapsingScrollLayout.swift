@@ -169,8 +169,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     @State private var scrollViewportHeight: CGFloat = 0
     @State private var feedContentBottomY: CGFloat = .infinity
     @State private var lastProximityLoadMoreAt: Date = .distantPast
-    /// Prevents holding at the scroll bottom from firing load-more in a tight loop.
-    @State private var bottomEdgeLoadMoreArmed = true
+    @State private var bottomLoadGate = FeedBottomLoadMoreGate()
     @State private var lastPaginationEvalUptime: UInt64 = 0
     @State private var lastPaginationEvalOffset: CGFloat = .greatestFiniteMagnitude
     @State private var profileMasonryLayout: ListingMasonryColumnLayout = .empty
@@ -528,7 +527,6 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     }
 
     private func isInLoadMoreZone(headerMinY: CGFloat) -> Bool {
-        guard !usesFooterBottomLoadMore else { return false }
         guard hasMoreListings, !isLoadingMoreListings, !showGridLoading, !items.isEmpty else { return false }
         guard scrollViewportHeight > 64, feedContentBottomY.isFinite, feedContentBottomY < .infinity else { return false }
         return FeedScrollPaginationPolicy.isAtScrollBottom(
@@ -540,7 +538,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     }
 
     private func runPaginationEvaluators(headerMinY: CGFloat, bypassThrottle: Bool = false) {
-        guard enableScrollProximityLoadMore || (loadMoreAtScrollBottom && !usesFooterBottomLoadMore) else { return }
+        guard enableScrollProximityLoadMore || loadMoreAtScrollBottom else { return }
         guard bypassThrottle || shouldRunPaginationEval(for: headerMinY) || isInLoadMoreZone(headerMinY: headerMinY) else {
             return
         }
@@ -554,6 +552,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
 
     private func handleProfileScrollOffset(_ offset: CGFloat) {
         applyScrollOffset(offset)
+        bottomLoadGate.noteScrollOffset(headerMinY: offset)
         runPaginationEvaluators(headerMinY: offset)
     }
 
@@ -573,7 +572,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         guard oldTab != newTab else { return }
         feedContentBottomY = .infinity
         lastProximityLoadMoreAt = .distantPast
-        bottomEdgeLoadMoreArmed = true
+        bottomLoadGate.reset()
         lastPaginationEvalOffset = .greatestFiniteMagnitude
         lastPaginationEvalUptime = 0
         if suppressScrollClamp {
@@ -692,24 +691,19 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         guard loadMoreAtScrollBottom, let onLoadMore else { return }
         guard hasMoreListings, !isLoadingMoreListings, !showGridLoading, !items.isEmpty else { return }
 
-        let atBottom = FeedScrollPaginationPolicy.isAtScrollBottom(
+        guard bottomLoadGate.tryConsumeAtBottom(
             headerMinY: headerMinY,
             contentBottomY: feedContentBottomY,
             viewportHeight: scrollViewportHeight,
-            tolerance: bottomLoadMoreTolerance
-        )
-
-        guard atBottom else {
-            bottomEdgeLoadMoreArmed = true
-            return
-        }
-        guard bottomEdgeLoadMoreArmed else { return }
-
-        let now = Date()
-        guard now.timeIntervalSince(lastProximityLoadMoreAt) >= 1.0 else { return }
-        lastProximityLoadMoreAt = now
-        bottomEdgeLoadMoreArmed = false
+            tolerance: bottomLoadMoreTolerance,
+            hasMore: hasMoreListings,
+            isLoadingMore: isLoadingMoreListings
+        ) else { return }
         onLoadMore()
+    }
+
+    private func attemptBottomEdgeLoadMoreFromFooter() {
+        evaluateBottomEdgeLoadMore(headerMinY: lastScrollOffset)
     }
 
     private func applyScrollOffset(_ offset: CGFloat) {
@@ -821,8 +815,9 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                 isLoadingMore: isLoadingMoreListings,
                 triggersLoadOnAppear: usesFooterBottomLoadMore,
                 rearmAfterLoadComplete: false,
+                canAutoLoad: { bottomLoadGate.isArmed },
                 loadingPresentation: .spinner,
-                onLoadMore: onLoadMore
+                onLoadMore: attemptBottomEdgeLoadMoreFromFooter
             )
         }
     }

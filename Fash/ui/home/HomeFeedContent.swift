@@ -64,6 +64,8 @@ struct HomeFeedContent: View {
     @State private var homeTabRowHeight: CGFloat = 48
     @State private var feedContentBottomY: CGFloat = .infinity
     @State private var scrollViewportHeight: CGFloat = 0
+    @State private var lastHomeScrollOffset: CGFloat = 0
+    @State private var bottomLoadGate = FeedBottomLoadMoreGate()
     @State private var homeScrollClampRevision = 0
     @State private var masonryColumnAssignmentsByTab: [String: [String: Bool]] = [:]
     @State private var listingInteractionEnabled = true
@@ -165,6 +167,11 @@ struct HomeFeedContent: View {
                             .zIndex(20)
                             .transition(.opacity)
                     }
+                }
+                .onPreferenceChange(HomeFeedScrollOffsetKey.self) { topMinY in
+                    lastHomeScrollOffset = topMinY
+                    bottomLoadGate.noteScrollOffset(headerMinY: topMinY)
+                    attemptHomeBottomLoadMore(headerMinY: topMinY)
                 }
                 .onPreferenceChange(HomeTabRowHeightKey.self) { height in
                     guard height > 1, abs(height - homeTabRowHeight) > 0.5 else { return }
@@ -344,9 +351,10 @@ struct HomeFeedContent: View {
                                 isLoadingMore: viewModel.isLoadingMore(for: tab),
                                 triggersLoadOnAppear: true,
                                 rearmAfterLoadComplete: false,
+                                canAutoLoad: { bottomLoadGate.isArmed },
                                 loadingPresentation: .spinner
                             ) {
-                                viewModel.loadMore(deps: deps, isGuestMode: isGuestMode)
+                                attemptHomeBottomLoadMore(headerMinY: lastHomeScrollOffset)
                             }
                         }
                     },
@@ -453,6 +461,22 @@ struct HomeFeedContent: View {
         let tab = HomeFeedTab(rawValue: tabKey) ?? viewModel.selectedFeedTab
         viewModel.syncVisibleItemsForTab(tab)
         feedContentBottomY = .infinity
+        bottomLoadGate.reset()
+    }
+
+    private func attemptHomeBottomLoadMore(headerMinY: CGFloat) {
+        let tab = viewModel.selectedFeedTab
+        guard !viewModel.isShellLoading, !viewModel.isRefreshing else { return }
+        guard !viewModel.isTabLoading(tab), !viewModel.items.isEmpty else { return }
+        guard bottomLoadGate.tryConsumeAtBottom(
+            headerMinY: headerMinY,
+            contentBottomY: feedContentBottomY,
+            viewportHeight: scrollViewportHeight,
+            tolerance: 48,
+            hasMore: viewModel.hasMore(for: tab),
+            isLoadingMore: viewModel.isLoadingMore(for: tab)
+        ) else { return }
+        viewModel.loadMore(deps: deps, isGuestMode: isGuestMode, fromScrollEdge: true)
     }
 
     private func applyHomeScrollToTop(using scrollProxy: ScrollViewProxy) {
