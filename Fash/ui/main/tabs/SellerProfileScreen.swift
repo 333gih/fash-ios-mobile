@@ -103,7 +103,7 @@ struct SellerProfileScreen: View {
                                 }
                             },
                             enableScrollProximityLoadMore: false,
-                            enableTilePrefetchLoadMore: false,
+                            enableTilePrefetchLoadMore: true,
                             loadMoreSkeletonRows: 2,
                             suppressScrollClamp: true,
                             loadMoreAtScrollBottom: true,

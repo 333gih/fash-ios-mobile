@@ -210,6 +210,10 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         }
         .coordinateSpace(name: ProfileScrollIds.coordinateSpaceName)
         .onAppear(perform: resetProfileScrollChromeState)
+        .onChange(of: isLoadingMoreListings) { wasLoading, isLoading in
+            guard loadMoreAtScrollBottom, wasLoading, !isLoading else { return }
+            bottomEdgeLoadMoreArmed = true
+        }
         .onPreferenceChange(ProfileScrollOffsetKey.self, perform: handleProfileScrollOffset)
         .onPreferenceChange(FeedContentBottomYKey.self, perform: handleFeedContentBottomY)
         .onPreferenceChange(ProfileHeaderBoundsKey.self, perform: handleProfileHeaderBounds)
@@ -515,27 +519,56 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     }
 
     private func shouldRunPaginationEval(for offset: CGFloat) -> Bool {
-        guard abs(offset - lastPaginationEvalOffset) > 8 else { return false }
+        guard abs(offset - lastPaginationEvalOffset) > 4 else { return false }
         let now = DispatchTime.now().uptimeNanoseconds
-        if now &- lastPaginationEvalUptime < 120_000_000 { return false }
+        if now &- lastPaginationEvalUptime < 80_000_000 { return false }
         lastPaginationEvalOffset = offset
         lastPaginationEvalUptime = now
         return true
     }
 
-    private func handleProfileScrollOffset(_ offset: CGFloat) {
-        applyScrollOffset(offset)
-        guard shouldRunPaginationEval(for: offset) else { return }
+    private func isInLoadMoreZone(headerMinY: CGFloat) -> Bool {
+        guard hasMoreListings, !isLoadingMoreListings, !showGridLoading, !items.isEmpty else { return false }
+        guard viewportHeight > 64, feedContentBottomY.isFinite, feedContentBottomY < .infinity else { return false }
+        return FeedScrollPaginationPolicy.isAtScrollBottom(
+            headerMinY: headerMinY,
+            contentBottomY: feedContentBottomY,
+            viewportHeight: scrollViewportHeight,
+            tolerance: bottomLoadMoreTolerance
+        ) || FeedScrollPaginationPolicy.shouldLoadMore(
+            headerMinY: headerMinY,
+            contentBottomY: feedContentBottomY,
+            viewportHeight: scrollViewportHeight,
+            hasItems: true,
+            hasMore: hasMoreListings,
+            isLoadingMore: isLoadingMoreListings,
+            isLoadingFirstPage: showGridLoading
+        )
+    }
+
+    private func runPaginationEvaluators(headerMinY: CGFloat, bypassThrottle: Bool = false) {
+        guard enableScrollProximityLoadMore || loadMoreAtScrollBottom else { return }
+        guard bypassThrottle || shouldRunPaginationEval(for: headerMinY) || isInLoadMoreZone(headerMinY: headerMinY) else {
+            return
+        }
         if enableScrollProximityLoadMore {
-            evaluateScrollProximityLoadMore(headerMinY: offset)
+            evaluateScrollProximityLoadMore(headerMinY: headerMinY)
         }
         if loadMoreAtScrollBottom {
-            evaluateBottomEdgeLoadMore(headerMinY: offset)
+            evaluateBottomEdgeLoadMore(headerMinY: headerMinY)
         }
     }
 
+    private func handleProfileScrollOffset(_ offset: CGFloat) {
+        applyScrollOffset(offset)
+        runPaginationEvaluators(headerMinY: offset)
+    }
+
     private func handleFeedContentBottomY(_ bottomY: CGFloat) {
+        let contentGrew = bottomY > feedContentBottomY + 20
         feedContentBottomY = bottomY
+        guard contentGrew else { return }
+        runPaginationEvaluators(headerMinY: lastScrollOffset, bypassThrottle: true)
     }
 
     private func handleProfileHeaderBounds(_ frame: CGRect) {
@@ -835,6 +868,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             .padding(.vertical, 24)
         } else if showGridLoading {
             profileListingLoadingBlock
+                .frame(minHeight: 280)
         } else if items.isEmpty, showEmptyState {
             emptyBlock
         }

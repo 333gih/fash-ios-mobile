@@ -324,9 +324,6 @@ final class SellerProfileViewModel {
 
     func onTabSelected(_ tabIndex: Int, deps: AppDependencies, isGuestMode: Bool) {
         guard let tab = SellerProfileTab(rawValue: tabIndex) else { return }
-        if listings(for: tab).isEmpty, !loadedListingTabs.contains(tab.rawValue) {
-            mutateTabLoad(for: tab) { $0.isLoadingFirstPage = true }
-        }
         Task { await ensureListingsLoaded(for: tab, deps: deps, isGuestMode: isGuestMode) }
     }
 
@@ -336,7 +333,6 @@ final class SellerProfileViewModel {
         isGuestMode: Bool
     ) async {
         guard profile != nil else { return }
-        guard !isFirstPageLoading(for: tab), !isReloadingListings(for: tab) else { return }
         guard listings(for: tab).isEmpty else { return }
         guard !loadedListingTabs.contains(tab.rawValue) else { return }
         await loadListingsForTab(tab, deps: deps, isGuestMode: isGuestMode, force: false)
@@ -353,7 +349,15 @@ final class SellerProfileViewModel {
     func shouldShowListingGridSkeleton(for tab: SellerProfileTab) -> Bool {
         if isListingTabStalled(tab) { return false }
         if isShellLoading { return true }
+        if isTabListingsPending(for: tab) { return true }
         return listings(for: tab).isEmpty && isFirstPageLoading(for: tab)
+    }
+
+    /// Empty tab whose first page has not landed yet — show grid skeleton (e.g. Đã bán on first open).
+    func isTabListingsPending(for tab: SellerProfileTab) -> Bool {
+        guard profile != nil else { return false }
+        guard listings(for: tab).isEmpty else { return false }
+        return !loadedListingTabs.contains(tab.rawValue)
     }
 
     func retryListings(
