@@ -18,7 +18,6 @@ struct SellerProfileScreen: View {
     ) -> Void = { _, _, _, _, _, _ in }
 
     @State private var viewModel = SellerProfileViewModel()
-    @State private var sellerScrollBoundary = HomeFeedScrollBoundary()
     @State private var promoSlides: [FashPromoSlideDef] = []
     @State private var showPromoFooter = false
     @State private var showGuestLoginSheet = false
@@ -70,7 +69,7 @@ struct SellerProfileScreen: View {
                             showStatusOverlay: true,
                             additionalBottomInset: promoBottomInset,
                             useStaggeredMasonryGrid: true,
-                            masonryEagerLayout: true,
+                            masonryEagerLayout: false,
                             showGridLoading: showListingGridLoading,
                             showGridLoadRetry: showListingGridLoadRetry,
                             onRetryGridLoad: {
@@ -109,21 +108,6 @@ struct SellerProfileScreen: View {
                             suppressScrollClamp: true,
                             loadMoreAtScrollBottom: true,
                             bottomLoadMoreTolerance: 36,
-                            feedScrollBoundary: sellerScrollBoundary,
-                            feedTrimCompensationToken: viewModel.listingScrollTrimToken,
-                            feedTrimCompensationSignedDeltaY: viewModel.listingScrollTrimSignedDeltaY,
-                            onListingCellVisible: { index in
-                                viewModel.notifyListingCellVisible(
-                                    tab: selectedSellerTab,
-                                    visibleIndex: index,
-                                    columnWidth: ListingMasonryGrid.feedGridColumnWidth(
-                                        containerWidth: UIScreen.main.bounds.width,
-                                        spacing: spacing
-                                    ),
-                                    deps: deps,
-                                    isGuestMode: isGuestMode
-                                )
-                            },
                             onListingClick: { item in onListingClick(item) },
                             onLike: { item in
                                 if isGuestMode { presentGuestSignIn(reason: L10n.guestLoginReasonLike) }
@@ -191,9 +175,6 @@ struct SellerProfileScreen: View {
             if case .success(let response) = await deps.advertisingRepository.getSlides(publicBrowse: isGuestMode) {
                 promoSlides = response.items.map(FashPromoSlideDef.fromAdvertising)
             }
-        }
-        .onAppear {
-            viewModel.scrollBoundary = sellerScrollBoundary
         }
         .guestLoginSheet(
             isPresented: $showGuestLoginSheet,

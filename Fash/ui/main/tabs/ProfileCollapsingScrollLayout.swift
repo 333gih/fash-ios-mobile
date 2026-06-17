@@ -171,6 +171,8 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     @State private var lastProximityLoadMoreAt: Date = .distantPast
     /// Prevents holding at the scroll bottom from firing load-more in a tight loop.
     @State private var bottomEdgeLoadMoreArmed = true
+    @State private var lastPaginationEvalUptime: UInt64 = 0
+    @State private var lastPaginationEvalOffset: CGFloat = .greatestFiniteMagnitude
     @State private var profileMasonryLayout: ListingMasonryColumnLayout = .empty
     @State private var profileMasonryContainerWidth: CGFloat = 0
     @State private var masonryLayoutRefreshTask: Task<Void, Never>?
@@ -281,10 +283,10 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             Section {
                 profileGridWidthProbe
                     .onAppear { scheduleProfileMasonryLayoutRefresh(forceImmediate: true) }
-                    .onChange(of: items.map(\.id)) { oldIds, newIds in
-                        let forceImmediate = newIds.count != oldIds.count
-                            || !Set(oldIds).isSubset(of: Set(newIds))
-                        scheduleProfileMasonryLayoutRefresh(forceImmediate: forceImmediate)
+                    .onChange(of: items.count) { oldCount, newCount in
+                        scheduleProfileMasonryLayoutRefresh(
+                            forceImmediate: newCount < oldCount || oldCount == 0
+                        )
                     }
                     .onChange(of: selectedTab) { _, _ in
                         profileMasonryLayout = .empty
@@ -460,7 +462,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             return
         }
         masonryLayoutRefreshTask = Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(48))
+            try? await Task.sleep(for: .milliseconds(96))
             guard !Task.isCancelled else { return }
             refreshProfileMasonryLayout()
         }
@@ -512,8 +514,18 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         lastScrollOffset = 0
     }
 
+    private func shouldRunPaginationEval(for offset: CGFloat) -> Bool {
+        guard abs(offset - lastPaginationEvalOffset) > 8 else { return false }
+        let now = DispatchTime.now().uptimeNanoseconds
+        if now &- lastPaginationEvalUptime < 120_000_000 { return false }
+        lastPaginationEvalOffset = offset
+        lastPaginationEvalUptime = now
+        return true
+    }
+
     private func handleProfileScrollOffset(_ offset: CGFloat) {
         applyScrollOffset(offset)
+        guard shouldRunPaginationEval(for: offset) else { return }
         if enableScrollProximityLoadMore {
             evaluateScrollProximityLoadMore(headerMinY: offset)
         }
@@ -524,12 +536,6 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
 
     private func handleFeedContentBottomY(_ bottomY: CGFloat) {
         feedContentBottomY = bottomY
-        if enableScrollProximityLoadMore {
-            evaluateScrollProximityLoadMore(headerMinY: lastScrollOffset)
-        }
-        if loadMoreAtScrollBottom {
-            evaluateBottomEdgeLoadMore(headerMinY: lastScrollOffset)
-        }
     }
 
     private func handleProfileHeaderBounds(_ frame: CGRect) {
@@ -545,6 +551,8 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         feedContentBottomY = .infinity
         lastProximityLoadMoreAt = .distantPast
         bottomEdgeLoadMoreArmed = true
+        lastPaginationEvalOffset = .greatestFiniteMagnitude
+        lastPaginationEvalUptime = 0
         if suppressScrollClamp {
             scheduleClampAfterTabContentLayout()
         }
