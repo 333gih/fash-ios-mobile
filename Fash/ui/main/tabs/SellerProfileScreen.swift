@@ -52,16 +52,17 @@ struct SellerProfileScreen: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            sellerTopBar
-            ZStack(alignment: .bottom) {
-                Group {
-                    if showBlockingLoadError {
-                        FashEmptyStateView(title: L10n.profileLoadError, actionTitle: L10n.feedRetry) {
-                            Task { await viewModel.loadForSeller(username, deps: deps, isGuestMode: isGuestMode) }
-                        }
-                    } else {
-                        ProfileCollapsingScrollLayout(
+        ZStack(alignment: .bottom) {
+            VStack(spacing: 0) {
+                sellerTopBar
+                ZStack(alignment: .bottom) {
+                    Group {
+                        if showBlockingLoadError {
+                            FashEmptyStateView(title: L10n.profileLoadError, actionTitle: L10n.feedRetry) {
+                                Task { await viewModel.loadForSeller(username, deps: deps, isGuestMode: isGuestMode) }
+                            }
+                        } else {
+                            ProfileCollapsingScrollLayout(
                             selectedTab: $viewModel.selectedTab,
                             tabSet: .sellerStorefront,
                             items: viewModel.listingsForSelectedTab,
@@ -139,31 +140,31 @@ struct SellerProfileScreen: View {
                             await viewModel.loadForSeller(username, deps: deps, isGuestMode: isGuestMode, force: true)
                         }
                     }
-                }
 
-                if !promoSlides.isEmpty {
-                    StickyBottomPromoBar {
-                        FashPromoSliderView(slides: promoSlides) { slide, _ in
-                            onDismiss()
-                            deps.navigationRouter?.handlePromoSlideClick(slide)
+                    if !promoSlides.isEmpty {
+                        StickyBottomPromoBar {
+                            FashPromoSliderView(slides: promoSlides) { slide, _ in
+                                onDismiss()
+                                deps.navigationRouter?.handlePromoSlideClick(slide)
+                            }
                         }
+                        .opacity(showPromoFooter ? 1 : 0)
+                        .allowsHitTesting(showPromoFooter)
+                        .accessibilityHidden(!showPromoFooter)
                     }
-                    .opacity(showPromoFooter ? 1 : 0)
-                    .allowsHitTesting(showPromoFooter)
-                    .accessibilityHidden(!showPromoFooter)
                 }
-
-                ListingPreviewOverlay(
-                    listingPreview: deps.listingPreview,
-                    router: router,
-                    isGuestMode: isGuestMode,
-                    onRequestLogin: isGuestMode ? { presentGuestSignIn(reason: L10n.guestLoginReasonBuy) } : nil,
-                    onFeedEngagementPatch: { id, transform in
-                        viewModel.patchListingEngagement(id, transform: transform)
-                    }
-                )
-                .zIndex(30)
             }
+
+            ListingPreviewOverlay(
+                listingPreview: deps.listingPreview,
+                router: router,
+                isGuestMode: isGuestMode,
+                onRequestLogin: isGuestMode ? { presentGuestSignIn(reason: L10n.guestLoginReasonBuy) } : nil,
+                onFeedEngagementPatch: { id, transform in
+                    viewModel.patchListingEngagement(id, transform: transform)
+                }
+            )
+            .zIndex(30)
         }
         .background(FashColors.screen)
         .onChange(of: username) { _, _ in

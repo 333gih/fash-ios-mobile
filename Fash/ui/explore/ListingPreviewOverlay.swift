@@ -51,11 +51,12 @@ struct ListingPreviewOverlay: View {
                         )
                     )
                     .shadow(color: .black.opacity(0.2), radius: 12, y: -4)
-                    .safeAreaPadding(.bottom, 4)
+                    .padding(.bottom, 4)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
         }
+        .ignoresSafeArea(edges: .bottom)
         .animation(.easeInOut(duration: 0.28), value: listingPreview.isOverlayVisible)
         .allowsHitTesting(listingPreview.isOverlayVisible)
     }
