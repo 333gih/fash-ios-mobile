@@ -970,10 +970,13 @@ final class HomeViewModel {
         }
         let styleLimit = sectionLimit(for: .stylePicks, fallback: 12)
         let similarLimit = sectionLimit(for: .similarSaved, fallback: 12)
+        let forYouLimit = sectionLimit(for: .forYou, fallback: 16)
+        let seasonalLimit = sectionLimit(for: .seasonalNearYou, fallback: 12)
+        let huntLimit = sectionLimit(for: .huntToday, fallback: HomeFeedConstants.huntTodayLimit)
         let result = await deps.recommendationRepository.homeSections(
             publicBrowse: isGuestMode,
-            huntTodayLimit: sectionLimit(for: .huntToday, fallback: 12),
-            forYouLimit: sectionLimit(for: .forYou, fallback: 16),
+            huntTodayLimit: huntLimit,
+            forYouLimit: forYouLimit,
             sectionLimit: max(styleLimit, similarLimit),
             sizingMode: huntTodaySizingMode()
         )
@@ -988,11 +991,6 @@ final class HomeViewModel {
         sections.seasonalNearYou = loaded.seasonalNearYou
         sections.shoppingContext = loaded.shoppingContext ?? sections.shoppingContext
         recommendationSectionsFetched = true
-        let forYouLimit = sectionLimit(for: .forYou, fallback: 16)
-        let styleLimit = sectionLimit(for: .stylePicks, fallback: 12)
-        let similarLimit = sectionLimit(for: .similarSaved, fallback: 12)
-        let seasonalLimit = sectionLimit(for: .seasonalNearYou, fallback: 12)
-        let huntLimit = sectionLimit(for: .huntToday, fallback: HomeFeedConstants.huntTodayLimit)
         if !loaded.huntToday.isEmpty {
             setTabHasMore(.huntToday, loaded.huntToday.count >= huntLimit)
         }
