@@ -186,11 +186,11 @@ final class AppRouter {
         if selectedConversationId != nil { selectedConversationId = nil; return }
         if showEditProfile { showEditProfile = false; return }
         if editListingId != nil { editListingId = nil; return }
-        if sellerShopUsername != nil { sellerShopUsername = nil; return }
         if listingDetailRootId != nil {
             popListingDetail()
             return
         }
+        if sellerShopUsername != nil { sellerShopUsername = nil; return }
     }
 
     func openListingDetailFlow(rootId: String) {

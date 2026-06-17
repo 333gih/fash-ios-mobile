@@ -74,8 +74,14 @@ struct RootView: View {
                 fullScreenContent(route)
                     .fashSnackbarOverlay()
                     .fashInAppNotificationOverlay()
-                    .fashEdgeBackNavigation {
-                        router.dismissFullScreen()
+                    .fashEdgeBackNavigation(
+                        isEnabled: router.listingDetailRootId == nil
+                    ) {
+                        if deps.listingPreview.isOverlayVisible {
+                            deps.listingPreview.close(deps: deps, animated: true)
+                        } else {
+                            router.dismissFullScreen()
+                        }
                     }
             }
             .onOpenURL { url in
@@ -186,8 +192,7 @@ struct RootView: View {
             ListingDetailNavigationHost(
                 router: router,
                 rootListingId: rootId,
-                isGuestMode: router.isGuestMode,
-                enablesEdgeBack: false
+                isGuestMode: router.isGuestMode
             )
         case .seller(let user):
             SellerProfileScreen(
