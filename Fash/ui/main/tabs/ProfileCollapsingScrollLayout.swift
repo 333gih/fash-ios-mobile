@@ -105,7 +105,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     var additionalBottomInset: CGFloat = 0
     /// Legacy flag — profile grid always uses hoisted chunked masonry rows in `LazyVStack`.
     var useStaggeredMasonryGrid: Bool = false
-    /// Legacy flag — retained for call-site compatibility; layout uses chunked rows.
+    /// When true, hoists one [FeedMasonryChunkedGrid] (Home-style continuous masonry) instead of tiny lazy rows.
     var masonryEagerLayout: Bool = false
     /// Skeleton grid (Explore-style) while the first page loads.
     var showGridLoading: Bool = false
@@ -278,13 +278,18 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             }
             Section {
                 profileGridWidthProbe
-                    .onAppear { scheduleProfileMasonryLayoutRefresh(forceImmediate: true) }
+                    .onAppear {
+                        guard !masonryEagerLayout else { return }
+                        scheduleProfileMasonryLayoutRefresh(forceImmediate: true)
+                    }
                     .onChange(of: items.map(\.id)) { oldIds, newIds in
+                        guard !masonryEagerLayout else { return }
                         let forceImmediate = newIds.count != oldIds.count
                             || !Set(oldIds).isSubset(of: Set(newIds))
                         scheduleProfileMasonryLayoutRefresh(forceImmediate: forceImmediate)
                     }
                     .onChange(of: selectedTab) { _, _ in
+                        guard !masonryEagerLayout else { return }
                         profileMasonryLayout = .empty
                         profileLayoutedItemCount = 0
                         scheduleProfileMasonryLayoutRefresh(forceImmediate: true)
@@ -307,8 +312,28 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                     }
 
                 if shouldShowProfileMasonryChunks {
-                    ForEach(profileFeedChunks) { chunk in
-                        profileMasonryChunkRow(chunk)
+                    if masonryEagerLayout {
+                        profileHoistedMasonryGrid
+                            .padding(.top, spacing.spacing2)
+                            .overlay(alignment: .top) {
+                                profileListingReloadOverlay
+                            }
+                            .allowsHitTesting(listingInteractionEnabled)
+                            .animation(showGridLoading ? nil : FashTabSwipeMotion.contentAnimation, value: selectedTab)
+                            .transition(FashTabSwipeMotion.contentTransition)
+                            .profileTabSwipe(
+                                enabled: profileTabSwipeEnabled,
+                                currentIndex: visualTabIndex,
+                                tabCount: resolvedTabIndices.count,
+                                listingInteractionEnabled: $listingInteractionEnabled,
+                                onHorizontalSwipeActive: onTabHorizontalSwipeActive
+                            ) { visualIndex in
+                                commitProfileTabSwipe(toVisualIndex: visualIndex)
+                            }
+                    } else {
+                        ForEach(profileFeedChunks) { chunk in
+                            profileMasonryChunkRow(chunk)
+                        }
                     }
                 }
 
@@ -377,7 +402,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     private var profileFeedChunks: [ListingMasonryFeedPages.FeedOrderChunk] {
         ListingMasonryFeedPages.feedOrderChunks(
             items: items,
-            pageSize: ListingMasonryFeedPages.profileLazyStackChunkPageSize
+            pageSize: ListingMasonryFeedPages.profileChunkPageSize
         )
     }
 
@@ -801,6 +826,19 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                 profileMasonryContainerWidth = width
                 scheduleProfileMasonryLayoutRefresh()
             }
+    }
+
+    @ViewBuilder
+    private var profileHoistedMasonryGrid: some View {
+        FeedMasonryChunkedGrid(
+            items: items,
+            columnAssignments: masonryColumnAssignments,
+            chunkSize: ListingMasonryFeedPages.profileChunkPageSize,
+            footer: { EmptyView() },
+            cell: { item, index in
+                profileListingGridCard(item: item, index: index)
+            }
+        )
     }
 
     @ViewBuilder

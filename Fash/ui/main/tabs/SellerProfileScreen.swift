@@ -69,7 +69,7 @@ struct SellerProfileScreen: View {
                             showStatusOverlay: true,
                             additionalBottomInset: promoBottomInset,
                             useStaggeredMasonryGrid: true,
-                            masonryEagerLayout: false,
+                            masonryEagerLayout: true,
                             showGridLoading: showListingGridLoading,
                             showGridLoadRetry: showListingGridLoadRetry,
                             onRetryGridLoad: {
