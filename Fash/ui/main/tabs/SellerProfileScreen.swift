@@ -139,6 +139,7 @@ struct SellerProfileScreen: View {
                         .fashFeedPullRefresh(isRefreshing: sellerRefreshBinding) {
                             await viewModel.loadForSeller(username, deps: deps, isGuestMode: isGuestMode, force: true)
                         }
+                        }
                     }
 
                     if !promoSlides.isEmpty {
