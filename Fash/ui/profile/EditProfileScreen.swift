@@ -4,6 +4,7 @@ struct EditProfileScreen: View {
     @Environment(\.fashSpacing) private var spacing
     @Environment(AppDependencies.self) private var deps
     var onDismiss: () -> Void
+    var onSaved: () -> Void = {}
 
     @State private var viewModel = EditProfileViewModel()
 
@@ -54,6 +55,7 @@ struct EditProfileScreen: View {
             ) {
                 Task {
                     if await viewModel.save(deps: deps) {
+                        onSaved()
                         onDismiss()
                     }
                 }

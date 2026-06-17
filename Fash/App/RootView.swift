@@ -230,7 +230,18 @@ struct RootView: View {
                 }
             })
         case .editProfile:
-            EditProfileScreen(onDismiss: { router.showEditProfile = false })
+            EditProfileScreen(
+                onDismiss: { router.showEditProfile = false },
+                onSaved: {
+                    Task {
+                        await profileVM.reloadProfileAfterEdit(deps: deps)
+                        homeVM.refreshSizingBannerAfterProfileSave(
+                            deps: deps,
+                            isGuestMode: router.isGuestMode
+                        )
+                    }
+                }
+            )
         case .chat(let id):
             ChatDetailScreen(
                 conversationId: id,

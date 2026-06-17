@@ -154,6 +154,17 @@ final class ProfileViewModel {
         await refresh(deps: deps, force: false, activeTab: currentProfileTab())
     }
 
+    /// After edit-profile save — refresh header/sizing without reloading listing grids (Android `loadProfile`).
+    func reloadProfileAfterEdit(deps: AppDependencies) async {
+        switch await deps.userRepository.getMeProfile() {
+        case .success(let p):
+            applyProfile(p)
+            lastSuccessfulRefreshAt = Date()
+        case .failure:
+            break
+        }
+    }
+
     /// Loads the first page for a tab when it has never succeeded, or retries when badge count implies listings exist.
     func prepareEditReturn(tab: ProfileListingTab, listingId: String) {
         lastSelectedProfileTab = tab.rawValue
