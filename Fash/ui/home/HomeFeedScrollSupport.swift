@@ -171,7 +171,7 @@ enum HomeFeedScrollMath {
     }
 }
 
-/// UIKit scroll boundary — gates Following load-more so upward scroll is not fighting pagination.
+/// UIKit scroll boundary — gates Following load-more + home sticky tab chrome.
 @Observable
 @MainActor
 final class HomeFeedScrollBoundary {
@@ -179,12 +179,55 @@ final class HomeFeedScrollBoundary {
     private(set) var isAtTop = true
     private(set) var isScrollingUp = false
     private(set) var isUserInteracting = false
+    private(set) var contentOffsetY: CGFloat = 0
+    /// True when in-scroll tab row scrolled off — drives pinned tab overlay.
+    private(set) var stickyTabsVisible = false
+
+    private var stickyTabsLatch = false
+    private var stickyForceHidden = false
 
     /// Load-more when near the feed bottom and not actively scrolling up toward the header.
     var allowsFollowingLoadMore: Bool {
         guard !isScrollingUp else { return false }
         guard !isUserInteracting else { return false }
         return isNearBottom
+    }
+
+    func forceHideHomeStickyTabs() {
+        stickyForceHidden = true
+        stickyTabsLatch = false
+        if stickyTabsVisible {
+            stickyTabsVisible = false
+        }
+    }
+
+    func updateHomeStickyTabsVisibility(headerHeight: CGFloat, tabRowHeight: CGFloat) {
+        if stickyForceHidden {
+            if contentOffsetY <= 24 {
+                stickyForceHidden = false
+            } else {
+                if stickyTabsVisible {
+                    stickyTabsVisible = false
+                }
+                stickyTabsLatch = false
+                return
+            }
+        }
+
+        let chromeHeight = max(headerHeight, 0) + max(tabRowHeight, 44)
+        let pinThreshold = max(chromeHeight - 6, 72)
+        let unpinThreshold = max(pinThreshold - 36, 12)
+        let offset = max(0, contentOffsetY)
+
+        if isAtTop || offset <= unpinThreshold {
+            stickyTabsLatch = false
+        } else if offset >= pinThreshold {
+            stickyTabsLatch = true
+        }
+
+        if stickyTabsVisible != stickyTabsLatch {
+            stickyTabsVisible = stickyTabsLatch
+        }
     }
 
     fileprivate func apply(
@@ -209,6 +252,9 @@ final class HomeFeedScrollBoundary {
         if atTop != isAtTop { isAtTop = atTop }
         if nearBottom != isNearBottom { isNearBottom = nearBottom }
         if isUserInteracting != self.isUserInteracting { self.isUserInteracting = isUserInteracting }
+        if abs(contentOffsetY - self.contentOffsetY) > 0.5 {
+            self.contentOffsetY = contentOffsetY
+        }
         if abs(deltaY) > 3.5 {
             if deltaY < 0 {
                 if !isScrollingUp { isScrollingUp = true }
@@ -232,6 +278,8 @@ final class HomeFeedScrollBoundary {
 struct HomeFeedScrollCoordinator: UIViewRepresentable {
     var scrollBoundary: HomeFeedScrollBoundary
     var scrollToTopToken: Int = 0
+    var homeHeaderHeight: CGFloat = 0
+    var homeTabRowHeight: CGFloat = 48
 
     func makeCoordinator() -> Coordinator { Coordinator(boundary: scrollBoundary) }
 
@@ -244,8 +292,14 @@ struct HomeFeedScrollCoordinator: UIViewRepresentable {
     func updateUIView(_ uiView: AnchorView, context: Context) {
         let coordinator = context.coordinator
         coordinator.boundary = scrollBoundary
+        coordinator.homeHeaderHeight = homeHeaderHeight
+        coordinator.homeTabRowHeight = homeTabRowHeight
         uiView.coordinator = coordinator
         coordinator.installIfNeeded(from: uiView)
+        scrollBoundary.updateHomeStickyTabsVisibility(
+            headerHeight: homeHeaderHeight,
+            tabRowHeight: homeTabRowHeight
+        )
         if scrollToTopToken > 0, scrollToTopToken != coordinator.lastScrollToTopToken {
             coordinator.lastScrollToTopToken = scrollToTopToken
             coordinator.scrollToTrueTop(on: uiView)
@@ -255,6 +309,8 @@ struct HomeFeedScrollCoordinator: UIViewRepresentable {
     @MainActor
     final class Coordinator {
         var boundary: HomeFeedScrollBoundary
+        var homeHeaderHeight: CGFloat = 0
+        var homeTabRowHeight: CGFloat = 48
         var lastScrollToTopToken = 0
         weak var scrollView: UIScrollView?
         private var offsetObservation: NSKeyValueObservation?
@@ -299,6 +355,10 @@ struct HomeFeedScrollCoordinator: UIViewRepresentable {
                 deltaY: deltaY,
                 isUserInteracting: interacting
             )
+            boundary.updateHomeStickyTabsVisibility(
+                headerHeight: homeHeaderHeight,
+                tabRowHeight: homeTabRowHeight
+            )
             scrollIdleTask?.cancel()
             scrollIdleTask = Task { @MainActor in
                 try? await Task.sleep(for: .milliseconds(200))
@@ -317,8 +377,13 @@ struct HomeFeedScrollCoordinator: UIViewRepresentable {
                     inset.top = 0
                     scrollView.verticalScrollIndicatorInsets = inset
                 }
+                boundary.forceHideHomeStickyTabs()
                 let top = -scrollView.adjustedContentInset.top
                 scrollView.setContentOffset(CGPoint(x: 0, y: top), animated: false)
+                boundary.updateHomeStickyTabsVisibility(
+                    headerHeight: homeHeaderHeight,
+                    tabRowHeight: homeTabRowHeight
+                )
             }
         }
     }
