@@ -220,7 +220,11 @@ extension AppRouter {
 
     /// Handles edge-swipe / back: overlays first, then Home tab. Returns whether navigation was consumed.
     @discardableResult
-    func handleEdgeBack(notificationsViewModel: NotificationsViewModel?) -> Bool {
+    func handleEdgeBack(
+        notificationsViewModel: NotificationsViewModel?,
+        listingPreview: ListingPreviewStore? = nil,
+        deps: AppDependencies? = nil
+    ) -> Bool {
         if showNotificationScreen {
             if let notificationsViewModel, notificationsViewModel.selectedDetailId != nil {
                 notificationsViewModel.closeDetail()
@@ -243,10 +247,16 @@ extension AppRouter {
             showNotificationPreferencesScreen = false
             return true
         }
-        if showExploreOverlay, exploreOverlayListingId == nil {
-            showExploreOverlay = false
-            exploreSearchExpanded = false
-            return true
+        if showExploreOverlay {
+            if let listingPreview, listingPreview.isOverlayVisible, let deps {
+                listingPreview.close(deps: deps, animated: true)
+                return true
+            }
+            if exploreOverlayListingId == nil {
+                showExploreOverlay = false
+                exploreSearchExpanded = false
+                return true
+            }
         }
         if listingDetailRootId != nil {
             popListingDetail()
@@ -281,13 +291,19 @@ extension View {
     func fashEdgeBackNavigation(
         router: AppRouter,
         notificationsViewModel: NotificationsViewModel?,
+        listingPreview: ListingPreviewStore? = nil,
+        deps: AppDependencies? = nil,
         isEnabled: Bool? = nil
     ) -> some View {
         modifier(
             FashEdgeBackNavigationModifier(
                 isEnabled: isEnabled ?? router.canEdgeBack(notificationsViewModel: notificationsViewModel),
                 onBack: {
-                    _ = router.handleEdgeBack(notificationsViewModel: notificationsViewModel)
+                    _ = router.handleEdgeBack(
+                        notificationsViewModel: notificationsViewModel,
+                        listingPreview: listingPreview,
+                        deps: deps
+                    )
                 }
             )
         )

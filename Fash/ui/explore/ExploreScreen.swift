@@ -72,6 +72,17 @@ struct ExploreScreen: View {
                     )
                 }
             }
+
+            ListingPreviewOverlay(
+                listingPreview: deps.listingPreview,
+                router: router,
+                isGuestMode: isGuestMode,
+                onRequestLogin: isGuestMode ? { onRequestSignIn?(L10n.guestLoginReasonBuy) } : nil,
+                onFeedEngagementPatch: { id, transform in
+                    viewModel.patchListingEngagement(id, transform: transform)
+                }
+            )
+            .zIndex(20)
         }
         .sheet(isPresented: $viewModel.showFilterSheet) {
             ExploreFilterSheet(viewModel: viewModel, isGuestMode: isGuestMode) {

@@ -51,11 +51,15 @@ struct RootView: View {
                 .environment(\.locale, AppLocale.locale)
                 .fashSnackbarOverlay()
                 .fashInAppNotificationOverlay()
-                .fashEdgeBackNavigation(
-                    isEnabled: router.exploreOverlayListingId == nil
-                ) {
-                    router.showExploreOverlay = false
-                    router.exploreSearchExpanded = false
+                .fashEdgeBackNavigation {
+                    ExploreOverlayNavigation.handleEdgeSwipe(
+                        deps: deps,
+                        router: router,
+                        onClose: {
+                            router.showExploreOverlay = false
+                            router.exploreSearchExpanded = false
+                        }
+                    )
                 }
             }
             .onChange(of: router.showExploreOverlay) { wasShowing, isShowing in

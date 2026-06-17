@@ -231,7 +231,7 @@ final class AppRouter {
     func closeListingDetailFlow(dismissExplore: Bool = false) {
         listingDetailRootId = nil
         listingDetailPath = []
-        if dismissExplore || showExploreOverlay {
+        if dismissExplore {
             showExploreOverlay = false
             exploreSearchExpanded = false
         }

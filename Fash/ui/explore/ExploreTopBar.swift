@@ -181,10 +181,41 @@ struct ExploreTopBar: View {
     }
 
     private func handleBack() {
+        ExploreOverlayNavigation.handleBack(
+            deps: deps,
+            viewModel: viewModel,
+            onClose: onCloseOverlay
+        )
+    }
+}
+
+/// Layered back for Explore full-screen overlay — preview, then search, then dismiss.
+enum ExploreOverlayNavigation {
+    static func handleBack(
+        deps: AppDependencies,
+        viewModel: ExploreViewModel,
+        onClose: () -> Void
+    ) {
         if viewModel.searchBarExpanded {
             viewModel.setSearchBarExpanded(false)
+        } else if deps.listingPreview.isOverlayVisible {
+            deps.listingPreview.close(deps: deps, animated: true)
         } else {
-            onCloseOverlay()
+            onClose()
+        }
+    }
+
+    static func handleEdgeSwipe(
+        deps: AppDependencies,
+        router: AppRouter,
+        onClose: () -> Void
+    ) {
+        if deps.listingPreview.isOverlayVisible {
+            deps.listingPreview.close(deps: deps, animated: true)
+        } else if router.exploreOverlayListingId != nil {
+            router.popListingDetail()
+        } else {
+            onClose()
         }
     }
 }

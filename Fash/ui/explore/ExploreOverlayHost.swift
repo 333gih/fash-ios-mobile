@@ -24,7 +24,6 @@ struct ExploreOverlayHost: View {
     @State private var marketplaceControlsMaxY: CGFloat = .infinity
 
     var body: some View {
-        @Bindable var listingPreview = deps.listingPreview
         VStack(spacing: 0) {
             ExploreTopBar(
                 viewModel: viewModel,
@@ -68,18 +67,6 @@ struct ExploreOverlayHost: View {
         .onPreferenceChange(ExploreMarketplaceControlsScrollKey.self) {
             marketplaceControlsMaxY = $0
             syncScrollChrome()
-        }
-        .overlay(alignment: .bottom) {
-            ListingPreviewOverlay(
-                listingPreview: listingPreview,
-                router: router,
-                isGuestMode: isGuestMode,
-                onRequestLogin: isGuestMode ? { presentGuestSignIn(reason: L10n.guestLoginReasonBuy) } : nil,
-                onFeedEngagementPatch: { id, transform in
-                    viewModel.patchListingEngagement(id, transform: transform)
-                }
-            )
-            .zIndex(20)
         }
         .fullScreenCover(item: exploreListingCoverBinding) { _ in
             if let rootId = router.listingDetailRootId {

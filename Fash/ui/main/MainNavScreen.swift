@@ -161,7 +161,9 @@ struct MainNavScreen: View {
         .animation(.easeInOut(duration: 0.25), value: activePromoCampaign?.campaignId)
         .fashEdgeBackNavigation(
             router: router,
-            notificationsViewModel: notificationsVM
+            notificationsViewModel: notificationsVM,
+            listingPreview: deps.listingPreview,
+            deps: deps
         )
         .task(id: isGuestMode) {
             guard !isGuestMode else {
