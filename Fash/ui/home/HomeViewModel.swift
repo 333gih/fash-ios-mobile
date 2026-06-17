@@ -103,29 +103,10 @@ final class HomeViewModel {
         loadMoreSectionTab(tab, deps: deps, isGuestMode: isGuestMode)
     }
 
-    /// Tile prefetch + sliding-window trim for Following; tile prefetch for discovery tabs.
-    func notifyHomeCellVisible(
-        index: Int,
-        columnWidth: CGFloat,
-        deps: AppDependencies,
-        isGuestMode: Bool
-    ) {
-        let tab = selectedFeedTab
-        if tab == .following {
-            notifyFollowingCellVisible(
-                index: index,
-                columnWidth: columnWidth,
-                deps: deps,
-                isGuestMode: isGuestMode
-            )
-            return
-        }
-        guard !isShellLoading, !isRefreshing, !isTabLoading(tab) else { return }
-        guard FeedPaginationPolicy.shouldPrefetchNextPage(
-            appearedIndex: index,
-            totalCount: items.count
-        ) else { return }
-        loadMore(deps: deps, isGuestMode: isGuestMode)
+    /// Following tab only — idle window trim for memory (no pagination trigger).
+    func scheduleFollowingWindowTrim(visibleIndex: Int, columnWidth: CGFloat) {
+        guard selectedFeedTab == .following else { return }
+        scheduleFollowingWindowTrimDeferred(visibleIndex: visibleIndex, columnWidth: columnWidth)
     }
 
     /// Main tab Home visible — reload default feed tab if UI is empty without an active load.
@@ -435,7 +416,7 @@ final class HomeViewModel {
         }
     }
 
-    /// Tile prefetch + sliding-window trim (idle only — never while finger is on screen).
+    /// Idle sliding-window trim for Following (pagination is footer-only at scroll bottom).
     func notifyFollowingCellVisible(
         index: Int,
         columnWidth: CGFloat,
@@ -443,18 +424,13 @@ final class HomeViewModel {
         isGuestMode: Bool
     ) {
         guard selectedFeedTab == .following else { return }
-        requestLoadMoreFollowingIfNeeded(
-            appearedIndex: index,
-            deps: deps,
-            isGuestMode: isGuestMode
-        )
-        scheduleFollowingWindowTrim(visibleIndex: index, columnWidth: columnWidth)
+        scheduleFollowingWindowTrimDeferred(visibleIndex: index, columnWidth: columnWidth)
     }
 
-    private func scheduleFollowingWindowTrim(visibleIndex: Int, columnWidth: CGFloat) {
+    private func scheduleFollowingWindowTrimDeferred(visibleIndex: Int, columnWidth: CGFloat) {
         followingTrimTask?.cancel()
         followingTrimTask = Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(160))
+            try? await Task.sleep(for: .milliseconds(320))
             guard !Task.isCancelled else { return }
             guard selectedFeedTab == .following else { return }
             guard let boundary = homeScrollBoundary, !boundary.isUserInteracting else { return }
@@ -472,7 +448,7 @@ final class HomeViewModel {
         }
     }
 
-    /// Tile-anchored pagination — same policy as Explore (within 8 rows of end).
+    /// @deprecated — pagination is footer-only; trim via [scheduleFollowingWindowTrim].
     func requestLoadMoreFollowingIfNeeded(
         appearedIndex: Int,
         deps: AppDependencies,
