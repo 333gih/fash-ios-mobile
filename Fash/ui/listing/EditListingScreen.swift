@@ -9,7 +9,7 @@ struct EditListingScreen: View {
 
     @State private var viewModel = EditListingViewModel()
     @State private var showDeleteDialog = false
-    @State private var sharePayload: EditListingSharePayload?
+    @State private var sharePayload: FashSharePayload?
 
     var body: some View {
         OverlayScreenHost(title: L10n.editListingScreenTitle, onDismiss: onDismiss, trailing: {
@@ -22,7 +22,7 @@ struct EditListingScreen: View {
                     let title = d.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                         ? L10n.productDetailTitle
                         : d.title
-                    sharePayload = EditListingSharePayload(items: [L10n.shareListingSubject, L10n.shareListingText(title, web, fashUri)])
+                    sharePayload = FashSharePayload(items: [L10n.shareListingSubject, L10n.shareListingText(title, web, fashUri)])
                 } label: {
                     Image(systemName: "square.and.arrow.up")
                         .font(.system(size: 18, weight: .semibold))

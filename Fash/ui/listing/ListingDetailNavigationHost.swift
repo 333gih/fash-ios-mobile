@@ -10,8 +10,7 @@ struct ListingDetailNavigationHost: View {
     var dismissExploreOverlayOnClose: Bool = false
     /// When false, parent `fullScreenCover` owns edge-back (`dismissFullScreen`).
     var enablesEdgeBack: Bool = true
-    @State private var shareItems: [Any] = []
-    @State private var showShareSheet = false
+    @State private var sharePayload: FashSharePayload?
     @State private var showGuestLoginSheet = false
     @State private var guestLoginReason: String?
 
@@ -27,8 +26,8 @@ struct ListingDetailNavigationHost: View {
 
             topBar
         }
-        .sheet(isPresented: $showShareSheet) {
-            ActivityShareSheet(items: shareItems) { completed in
+        .sheet(item: $sharePayload) { payload in
+            ActivityShareSheet(items: payload.items) { completed in
                 FashActivityShare.showSuccessIfNeeded(
                     completed,
                     message: L10n.shareListingSuccess,
@@ -81,8 +80,7 @@ struct ListingDetailNavigationHost: View {
         let web = AppEnvironment.listingShareURL(listingId: listingId)
         let fashUri = ListingDeepLinks.fashListingURL(listingId: listingId)?.absoluteString ?? ""
         let text = L10n.shareListingText(L10n.productDetailTitle, web, fashUri)
-        shareItems = [L10n.shareListingSubject, text]
-        showShareSheet = true
+        sharePayload = FashSharePayload(items: [L10n.shareListingSubject, text])
     }
 
     @ViewBuilder

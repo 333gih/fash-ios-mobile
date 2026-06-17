@@ -727,6 +727,8 @@ struct ProfileQuickActionsCard: View {
     var onShipping: () -> Void
     var onInvite: () -> Void
 
+    @State private var sharePayload: FashSharePayload?
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(L10n.profileQuickActionsTitle)
@@ -736,13 +738,7 @@ struct ProfileQuickActionsCard: View {
             VStack(spacing: 0) {
                 if !username.isEmpty {
                     quickRow(icon: "square.and.arrow.up", title: L10n.profileShareShopTitle, subtitle: L10n.profileShareShopSubtitle) {
-                        ProfileShare.launch(username: username, displayName: displayName) { completed in
-                            FashActivityShare.showSuccessIfNeeded(
-                                completed,
-                                message: L10n.shareProfileSuccess,
-                                deps: deps
-                            )
-                        }
+                        sharePayload = ProfileShare.sharePayload(username: username, displayName: displayName)
                     }
                     Divider().padding(.horizontal, 14).opacity(0.35)
                 }
@@ -755,6 +751,15 @@ struct ProfileQuickActionsCard: View {
         }
         .padding(.horizontal, spacing.editorialStart)
         .padding(.bottom, spacing.spacing2)
+        .sheet(item: $sharePayload) { payload in
+            ActivityShareSheet(items: payload.items) { completed in
+                FashActivityShare.showSuccessIfNeeded(
+                    completed,
+                    message: L10n.shareProfileSuccess,
+                    deps: deps
+                )
+            }
+        }
     }
 
     private func quickRow(icon: String, title: String, subtitle: String, action: @escaping () -> Void) -> some View {

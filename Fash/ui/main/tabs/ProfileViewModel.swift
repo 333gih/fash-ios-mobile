@@ -182,13 +182,25 @@ final class ProfileViewModel {
 
     func ensureListingsLoaded(for tab: ProfileListingTab, deps: AppDependencies) async {
         guard profile != nil else { return }
-        guard !isFirstPageLoading(for: tab), !isReloadingListings(for: tab) else { return }
-        guard listings(for: tab).isEmpty else { return }
-        if loadedListingTabs.contains(tab.rawValue) {
-            guard displayCount(for: tab) > 0 else { return }
+        if needsListingTabReload(for: tab) {
             loadedListingTabs.remove(tab.rawValue)
+            await loadListingsForTab(tab, deps: deps, force: true)
+            return
         }
+        guard listings(for: tab).isEmpty else { return }
+        guard !loadedListingTabs.contains(tab.rawValue) else { return }
         await loadListingsForTab(tab, deps: deps, force: false)
+    }
+
+    /// Tab marked loaded but grid is suspiciously sparse vs server summary badge.
+    private func needsListingTabReload(for tab: ProfileListingTab) -> Bool {
+        guard loadedListingTabs.contains(tab.rawValue) else { return false }
+        let count = listings(for: tab).count
+        let expected = displayCount(for: tab)
+        guard expected > count else { return false }
+        guard count > 0, count < min(expected, ProfileListingConstants.listingPageSize) else { return false }
+        let p = pagination(for: tab)
+        return !p.isLoadingFirstPage && !p.isReloading && !p.isLoadingMore
     }
 
     func isListingTabStalled(_ tab: ProfileListingTab) -> Bool {
@@ -197,9 +209,17 @@ final class ProfileViewModel {
 
     func shouldShowListingGridSkeleton(for tab: ProfileListingTab) -> Bool {
         if isListingTabStalled(tab) { return false }
+        if isTabListingsPending(for: tab) { return true }
         if listings(for: tab).isEmpty && isFirstPageLoading(for: tab) { return true }
         if profile == nil, isLoading, !hasCompletedInitialLoad { return true }
         return false
+    }
+
+    /// Empty tab whose first page has not landed yet.
+    func isTabListingsPending(for tab: ProfileListingTab) -> Bool {
+        guard profile != nil else { return false }
+        guard listings(for: tab).isEmpty else { return false }
+        return !loadedListingTabs.contains(tab.rawValue)
     }
 
     func retryListings(for tab: ProfileListingTab, deps: AppDependencies) async {
@@ -798,7 +818,7 @@ final class ProfileViewModel {
 
     private func requestOpenProfileTab(fromHome tab: ProfileListingTab, deps: AppDependencies) {
         requestOpenProfileTab(tab, scrollToGrid: true)
-        Task { await refresh(deps: deps, force: true, activeTab: tab, scrollToTop: false) }
+        Task { await ensureListingsLoaded(for: tab, deps: deps) }
     }
 
     private func requestOpenProfileTab(_ tab: ProfileListingTab, scrollToGrid: Bool) {

@@ -1,6 +1,12 @@
 import SwiftUI
 import UIKit
 
+/// Identifiable payload for `.sheet(item:)` share presentation — avoids first-tap races with `isPresented`.
+struct FashSharePayload: Identifiable {
+    let id = UUID()
+    let items: [Any]
+}
+
 /// Presents the system share sheet; dismisses it before feedback so snackbars show on the current screen.
 enum FashActivityShare {
     static let dismissSettleNanoseconds: UInt64 = 350_000_000

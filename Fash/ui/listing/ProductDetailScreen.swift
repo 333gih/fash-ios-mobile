@@ -27,7 +27,7 @@ struct ProductDetailScreen: View {
     @State private var viewModel = ProductDetailViewModel()
     @State private var showShippingInfo = false
     @State private var showSaveNudge = false
-    @State private var sharePayload: SharePayload?
+    @State private var sharePayload: FashSharePayload?
 
     private var buyNowEnabled: Bool { BusinessFlowConfig.c2cBuyNowEnabled }
 
@@ -169,7 +169,7 @@ struct ProductDetailScreen: View {
                         ? L10n.productDetailTitle
                         : d.title
                     let text = L10n.shareListingText(title, web, fashUri)
-                    sharePayload = SharePayload(items: [L10n.shareListingSubject, text])
+                    sharePayload = FashSharePayload(items: [L10n.shareListingSubject, text])
                     onShare(d.id, d.title)
                 } label: {
                     Image(systemName: "square.and.arrow.up")
@@ -328,11 +328,6 @@ private struct ProductDetailHeroEngagementOverlay: View {
             .allowsHitTesting(true)
         }
     }
-}
-
-private struct SharePayload: Identifiable {
-    let id = UUID()
-    let items: [Any]
 }
 
 private func sellerShopHandle(from detail: ListingDetail) -> String? {

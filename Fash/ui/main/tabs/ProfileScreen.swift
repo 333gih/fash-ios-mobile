@@ -24,8 +24,7 @@ struct ProfileScreen: View {
 
     @State private var selectedTab = 0
     @State private var scrollToGridToken = 0
-    @State private var profileScrollBoundary = HomeFeedScrollBoundary()
-    /// Home journey → wishlist / in-review: pin grid after refresh settles (Android `pendingExternalGridScroll`).
+    /// Home journey → wishlist / in-review: pin grid after content settles.
     @State private var pendingExternalGridScroll = false
     @State private var externalGridScrollTask: Task<Void, Never>?
 
@@ -75,7 +74,6 @@ struct ProfileScreen: View {
             await viewModel.ensureListingsLoaded(for: selectedProfileTab, deps: deps)
         }
         .onAppear {
-            viewModel.scrollBoundary = profileScrollBoundary
             syncSelectedTabFromViewModel()
             _ = applyProfileTabOpenRequestIfNeeded()
             tryApplyPendingExternalGridScroll()
@@ -129,7 +127,7 @@ struct ProfileScreen: View {
             showStatusOverlay: true,
             suppressActiveStatusOnGrid: false,
             useStaggeredMasonryGrid: true,
-            masonryEagerLayout: true,
+            masonryEagerLayout: false,
             showGridLoading: showListingGridLoading,
             showGridLoadRetry: showListingGridLoadRetry,
             onRetryGridLoad: profileRetryGridLoad,
@@ -145,25 +143,11 @@ struct ProfileScreen: View {
             scrollToListingId: viewModel.focusListingId,
             scrollToListingToken: viewModel.focusListingScrollToken,
             enableScrollProximityLoadMore: false,
-            enableTilePrefetchLoadMore: false,
+            enableTilePrefetchLoadMore: true,
             loadMoreSkeletonRows: 2,
             suppressScrollClamp: true,
             loadMoreAtScrollBottom: true,
             bottomLoadMoreTolerance: 36,
-            feedScrollBoundary: profileScrollBoundary,
-            feedTrimCompensationToken: viewModel.listingScrollTrimToken,
-            feedTrimCompensationSignedDeltaY: viewModel.listingScrollTrimSignedDeltaY,
-            onListingCellVisible: { index in
-                viewModel.notifyListingCellVisible(
-                    tab: selectedProfileTab,
-                    visibleIndex: index,
-                    columnWidth: ListingMasonryGrid.feedGridColumnWidth(
-                        containerWidth: UIScreen.main.bounds.width,
-                        spacing: spacing
-                    ),
-                    deps: deps
-                )
-            },
             onListingClick: handleListingTap,
             onLike: profileWishlistLikeHandler,
             onSave: profileWishlistSaveHandler,
@@ -219,7 +203,7 @@ struct ProfileScreen: View {
         return true
     }
 
-    /// Scroll listing grid to pinned tabs once refresh + first-page load settle (Android `LaunchedEffect(pendingExternalGridScroll, …)`).
+    /// Scroll listing grid to pinned tabs once content settles (single pin — avoids layout thrash).
     private func tryApplyPendingExternalGridScroll() {
         guard pendingExternalGridScroll else {
             externalGridScrollTask?.cancel()
@@ -233,14 +217,16 @@ struct ProfileScreen: View {
 
         externalGridScrollTask = Task { @MainActor in
             defer { externalGridScrollTask = nil }
-            // Retry while masonry + tab body settle — mirrors Android `scrollProfileToPinnedGrid` repeat loop.
-            for delayMs in [0, 80, 160, 320, 520, 720] {
+            for delayMs in [120, 280, 480] {
                 if delayMs > 0 {
                     try? await Task.sleep(for: .milliseconds(delayMs))
                 }
                 guard !Task.isCancelled, pendingExternalGridScroll else { return }
                 guard !viewModel.isRefreshing, !showListingGridLoading else { continue }
+                guard !currentItems.isEmpty else { continue }
                 scrollToGridToken += 1
+                pendingExternalGridScroll = false
+                return
             }
             pendingExternalGridScroll = false
         }

@@ -22,6 +22,7 @@ struct SellerProfileScreen: View {
     @State private var showPromoFooter = false
     @State private var showGuestLoginSheet = false
     @State private var guestLoginReason: String?
+    @State private var sharePayload: FashSharePayload?
 
     private var sellerRefreshBinding: Binding<Bool> {
         Binding(
@@ -181,6 +182,15 @@ struct SellerProfileScreen: View {
             reason: guestLoginReason,
             router: router
         )
+        .sheet(item: $sharePayload) { payload in
+            ActivityShareSheet(items: payload.items) { completed in
+                FashActivityShare.showSuccessIfNeeded(
+                    completed,
+                    message: L10n.shareProfileSuccess,
+                    deps: deps
+                )
+            }
+        }
     }
 
     private func presentGuestSignIn(reason: String) {
@@ -198,16 +208,10 @@ struct SellerProfileScreen: View {
             if !titleHandle.isEmpty, titleHandle != "—" {
                 Button {
                     let handle = username.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: "@", with: "")
-                    ProfileShare.launch(
+                    sharePayload = ProfileShare.sharePayload(
                         username: handle,
                         displayName: viewModel.profile?.displayName
-                    ) { completed in
-                        FashActivityShare.showSuccessIfNeeded(
-                            completed,
-                            message: L10n.shareProfileSuccess,
-                            deps: deps
-                        )
-                    }
+                    )
                 } label: {
                     Image(systemName: "square.and.arrow.up")
                         .font(.system(size: 18, weight: .semibold))
