@@ -190,6 +190,7 @@ struct ExploreTopBar: View {
 }
 
 /// Layered back for Explore full-screen overlay — preview, then search, then dismiss.
+@MainActor
 enum ExploreOverlayNavigation {
     static func handleBack(
         deps: AppDependencies,
