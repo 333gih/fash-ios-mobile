@@ -295,12 +295,9 @@ extension ListingMasonryGrid {
         right.reserveCapacity(items.count / 2 + 1)
 
         for (index, item) in items.enumerated() {
-            let tileH: CGFloat
-            if columnWidth > 0 {
-                tileH = tileHeight(columnWidth: columnWidth, item: item) + verticalGap
-            } else {
-                tileH = 1 / tileAspectWidthOverHeight(for: item)
-            }
+            let tileH = columnWidth > 0
+                ? tileHeight(columnWidth: columnWidth, item: item)
+                : 1 / tileAspectWidthOverHeight(for: item)
             let placeRight: Bool
             if let stored = assignedIsRightColumn[item.id] {
                 placeRight = stored
@@ -309,9 +306,11 @@ extension ListingMasonryGrid {
                 assignedIsRightColumn[item.id] = placeRight
             }
             if placeRight {
+                if !right.isEmpty { rightHeight += verticalGap }
                 right.append((index, item))
                 rightHeight += tileH
             } else {
+                if !left.isEmpty { leftHeight += verticalGap }
                 left.append((index, item))
                 leftHeight += tileH
             }
@@ -339,7 +338,7 @@ extension ListingMasonryGrid {
 
         for (offset, item) in newItems.enumerated() {
             let index = startIndex + offset
-            let tileH = tileHeight(columnWidth: columnWidth, item: item) + verticalGap
+            let tileH = tileHeight(columnWidth: columnWidth, item: item)
             let placeRight: Bool
             if let stored = assignedIsRightColumn[item.id] {
                 placeRight = stored
@@ -348,9 +347,11 @@ extension ListingMasonryGrid {
                 assignedIsRightColumn[item.id] = placeRight
             }
             if placeRight {
+                if !right.isEmpty { rightHeight += verticalGap }
                 right.append((index, item))
                 rightHeight += tileH
             } else {
+                if !left.isEmpty { leftHeight += verticalGap }
                 left.append((index, item))
                 leftHeight += tileH
             }
@@ -435,15 +436,16 @@ struct ListingMasonryColumnFeed<Content: View>: View {
 
     @ViewBuilder
     private func masonryColumn(_ column: [(index: Int, item: ListingFeedItem)]) -> some View {
-        VStack(spacing: gap) {
-            ForEach(column, id: \.item.id) { entry in
+        VStack(alignment: .leading, spacing: gap) {
+            ForEach(column, id: \.item.masonryCellId) { entry in
+                let tileHeight = ListingMasonryGrid.tileHeight(
+                    columnWidth: columnWidth,
+                    item: entry.item
+                )
                 content(entry.item, entry.index)
                     .environment(\.listingMasonryColumnWidth, columnWidth)
-                    .frame(
-                        width: columnWidth,
-                        height: ListingMasonryGrid.tileHeight(columnWidth: columnWidth, item: entry.item),
-                        alignment: .top
-                    )
+                    .frame(width: columnWidth, height: max(1, tileHeight), alignment: .top)
+                    .clipped()
             }
         }
         .frame(width: columnWidth, alignment: .top)

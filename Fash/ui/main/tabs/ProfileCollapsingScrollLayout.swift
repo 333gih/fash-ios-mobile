@@ -278,18 +278,13 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             }
             Section {
                 profileGridWidthProbe
-                    .onAppear {
-                        guard !masonryEagerLayout else { return }
-                        scheduleProfileMasonryLayoutRefresh(forceImmediate: true)
-                    }
+                    .onAppear { scheduleProfileMasonryLayoutRefresh(forceImmediate: true) }
                     .onChange(of: items.map(\.id)) { oldIds, newIds in
-                        guard !masonryEagerLayout else { return }
                         let forceImmediate = newIds.count != oldIds.count
                             || !Set(oldIds).isSubset(of: Set(newIds))
                         scheduleProfileMasonryLayoutRefresh(forceImmediate: forceImmediate)
                     }
                     .onChange(of: selectedTab) { _, _ in
-                        guard !masonryEagerLayout else { return }
                         profileMasonryLayout = .empty
                         profileLayoutedItemCount = 0
                         scheduleProfileMasonryLayoutRefresh(forceImmediate: true)
@@ -830,15 +825,9 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
 
     @ViewBuilder
     private var profileHoistedMasonryGrid: some View {
-        ListingStaggeredMasonryView(
-            items: items,
-            columnAssignments: masonryColumnAssignments,
-            eagerLayout: true,
-            footer: { EmptyView() },
-            cellContent: { item, index in
-                profileListingGridCard(item: item, index: index)
-            }
-        )
+        ListingMasonryColumnFeed(layout: profileMasonryLayout) { item, index in
+            profileListingGridCard(item: item, index: index)
+        }
     }
 
     @ViewBuilder
