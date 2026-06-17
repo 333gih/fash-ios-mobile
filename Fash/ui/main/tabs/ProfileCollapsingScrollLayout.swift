@@ -529,7 +529,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
 
     private func isInLoadMoreZone(headerMinY: CGFloat) -> Bool {
         guard hasMoreListings, !isLoadingMoreListings, !showGridLoading, !items.isEmpty else { return false }
-        guard viewportHeight > 64, feedContentBottomY.isFinite, feedContentBottomY < .infinity else { return false }
+        guard scrollViewportHeight > 64, feedContentBottomY.isFinite, feedContentBottomY < .infinity else { return false }
         return FeedScrollPaginationPolicy.isAtScrollBottom(
             headerMinY: headerMinY,
             contentBottomY: feedContentBottomY,
