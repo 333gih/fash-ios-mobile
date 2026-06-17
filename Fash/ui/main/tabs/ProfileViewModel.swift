@@ -569,7 +569,13 @@ final class ProfileViewModel {
             }
             mutatePagination(for: tab) { state in
                 state.nextOffset += page.rawCount
-                state.hasMore = page.rawCount >= ProfileListingConstants.listingPageSize
+                if page.rawCount < ProfileListingConstants.listingPageSize {
+                    state.hasMore = false
+                } else if added == 0 {
+                    state.hasMore = false
+                } else {
+                    state.hasMore = true
+                }
             }
             FeedPerformance.log(
                 "Profile \(tab) loadMore @\(offset) -> +\(added) window=\(listings(for: tab).count) logical=\(state.window.logicalStartIndex)"

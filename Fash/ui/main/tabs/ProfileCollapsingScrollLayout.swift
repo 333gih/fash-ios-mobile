@@ -169,6 +169,8 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     @State private var scrollViewportHeight: CGFloat = 0
     @State private var feedContentBottomY: CGFloat = .infinity
     @State private var lastProximityLoadMoreAt: Date = .distantPast
+    /// Prevents holding at the scroll bottom from firing load-more in a tight loop.
+    @State private var bottomEdgeLoadMoreArmed = true
     @State private var profileMasonryLayout: ListingMasonryColumnLayout = .empty
     @State private var profileMasonryContainerWidth: CGFloat = 0
     @State private var masonryLayoutRefreshTask: Task<Void, Never>?
@@ -445,9 +447,9 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                         HomeFeedScrollCoordinator(scrollBoundary: feedScrollBoundary)
                     }
                 }
-            if enableScrollProximityLoadMore || loadMoreAtScrollBottom {
-                FeedScrollContentBottomReporter(coordinateSpace: ProfileScrollIds.coordinateSpaceName)
-            }
+        }
+        if (enableScrollProximityLoadMore || loadMoreAtScrollBottom), !items.isEmpty {
+            FeedScrollContentBottomReporter(coordinateSpace: ProfileScrollIds.coordinateSpaceName)
         }
     }
 
@@ -542,6 +544,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         guard oldTab != newTab else { return }
         feedContentBottomY = .infinity
         lastProximityLoadMoreAt = .distantPast
+        bottomEdgeLoadMoreArmed = true
         if suppressScrollClamp {
             scheduleClampAfterTabContentLayout()
         }
@@ -657,15 +660,39 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     private func evaluateBottomEdgeLoadMore(headerMinY: CGFloat) {
         guard loadMoreAtScrollBottom, let onLoadMore else { return }
         guard hasMoreListings, !isLoadingMoreListings, !showGridLoading, !items.isEmpty else { return }
-        let now = Date()
-        guard now.timeIntervalSince(lastProximityLoadMoreAt) >= 0.65 else { return }
-        guard FeedScrollPaginationPolicy.isAtScrollBottom(
+
+        let atBottom = FeedScrollPaginationPolicy.isAtScrollBottom(
             headerMinY: headerMinY,
             contentBottomY: feedContentBottomY,
             viewportHeight: scrollViewportHeight,
             tolerance: bottomLoadMoreTolerance
-        ) else { return }
+        )
+        let nearEnd = FeedScrollPaginationPolicy.shouldLoadMore(
+            headerMinY: headerMinY,
+            contentBottomY: feedContentBottomY,
+            viewportHeight: scrollViewportHeight,
+            hasItems: true,
+            hasMore: hasMoreListings,
+            isLoadingMore: isLoadingMoreListings,
+            isLoadingFirstPage: showGridLoading
+        )
+
+        guard atBottom || nearEnd else {
+            bottomEdgeLoadMoreArmed = true
+            return
+        }
+        guard bottomEdgeLoadMoreArmed else { return }
+
+        let scrolled = max(0, -headerMinY)
+        let minScroll = items.count <= 24
+            ? max(headerHeight * 0.2, 48)
+            : max(headerHeight * 0.35, 120)
+        if nearEnd, !atBottom, scrolled <= minScroll { return }
+
+        let now = Date()
+        guard now.timeIntervalSince(lastProximityLoadMoreAt) >= 0.9 else { return }
         lastProximityLoadMoreAt = now
+        bottomEdgeLoadMoreArmed = false
         onLoadMore()
     }
 

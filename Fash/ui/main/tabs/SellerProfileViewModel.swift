@@ -563,7 +563,13 @@ final class SellerProfileViewModel {
             }
             mutatePagination(for: tab) { state in
                 state.nextOffset += page.rawCount
-                state.hasMore = page.rawCount >= SellerStorefrontConstants.listingPageSize
+                if page.rawCount < SellerStorefrontConstants.listingPageSize {
+                    state.hasMore = false
+                } else if added == 0 {
+                    state.hasMore = false
+                } else {
+                    state.hasMore = true
+                }
             }
             FeedPerformance.log(
                 "Seller \(tab) loadMore @\(offset) -> +\(added) window=\(listings(for: tab).count) logical=\(state.window.logicalStartIndex)"
