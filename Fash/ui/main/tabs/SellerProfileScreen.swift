@@ -93,7 +93,7 @@ struct SellerProfileScreen: View {
                             },
                             showEmptyState: viewModel.hasCompletedInitialLoad,
                             isRefreshing: viewModel.isRefreshing,
-                            lockScroll: viewModel.profile == nil && viewModel.isLoading,
+                            lockScroll: false,
                             onTabsPinnedAtTopChange: { pinned in
                                 showPromoFooter = pinned
                             },
@@ -240,6 +240,15 @@ struct SellerProfileScreen: View {
 
     @ViewBuilder
     private var expandedHeader: some View {
+        if viewModel.isShellLoading {
+            SellerProfileShellSkeleton()
+        } else {
+            sellerProfileLoadedHeader
+        }
+    }
+
+    @ViewBuilder
+    private var sellerProfileLoadedHeader: some View {
         VStack(spacing: 0) {
             ProfileHeroSection(
                 coverImageUrl: viewModel.profile?.coverImageUrl,

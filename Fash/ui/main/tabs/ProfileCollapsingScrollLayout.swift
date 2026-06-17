@@ -830,12 +830,12 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
 
     @ViewBuilder
     private var profileHoistedMasonryGrid: some View {
-        FeedMasonryChunkedGrid(
+        ListingStaggeredMasonryView(
             items: items,
             columnAssignments: masonryColumnAssignments,
-            chunkSize: ListingMasonryFeedPages.profileChunkPageSize,
+            eagerLayout: true,
             footer: { EmptyView() },
-            cell: { item, index in
+            cellContent: { item, index in
                 profileListingGridCard(item: item, index: index)
             }
         )

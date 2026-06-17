@@ -324,6 +324,9 @@ final class SellerProfileViewModel {
 
     func onTabSelected(_ tabIndex: Int, deps: AppDependencies, isGuestMode: Bool) {
         guard let tab = SellerProfileTab(rawValue: tabIndex) else { return }
+        if listings(for: tab).isEmpty, !loadedListingTabs.contains(tab.rawValue) {
+            mutateTabLoad(for: tab) { $0.isLoadingFirstPage = true }
+        }
         Task { await ensureListingsLoaded(for: tab, deps: deps, isGuestMode: isGuestMode) }
     }
 
@@ -343,9 +346,13 @@ final class SellerProfileViewModel {
         listingTabsStalled.contains(tab.rawValue)
     }
 
+    var isShellLoading: Bool {
+        isLoading && profile == nil && !loadError
+    }
+
     func shouldShowListingGridSkeleton(for tab: SellerProfileTab) -> Bool {
         if isListingTabStalled(tab) { return false }
-        // First-page only — load-more uses footer spinner at grid bottom.
+        if isShellLoading { return true }
         return listings(for: tab).isEmpty && isFirstPageLoading(for: tab)
     }
 

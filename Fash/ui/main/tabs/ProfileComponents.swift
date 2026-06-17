@@ -61,6 +61,42 @@ struct ProfileHeroSection: View {
     }
 }
 
+/// Shimmer placeholder while seller storefront profile shell loads.
+struct SellerProfileShellSkeleton: View {
+    @Environment(\.fashSpacing) private var spacing
+
+    var body: some View {
+        VStack(spacing: 0) {
+            FashSkeleton.box(height: profileHeroCoverHeight, cornerRadius: 0)
+                .frame(maxWidth: .infinity)
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 12) {
+                    FashSkeleton.box(width: profileHeroAvatarInner, height: profileHeroAvatarInner, cornerRadius: profileHeroAvatarInner / 2)
+                    VStack(alignment: .leading, spacing: 8) {
+                        FashSkeleton.box(width: 160, height: 22, cornerRadius: 6)
+                        FashSkeleton.box(width: 96, height: 14, cornerRadius: 4)
+                    }
+                }
+                HStack(spacing: 0) {
+                    ForEach(0..<4, id: \.self) { index in
+                        if index > 0 {
+                            Spacer(minLength: 8)
+                        }
+                        VStack(spacing: 4) {
+                            FashSkeleton.box(width: 36, height: 18, cornerRadius: 4)
+                            FashSkeleton.box(width: 48, height: 12, cornerRadius: 4)
+                        }
+                    }
+                }
+                FashSkeleton.box(height: 72, cornerRadius: spacing.radiusCard)
+            }
+            .padding(.horizontal, spacing.editorialStart)
+            .padding(.top, 12)
+            .padding(.bottom, 8)
+        }
+    }
+}
+
 struct ProfileIdentityBlock: View {
     @Environment(\.fashSpacing) private var spacing
     let profile: ProfileInfo?
