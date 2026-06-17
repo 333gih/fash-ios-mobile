@@ -4,7 +4,13 @@ import Observation
 private enum HomeFeedConstants {
     static let followPageSize = 20
     static let huntTodayLimit = 12
+    static let tabLoadMorePageSize = 20
     static let staleThreshold: TimeInterval = 60
+}
+
+private struct HomeTabFeedState {
+    var hasMore = false
+    var isLoadingMore = false
 }
 
 @Observable
@@ -47,6 +53,8 @@ final class HomeViewModel {
     private var lastFollowFeedLoadMoreAt: Date?
     private var followingDuplicatePageCount = 0
     private var followingTrimTask: Task<Void, Never>?
+    private var tabFeedState: [String: HomeTabFeedState] = [:]
+    private var sectionLoadMoreTasks: [String: Task<Void, Never>] = [:]
 
     /// Scroll boundary from [HomeFeedScrollCoordinator] — gates Following pagination while scrolling up.
     @ObservationIgnored
@@ -73,6 +81,51 @@ final class HomeViewModel {
 
     func isTabLoadStalled(_ tab: HomeFeedTab) -> Bool {
         tabsLoadStalled.contains(tab.rawValue)
+    }
+
+    func hasMore(for tab: HomeFeedTab) -> Bool {
+        if tab == .following { return followingHasMore }
+        return tabFeedState[tab.rawValue]?.hasMore ?? false
+    }
+
+    func isLoadingMore(for tab: HomeFeedTab) -> Bool {
+        if tab == .following { return isLoadingMoreFollowing }
+        return tabFeedState[tab.rawValue]?.isLoadingMore ?? false
+    }
+
+    func loadMore(deps: AppDependencies, isGuestMode: Bool, fromScrollEdge: Bool = false) {
+        let tab = selectedFeedTab
+        if tab == .following {
+            loadMoreFollowing(deps: deps, isGuestMode: isGuestMode, fromScrollEdge: fromScrollEdge)
+            return
+        }
+        if isGuestMode && tab.requiresAuth { return }
+        loadMoreSectionTab(tab, deps: deps, isGuestMode: isGuestMode)
+    }
+
+    /// Tile prefetch + sliding-window trim for Following; tile prefetch for discovery tabs.
+    func notifyHomeCellVisible(
+        index: Int,
+        columnWidth: CGFloat,
+        deps: AppDependencies,
+        isGuestMode: Bool
+    ) {
+        let tab = selectedFeedTab
+        if tab == .following {
+            notifyFollowingCellVisible(
+                index: index,
+                columnWidth: columnWidth,
+                deps: deps,
+                isGuestMode: isGuestMode
+            )
+            return
+        }
+        guard !isShellLoading, !isRefreshing, !isTabLoading(tab) else { return }
+        guard FeedPaginationPolicy.shouldPrefetchNextPage(
+            appearedIndex: index,
+            totalCount: items.count
+        ) else { return }
+        loadMore(deps: deps, isGuestMode: isGuestMode)
     }
 
     /// Main tab Home visible — reload default feed tab if UI is empty without an active load.
@@ -344,7 +397,7 @@ final class HomeViewModel {
         guard !isLoadingMoreFollowing, followingHasMore else { return }
         guard !isShellLoading, !isRefreshing, !isTabLoading(.following) else { return }
         if !fromScrollEdge {
-            guard homeScrollBoundary?.allowsFollowingLoadMore ?? false else { return }
+            guard homeScrollBoundary?.allowsFollowingLoadMore ?? true else { return }
         }
         if let last = lastFollowFeedLoadMoreAt, Date().timeIntervalSince(last) < 0.9 { return }
         lastFollowFeedLoadMoreAt = Date()
@@ -427,7 +480,6 @@ final class HomeViewModel {
     ) {
         guard selectedFeedTab == .following else { return }
         guard !isShellLoading, !isRefreshing, !isTabLoading(.following) else { return }
-        guard homeScrollBoundary?.allowsFollowingLoadMore ?? false else { return }
         guard FeedPaginationPolicy.shouldPrefetchNextPage(
             appearedIndex: appearedIndex,
             totalCount: followingWindow.items.count
@@ -444,7 +496,7 @@ final class HomeViewModel {
         if tab == .following {
             return !followingHasMore && !isLoadingMoreFollowing
         }
-        return loadedTabs.contains(tab.rawValue)
+        return hasMore(for: tab) == false && !isLoadingMore(for: tab) && loadedTabs.contains(tab.rawValue)
     }
 
     func recordView(item: ListingFeedItem, position: Int, surface: String, deps: AppDependencies) {
@@ -536,6 +588,9 @@ final class HomeViewModel {
         followingNextCursor = nil
         followingHasMore = false
         followingDuplicatePageCount = 0
+        tabFeedState = [:]
+        sectionLoadMoreTasks.values.forEach { $0.cancel() }
+        sectionLoadMoreTasks = [:]
         tabsLoading = []
         tabsLoadError = []
         tabsLoadStalled = []
@@ -755,8 +810,88 @@ final class HomeViewModel {
         )
         guard case .success(let loaded) = result else { return false }
         sections.huntToday = loaded
+        let limit = sectionLimit(for: .huntToday, fallback: HomeFeedConstants.huntTodayLimit)
+        setTabHasMore(.huntToday, loaded.count >= limit)
         if selectedFeedTab == .huntToday { syncItemsForSelectedTab() }
         return true
+    }
+
+    private func loadMoreSectionTab(
+        _ tab: HomeFeedTab,
+        deps: AppDependencies,
+        isGuestMode: Bool
+    ) {
+        guard hasMore(for: tab), !isLoadingMore(for: tab) else { return }
+        guard !isShellLoading, !isRefreshing, !isTabLoading(tab) else { return }
+        guard sectionLoadMoreTasks[tab.rawValue] == nil else { return }
+
+        setTabLoadingMore(tab, true)
+        let offset = itemsForTab(tab).count
+        sectionLoadMoreTasks[tab.rawValue] = Task {
+            defer {
+                sectionLoadMoreTasks[tab.rawValue] = nil
+                setTabLoadingMore(tab, false)
+            }
+            let result = await deps.recommendationRepository.exploreListings(
+                publicBrowse: isGuestMode,
+                limit: HomeFeedConstants.tabLoadMorePageSize,
+                offset: offset,
+                sizingMode: huntTodaySizingMode(),
+                surface: tab.analyticsSurface
+            )
+            guard selectedFeedTab == tab else { return }
+            guard case .success(let page) = result else { return }
+            guard !page.isEmpty else {
+                setTabHasMore(tab, false)
+                return
+            }
+            let added = appendUniqueItems(page, to: tab)
+            if added > 0 {
+                syncItemsForSelectedTab()
+                FeedListingImagePrefetch.prefetch(items: Array(page.prefix(8)))
+            }
+            setTabHasMore(
+                tab,
+                page.count >= HomeFeedConstants.tabLoadMorePageSize && added > 0
+            )
+            FeedPerformance.log("Home \(tab) loadMore @\(offset) -> +\(added) total=\(itemsForTab(tab).count)")
+        }
+    }
+
+    private func setTabHasMore(_ tab: HomeFeedTab, _ hasMore: Bool) {
+        if tab == .following {
+            followingHasMore = hasMore
+            return
+        }
+        var state = tabFeedState[tab.rawValue] ?? HomeTabFeedState()
+        state.hasMore = hasMore
+        tabFeedState[tab.rawValue] = state
+    }
+
+    private func setTabLoadingMore(_ tab: HomeFeedTab, _ loading: Bool) {
+        if tab == .following {
+            isLoadingMoreFollowing = loading
+            return
+        }
+        var state = tabFeedState[tab.rawValue] ?? HomeTabFeedState()
+        state.isLoadingMore = loading
+        tabFeedState[tab.rawValue] = state
+    }
+
+    @discardableResult
+    private func appendUniqueItems(_ page: [ListingFeedItem], to tab: HomeFeedTab) -> Int {
+        var known = Set(itemsForTab(tab).map(\.id))
+        let fresh = page.filter { known.insert($0.id).inserted }
+        guard !fresh.isEmpty else { return 0 }
+        switch tab {
+        case .huntToday: sections.huntToday.append(contentsOf: fresh)
+        case .forYou: sections.forYou.append(contentsOf: fresh)
+        case .stylePicks: sections.stylePicks.append(contentsOf: fresh)
+        case .similarSaved: sections.similarToSaved.append(contentsOf: fresh)
+        case .seasonalNearYou: sections.seasonalNearYou.append(contentsOf: fresh)
+        case .following: return 0
+        }
+        return fresh.count
     }
 
     private func loadFollowingTab(deps: AppDependencies, isGuestMode: Bool, force: Bool) async -> Bool {
@@ -853,6 +988,18 @@ final class HomeViewModel {
         sections.seasonalNearYou = loaded.seasonalNearYou
         sections.shoppingContext = loaded.shoppingContext ?? sections.shoppingContext
         recommendationSectionsFetched = true
+        let forYouLimit = sectionLimit(for: .forYou, fallback: 16)
+        let styleLimit = sectionLimit(for: .stylePicks, fallback: 12)
+        let similarLimit = sectionLimit(for: .similarSaved, fallback: 12)
+        let seasonalLimit = sectionLimit(for: .seasonalNearYou, fallback: 12)
+        let huntLimit = sectionLimit(for: .huntToday, fallback: HomeFeedConstants.huntTodayLimit)
+        if !loaded.huntToday.isEmpty {
+            setTabHasMore(.huntToday, loaded.huntToday.count >= huntLimit)
+        }
+        setTabHasMore(.forYou, loaded.forYou.count >= forYouLimit)
+        setTabHasMore(.stylePicks, loaded.stylePicks.count >= styleLimit)
+        setTabHasMore(.similarSaved, loaded.similarToSaved.count >= similarLimit)
+        setTabHasMore(.seasonalNearYou, loaded.seasonalNearYou.count >= seasonalLimit)
         syncItemsForSelectedTab()
         return true
     }

@@ -64,7 +64,9 @@ struct HomeFeedContent: View {
     @State private var homeTabRowHeight: CGFloat = 48
     @State private var feedContentBottomY: CGFloat = .infinity
     @State private var scrollViewportHeight: CGFloat = 0
-    @State private var lastFollowingLoadMoreAt = Date.distantPast
+    @State private var lastHomeLoadMoreAt = Date.distantPast
+    @State private var lastHomeScrollOffset: CGFloat = 0
+    @State private var bottomEdgeLoadMoreArmed = true
     @State private var homeScrollClampRevision = 0
     @State private var masonryColumnAssignmentsByTab: [String: [String: Bool]] = [:]
     @State private var listingInteractionEnabled = true
@@ -168,7 +170,8 @@ struct HomeFeedContent: View {
                     }
                 }
                 .onPreferenceChange(HomeFeedScrollOffsetKey.self) { topMinY in
-                    evaluateFollowingScrollLoadMore(headerMinY: topMinY)
+                    lastHomeScrollOffset = topMinY
+                    evaluateHomeScrollLoadMore(headerMinY: topMinY)
                 }
                 .onPreferenceChange(HomeTabRowHeightKey.self) { height in
                     guard height > 1, abs(height - homeTabRowHeight) > 0.5 else { return }
@@ -176,7 +179,15 @@ struct HomeFeedContent: View {
                     refreshHomeStickyTabs()
                 }
                 .onPreferenceChange(FeedContentBottomYKey.self) { bottomY in
+                    let contentGrew = bottomY > feedContentBottomY + 20
                     feedContentBottomY = bottomY
+                    if contentGrew {
+                        evaluateHomeScrollLoadMore(headerMinY: lastHomeScrollOffset, bypassThrottle: true)
+                    }
+                }
+                .onChange(of: viewModel.isLoadingMore(for: viewModel.selectedFeedTab)) { wasLoading, isLoading in
+                    guard wasLoading, !isLoading else { return }
+                    bottomEdgeLoadMoreArmed = true
                 }
                 .animation(.easeInOut(duration: 0.14), value: homeScrollBoundary.stickyTabsVisible)
                 .fashFeedPullRefresh(isRefreshing: $viewModel.isRefreshing) {
@@ -341,15 +352,16 @@ struct HomeFeedContent: View {
                     items: viewModel.items,
                     columnAssignments: masonryColumnAssignments,
                     footer: {
-                        if viewModel.selectedFeedTab == .following,
-                           viewModel.followingHasMore || viewModel.isLoadingMoreFollowing {
+                        let tab = viewModel.selectedFeedTab
+                        if viewModel.hasMore(for: tab) || viewModel.isLoadingMore(for: tab) {
                             FeedLoadMoreFooter(
-                                enabled: viewModel.followingHasMore,
-                                isLoadingMore: viewModel.isLoadingMoreFollowing,
+                                enabled: viewModel.hasMore(for: tab),
+                                isLoadingMore: viewModel.isLoadingMore(for: tab),
                                 triggersLoadOnAppear: false,
-                                rearmAfterLoadComplete: false
+                                rearmAfterLoadComplete: true,
+                                loadingPresentation: .skeleton(rows: 2)
                             ) {
-                                viewModel.loadMoreFollowing(deps: deps, isGuestMode: isGuestMode)
+                                viewModel.loadMore(deps: deps, isGuestMode: isGuestMode)
                             }
                         }
                     },
@@ -359,16 +371,14 @@ struct HomeFeedContent: View {
                         index: index,
                         surface: analyticsSurface,
                         imageAspectRatio: ListingMasonryGrid.masonryAspectRatio(for: item),
-                        onPrefetchLoadMore: viewModel.selectedFeedTab == .following
-                            ? {
-                                viewModel.notifyFollowingCellVisible(
-                                    index: index,
-                                    columnWidth: masonryColumnWidth,
-                                    deps: deps,
-                                    isGuestMode: isGuestMode
-                                )
-                            }
-                            : nil,
+                        onPrefetchLoadMore: {
+                            viewModel.notifyHomeCellVisible(
+                                index: index,
+                                columnWidth: masonryColumnWidth,
+                                deps: deps,
+                                isGuestMode: isGuestMode
+                            )
+                        },
                         onTap: {
                             viewModel.reportListingClick(
                                 item: item,
@@ -458,7 +468,8 @@ struct HomeFeedContent: View {
         let tab = HomeFeedTab(rawValue: tabKey) ?? viewModel.selectedFeedTab
         viewModel.syncVisibleItemsForTab(tab)
         feedContentBottomY = .infinity
-        lastFollowingLoadMoreAt = .distantPast
+        lastHomeLoadMoreAt = .distantPast
+        bottomEdgeLoadMoreArmed = true
     }
 
     private func applyHomeScrollToTop(using scrollProxy: ScrollViewProxy) {
@@ -470,39 +481,46 @@ struct HomeFeedContent: View {
         HomeFeedScrollReset.scheduleScrollToFeedTop(proxy: scrollProxy)
     }
 
-    private func evaluateFollowingScrollLoadMore(headerMinY: CGFloat) {
-        guard viewModel.selectedFeedTab == .following else { return }
-        guard viewModel.followingHasMore, !viewModel.isLoadingMoreFollowing else { return }
+    private func evaluateHomeScrollLoadMore(headerMinY: CGFloat, bypassThrottle: Bool = false) {
+        let tab = viewModel.selectedFeedTab
+        guard viewModel.hasMore(for: tab), !viewModel.isLoadingMore(for: tab) else { return }
         guard !viewModel.isShellLoading, !viewModel.isRefreshing else { return }
-        guard !viewModel.isTabLoading(.following), !viewModel.items.isEmpty else { return }
+        guard !viewModel.isTabLoading(tab), !viewModel.items.isEmpty else { return }
+        guard scrollViewportHeight > 64, feedContentBottomY.isFinite, feedContentBottomY < .infinity else { return }
+
+        let atBottom = FeedScrollPaginationPolicy.isAtScrollBottom(
+            headerMinY: headerMinY,
+            contentBottomY: feedContentBottomY,
+            viewportHeight: scrollViewportHeight,
+            tolerance: 36
+        )
+        let nearEnd = FeedScrollPaginationPolicy.shouldLoadMore(
+            headerMinY: headerMinY,
+            contentBottomY: feedContentBottomY,
+            viewportHeight: scrollViewportHeight,
+            hasItems: true,
+            hasMore: viewModel.hasMore(for: tab),
+            isLoadingMore: viewModel.isLoadingMore(for: tab),
+            isLoadingFirstPage: viewModel.isTabLoading(tab)
+        )
+        guard atBottom || nearEnd else {
+            bottomEdgeLoadMoreArmed = true
+            return
+        }
+        guard bottomEdgeLoadMoreArmed else { return }
 
         let now = Date()
-        guard now.timeIntervalSince(lastFollowingLoadMoreAt) >= 0.65 else { return }
+        if !bypassThrottle, now.timeIntervalSince(lastHomeLoadMoreAt) < 0.65 { return }
 
         let scrolled = max(0, -headerMinY)
         let minScroll = pinnedChromeHeight > 24
             ? max(pinnedChromeHeight * 0.25, 72)
             : 96
-        guard scrolled > minScroll else { return }
+        if nearEnd, !atBottom, scrolled <= minScroll { return }
 
-        let shouldLoad = FeedScrollPaginationPolicy.shouldLoadMore(
-            headerMinY: headerMinY,
-            contentBottomY: feedContentBottomY,
-            viewportHeight: scrollViewportHeight,
-            hasItems: true,
-            hasMore: viewModel.followingHasMore,
-            isLoadingMore: viewModel.isLoadingMoreFollowing,
-            isLoadingFirstPage: viewModel.isTabLoading(.following)
-        ) || FeedScrollPaginationPolicy.isAtScrollBottom(
-            headerMinY: headerMinY,
-            contentBottomY: feedContentBottomY,
-            viewportHeight: scrollViewportHeight,
-            tolerance: 48
-        )
-        guard shouldLoad else { return }
-
-        lastFollowingLoadMoreAt = now
-        viewModel.loadMoreFollowing(deps: deps, isGuestMode: isGuestMode, fromScrollEdge: true)
+        lastHomeLoadMoreAt = now
+        bottomEdgeLoadMoreArmed = false
+        viewModel.loadMore(deps: deps, isGuestMode: isGuestMode, fromScrollEdge: true)
     }
 }
 

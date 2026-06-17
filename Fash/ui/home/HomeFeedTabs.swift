@@ -116,25 +116,29 @@ struct HomeFeedTabSwitcher: View {
                         Button {
                             onSelect(tab)
                         } label: {
-                            HStack(spacing: 4) {
-                                if isGuestBrowse && tab.requiresAuth {
-                                    Image(systemName: "lock")
-                                        .font(.system(size: 14))
+                            VStack(spacing: 6) {
+                                HStack(spacing: 4) {
+                                    if isGuestBrowse && tab.requiresAuth {
+                                        Image(systemName: "lock")
+                                            .font(.system(size: 14))
+                                            .foregroundStyle(selected ? FashColors.textPrimary : FashColors.textSecondary.opacity(0.75))
+                                    }
+                                    Text(tab.title)
+                                        .font(FashTypography.labelLarge)
+                                        .fontWeight(selected ? .bold : .regular)
                                         .foregroundStyle(selected ? FashColors.textPrimary : FashColors.textSecondary.opacity(0.75))
+                                        .lineLimit(1)
                                 }
-                                Text(tab.title)
-                                    .font(FashTypography.labelLarge)
-                                    .fontWeight(selected ? .bold : .regular)
-                                    .foregroundStyle(selected ? FashColors.textPrimary : FashColors.textSecondary.opacity(0.75))
-                                    .lineLimit(1)
-                            }
-                            .background(alignment: .bottom) {
-                                if selected {
-                                    Capsule()
-                                        .fill(FashColors.brandPrimary)
+                                ZStack {
+                                    Rectangle()
+                                        .fill(Color.clear)
                                         .frame(height: 2)
-                                        .padding(.horizontal, 6)
-                                        .matchedGeometryEffect(id: "home_tab_indicator", in: tabIndicator)
+                                    if selected {
+                                        Rectangle()
+                                            .fill(FashColors.brandPrimary)
+                                            .frame(height: 2)
+                                            .matchedGeometryEffect(id: "home_tab_indicator", in: tabIndicator)
+                                    }
                                 }
                             }
                             .fashScrollableTabChipStyle()
