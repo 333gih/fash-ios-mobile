@@ -494,14 +494,20 @@ final class ProfileViewModel {
     }
 
     private func loadListingsForTab(_ tab: ProfileListingTab, deps: AppDependencies, force: Bool = false) async {
-        if !force, loadedListingTabs.contains(tab.rawValue) { return }
-        await fetchListingsFirstPage(tab, deps: deps, force: force)
+        var shouldForce = force
+        if !shouldForce, needsListingTabReload(for: tab) {
+            loadedListingTabs.remove(tab.rawValue)
+            shouldForce = true
+        }
+        if !shouldForce, loadedListingTabs.contains(tab.rawValue) { return }
+        await fetchListingsFirstPage(tab, deps: deps, force: shouldForce)
     }
 
     private func fetchListingsFirstPage(
         _ tab: ProfileListingTab,
         deps: AppDependencies,
-        force: Bool
+        force: Bool,
+        retryOnSparseSummary: Bool = true
     ) async {
         if force {
             mutatePagination(for: tab) { state in
@@ -544,9 +550,19 @@ final class ProfileViewModel {
             setListings(page.items, for: tab)
             mutatePagination(for: tab) {
                 $0.nextOffset = page.rawCount
-                $0.hasMore = page.rawCount >= ProfileListingConstants.listingPageSize
+                let pageSize = ProfileListingConstants.listingPageSize
+                let fullPage = page.rawCount >= pageSize
+                let summaryGap = displayCount(for: tab) > page.items.count
+                $0.hasMore = fullPage || summaryGap
             }
-            FeedPerformance.log("Profile \(tab) first page -> items=\(page.items.count) hasMore=\(page.rawCount >= ProfileListingConstants.listingPageSize)")
+            FeedPerformance.log(
+                "Profile \(tab) first page -> items=\(page.items.count) hasMore=\(pagination(for: tab).hasMore) summary=\(displayCount(for: tab))"
+            )
+            if retryOnSparseSummary, needsListingTabReload(for: tab) {
+                loadedListingTabs.remove(tab.rawValue)
+                await fetchListingsFirstPage(tab, deps: deps, force: true, retryOnSparseSummary: false)
+                return
+            }
             prefetchProfileImages(page.items)
             prefetchAdjacentProfileTabs(around: tab, deps: deps)
         case .failure:
@@ -589,9 +605,12 @@ final class ProfileViewModel {
             }
             mutatePagination(for: tab) { state in
                 state.nextOffset += page.rawCount
-                if page.rawCount < ProfileListingConstants.listingPageSize {
+                let pageSize = ProfileListingConstants.listingPageSize
+                let fullPage = page.rawCount >= pageSize
+                let summaryGap = displayCount(for: tab) > listings(for: tab).count
+                if !fullPage && !summaryGap {
                     state.hasMore = false
-                } else if added == 0 {
+                } else if added == 0 && !summaryGap {
                     state.hasMore = false
                 } else {
                     state.hasMore = true
