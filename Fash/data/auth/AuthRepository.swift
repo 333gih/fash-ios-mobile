@@ -13,6 +13,7 @@ final class AuthRepository {
             let data = try await HttpJson.post(url: AppEnvironment.authServicePath(AppEnvironment.authOtpRequestPath), body: [
                 "email": email.trimmingCharacters(in: .whitespaces),
                 "application_id": applicationId,
+                "client_channel": "fash_ios_app",
             ])
             if data.isEmpty { return .success(false) }
             let json = try HttpJson.dictionary(data)
@@ -28,6 +29,7 @@ final class AuthRepository {
                 "email": email.trimmingCharacters(in: .whitespaces),
                 "password": password,
                 "application_id": applicationId,
+                "client_channel": "fash_ios_app",
             ])
             return .success(try parseLoginResponse(data))
         } catch {
@@ -41,6 +43,7 @@ final class AuthRepository {
                 "email": email.trimmingCharacters(in: .whitespaces),
                 "otp": otp.trimmingCharacters(in: .whitespaces),
                 "application_id": applicationId,
+                "client_channel": "fash_ios_app",
             ])
             return .success(try parseLoginResponse(data))
         } catch {
@@ -68,6 +71,7 @@ final class AuthRepository {
                 "provider": provider.lowercased(),
                 "provider_token": providerToken.trimmingCharacters(in: .whitespaces),
                 "application_id": applicationId,
+                "client_channel": "fash_ios_app",
             ])
             return .success(try parseLoginResponse(data))
         } catch {
