@@ -169,7 +169,6 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     @State private var scrollViewportHeight: CGFloat = 0
     @State private var feedContentBottomY: CGFloat = .infinity
     @State private var lastProximityLoadMoreAt: Date = .distantPast
-    @State private var bottomLoadGate = FeedBottomLoadMoreGate()
     @State private var lastPaginationEvalUptime: UInt64 = 0
     @State private var lastPaginationEvalOffset: CGFloat = .greatestFiniteMagnitude
     @State private var profileMasonryLayout: ListingMasonryColumnLayout = .empty
@@ -449,7 +448,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                     }
                 }
         }
-        if (enableScrollProximityLoadMore || loadMoreAtScrollBottom), !items.isEmpty {
+        if enableScrollProximityLoadMore, !items.isEmpty {
             FeedScrollContentBottomReporter(coordinateSpace: ProfileScrollIds.coordinateSpaceName)
         }
     }
@@ -514,7 +513,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     }
 
     private var usesFooterBottomLoadMore: Bool {
-        !enableTilePrefetchLoadMore && !enableScrollProximityLoadMore
+        loadMoreAtScrollBottom && !enableTilePrefetchLoadMore && !enableScrollProximityLoadMore
     }
 
     private func shouldRunPaginationEval(for offset: CGFloat) -> Bool {
@@ -526,33 +525,14 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         return true
     }
 
-    private func isInLoadMoreZone(headerMinY: CGFloat) -> Bool {
-        guard hasMoreListings, !isLoadingMoreListings, !showGridLoading, !items.isEmpty else { return false }
-        guard scrollViewportHeight > 64, feedContentBottomY.isFinite, feedContentBottomY < .infinity else { return false }
-        return FeedScrollPaginationPolicy.isAtScrollBottom(
-            headerMinY: headerMinY,
-            contentBottomY: feedContentBottomY,
-            viewportHeight: scrollViewportHeight,
-            tolerance: bottomLoadMoreTolerance
-        )
-    }
-
     private func runPaginationEvaluators(headerMinY: CGFloat, bypassThrottle: Bool = false) {
-        guard enableScrollProximityLoadMore || loadMoreAtScrollBottom else { return }
-        guard bypassThrottle || shouldRunPaginationEval(for: headerMinY) || isInLoadMoreZone(headerMinY: headerMinY) else {
-            return
-        }
-        if enableScrollProximityLoadMore {
-            evaluateScrollProximityLoadMore(headerMinY: headerMinY)
-        }
-        if loadMoreAtScrollBottom {
-            evaluateBottomEdgeLoadMore(headerMinY: headerMinY)
-        }
+        guard enableScrollProximityLoadMore else { return }
+        guard bypassThrottle || shouldRunPaginationEval(for: headerMinY) else { return }
+        evaluateScrollProximityLoadMore(headerMinY: headerMinY)
     }
 
     private func handleProfileScrollOffset(_ offset: CGFloat) {
         applyScrollOffset(offset)
-        bottomLoadGate.noteScrollOffset(headerMinY: offset)
         runPaginationEvaluators(headerMinY: offset)
     }
 
@@ -572,7 +552,6 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         guard oldTab != newTab else { return }
         feedContentBottomY = .infinity
         lastProximityLoadMoreAt = .distantPast
-        bottomLoadGate.reset()
         lastPaginationEvalOffset = .greatestFiniteMagnitude
         lastPaginationEvalUptime = 0
         if suppressScrollClamp {
@@ -687,25 +666,6 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         onLoadMore()
     }
 
-    private func evaluateBottomEdgeLoadMore(headerMinY: CGFloat) {
-        guard loadMoreAtScrollBottom, let onLoadMore else { return }
-        guard hasMoreListings, !isLoadingMoreListings, !showGridLoading, !items.isEmpty else { return }
-
-        guard bottomLoadGate.tryConsumeAtBottom(
-            headerMinY: headerMinY,
-            contentBottomY: feedContentBottomY,
-            viewportHeight: scrollViewportHeight,
-            tolerance: bottomLoadMoreTolerance,
-            hasMore: hasMoreListings,
-            isLoadingMore: isLoadingMoreListings
-        ) else { return }
-        onLoadMore()
-    }
-
-    private func attemptBottomEdgeLoadMoreFromFooter() {
-        evaluateBottomEdgeLoadMore(headerMinY: lastScrollOffset)
-    }
-
     private func applyScrollOffset(_ offset: CGFloat) {
         let pinned = tabsPinnedAtTop(for: offset)
         let collapseProgress = min(max(-offset / ProfileCollapseMetrics.scrollDistance, 0), 1)
@@ -813,11 +773,10 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             FeedLoadMoreFooter(
                 enabled: hasMoreListings,
                 isLoadingMore: isLoadingMoreListings,
+                anchorItemCount: items.count,
                 triggersLoadOnAppear: usesFooterBottomLoadMore,
-                rearmAfterLoadComplete: false,
-                canAutoLoad: { bottomLoadGate.isArmed },
                 loadingPresentation: .spinner,
-                onLoadMore: attemptBottomEdgeLoadMoreFromFooter
+                onLoadMore: onLoadMore
             )
         }
     }

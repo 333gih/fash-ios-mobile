@@ -62,10 +62,6 @@ struct HomeFeedContent: View {
     @State private var homeScrollBoundary = HomeFeedScrollBoundary()
     @State private var homeHeaderHeight: CGFloat = 0
     @State private var homeTabRowHeight: CGFloat = 48
-    @State private var feedContentBottomY: CGFloat = .infinity
-    @State private var scrollViewportHeight: CGFloat = 0
-    @State private var lastHomeScrollOffset: CGFloat = 0
-    @State private var bottomLoadGate = FeedBottomLoadMoreGate()
     @State private var homeScrollClampRevision = 0
     @State private var masonryColumnAssignmentsByTab: [String: [String: Bool]] = [:]
     @State private var listingInteractionEnabled = true
@@ -79,18 +75,6 @@ struct HomeFeedContent: View {
             headerHeight: homeHeaderHeight,
             tabRowHeight: homeTabRowHeight
         )
-    }
-
-    private var homeViewportHeightReader: some View {
-        GeometryReader { geo in
-            Color.clear
-                .onAppear {
-                    if geo.size.height > 0 { scrollViewportHeight = geo.size.height }
-                }
-                .onChange(of: geo.size.height) { _, height in
-                    if height > 0 { scrollViewportHeight = height }
-                }
-        }
     }
 
     private var masonryColumnWidth: CGFloat {
@@ -140,7 +124,6 @@ struct HomeFeedContent: View {
                             viewModel.selectFeedTab(tabs[index], deps: deps, isGuestMode: isGuestMode)
                         }
                         .background {
-                            homeViewportHeightReader
                             PinnedTabScrollOffsetFixer(
                                 resetToken: 0,
                                 trueTopToken: viewModel.homeScrollToTopToken,
@@ -168,18 +151,10 @@ struct HomeFeedContent: View {
                             .transition(.opacity)
                     }
                 }
-                .onPreferenceChange(HomeFeedScrollOffsetKey.self) { topMinY in
-                    lastHomeScrollOffset = topMinY
-                    bottomLoadGate.noteScrollOffset(headerMinY: topMinY)
-                    attemptHomeBottomLoadMore(headerMinY: topMinY)
-                }
                 .onPreferenceChange(HomeTabRowHeightKey.self) { height in
                     guard height > 1, abs(height - homeTabRowHeight) > 0.5 else { return }
                     homeTabRowHeight = height
                     refreshHomeStickyTabs()
-                }
-                .onPreferenceChange(FeedContentBottomYKey.self) { bottomY in
-                    feedContentBottomY = bottomY
                 }
                 .animation(.easeInOut(duration: 0.14), value: homeScrollBoundary.stickyTabsVisible)
                 .fashFeedPullRefresh(isRefreshing: $viewModel.isRefreshing) {
@@ -349,12 +324,14 @@ struct HomeFeedContent: View {
                             FeedLoadMoreFooter(
                                 enabled: viewModel.hasMore(for: tab),
                                 isLoadingMore: viewModel.isLoadingMore(for: tab),
-                                triggersLoadOnAppear: true,
-                                rearmAfterLoadComplete: false,
-                                canAutoLoad: { bottomLoadGate.isArmed },
+                                anchorItemCount: viewModel.items.count,
                                 loadingPresentation: .spinner
                             ) {
-                                attemptHomeBottomLoadMore(headerMinY: lastHomeScrollOffset)
+                                viewModel.loadMore(
+                                    deps: deps,
+                                    isGuestMode: isGuestMode,
+                                    fromScrollEdge: true
+                                )
                             }
                         }
                     },
@@ -436,10 +413,6 @@ struct HomeFeedContent: View {
                 if viewModel.showsHomeBrandFooter(isGuestMode: isGuestMode) {
                     HomeBrandFooterStrip()
                 }
-
-                if !viewModel.items.isEmpty {
-                    FeedScrollContentBottomReporter(coordinateSpace: "homeFeedScroll")
-                }
             }
             .padding(.top, spacing.spacing2)
             .padding(.bottom, spacing.spacing4)
@@ -460,23 +433,6 @@ struct HomeFeedContent: View {
     private func onHomeFeedTabChanged(to tabKey: String) {
         let tab = HomeFeedTab(rawValue: tabKey) ?? viewModel.selectedFeedTab
         viewModel.syncVisibleItemsForTab(tab)
-        feedContentBottomY = .infinity
-        bottomLoadGate.reset()
-    }
-
-    private func attemptHomeBottomLoadMore(headerMinY: CGFloat) {
-        let tab = viewModel.selectedFeedTab
-        guard !viewModel.isShellLoading, !viewModel.isRefreshing else { return }
-        guard !viewModel.isTabLoading(tab), !viewModel.items.isEmpty else { return }
-        guard bottomLoadGate.tryConsumeAtBottom(
-            headerMinY: headerMinY,
-            contentBottomY: feedContentBottomY,
-            viewportHeight: scrollViewportHeight,
-            tolerance: 48,
-            hasMore: viewModel.hasMore(for: tab),
-            isLoadingMore: viewModel.isLoadingMore(for: tab)
-        ) else { return }
-        viewModel.loadMore(deps: deps, isGuestMode: isGuestMode, fromScrollEdge: true)
     }
 
     private func applyHomeScrollToTop(using scrollProxy: ScrollViewProxy) {

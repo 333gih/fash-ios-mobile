@@ -20,7 +20,7 @@ struct FashFeedLoadMoreIndicator: View {
     }
 }
 
-/// End-of-feed pagination — one auto-load per visit; re-arm after user scrolls away.
+/// Pinterest-style bottom sentinel — one load per footer visit; re-arms only after leaving the viewport.
 struct FeedLoadMoreFooter: View {
     enum LoadingPresentation {
         case spinner
@@ -29,53 +29,37 @@ struct FeedLoadMoreFooter: View {
 
     let enabled: Bool
     let isLoadingMore: Bool
-    /// When false, only shows loading UI — parent detects scroll proximity (profile/seller grids).
+    /// Item count when the sentinel last consumed a load — prevents hold-at-bottom loops after append.
+    var anchorItemCount: Int = 0
+    /// When false, parent owns pagination (legacy scroll proximity).
     var triggersLoadOnAppear: Bool = true
-    /// Re-arm auto-load after a page completes — disable for home following (tile prefetch owns triggers).
-    var rearmAfterLoadComplete: Bool = true
-    /// Extra gate — e.g. home feed only loads more near scroll bottom while moving down.
-    var canAutoLoad: () -> Bool = { true }
     var loadingPresentation: LoadingPresentation = .spinner
     let onLoadMore: () -> Void
 
-    private static let spinnerHeight: CGFloat = 48
-    private static let sentinelHeight: CGFloat = 28
+    /// Fixed slot — spinner/sentinel swap must not change layout height (avoids onAppear thrash).
+    private static let slotHeight: CGFloat = 48
 
-    @State private var mayAutoLoad = false
+    @State private var visitArmed = true
+    @State private var consumedAtItemCount = -1
+    @State private var disarmTask: Task<Void, Never>?
 
     var body: some View {
-        Group {
+        ZStack {
             if isLoadingMore {
                 loadingMoreContent
             } else {
                 Color.clear
-                    .frame(maxWidth: .infinity)
-                    .frame(height: Self.sentinelHeight)
+                    .accessibilityHidden(true)
             }
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, minHeight: Self.slotHeight, maxHeight: Self.slotHeight)
         .padding(.vertical, 4)
-        .onAppear {
-            mayAutoLoad = true
-            triggerLoadIfNeeded()
-        }
-        .onDisappear {
-            mayAutoLoad = false
-        }
-        .onChange(of: enabled) { _, _ in
-            triggerLoadIfNeeded()
-        }
+        .id("fash_feed_load_more_footer")
+        .onAppear { tryLoadOnVisit() }
+        .onDisappear { scheduleRearmAfterLeavingViewport() }
         .onChange(of: isLoadingMore) { wasLoading, loading in
-            guard rearmAfterLoadComplete else { return }
             guard wasLoading, !loading else { return }
-            guard enabled else { return }
-            // Re-arm at footer after a page lands — user often stays at the bottom while scrolling the grid.
-            Task { @MainActor in
-                try? await Task.sleep(for: .milliseconds(380))
-                guard enabled, !isLoadingMore, canAutoLoad() else { return }
-                mayAutoLoad = true
-                triggerLoadIfNeeded()
-            }
+            consumedAtItemCount = anchorItemCount
         }
     }
 
@@ -84,7 +68,6 @@ struct FeedLoadMoreFooter: View {
         switch loadingPresentation {
         case .spinner:
             FashFeedLoadMoreIndicator()
-                .frame(height: Self.spinnerHeight)
         case .skeleton(let rows):
             FashSkeleton.listingGrid(rows: max(1, rows), staggered: true)
                 .frame(maxWidth: .infinity, alignment: .top)
@@ -93,10 +76,24 @@ struct FeedLoadMoreFooter: View {
         }
     }
 
-    private func triggerLoadIfNeeded() {
-        guard triggersLoadOnAppear, enabled, !isLoadingMore, mayAutoLoad, canAutoLoad() else { return }
-        mayAutoLoad = false
+    private func tryLoadOnVisit() {
+        disarmTask?.cancel()
+        disarmTask = nil
+        guard triggersLoadOnAppear, enabled, !isLoadingMore, visitArmed else { return }
+        guard anchorItemCount != consumedAtItemCount else { return }
+        visitArmed = false
+        consumedAtItemCount = anchorItemCount
         onLoadMore()
+    }
+
+    /// Debounce re-arm so masonry relayout flicker does not immediately re-trigger while held at bottom.
+    private func scheduleRearmAfterLeavingViewport() {
+        disarmTask?.cancel()
+        disarmTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(280))
+            guard !Task.isCancelled else { return }
+            visitArmed = true
+        }
     }
 }
 

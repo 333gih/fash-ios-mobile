@@ -344,7 +344,8 @@ struct ExploreScreen: View {
                     if viewModel.hasMore || viewModel.isLoadingMore {
                         FeedLoadMoreFooter(
                             enabled: viewModel.hasMore,
-                            isLoadingMore: viewModel.isLoadingMore
+                            isLoadingMore: viewModel.isLoadingMore,
+                            anchorItemCount: viewModel.items.count
                         ) {
                             viewModel.requestLoadMore(deps: deps, isGuestMode: isGuestMode)
                         }
