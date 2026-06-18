@@ -114,10 +114,13 @@ final class HomeViewModel {
         normalizeSelectedFeedTab(isGuestMode: isGuestMode, deps: deps)
         let tab = selectedFeedTab
         if isGuestMode && tab.requiresAuth { return }
-        if items.isEmpty, !isTabLoading(tab), !isTabLoadError(tab) {
-            ensureTabLoaded(tab, deps: deps, isGuestMode: isGuestMode, force: true)
-        } else if !items.isEmpty {
+        syncVisibleItemsForTab(tab)
+        if loadedTabs.contains(tab.rawValue) {
             syncItemsForSelectedTab()
+            return
+        }
+        if items.isEmpty, !isTabLoading(tab), !isTabLoadError(tab) {
+            ensureTabLoaded(tab, deps: deps, isGuestMode: isGuestMode, force: false)
         }
     }
 
@@ -610,9 +613,13 @@ final class HomeViewModel {
             return
         }
         if !force && HomeFeedTab.recommendationSectionTabs.contains(tab) && recommendationSectionsFetched {
-            loadedTabs.insert(tab.rawValue)
-            syncItemsForSelectedTab()
-            return
+            if !itemsForTab(tab).isEmpty {
+                loadedTabs.insert(tab.rawValue)
+                if tab == selectedFeedTab {
+                    syncItemsForSelectedTab()
+                }
+                return
+            }
         }
 
         beginTabLoad(tab)
@@ -679,9 +686,7 @@ final class HomeViewModel {
         if let tab = UxPersonalizationMapping.homeFeedTab(from: bundle.home.defaultTabKey) {
             applyPreferredHomeTab(tab, deps: deps, isGuestMode: isGuestMode)
         }
-        bundle.home.prefetchTabs
-            .compactMap { UxPersonalizationMapping.homeFeedTab(from: $0) }
-            .forEach { ensureTabLoaded($0, deps: deps, isGuestMode: isGuestMode) }
+        // Neighbor prefetch only — avoid loading every UX prefetch tab on cold start.
     }
 
     private func applyPreferredHomeTab(_ tab: HomeFeedTab, deps: AppDependencies, isGuestMode: Bool) {

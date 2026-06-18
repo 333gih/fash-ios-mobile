@@ -147,7 +147,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     /// Sliding-window trim/prepend — keeps viewport stable after rows drop above the fold.
     var feedTrimCompensationToken: Int = 0
     var feedTrimCompensationSignedDeltaY: CGFloat = 0
-    var onListingCellVisible: ((Int) -> Void)? = nil
+    var onListingCellVisible: ((Int, CGFloat) -> Void)? = nil
     var onListingClick: (ListingFeedItem) -> Void
     var onLike: ((ListingFeedItem) -> Void)?
     var onSave: ((ListingFeedItem) -> Void)?
@@ -448,7 +448,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
                     }
                 }
         }
-        if enableScrollProximityLoadMore, !items.isEmpty {
+        if enableScrollProximityLoadMore || loadMoreAtScrollBottom, !items.isEmpty {
             FeedScrollContentBottomReporter(coordinateSpace: ProfileScrollIds.coordinateSpaceName)
         }
     }
@@ -534,6 +534,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     private func handleProfileScrollOffset(_ offset: CGFloat) {
         applyScrollOffset(offset)
         runPaginationEvaluators(headerMinY: offset)
+        evaluateBottomScrollLoadMore(headerMinY: offset)
     }
 
     private func handleFeedContentBottomY(_ bottomY: CGFloat) {
@@ -642,6 +643,22 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
 
     private var visualTabIndex: Int {
         resolvedTabIndices.firstIndex(of: selectedTab) ?? 0
+    }
+
+    private func evaluateBottomScrollLoadMore(headerMinY: CGFloat) {
+        guard loadMoreAtScrollBottom, let onLoadMore else { return }
+        guard hasMoreListings, !isLoadingMoreListings, !showGridLoading, !items.isEmpty else { return }
+        guard shouldRunPaginationEval(for: headerMinY) else { return }
+        guard FeedScrollPaginationPolicy.isAtScrollBottom(
+            headerMinY: headerMinY,
+            contentBottomY: feedContentBottomY,
+            viewportHeight: scrollViewportHeight,
+            tolerance: bottomLoadMoreTolerance
+        ) else { return }
+        let now = Date()
+        guard now.timeIntervalSince(lastProximityLoadMoreAt) >= 0.5 else { return }
+        lastProximityLoadMoreAt = now
+        onLoadMore()
     }
 
     private func evaluateScrollProximityLoadMore(headerMinY: CGFloat) {
@@ -890,7 +907,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
             onSave: onSave.map { h in { h(item) } }
         )
         .onAppear {
-            onListingCellVisible?(index)
+            onListingCellVisible?(index, profileMasonryColumnWidth)
             if enableTilePrefetchLoadMore {
                 profilePrefetchLoadMoreIfNeeded(appearedIndex: index)
             }

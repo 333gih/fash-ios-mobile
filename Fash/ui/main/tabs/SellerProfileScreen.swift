@@ -23,6 +23,7 @@ struct SellerProfileScreen: View {
     @State private var showGuestLoginSheet = false
     @State private var guestLoginReason: String?
     @State private var sharePayload: FashSharePayload?
+    @State private var sellerScrollBoundary = HomeFeedScrollBoundary()
 
     private var sellerRefreshBinding: Binding<Bool> {
         Binding(
@@ -109,6 +110,18 @@ struct SellerProfileScreen: View {
                             suppressScrollClamp: true,
                             loadMoreAtScrollBottom: true,
                             bottomLoadMoreTolerance: 36,
+                            feedScrollBoundary: sellerScrollBoundary,
+                            feedTrimCompensationToken: viewModel.listingScrollTrimToken,
+                            feedTrimCompensationSignedDeltaY: viewModel.listingScrollTrimSignedDeltaY,
+                            onListingCellVisible: { index, columnWidth in
+                                viewModel.notifyListingCellVisible(
+                                    tab: selectedSellerTab,
+                                    visibleIndex: index,
+                                    columnWidth: columnWidth,
+                                    deps: deps,
+                                    isGuestMode: isGuestMode
+                                )
+                            },
                             onListingClick: { item in onListingClick(item) },
                             onLike: { item in
                                 if isGuestMode { presentGuestSignIn(reason: L10n.guestLoginReasonLike) }
@@ -176,6 +189,9 @@ struct SellerProfileScreen: View {
             if case .success(let response) = await deps.advertisingRepository.getSlides(publicBrowse: isGuestMode) {
                 promoSlides = response.items.map(FashPromoSlideDef.fromAdvertising)
             }
+        }
+        .onAppear {
+            viewModel.scrollBoundary = sellerScrollBoundary
         }
         .guestLoginSheet(
             isPresented: $showGuestLoginSheet,

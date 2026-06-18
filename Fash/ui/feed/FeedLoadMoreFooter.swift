@@ -40,7 +40,8 @@ struct FeedLoadMoreFooter: View {
     private static let slotHeight: CGFloat = 48
 
     @State private var visitArmed = true
-    @State private var consumedAtItemCount = -1
+    /// Last `anchorItemCount` when `onLoadMore` fired — allows chained loads after append while held at bottom.
+    @State private var lastTriggeredAtCount = -1
     @State private var disarmTask: Task<Void, Never>?
 
     var body: some View {
@@ -57,9 +58,20 @@ struct FeedLoadMoreFooter: View {
         .id("fash_feed_load_more_footer")
         .onAppear { tryLoadOnVisit() }
         .onDisappear { scheduleRearmAfterLeavingViewport() }
+        .onChange(of: anchorItemCount) { oldCount, newCount in
+            guard triggersLoadOnAppear, newCount > oldCount else { return }
+            visitArmed = true
+            tryLoadOnVisit()
+        }
         .onChange(of: isLoadingMore) { wasLoading, loading in
             guard wasLoading, !loading else { return }
-            consumedAtItemCount = anchorItemCount
+            visitArmed = true
+            tryLoadOnVisit()
+        }
+        .onChange(of: enabled) { _, isEnabled in
+            guard isEnabled else { return }
+            visitArmed = true
+            tryLoadOnVisit()
         }
     }
 
@@ -80,9 +92,9 @@ struct FeedLoadMoreFooter: View {
         disarmTask?.cancel()
         disarmTask = nil
         guard triggersLoadOnAppear, enabled, !isLoadingMore, visitArmed else { return }
-        guard anchorItemCount != consumedAtItemCount else { return }
+        guard anchorItemCount > lastTriggeredAtCount else { return }
         visitArmed = false
-        consumedAtItemCount = anchorItemCount
+        lastTriggeredAtCount = anchorItemCount
         onLoadMore()
     }
 
@@ -92,6 +104,7 @@ struct FeedLoadMoreFooter: View {
         disarmTask = Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(280))
             guard !Task.isCancelled else { return }
+            lastTriggeredAtCount = -1
             visitArmed = true
         }
     }

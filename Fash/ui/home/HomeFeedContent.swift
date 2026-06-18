@@ -433,6 +433,7 @@ struct HomeFeedContent: View {
     private func onHomeFeedTabChanged(to tabKey: String) {
         let tab = HomeFeedTab(rawValue: tabKey) ?? viewModel.selectedFeedTab
         viewModel.syncVisibleItemsForTab(tab)
+        viewModel.ensureSelectedFeedTabLoaded(deps: deps, isGuestMode: isGuestMode)
     }
 
     private func applyHomeScrollToTop(using scrollProxy: ScrollViewProxy) {

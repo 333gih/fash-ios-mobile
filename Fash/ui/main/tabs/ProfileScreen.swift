@@ -27,6 +27,7 @@ struct ProfileScreen: View {
     /// Home journey → wishlist / in-review: pin grid after content settles.
     @State private var pendingExternalGridScroll = false
     @State private var externalGridScrollTask: Task<Void, Never>?
+    @State private var profileScrollBoundary = HomeFeedScrollBoundary()
 
     private var showBlockingLoadError: Bool {
         viewModel.loadError && viewModel.profile == nil && !viewModel.isLoading && !viewModel.isRefreshing
@@ -74,6 +75,7 @@ struct ProfileScreen: View {
             await viewModel.ensureListingsLoaded(for: selectedProfileTab, deps: deps)
         }
         .onAppear {
+            viewModel.scrollBoundary = profileScrollBoundary
             syncSelectedTabFromViewModel()
             _ = applyProfileTabOpenRequestIfNeeded()
             tryApplyPendingExternalGridScroll()
@@ -148,6 +150,17 @@ struct ProfileScreen: View {
             suppressScrollClamp: true,
             loadMoreAtScrollBottom: true,
             bottomLoadMoreTolerance: 36,
+            feedScrollBoundary: profileScrollBoundary,
+            feedTrimCompensationToken: viewModel.listingScrollTrimToken,
+            feedTrimCompensationSignedDeltaY: viewModel.listingScrollTrimSignedDeltaY,
+            onListingCellVisible: { index, columnWidth in
+                viewModel.notifyListingCellVisible(
+                    tab: selectedProfileTab,
+                    visibleIndex: index,
+                    columnWidth: columnWidth,
+                    deps: deps
+                )
+            },
             onListingClick: handleListingTap,
             onLike: profileWishlistLikeHandler,
             onSave: profileWishlistSaveHandler,
