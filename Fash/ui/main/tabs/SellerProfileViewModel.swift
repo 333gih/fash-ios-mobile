@@ -65,6 +65,15 @@ final class SellerProfileViewModel {
         let rawCount: Int
     }
 
+    private func nextListingOffset(afterFetchingAt offset: Int, rawCount: Int) -> Int {
+        let pageSize = SellerStorefrontConstants.listingPageSize
+        let pageIndex = max(0, offset / pageSize)
+        if rawCount < pageSize {
+            return offset + rawCount
+        }
+        return (pageIndex + 1) * pageSize
+    }
+
     /// Scroll boundary from [HomeFeedScrollCoordinator] — gates trim/backfill while finger is on screen.
     @ObservationIgnored
     var scrollBoundary: HomeFeedScrollBoundary?
@@ -566,7 +575,7 @@ final class SellerProfileViewModel {
                 prefetchStorefrontImages(Array(state.window.items.suffix(added)))
             }
             mutatePagination(for: tab) { state in
-                state.nextOffset += page.rawCount
+                state.nextOffset = nextListingOffset(afterFetchingAt: offset, rawCount: page.rawCount)
                 if page.rawCount < SellerStorefrontConstants.listingPageSize {
                     state.hasMore = false
                 } else if added == 0 {
@@ -627,7 +636,7 @@ final class SellerProfileViewModel {
             loadedListingTabs.insert(tab.rawValue)
             setListings(page.items, for: tab)
             mutatePagination(for: tab) { state in
-                state.nextOffset = page.rawCount
+                state.nextOffset = nextListingOffset(afterFetchingAt: 0, rawCount: page.rawCount)
                 state.hasMore = page.rawCount >= SellerStorefrontConstants.listingPageSize
             }
             prefetchStorefrontImages(page.items)

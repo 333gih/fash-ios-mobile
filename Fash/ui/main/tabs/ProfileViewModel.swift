@@ -411,6 +411,40 @@ final class ProfileViewModel {
         let rawCount: Int
     }
 
+    /// Backend Redis pages by `offset/limit` — always advance to the next page boundary.
+    private func nextListingOffset(afterFetchingAt offset: Int, rawCount: Int) -> Int {
+        let pageSize = ProfileListingConstants.listingPageSize
+        let pageIndex = max(0, offset / pageSize)
+        if rawCount < pageSize {
+            return offset + rawCount
+        }
+        return (pageIndex + 1) * pageSize
+    }
+
+    private func filterListingsForTab(_ items: [ListingFeedItem], tab: ProfileListingTab) -> [ListingFeedItem] {
+        switch tab {
+        case .active: return items.filter { $0.isActiveListing() }
+        case .inReview: return items.filter { $0.isInReviewListing() }
+        case .rejected: return items.filter { $0.isRejectedListing() }
+        case .sold: return items.filter { $0.isSoldListingStatus() }
+        case .wishlist: return items
+        }
+    }
+
+    /// Android parity — `status=active` Redis bucket can be stale while `_all` is fresh.
+    private func fetchUnfilteredProfileBatch(
+        tab: ProfileListingTab,
+        deps: AppDependencies
+    ) async -> ListingPagePayload? {
+        guard tab != .wishlist else { return nil }
+        let result = await deps.listingRepository.getMyListings(status: nil, limit: 50, offset: 0)
+        guard case .success(let raw) = result else { return nil }
+        let filtered = filterListingsForTab(raw, tab: tab)
+        guard !filtered.isEmpty else { return nil }
+        let page = Array(filtered.prefix(ProfileListingConstants.listingPageSize))
+        return ListingPagePayload(items: page, rawCount: page.count)
+    }
+
     private struct ProfileTabPagination {
         var hasMore = true
         /// Next API offset (advance by raw page size, not deduped display count).
@@ -549,7 +583,7 @@ final class ProfileViewModel {
             loadedListingTabs.insert(tab.rawValue)
             setListings(page.items, for: tab)
             mutatePagination(for: tab) {
-                $0.nextOffset = page.rawCount
+                $0.nextOffset = nextListingOffset(afterFetchingAt: 0, rawCount: page.rawCount)
                 let pageSize = ProfileListingConstants.listingPageSize
                 let fullPage = page.rawCount >= pageSize
                 let summaryGap = displayCount(for: tab) > page.items.count
@@ -559,6 +593,22 @@ final class ProfileViewModel {
                 "Profile \(tab) first page -> items=\(page.items.count) hasMore=\(pagination(for: tab).hasMore) summary=\(displayCount(for: tab))"
             )
             if retryOnSparseSummary, needsListingTabReload(for: tab) {
+                if let fallback = await fetchUnfilteredProfileBatch(tab: tab, deps: deps),
+                   fallback.items.count > page.items.count {
+                    setListings(fallback.items, for: tab)
+                    mutatePagination(for: tab) {
+                        $0.nextOffset = nextListingOffset(afterFetchingAt: 0, rawCount: fallback.rawCount)
+                        let pageSize = ProfileListingConstants.listingPageSize
+                        let summaryGap = displayCount(for: tab) > fallback.items.count
+                        $0.hasMore = fallback.rawCount >= pageSize || summaryGap
+                    }
+                    FeedPerformance.log(
+                        "Profile \(tab) unfiltered fallback -> items=\(fallback.items.count) summary=\(displayCount(for: tab))"
+                    )
+                    prefetchProfileImages(fallback.items)
+                    prefetchAdjacentProfileTabs(around: tab, deps: deps)
+                    return
+                }
                 loadedListingTabs.remove(tab.rawValue)
                 await fetchListingsFirstPage(tab, deps: deps, force: true, retryOnSparseSummary: false)
                 return
@@ -604,7 +654,7 @@ final class ProfileViewModel {
                 prefetchProfileImages(Array(state.window.items.suffix(added)))
             }
             mutatePagination(for: tab) { state in
-                state.nextOffset += page.rawCount
+                state.nextOffset = nextListingOffset(afterFetchingAt: offset, rawCount: page.rawCount)
                 let pageSize = ProfileListingConstants.listingPageSize
                 let fullPage = page.rawCount >= pageSize
                 let summaryGap = displayCount(for: tab) > listings(for: tab).count
