@@ -19,6 +19,8 @@ Windows / bất kỳ máy nào
 
 ## 1. GitLab mirror → GitHub
 
+**Push nhanh:** [PUSH-GITHUB.md](./PUSH-GITHUB.md) → `.\scripts\mirror-to-github.ps1`
+
 Trên GitLab (**Settings → Repository → Mirroring repositories**):
 
 | Field | Giá trị |
