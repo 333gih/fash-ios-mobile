@@ -139,6 +139,7 @@ struct RootView: View {
                     await deps.realtimeManager.connect()
                     deps.realtimeManager.sendPresenceActive()
                     await PushNotificationCoordinator.shared.registerCurrentTokenIfSession()
+                    await deps.fcmTokenRegistrar.registerPendingToken()
                     deps.requestInboxUnreadRefresh()
                     deps.requestChatInboxRefresh()
                     deps.requestAppPromoCatalogRefresh()
@@ -553,6 +554,7 @@ struct RootView: View {
         await deps.realtimeManager.connect()
         await PushNotificationCoordinator.shared.requestAuthorizationAndRegisterForRemoteNotifications()
         await PushNotificationCoordinator.shared.registerCurrentTokenIfSession()
+        await deps.fcmTokenRegistrar.registerPendingToken()
         if status.canAccessHome {
             AppFeatureTourStore.markCompletedIfPreviouslyOnboarded(onboardingDone: status.onboardingDone)
             needsOnboarding = false

@@ -1,7 +1,10 @@
 import Foundation
 
 /// Registers the device FCM token with [AuthRepository.registerFcm] after login and on token refresh.
+/// Mirrors personal-os `POSFCMRegistrar`: stash token when session is not ready, register on login.
 final class FcmTokenRegistrar {
+    private static let pendingTokenKey = "fash.fcm.pending_token"
+
     private let authRepository: AuthRepository
     private let sessionStore: AuthSessionStore
     private let clientLocaleProvider: () -> String
@@ -16,12 +19,36 @@ final class FcmTokenRegistrar {
         self.clientLocaleProvider = clientLocaleProvider
     }
 
-    func registerDeviceToken(_ token: String) async {
-        guard let session = sessionStore.read() else {
-            logD("registerDeviceToken: no session, skip")
+    /// Registers stashed token after session restore/login (personal-os `registerPendingToken`).
+    func registerPendingToken() async {
+        guard let token = UserDefaults.standard.string(forKey: Self.pendingTokenKey)?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+              !token.isEmpty
+        else {
             return
         }
-        await registerFcmWithOptionalRefresh(session: session, token: token)
+        logD("registerPendingToken: attempting stashed token")
+        await registerDeviceToken(token)
+    }
+
+    func registerDeviceToken(_ token: String) async {
+        let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        PushDiagnostics.logTokenMetadata(trimmed, context: "FcmTokenRegistrar.registerDeviceToken")
+        guard let session = sessionStore.read() else {
+            stashPendingToken(trimmed)
+            logD("registerDeviceToken: no session, stashed pending token")
+            return
+        }
+        await registerFcmWithOptionalRefresh(session: session, token: trimmed)
+    }
+
+    static func clearPendingToken() {
+        UserDefaults.standard.removeObject(forKey: pendingTokenKey)
+    }
+
+    private func stashPendingToken(_ token: String) {
+        UserDefaults.standard.set(token, forKey: Self.pendingTokenKey)
     }
 
     private func registerFcmWithOptionalRefresh(session: AuthSession, token: String) async {
@@ -32,6 +59,7 @@ final class FcmTokenRegistrar {
             clientLocale: locale
         )
         if case .success = first {
+            Self.clearPendingToken()
             logD("registerFcm: backend OK")
             return
         }
@@ -59,6 +87,7 @@ final class FcmTokenRegistrar {
         )
         switch second {
         case .success:
+            Self.clearPendingToken()
             logD("registerFcm: backend OK after token refresh")
         case .failure(let retryErr):
             if isUnauthorized(retryErr) {

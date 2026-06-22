@@ -78,7 +78,8 @@ Test trên **thiết bị thật**. Simulator hỗ trợ push hạn chế.
 |-------------|----------|
 | Log `GoogleService-Info.plist missing` | Thêm plist từ Firebase |
 | Register 401 | JWT — registrar retry refresh |
-| Register OK, không push | APNs key trên Firebase; bundle id; prod vs dev |
+| Register OK, không push | APNs key trên Firebase; bundle id; prod vs dev; kill app trước khi test (WS suppress FCM khi online) |
+| Token lost before login | Build 294+: token stashed in `fash.fcm.pending_token`, registered on session restore |
 | Chỉ Android nhận | `device_platform: ios`; FCM iOS token |
 | Out app không thấy push | Server **không gửi FCM** khi `presence:user:{id}` còn (WS online). iOS ngắt WS khi `scenePhase == .background`; hoặc **kill app** rồi test lại |
 | Build 104+ vẫn không push | Firebase Console → APNs **.p8** cho app `com.pc.fash-ios-mobile`; kiểm tra token iOS trong DB `fcm_tokens` |

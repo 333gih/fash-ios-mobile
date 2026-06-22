@@ -25,6 +25,7 @@ final class AppAuthManager {
         Task {
             await PushNotificationCoordinator.shared.requestAuthorizationAndRegisterForRemoteNotifications()
             await PushNotificationCoordinator.shared.registerCurrentTokenIfSession()
+            await AppDependencies.shared.fcmTokenRegistrar.registerPendingToken()
         }
     }
 
@@ -107,6 +108,7 @@ final class AppAuthManager {
         if let session {
             _ = await authRepository.logout(accessToken: session.accessToken)
         }
+        await PushNotificationCoordinator.clearFCMRegistrationOnLogout()
         sessionStore.clear()
         UxPersonalizationLocalStore.clearForUser(userId: userId)
         SocialAuthCacheClear.clearCachedSocialSignInForLogout()
@@ -119,6 +121,7 @@ final class AppAuthManager {
         if let session {
             _ = await authRepository.logoutAll(accessToken: session.accessToken)
         }
+        await PushNotificationCoordinator.clearFCMRegistrationOnLogout()
         sessionStore.clear()
         UxPersonalizationLocalStore.clearForUser(userId: userId)
         SocialAuthCacheClear.clearCachedSocialSignInForLogout()

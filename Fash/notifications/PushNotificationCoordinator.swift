@@ -99,9 +99,9 @@ final class PushNotificationCoordinator: NSObject {
     }
 
     /// Call after login / session bootstrap (Android `FcmTokenRegistrar.registerCurrentTokenIfSession`).
+    /// Stashes FCM token when session is not ready yet (personal-os parity).
     func registerCurrentTokenIfSession() async {
         guard Self.isFirebaseConfigured else { return }
-        guard AppDependencies.shared.authSessionStore.read() != nil else { return }
         for attempt in 0..<12 {
             if !Self.isAPNsLinked {
                 if attempt == 0 {
@@ -111,9 +111,8 @@ final class PushNotificationCoordinator: NSObject {
                 continue
             }
             if let token = await Self.fetchFCMToken(), !token.isEmpty {
-                PushDiagnostics.info(
-                    "FCM token ready (prefix=\(Self.tokenLogPrefix(token)), apns_type=\(Self.apnsTokenTypeForCurrentBuild() == .prod ? "production" : "sandbox"))"
-                )
+                let apnsType = Self.apnsTokenTypeForCurrentBuild() == .prod ? "production" : "sandbox"
+                PushDiagnostics.logTokenMetadata(token, context: "FCM token ready (apns_type=\(apnsType))")
                 await AppDependencies.shared.fcmTokenRegistrar.registerDeviceToken(token)
                 return
             }
@@ -128,10 +127,20 @@ final class PushNotificationCoordinator: NSObject {
         }
     }
 
-    private static func tokenLogPrefix(_ token: String) -> String {
-        let t = token.trimmingCharacters(in: .whitespaces)
-        guard t.count > 12 else { return t }
-        return String(t.prefix(8)) + "…"
+    /// Clears local FCM registration on logout so stale tokens are not reused server-side.
+    static func clearFCMRegistrationOnLogout() async {
+        FcmTokenRegistrar.clearPendingToken()
+        guard isFirebaseConfigured else { return }
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            Messaging.messaging().deleteToken { error in
+                if let error {
+                    PushDiagnostics.warning("FCM deleteToken on logout: \(error.localizedDescription)")
+                } else {
+                    PushDiagnostics.info("FCM token deleted on logout")
+                }
+                continuation.resume()
+            }
+        }
     }
 
     /// Requests notification permission and registers with APNs (required before FCM token on real device).
@@ -177,8 +186,7 @@ final class PushNotificationCoordinator: NSObject {
 extension PushNotificationCoordinator: MessagingDelegate {
     nonisolated func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
         guard let fcmToken, !fcmToken.isEmpty else { return }
-        let prefix = String(fcmToken.prefix(8)) + "…"
-        PushDiagnostics.info("MessagingDelegate token refresh (prefix=\(prefix))")
+        PushDiagnostics.logTokenMetadata(fcmToken, context: "MessagingDelegate token refresh")
         Task { @MainActor in
             await AppDependencies.shared.fcmTokenRegistrar.registerDeviceToken(fcmToken)
         }
