@@ -123,6 +123,10 @@ struct RootView: View {
         }
         .onChange(of: scenePhase) { _, phase in
             switch phase {
+            case .inactive:
+                AppSessionTracker.shared.onSceneBackground()
+                deps.realtimeManager.sendPresenceBackground()
+                deps.realtimeManager.disconnect(clearSubscriptions: false)
             case .background:
                 AppSessionTracker.shared.onSceneBackground()
                 deps.realtimeManager.sendPresenceBackground()
