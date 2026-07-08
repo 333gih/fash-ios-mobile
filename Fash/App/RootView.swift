@@ -156,7 +156,15 @@ struct RootView: View {
 
     @ViewBuilder
     private var rootContent: some View {
-        if router.showSplash || router.isLoggingOut || router.isLaunchWarmupInProgress {
+        let hasPendingDeepLinkAction =
+            deps.pendingInboxNotificationId != nil ||
+                deps.pendingDeepLinkListingId != nil ||
+                deps.pendingDeepLinkSellerUsername != nil ||
+                deps.pendingOpenInviteFriends
+
+        if router.showSplash ||
+            router.isLoggingOut ||
+            (router.isLaunchWarmupInProgress && !hasPendingDeepLinkAction) {
             FashWaitingScreen()
         } else if router.isGuestMode {
             GuestMainShell(
