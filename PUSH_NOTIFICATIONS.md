@@ -18,8 +18,8 @@ Bearer JWT bắt buộc (sau login). Backend lưu vào bảng `fcm_tokens` — x
 
 | Mode | Env | Hành vi |
 |------|-----|---------|
-| **Firebase FCM** (mặc định) | `USE_FIREBASE_MESSAGING=true` + `GoogleService-Info.plist` | APNs token → FCM registration token → `POST /auth/fcm/register` |
-| **Pure APNs fallback** | `USE_FIREBASE_MESSAGING=false` hoặc thiếu plist | Hex APNs device token đăng ký trực tiếp qua cùng endpoint |
+| **Pure APNs** (hiện tại) | `USE_FIREBASE_MESSAGING=false` | Hex APNs device token → `POST /auth/fcm/register`, không init Firebase |
+| **Firebase FCM** (tùy chọn sau) | `USE_FIREBASE_MESSAGING=true` + `GoogleService-Info.plist` | APNs token → FCM registration token → `POST /auth/fcm/register` |
 
 Cấu hình trong `env/prod.env` / `env/dev.env` → `BuildConfig.useFirebaseMessaging` + Info.plist `USE_FIREBASE_MESSAGING`.
 

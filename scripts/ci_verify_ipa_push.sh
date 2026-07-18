@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
-# Verify exported IPA includes FCM prerequisites (TestFlight / App Store).
-# Usage: ci_verify_ipa_push.sh <path-to.ipa> [expected-aps-environment]
+# Verify exported IPA includes push prerequisites (TestFlight / App Store).
+# Usage: ci_verify_ipa_push.sh <path-to.ipa> [expected-aps-environment] [use-firebase-messaging]
 #   expected-aps-environment: production (Fash-Prod) or development (Fash-Dev). Default: production
+#   use-firebase-messaging: true|false — when false, GoogleService-Info.plist is not required
 set -euo pipefail
 
 IPA="${1:?IPA path required}"
 EXPECTED_APS="${2:-production}"
+USE_FIREBASE="${3:-true}"
 
 WORK="$(mktemp -d)"
 trap 'rm -rf "${WORK}"' EXIT
@@ -19,16 +21,26 @@ fi
 
 echo "App bundle: ${APP_DIR}"
 
-GS_PLIST="${APP_DIR}/GoogleService-Info.plist"
-if [[ ! -f "${GS_PLIST}" ]]; then
-  echo "::error::GoogleService-Info.plist is NOT in the app bundle — Firebase/FCM will not initialize on device."
-  echo "Ensure GOOGLE_SERVICE_INFO_PLIST_BASE64 is set and the plist is written before xcodegen (see docs/CI.md)."
-  exit 1
-fi
+if [[ "${USE_FIREBASE}" == "true" || "${USE_FIREBASE}" == "1" || "${USE_FIREBASE}" == "yes" ]]; then
+  GS_PLIST="${APP_DIR}/GoogleService-Info.plist"
+  if [[ ! -f "${GS_PLIST}" ]]; then
+    echo "::error::GoogleService-Info.plist is NOT in the app bundle — Firebase/FCM will not initialize on device."
+    echo "Ensure GOOGLE_SERVICE_INFO_PLIST_BASE64 is set and the plist is written before xcodegen (see docs/CI.md)."
+    exit 1
+  fi
 
-BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :BUNDLE_ID' "${GS_PLIST}")"
-PROJECT_ID="$(/usr/libexec/PlistBuddy -c 'Print :PROJECT_ID' "${GS_PLIST}")"
-echo "GoogleService-Info.plist OK (PROJECT_ID=${PROJECT_ID}, BUNDLE_ID=${BUNDLE_ID})"
+  BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :BUNDLE_ID' "${GS_PLIST}")"
+  PROJECT_ID="$(/usr/libexec/PlistBuddy -c 'Print :PROJECT_ID' "${GS_PLIST}")"
+  echo "GoogleService-Info.plist OK (PROJECT_ID=${PROJECT_ID}, BUNDLE_ID=${BUNDLE_ID})"
+else
+  GS_PLIST="${APP_DIR}/GoogleService-Info.plist"
+  if [[ -f "${GS_PLIST}" ]]; then
+    echo "::warning::GoogleService-Info.plist present but USE_FIREBASE_MESSAGING=false — app uses pure APNs only"
+  else
+    echo "Pure APNs mode: GoogleService-Info.plist not in bundle (expected)"
+  fi
+  BUNDLE_ID=""
+fi
 
 ENT_XML="${WORK}/entitlements.xml"
 if ! codesign -d --entitlements :- "${APP_DIR}" > "${ENT_XML}" 2>/dev/null; then
@@ -51,9 +63,13 @@ if [[ "${APS}" != "${EXPECTED_APS}" ]]; then
 fi
 
 APP_BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "${APP_DIR}/Info.plist")"
-if [[ "${BUNDLE_ID}" != "${APP_BUNDLE_ID}" ]]; then
+if [[ -n "${BUNDLE_ID}" && "${BUNDLE_ID}" != "${APP_BUNDLE_ID}" ]]; then
   echo "::error::GoogleService-Info BUNDLE_ID (${BUNDLE_ID}) != app CFBundleIdentifier (${APP_BUNDLE_ID})"
   exit 1
 fi
 
-echo "IPA push prerequisites OK (plist in bundle, aps-environment=${APS})"
+if [[ "${USE_FIREBASE}" == "true" || "${USE_FIREBASE}" == "1" || "${USE_FIREBASE}" == "yes" ]]; then
+  echo "IPA push prerequisites OK (FCM plist in bundle, aps-environment=${APS})"
+else
+  echo "IPA push prerequisites OK (pure APNs, no Firebase plist, aps-environment=${APS})"
+fi

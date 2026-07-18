@@ -22,9 +22,10 @@ final class PushNotificationCoordinator: NSObject {
         Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist") != nil
     }
 
-    /// Effective transport: Firebase FCM only when the flag is on AND the plist is present.
+    /// Effective transport: only when explicitly enabled in env AND plist is bundled.
     static var usesFirebaseMessaging: Bool {
-        BuildConfig.useFirebaseMessaging && isFirebaseConfigured
+        guard BuildConfig.useFirebaseMessaging else { return false }
+        return isFirebaseConfigured
     }
 
     /// Call once from `didFinishLaunchingWithOptions`.
