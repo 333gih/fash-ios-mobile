@@ -82,20 +82,21 @@ final class RecommendationRepository {
         }
         let query = parts.joined(separator: "&")
         do {
-            let data: Data
+            let response: RepositoryHttp.GetResponse
             if publicBrowse {
-                data = try await RepositoryHttp.executeGet(
+                response = try await RepositoryHttp.executeGetWithResponse(
                     urlString: PublicBrowseHttp.publicApiPath("browse/recommendations/explore-listings") + "?" + query,
                     client: client,
                     publicBrowse: true
                 )
             } else {
-                data = try await RepositoryHttp.executeCoreGet(
+                response = try await RepositoryHttp.executeCoreGetWithResponse(
                     relativePath: "api/v1/recommendations/explore-listings?\(query)",
                     client: client
                 )
             }
-            let items = try await ListingFeedParseSupport.parseFeedItems(data)
+            RecExperimentContext.applyResponseHeaders(response.headers)
+            let items = try await ListingFeedParseSupport.parseFeedItems(response.data)
             return .success(items)
         } catch {
             return .failure(error)
@@ -119,23 +120,25 @@ final class RecommendationRepository {
         }
         let query = parts.joined(separator: "&")
         do {
-            let data: Data
+            let response: RepositoryHttp.GetResponse
             if publicBrowse {
-                data = try await RepositoryHttp.executeGet(
+                response = try await RepositoryHttp.executeGetWithResponse(
                     urlString: PublicBrowseHttp.publicApiPath("browse/recommendations/home-sections") + "?" + query,
                     client: client,
                     publicBrowse: true
                 )
             } else {
-                data = try await RepositoryHttp.executeCoreGet(
+                response = try await RepositoryHttp.executeCoreGetWithResponse(
                     relativePath: "api/v1/recommendations/home-sections?\(query)",
                     client: client
                 )
             }
             let root = try await Task.detached(priority: .userInitiated) {
-                try RepositoryHttp.jsonObject(data)
+                try RepositoryHttp.jsonObject(response.data)
             }.value
             let payload = (root["data"] as? [String: Any]) ?? root
+            RecExperimentContext.parseMeta(from: payload)
+            RecExperimentContext.applyResponseHeaders(response.headers)
             async let huntToday = ListingFeedParseSupport.parseItemsArray(payload["hunt_today"] as? [[String: Any]] ?? [])
             async let forYou = ListingFeedParseSupport.parseItemsArray(payload["for_you"] as? [[String: Any]] ?? [])
             async let stylePicks = ListingFeedParseSupport.parseItemsArray(payload["style_picks"] as? [[String: Any]] ?? [])

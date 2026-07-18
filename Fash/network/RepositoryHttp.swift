@@ -2,6 +2,34 @@ import Foundation
 
 /// Shared GET helpers for repository layers — mirrors Android OkHttp executeGet patterns.
 enum RepositoryHttp {
+    struct GetResponse {
+        let data: Data
+        let headers: [AnyHashable: Any]
+    }
+
+    static func executeGetWithResponse(
+        urlString: String,
+        client: SecuredApiClient,
+        publicBrowse: Bool = false
+    ) async throws -> GetResponse {
+        guard let url = URL(string: urlString) else { throw URLError(.badURL) }
+        var req = URLRequest(url: url)
+        req.httpMethod = "GET"
+        let (data, http): (Data, HTTPURLResponse)
+        if publicBrowse {
+            (data, http) = try await PublicBrowseHttp.data(for: req)
+        } else {
+            (data, http) = try await client.data(for: req)
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            throw CoreServiceHttpException(
+                statusCode: http.statusCode,
+                message: CoreServiceErrors.parseMessage(data: data, statusCode: http.statusCode)
+            )
+        }
+        return GetResponse(data: data, headers: http.allHeaderFields)
+    }
+
     static func executeGet(
         urlString: String,
         client: SecuredApiClient,
@@ -23,6 +51,33 @@ enum RepositoryHttp {
             )
         }
         return data
+    }
+
+    static func executeCoreGetWithResponse(
+        relativePath: String,
+        client: SecuredApiClient,
+        publicBrowse: Bool = false
+    ) async throws -> GetResponse {
+        let path = relativePath.hasPrefix("api/") ? relativePath : "api/v1/\(relativePath)"
+        if publicBrowse {
+            let stripped = path
+                .replacingOccurrences(of: "api/v1/public/", with: "")
+                .replacingOccurrences(of: "api/v1/", with: "")
+            return try await executeGetWithResponse(
+                urlString: PublicBrowseHttp.publicApiPath(stripped),
+                client: client,
+                publicBrowse: true
+            )
+        }
+        var lastError: Error = URLError(.cannotConnectToHost)
+        for urlString in AppEnvironment.coreApiCandidateURLs(path) {
+            do {
+                return try await executeGetWithResponse(urlString: urlString, client: client)
+            } catch {
+                lastError = error
+            }
+        }
+        throw lastError
     }
 
     /// Tries locale-prefixed URL then fallback without prefix (Android `coreApiCandidateUrls`).

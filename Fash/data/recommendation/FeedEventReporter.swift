@@ -120,13 +120,21 @@ final class FeedEventReporter: @unchecked Sendable {
         dwellMs: Int? = nil,
         experimentId: String? = nil
     ) -> FeedEventPayload {
-        FeedEventPayload(
+        let resolvedExperimentId: String?
+        if let experimentId {
+            resolvedExperimentId = experimentId
+        } else if RecExperimentContext.isRecommendationSurface(surface) {
+            resolvedExperimentId = RecExperimentContext.shared.experimentIdForFeedEvents()
+        } else {
+            resolvedExperimentId = nil
+        }
+        return FeedEventPayload(
             listingId: listingId,
             surface: surface,
             eventType: eventType,
             position: position,
             dwellMs: dwellMs,
-            experimentId: experimentId
+            experimentId: resolvedExperimentId
         )
     }
 
