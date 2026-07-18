@@ -4,7 +4,7 @@ import Foundation
 enum NotificationEngagementReporter {
     static func reportOpen(reporter: FeedEventReporter, data: [String: String]?) {
         let listingId = firstString(data, keys: "listing_id", "listingId")
-        let scenarioId = firstString(data, keys: "scenario_id", "scenarioId")
+        let scenarioId = firstString(data, keys: "scenario_id", "scenarioId", "experiment_id")
         reporter.notificationOpen(listingId: listingId, scenarioId: scenarioId)
     }
 
