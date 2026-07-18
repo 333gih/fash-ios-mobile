@@ -129,7 +129,7 @@ final class PushNotificationCoordinator: NSObject {
 
     /// Call after login / session bootstrap (Android `FcmTokenRegistrar.registerCurrentTokenIfSession`).
     func registerCurrentTokenIfSession() async {
-        if usesFirebaseMessaging {
+        if Self.usesFirebaseMessaging {
             await registerCurrentFCMTokenIfSession()
         } else {
             await AppDependencies.shared.fcmTokenRegistrar.registerPendingToken()
