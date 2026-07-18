@@ -83,6 +83,12 @@
 	<string>Fash needs camera access to take listing and profile photos.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Fash may use your location for meetup check-in when you choose to share it.</string>
+	<key>USE_FIREBASE_MESSAGING</key>
+	<string>$(FASH_USE_FIREBASE_MESSAGING)</string>
+	<key>FASH_AUTH_BASE_URL</key>
+	<string>$(FASH_AUTH_SERVICE_BASE_URL)</string>
+	<key>FASH_AUTH_FCM_REGISTER_PATH</key>
+	<string>$(FASH_AUTH_FCM_REGISTER_PATH)</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>

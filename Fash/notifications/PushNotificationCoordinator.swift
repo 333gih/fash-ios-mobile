@@ -4,20 +4,38 @@ import Foundation
 import UIKit
 import UserNotifications
 
-/// Requests APNs permission, bridges FCM token refresh, and routes notification taps — Android `FcmTokenRegistrar` + tray handling.
+/// Push transport coordinator — parity with personal-os `POSPushCoordinator`.
+///
+/// Default path: Firebase Cloud Messaging when `USE_FIREBASE_MESSAGING` is true and
+/// `GoogleService-Info.plist` is bundled. Fallback: hex-encoded APNs device token registered
+/// directly with fash-auth (`api/v1/auth/fcm/register`).
 @MainActor
 final class PushNotificationCoordinator: NSObject {
     static let shared = PushNotificationCoordinator()
 
+    static let apnsDeviceTokenKey = "fash.apns.device_token"
+
     private var hasRequestedAuthorization = false
 
+    /// True when a Firebase config plist is bundled (CI decodes the secret before archive).
     static var isFirebaseConfigured: Bool {
         Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist") != nil
     }
 
-    static func configureFirebaseIfNeeded() {
-        guard isFirebaseConfigured else {
-            PushDiagnostics.warning("GoogleService-Info.plist missing — FCM disabled")
+    /// Effective transport: Firebase FCM only when the flag is on AND the plist is present.
+    static var usesFirebaseMessaging: Bool {
+        BuildConfig.useFirebaseMessaging && isFirebaseConfigured
+    }
+
+    /// Call once from `didFinishLaunchingWithOptions`.
+    static func configureMessagingIfNeeded() {
+        UNUserNotificationCenter.current().delegate = PushNotificationCoordinator.shared
+        guard usesFirebaseMessaging else {
+            if BuildConfig.useFirebaseMessaging && !isFirebaseConfigured {
+                PushDiagnostics.warning("GoogleService-Info.plist missing — FCM disabled, using pure APNs registration")
+            } else {
+                PushDiagnostics.info("USE_FIREBASE_MESSAGING=false — using pure APNs registration")
+            }
             return
         }
         validateFirebasePlistBundleId()
@@ -29,6 +47,8 @@ final class PushNotificationCoordinator: NSObject {
                 PushDiagnostics.info("Firebase configured")
             }
         }
+        Messaging.messaging().delegate = PushNotificationCoordinator.shared
+        PushDiagnostics.info("Firebase FCM configured")
     }
 
     /// Maps APNs environment to FCM token type.
@@ -48,7 +68,17 @@ final class PushNotificationCoordinator: NSObject {
     }
 
     static func applyAPNSToken(_ deviceToken: Data) {
-        guard isFirebaseConfigured else { return }
+        let hex = deviceToken.map { String(format: "%02x", $0) }.joined()
+        UserDefaults.standard.set(hex, forKey: apnsDeviceTokenKey)
+
+        guard usesFirebaseMessaging else {
+            PushDiagnostics.info("APNs token stored (pure APNs path, hex length=\(hex.count))")
+            Task { @MainActor in
+                await AppDependencies.shared.fcmTokenRegistrar.registerPendingToken()
+            }
+            return
+        }
+
         let type = apnsTokenTypeForCurrentBuild()
         Messaging.messaging().setAPNSToken(deviceToken, type: type)
         let bundleId = Bundle.main.bundleIdentifier ?? "?"
@@ -87,7 +117,6 @@ final class PushNotificationCoordinator: NSObject {
 
     /// If the user already granted permission, register with APNs on cold start (before login UI).
     func syncRemoteNotificationRegistrationOnLaunch() async {
-        guard Self.isFirebaseConfigured else { return }
         let settings = await UNUserNotificationCenter.current().notificationSettings()
         switch settings.authorizationStatus {
         case .authorized, .provisional, .ephemeral:
@@ -99,9 +128,15 @@ final class PushNotificationCoordinator: NSObject {
     }
 
     /// Call after login / session bootstrap (Android `FcmTokenRegistrar.registerCurrentTokenIfSession`).
-    /// Stashes FCM token when session is not ready yet (personal-os parity).
     func registerCurrentTokenIfSession() async {
-        guard Self.isFirebaseConfigured else { return }
+        if usesFirebaseMessaging {
+            await registerCurrentFCMTokenIfSession()
+        } else {
+            await AppDependencies.shared.fcmTokenRegistrar.registerPendingToken()
+        }
+    }
+
+    private func registerCurrentFCMTokenIfSession() async {
         for attempt in 0..<12 {
             if !Self.isAPNsLinked {
                 if attempt == 0 {
@@ -130,7 +165,8 @@ final class PushNotificationCoordinator: NSObject {
     /// Clears local FCM registration on logout so stale tokens are not reused server-side.
     static func clearFCMRegistrationOnLogout() async {
         FcmTokenRegistrar.clearPendingToken()
-        guard isFirebaseConfigured else { return }
+        UserDefaults.standard.removeObject(forKey: apnsDeviceTokenKey)
+        guard usesFirebaseMessaging else { return }
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             Messaging.messaging().deleteToken { error in
                 if let error {
@@ -145,7 +181,6 @@ final class PushNotificationCoordinator: NSObject {
 
     /// Requests notification permission and registers with APNs (required before FCM token on real device).
     func requestAuthorizationAndRegisterForRemoteNotifications() async {
-        guard Self.isFirebaseConfigured else { return }
         guard !hasRequestedAuthorization else {
             await UIApplication.shared.registerForRemoteNotifications()
             return
@@ -181,6 +216,11 @@ final class PushNotificationCoordinator: NSObject {
     func handleForegroundNotification(userInfo: [AnyHashable: Any]) {
         FashFirebaseMessagingService.handleForegroundNotification(userInfo: userInfo)
     }
+
+    func appDidReceiveRemoteMessage(_ userInfo: [AnyHashable: Any]) {
+        guard Self.usesFirebaseMessaging else { return }
+        Messaging.messaging().appDidReceiveMessage(userInfo)
+    }
 }
 
 extension PushNotificationCoordinator: MessagingDelegate {
@@ -201,12 +241,6 @@ extension PushNotificationCoordinator: UNUserNotificationCenterDelegate {
         let userInfo = notification.request.content.userInfo
         await MainActor.run {
             PushNotificationCoordinator.shared.handleForegroundNotification(userInfo: userInfo)
-        }
-        let suppressTray = await MainActor.run {
-            AppDependencies.shared.realtimeManager.isConnected
-        }
-        if suppressTray {
-            return [.badge]
         }
         return [.banner, .list, .sound, .badge]
     }

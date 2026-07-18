@@ -21,10 +21,11 @@ final class FcmTokenRegistrar {
 
     /// Registers stashed token after session restore/login (personal-os `registerPendingToken`).
     func registerPendingToken() async {
-        guard let token = UserDefaults.standard.string(forKey: Self.pendingTokenKey)?
-            .trimmingCharacters(in: .whitespacesAndNewlines),
-              !token.isEmpty
-        else {
+        let token = UserDefaults.standard.string(forKey: Self.pendingTokenKey)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            ?? UserDefaults.standard.string(forKey: PushNotificationCoordinator.apnsDeviceTokenKey)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let token, !token.isEmpty else {
             return
         }
         logD("registerPendingToken: attempting stashed token")

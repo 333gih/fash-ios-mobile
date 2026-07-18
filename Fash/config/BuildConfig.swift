@@ -44,6 +44,7 @@ enum BuildConfig {
     static var c2cShipOnlinePaymentEnabled: Bool { C.c2cShipOnlinePaymentEnabled }
     static var postRequireListingImages: Bool { C.postRequireListingImages }
     static var chatMaxOffersPerConversation: Int { C.chatMaxOffersPerConversation }
+    static var useFirebaseMessaging: Bool { C.useFirebaseMessaging }
 
     static var authOtpRequestPath: String { C.authOtpRequestPath }
     static var authOtpVerifyPath: String { C.authOtpVerifyPath }

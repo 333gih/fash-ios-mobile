@@ -131,6 +131,7 @@ def xcconfig(env: dict[str, str], flavor: str) -> str:
         f"FASH_C2C_SHIP_FULFILLMENT = {bool_str(env.get('C2C_SHIP_FULFILLMENT_ENABLED', 'true'))}",
         f"FASH_C2C_SHIP_ONLINE_PAYMENT = {bool_str(env.get('C2C_SHIP_ONLINE_PAYMENT_ENABLED', 'true'))}",
         f"FASH_POST_REQUIRE_IMAGES = {bool_str(env.get('POST_REQUIRE_LISTING_IMAGES', 'true'))}",
+        f"FASH_USE_FIREBASE_MESSAGING = {bool_str(env.get('USE_FIREBASE_MESSAGING', 'true'), default='YES')}",
         f"CHAT_MAX_OFFERS = {env.get('CHAT_MAX_OFFERS_PER_CONVERSATION', '3')}",
     ]
     for key, default in AUTH_PATH_DEFAULTS.items():
@@ -200,6 +201,7 @@ def swift_build_config(env: dict[str, str], flavor: str) -> str:
         ("c2cShipOnlinePaymentEnabled", "C2C_SHIP_ONLINE_PAYMENT_ENABLED", True),
         ("postRequireListingImages", "POST_REQUIRE_LISTING_IMAGES", True),
         ("facebookLoginEnabled", "FACEBOOK_LOGIN_ENABLED", False),
+        ("useFirebaseMessaging", "USE_FIREBASE_MESSAGING", True),
     ]
     for swift_name, env_key, default in bool_defs:
         if env_key == "AUTH_API_USE_LANGUAGE_PREFIX" and env_key not in env:
