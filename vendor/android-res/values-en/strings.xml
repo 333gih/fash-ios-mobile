@@ -1971,6 +1971,10 @@
     <string name="guest_login_reason_home_following">Follow shops and see their new listings on Home — sign in to continue.</string>
     <string name="guest_login_reason_home_style">Style picks use your profile preferences — sign in so Fash knows your vibe.</string>
     <string name="guest_login_reason_home_similar">Similar-to-saved needs your wishlist — sign in to sync saves.</string>
+    <string name="home_quick_actions_title">Buy &amp; sell faster</string>
+    <string name="home_quick_explore">Explore</string>
+    <string name="home_quick_sell">Sell</string>
+    <string name="home_quick_orders">Orders</string>
     <string name="home_guest_tab_for_you_title">For you</string>
     <string name="home_guest_tab_for_you_body">Sign in for picks tailored to your taste and browsing history.</string>
     <string name="home_guest_tab_following_title">From shops you follow</string>

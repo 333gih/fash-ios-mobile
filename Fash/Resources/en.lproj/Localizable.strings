@@ -982,6 +982,10 @@
 "home_journey_title" = "Your journey";
 "home_logout" = "Sign out";
 "home_logout_all" = "Sign out all devices";
+"home_quick_actions_title" = "Buy & sell faster";
+"home_quick_explore" = "Explore";
+"home_quick_orders" = "Orders";
+"home_quick_sell" = "Sell";
 "home_seasonal_near_you_title" = "Seasonal near you";
 "home_section_editorial_subtitle" = "Short reads on outfits, pre-loved finds, and safer buying — tap a card to jump to related picks in Explore.";
 "home_section_editorial_title" = "Guides";

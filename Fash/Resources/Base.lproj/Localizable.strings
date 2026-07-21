@@ -982,6 +982,10 @@
 "home_journey_title" = "Hành trình của bạn";
 "home_logout" = "Đăng xuất";
 "home_logout_all" = "Đăng xuất tất cả thiết bị";
+"home_quick_actions_title" = "Mua & bán nhanh";
+"home_quick_explore" = "Khám phá";
+"home_quick_orders" = "Đơn hàng";
+"home_quick_sell" = "Đăng bán";
 "home_seasonal_near_you_title" = "Hợp mùa gần bạn";
 "home_section_editorial_subtitle" = "Bài viết ngắn: phối đồ, chọn đồ đã qua sử dụng và gợi ý an toàn khi mua bán.";
 "home_section_editorial_title" = "Cẩm nang";

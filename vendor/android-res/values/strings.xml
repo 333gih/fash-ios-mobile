@@ -2049,6 +2049,10 @@
     <string name="guest_login_reason_home_following">Theo dõi shop và xem tin mới trên Trang chủ — cần đăng nhập.</string>
     <string name="guest_login_reason_home_style">Gợi ý theo phong cách bạn chọn — đăng nhập để Fash hiểu gu của bạn.</string>
     <string name="guest_login_reason_home_similar">Gợi ý tương tự món đã lưu — đăng nhập để đồng bộ wishlist.</string>
+    <string name="home_quick_actions_title">Mua &amp; bán nhanh</string>
+    <string name="home_quick_explore">Khám phá</string>
+    <string name="home_quick_sell">Đăng bán</string>
+    <string name="home_quick_orders">Đơn hàng</string>
     <string name="home_guest_tab_for_you_title">Gợi ý riêng cho bạn</string>
     <string name="home_guest_tab_for_you_body">Đăng nhập để Fash gợi ý đồ phù hợp gu và hoạt động lướt/lưu của bạn.</string>
     <string name="home_guest_tab_following_title">Từ shop bạn theo dõi</string>

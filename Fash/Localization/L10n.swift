@@ -1148,6 +1148,10 @@ enum L10n {
     static var homeJourneyTitle: String { t("home_journey_title") }
     static var homeLogout: String { t("home_logout") }
     static var homeLogoutAll: String { t("home_logout_all") }
+    static var homeQuickActionsTitle: String { t("home_quick_actions_title") }
+    static var homeQuickExplore: String { t("home_quick_explore") }
+    static var homeQuickOrders: String { t("home_quick_orders") }
+    static var homeQuickSell: String { t("home_quick_sell") }
     static var homeSeasonalNearYouTitle: String { t("home_seasonal_near_you_title") }
     static var homeSectionEditorialSubtitle: String { t("home_section_editorial_subtitle") }
     static var homeSectionEditorialTitle: String { t("home_section_editorial_title") }
