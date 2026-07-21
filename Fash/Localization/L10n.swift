@@ -68,6 +68,32 @@ enum L10n {
     static var appPromoCdClose: String { t("app_promo_cd_close") }
     static var appPromoCdCollapse: String { t("app_promo_cd_collapse") }
     static var appPromoCdExpand: String { t("app_promo_cd_expand") }
+    static var appPromoDefaultEsgBadge: String { t("app_promo_default_esg_badge") }
+    static var appPromoDefaultM01Body: String { t("app_promo_default_m01_body") }
+    static var appPromoDefaultM01Title: String { t("app_promo_default_m01_title") }
+    static var appPromoDefaultM02Body: String { t("app_promo_default_m02_body") }
+    static var appPromoDefaultM02Title: String { t("app_promo_default_m02_title") }
+    static var appPromoDefaultM03Body: String { t("app_promo_default_m03_body") }
+    static var appPromoDefaultM03Title: String { t("app_promo_default_m03_title") }
+    static var appPromoDefaultM04Body: String { t("app_promo_default_m04_body") }
+    static var appPromoDefaultM04Title: String { t("app_promo_default_m04_title") }
+    static var appPromoDefaultM05Body: String { t("app_promo_default_m05_body") }
+    static var appPromoDefaultM05Title: String { t("app_promo_default_m05_title") }
+    static var appPromoDefaultM06Body: String { t("app_promo_default_m06_body") }
+    static var appPromoDefaultM06Title: String { t("app_promo_default_m06_title") }
+    static var appPromoDefaultM07Body: String { t("app_promo_default_m07_body") }
+    static var appPromoDefaultM07Title: String { t("app_promo_default_m07_title") }
+    static var appPromoDefaultM08Body: String { t("app_promo_default_m08_body") }
+    static var appPromoDefaultM08Title: String { t("app_promo_default_m08_title") }
+    static var appPromoDefaultM09Body: String { t("app_promo_default_m09_body") }
+    static var appPromoDefaultM09Title: String { t("app_promo_default_m09_title") }
+    static var appPromoDefaultM10Body: String { t("app_promo_default_m10_body") }
+    static var appPromoDefaultM10Title: String { t("app_promo_default_m10_title") }
+    static var appPromoDefaultM11Body: String { t("app_promo_default_m11_body") }
+    static var appPromoDefaultM11Title: String { t("app_promo_default_m11_title") }
+    static var appPromoDefaultM12Body: String { t("app_promo_default_m12_body") }
+    static var appPromoDefaultM12Title: String { t("app_promo_default_m12_title") }
+    static var appPromoDefaultPrimary: String { t("app_promo_default_primary") }
     static func appPromoImagePage(_ a1: CVarArg, _ a2: CVarArg) -> String {
         String(format: t("app_promo_image_page"), a1, a2)
     }
@@ -80,32 +106,6 @@ enum L10n {
     static var appPromoKycTitle: String { t("app_promo_kyc_title") }
     static var appPromoRatingMessage: String { t("app_promo_rating_message") }
     static var appPromoRatingPrimary: String { t("app_promo_rating_primary") }
-    static var appPromoDefaultPrimary: String { t("app_promo_default_primary") }
-    static var appPromoDefaultEsgBadge: String { t("app_promo_default_esg_badge") }
-    static var appPromoDefaultM01Title: String { t("app_promo_default_m01_title") }
-    static var appPromoDefaultM01Body: String { t("app_promo_default_m01_body") }
-    static var appPromoDefaultM02Title: String { t("app_promo_default_m02_title") }
-    static var appPromoDefaultM02Body: String { t("app_promo_default_m02_body") }
-    static var appPromoDefaultM03Title: String { t("app_promo_default_m03_title") }
-    static var appPromoDefaultM03Body: String { t("app_promo_default_m03_body") }
-    static var appPromoDefaultM04Title: String { t("app_promo_default_m04_title") }
-    static var appPromoDefaultM04Body: String { t("app_promo_default_m04_body") }
-    static var appPromoDefaultM05Title: String { t("app_promo_default_m05_title") }
-    static var appPromoDefaultM05Body: String { t("app_promo_default_m05_body") }
-    static var appPromoDefaultM06Title: String { t("app_promo_default_m06_title") }
-    static var appPromoDefaultM06Body: String { t("app_promo_default_m06_body") }
-    static var appPromoDefaultM07Title: String { t("app_promo_default_m07_title") }
-    static var appPromoDefaultM07Body: String { t("app_promo_default_m07_body") }
-    static var appPromoDefaultM08Title: String { t("app_promo_default_m08_title") }
-    static var appPromoDefaultM08Body: String { t("app_promo_default_m08_body") }
-    static var appPromoDefaultM09Title: String { t("app_promo_default_m09_title") }
-    static var appPromoDefaultM09Body: String { t("app_promo_default_m09_body") }
-    static var appPromoDefaultM10Title: String { t("app_promo_default_m10_title") }
-    static var appPromoDefaultM10Body: String { t("app_promo_default_m10_body") }
-    static var appPromoDefaultM11Title: String { t("app_promo_default_m11_title") }
-    static var appPromoDefaultM11Body: String { t("app_promo_default_m11_body") }
-    static var appPromoDefaultM12Title: String { t("app_promo_default_m12_title") }
-    static var appPromoDefaultM12Body: String { t("app_promo_default_m12_body") }
     static var appPromoRatingTitle: String { t("app_promo_rating_title") }
     static var appPromoSecondaryLater: String { t("app_promo_secondary_later") }
     static var appPromoSellerPackageBadge: String { t("app_promo_seller_package_badge") }
@@ -772,6 +772,7 @@ enum L10n {
     static var editProfileUploadError: String { t("edit_profile_upload_error") }
     static var editProfileUsernameLabel: String { t("edit_profile_username_label") }
     static var editProfileUsernamePlaceholder: String { t("edit_profile_username_placeholder") }
+    static var errorAuthMissingToken: String { t("error_auth_missing_token") }
     static var errorGeneric: String { t("error_generic") }
     static var errorHttpBadRequest: String { t("error_http_bad_request") }
     static var errorHttpConflict: String { t("error_http_conflict") }
@@ -782,6 +783,7 @@ enum L10n {
         String(format: t("error_http_status"), a1)
     }
     static var errorHttpUnauthorized: String { t("error_http_unauthorized") }
+    static var errorInvalidApplicationId: String { t("error_invalid_application_id") }
     static var errorNetworkUnavailable: String { t("error_network_unavailable") }
     static var errorRateLimitGeneric: String { t("error_rate_limit_generic") }
     static var errorRateLimitOtp: String { t("error_rate_limit_otp") }
@@ -791,6 +793,8 @@ enum L10n {
     static func errorRateLimitWait(_ a1: CVarArg) -> String {
         String(format: t("error_rate_limit_wait"), a1)
     }
+    static var errorSocialAuthDisabled: String { t("error_social_auth_disabled") }
+    static var errorSocialAuthFailed: String { t("error_social_auth_failed") }
     static var exploreAll: String { t("explore_all") }
     static var exploreCategoryAll: String { t("explore_category_all") }
     static var exploreCategorySectionTitle: String { t("explore_category_section_title") }
@@ -1041,6 +1045,8 @@ enum L10n {
     static var genderTargetUnisex: String { t("gender_target_unisex") }
     static var genderTargetWomen: String { t("gender_target_women") }
     static var genderWomen: String { t("gender_women") }
+    static var guestLocalReminderBody: String { t("guest_local_reminder_body") }
+    static var guestLocalReminderTitle: String { t("guest_local_reminder_title") }
     static var guestLoginReasonBrowseLocation: String { t("guest_login_reason_browse_location") }
     static var guestLoginReasonBuy: String { t("guest_login_reason_buy") }
     static var guestLoginReasonChat: String { t("guest_login_reason_chat") }
@@ -1061,11 +1067,9 @@ enum L10n {
     static var guestLoginSheetContinueBrowsing: String { t("guest_login_sheet_continue_browsing") }
     static var guestLoginSheetPrivacyNote: String { t("guest_login_sheet_privacy_note") }
     static var guestLoginSheetSignIn: String { t("guest_login_sheet_sign_in") }
-    static var guestLocalReminderTitle: String { t("guest_local_reminder_title") }
-    static var guestLocalReminderBody: String { t("guest_local_reminder_body") }
-    static var guestSignupNudgeTitle: String { t("guest_signup_nudge_title") }
-    static var guestSignupNudgeBody: String { t("guest_signup_nudge_body") }
     static var guestLoginSheetTitle: String { t("guest_login_sheet_title") }
+    static var guestSignupNudgeBody: String { t("guest_signup_nudge_body") }
+    static var guestSignupNudgeTitle: String { t("guest_signup_nudge_title") }
     static var guestTabChatBody: String { t("guest_tab_chat_body") }
     static var guestTabChatTitle: String { t("guest_tab_chat_title") }
     static var guestTabOrdersBody: String { t("guest_tab_orders_body") }
@@ -1144,10 +1148,6 @@ enum L10n {
     static var homeJourneyTitle: String { t("home_journey_title") }
     static var homeLogout: String { t("home_logout") }
     static var homeLogoutAll: String { t("home_logout_all") }
-    static var homeQuickActionsTitle: String { t("home_quick_actions_title") }
-    static var homeQuickExplore: String { t("home_quick_explore") }
-    static var homeQuickOrders: String { t("home_quick_orders") }
-    static var homeQuickSell: String { t("home_quick_sell") }
     static var homeSeasonalNearYouTitle: String { t("home_seasonal_near_you_title") }
     static var homeSectionEditorialSubtitle: String { t("home_section_editorial_subtitle") }
     static var homeSectionEditorialTitle: String { t("home_section_editorial_title") }
@@ -1251,6 +1251,9 @@ enum L10n {
     static var loginFacebookSuccess: String { t("login_facebook_success") }
     static var loginGoogle: String { t("login_google") }
     static var loginGoogleDeveloperError: String { t("login_google_developer_error") }
+    static func loginGoogleDeveloperErrorCert(_ a1: CVarArg, _ a2: CVarArg) -> String {
+        String(format: t("login_google_developer_error_cert"), a1, a2)
+    }
     static var loginGoogleError: String { t("login_google_error") }
     static func loginGoogleErrorCode(_ a1: CVarArg, _ a2: CVarArg) -> String {
         String(format: t("login_google_error_code"), a1, a2)
@@ -1262,6 +1265,7 @@ enum L10n {
     static func loginGooglePlayServicesErrorDetail(_ a1: CVarArg) -> String {
         String(format: t("login_google_play_services_error_detail"), a1)
     }
+    static var loginGooglePlaySigningHint: String { t("login_google_play_signing_hint") }
     static var loginGoogleSuccess: String { t("login_google_success") }
     static var loginHeroCd: String { t("login_hero_cd") }
     static func loginHeroPagerCd(_ a1: CVarArg, _ a2: CVarArg) -> String {
@@ -1326,6 +1330,8 @@ enum L10n {
     static var notificationChannelChatName: String { t("notification_channel_chat_name") }
     static var notificationChannelGeneralDesc: String { t("notification_channel_general_desc") }
     static var notificationChannelGeneralName: String { t("notification_channel_general_name") }
+    static var notificationChannelGuestReengagementDesc: String { t("notification_channel_guest_reengagement_desc") }
+    static var notificationChannelGuestReengagementName: String { t("notification_channel_guest_reengagement_name") }
     static var notificationChannelOrdersDesc: String { t("notification_channel_orders_desc") }
     static var notificationChannelOrdersName: String { t("notification_channel_orders_name") }
     static var notificationChannelRecommendationDesc: String { t("notification_channel_recommendation_desc") }
@@ -1366,6 +1372,8 @@ enum L10n {
     static var notificationDetailActionsHeading: String { t("notification_detail_actions_heading") }
     static var notificationDetailMoreLabel: String { t("notification_detail_more_label") }
     static var notificationDetailNoTitle: String { t("notification_detail_no_title") }
+    static var notificationDetailNotFoundSubtitle: String { t("notification_detail_not_found_subtitle") }
+    static var notificationDetailNotFoundTitle: String { t("notification_detail_not_found_title") }
     static var notificationDetailPayloadTitle: String { t("notification_detail_payload_title") }
     static var notificationDetailPayloadType: String { t("notification_detail_payload_type") }
     static func notificationDetailPromoGalleryCd(_ a1: CVarArg, _ a2: CVarArg) -> String {
@@ -1451,13 +1459,13 @@ enum L10n {
     static var notificationPtMarketplaceRecommendationContinueBrowsing: String { t("notification_pt_marketplace_recommendation_continue_browsing") }
     static var notificationPtMarketplaceRecommendationDailyDigest: String { t("notification_pt_marketplace_recommendation_daily_digest") }
     static var notificationPtMarketplaceRecommendationHuntToday: String { t("notification_pt_marketplace_recommendation_hunt_today") }
-    static var notificationPtMarketplaceRecommendationInactiveNudge: String { t("notification_pt_marketplace_recommendation_inactive_nudge") }
     static var notificationPtMarketplaceRecommendationInactiveLadder: String { t("notification_pt_marketplace_recommendation_inactive_ladder") }
-    static var notificationPtMarketplaceRecommendationSustainableImpact: String { t("notification_pt_marketplace_recommendation_sustainable_impact") }
+    static var notificationPtMarketplaceRecommendationInactiveNudge: String { t("notification_pt_marketplace_recommendation_inactive_nudge") }
     static var notificationPtMarketplaceRecommendationSimilarSaved: String { t("notification_pt_marketplace_recommendation_similar_saved") }
     static var notificationPtMarketplaceRecommendationSocialStyleMatch: String { t("notification_pt_marketplace_recommendation_social_style_match") }
     static var notificationPtMarketplaceRecommendationStyleDrought: String { t("notification_pt_marketplace_recommendation_style_drought") }
     static var notificationPtMarketplaceRecommendationStyleFresh: String { t("notification_pt_marketplace_recommendation_style_fresh") }
+    static var notificationPtMarketplaceRecommendationSustainableImpact: String { t("notification_pt_marketplace_recommendation_sustainable_impact") }
     static var notificationPtMarketplaceRecommendationTasteNeighbor: String { t("notification_pt_marketplace_recommendation_taste_neighbor") }
     static var notificationPtMarketplaceReferralInviteRewarded: String { t("notification_pt_marketplace_referral_invite_rewarded") }
     static var notificationPtMarketplaceReviewReceived: String { t("notification_pt_marketplace_review_received") }

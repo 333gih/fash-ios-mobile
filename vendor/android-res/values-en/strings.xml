@@ -8,6 +8,12 @@
     <string name="notification_channel_recommendation_desc">Personalized product and content suggestions</string>
     <string name="notification_channel_general_name">Fash</string>
     <string name="notification_channel_general_desc">General notifications</string>
+    <string name="notification_channel_guest_reengagement_name">Browse reminders</string>
+    <string name="notification_channel_guest_reengagement_desc">A gentle nudge when you have not opened Fash — on-device only, not FCM</string>
+    <string name="guest_local_reminder_title">Fash is waiting for you</string>
+    <string name="guest_local_reminder_body">Discover more pre-loved fashion — sign up for daily picks made for you.</string>
+    <string name="guest_signup_nudge_title">Sign up for daily picks</string>
+    <string name="guest_signup_nudge_body">Create a free account — Fash learns your taste and sends updates from shops you follow.</string>
     <string name="buy_now">Buy now</string>
     <string name="add_to_cart">Add to cart</string>
     <string name="search_label">Search</string>
@@ -135,6 +141,10 @@
     <string name="error_rate_limit_wait">Too many requests. Please try again in %1$d seconds.</string>
     <string name="error_rate_limit_otp">Too many OTP requests. Please wait before requesting another code.</string>
     <string name="error_rate_limit_otp_wait">Too many OTP requests. Try again in %1$d seconds.</string>
+    <string name="error_auth_missing_token">The server requires sign-in first (missing token). Check AUTH_SERVICE_BASE_URL points to api-auth, not api-core.</string>
+    <string name="error_social_auth_disabled">Google sign-in is not enabled on the server (GOOGLE_OAUTH_CLIENT_IDS).</string>
+    <string name="error_social_auth_failed">Google could not verify your account. Check GOOGLE_WEB_CLIENT_ID matches auth-service and Play App signing SHA‑1 in Firebase.</string>
+    <string name="error_invalid_application_id">Invalid login application (AUTH_APPLICATION_ID).</string>
     <string name="login_facebook_success">Signed in with Facebook.</string>
     <string name="login_facebook_error">Facebook sign-in failed.</string>
     <string name="login_facebook_not_configured">Add FACEBOOK_APP_ID and Facebook Client Token to your env/build.</string>
@@ -145,6 +155,8 @@
     <string name="login_google_play_services_error">Google Play Services is not available. Update or install Google Play Services and try again.</string>
     <string name="login_google_play_services_error_detail">Google Play Services is not available: %1$s</string>
     <string name="login_google_developer_error">Google Sign-In is misconfigured: verify GOOGLE_WEB_CLIENT_ID (Web OAuth client) and an Android OAuth client (correct package name and debug/release SHA‑1) in Google Cloud Console.</string>
+    <string name="login_google_play_signing_hint">If installed from Google Play: add the App signing key SHA‑1 (Play Console → Setup → App signing) to Firebase → Project settings → Android app.</string>
+    <string name="login_google_developer_error_cert">(Package: %1$s · SHA‑1: %2$s — add this SHA‑1 in Firebase if missing)</string>
     <string name="login_google_not_configured">Add GOOGLE_WEB_CLIENT_ID (OAuth Web client) to env, plus an Android OAuth client with your package name and SHA-1 in Google Cloud.</string>
     <string name="login_social_signing_in">Signing in…</string>
     <string name="login_legal_prefix">By continuing, you agree to\u00A0</string>
@@ -347,10 +359,6 @@
     <string name="home_follow_empty_cta_featured">Browse featured shops</string>
     <string name="home_brand_marketplace">FASH MARKETPLACE</string>
     <string name="home_brand_footer_sub">SHAPING VIETNAMESE STYLE</string>
-    <string name="home_quick_actions_title">Buy &amp; sell faster</string>
-    <string name="home_quick_explore">Explore</string>
-    <string name="home_quick_sell">Sell</string>
-    <string name="home_quick_orders">Orders</string>
     <string name="home_feed_title">For you</string>
     <string name="home_feed_subtitle">New listings from shops you follow</string>
     <string name="home_feed_empty_title">Nothing here yet</string>
@@ -440,6 +448,8 @@
     <string name="notification_inbox_unavailable_subtitle">The inbox isn\'t configured on the server or you can\'t access it right now. Try again later.</string>
     <string name="notification_detail_title">Notification</string>
     <string name="notification_detail_no_title">(No title)</string>
+    <string name="notification_detail_not_found_title">Couldn\'t open notification</string>
+    <string name="notification_detail_not_found_subtitle">It may have been removed or hasn\'t synced yet. Try again in a moment.</string>
     <string name="notification_detail_time">%1$s</string>
     <string name="notification_detail_read_at">Read: %1$s</string>
     <string name="notification_detail_payload_type">Type</string>

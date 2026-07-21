@@ -8,6 +8,12 @@
     <string name="notification_channel_recommendation_desc">Gợi ý sản phẩm và nội dung dành cho bạn</string>
     <string name="notification_channel_general_name">Fash</string>
     <string name="notification_channel_general_desc">Thông báo chung</string>
+    <string name="notification_channel_guest_reengagement_name">Nhắc khám phá</string>
+    <string name="notification_channel_guest_reengagement_desc">Nhắc nhẹ khi bạn chưa mở Fash — chỉ trên thiết bị, không dùng FCM</string>
+    <string name="guest_local_reminder_title">Fash đang chờ bạn</string>
+    <string name="guest_local_reminder_body">Khám phá thêm đồ second-hand — đăng ký để nhận gợi ý riêng mỗi ngày.</string>
+    <string name="guest_signup_nudge_title">Đăng ký để nhận gợi ý hàng ngày</string>
+    <string name="guest_signup_nudge_body">Tạo tài khoản miễn phí — Fash gợi ý đồ phù hợp gu bạn và gửi tin mới từ shop bạn theo dõi.</string>
     <string name="buy_now">Mua ngay</string>
     <string name="add_to_cart">Thêm vào giỏ</string>
     <string name="search_label">Tìm kiếm</string>
@@ -138,6 +144,10 @@
     <string name="error_rate_limit_wait">Quá nhiều yêu cầu. Vui lòng thử lại sau %1$d giây.</string>
     <string name="error_rate_limit_otp">Bạn đã gửi quá nhiều mã OTP. Vui lòng đợi rồi thử lại.</string>
     <string name="error_rate_limit_otp_wait">Bạn đã gửi quá nhiều mã OTP. Thử lại sau %1$d giây.</string>
+    <string name="error_auth_missing_token">Máy chủ yêu cầu đăng nhập trước (thiếu token). Kiểm tra AUTH_SERVICE_BASE_URL trỏ tới api-auth, không phải api-core.</string>
+    <string name="error_social_auth_disabled">Đăng nhập Google chưa được bật trên máy chủ (GOOGLE_OAUTH_CLIENT_IDS).</string>
+    <string name="error_social_auth_failed">Google không xác minh được tài khoản. Kiểm tra GOOGLE_WEB_CLIENT_ID khớp auth-service và SHA‑1 trên Firebase.</string>
+    <string name="error_invalid_application_id">Ứng dụng đăng nhập không hợp lệ (AUTH_APPLICATION_ID).</string>
     <string name="login_facebook_success">Đăng nhập Facebook thành công.</string>
     <string name="login_facebook_error">Đăng nhập Facebook không thành công.</string>
     <string name="login_facebook_not_configured">Thêm FACEBOOK_APP_ID và FACEBOOK Client Token vào env/bản dựng.</string>
@@ -148,6 +158,8 @@
     <string name="login_google_play_services_error">Google Play Services chưa sẵn sàng. Cập nhật hoặc cài đặt Google Play Services rồi thử lại.</string>
     <string name="login_google_play_services_error_detail">Google Play Services chưa sẵn sàng: %1$s</string>
     <string name="login_google_developer_error">Cấu hình đăng nhập Google chưa đúng: kiểm tra GOOGLE_WEB_CLIENT_ID (OAuth Web), Android OAuth client (đúng package và SHA‑1 debug/release) trên Google Cloud Console.</string>
+    <string name="login_google_play_signing_hint">Nếu cài từ Google Play: thêm SHA‑1 của App signing key (Play Console → Thiết lập → Chữ ký ứng dụng) vào Firebase → Cài đặt dự án → Ứng dụng Android.</string>
+    <string name="login_google_developer_error_cert">(Gói: %1$s · SHA‑1: %2$s — thêm SHA‑1 này vào Firebase nếu chưa có)</string>
     <string name="login_google_not_configured">Thêm GOOGLE_WEB_CLIENT_ID (OAuth Web client) vào env — và Android client + SHA-1 trên Google Cloud.</string>
     <string name="login_social_signing_in">Đang đăng nhập…</string>
 
@@ -378,10 +390,6 @@
     <string name="home_follow_empty_cta_featured">Khám phá shop nổi bật</string>
     <string name="home_brand_marketplace">FASH MARKETPLACE</string>
     <string name="home_brand_footer_sub">ĐỊNH HÌNH PHONG CÁCH VIỆT</string>
-    <string name="home_quick_actions_title">Mua &amp; bán nhanh</string>
-    <string name="home_quick_explore">Khám phá</string>
-    <string name="home_quick_sell">Đăng bán</string>
-    <string name="home_quick_orders">Đơn hàng</string>
     <string name="home_feed_title">Dành cho bạn</string>
     <string name="home_feed_subtitle">Tin mới từ shop người bạn theo dõi</string>
     <string name="home_feed_empty_title">Chưa có món nào ở đây</string>
@@ -474,6 +482,8 @@
     <string name="notification_inbox_unavailable_subtitle">Máy chủ chưa cấu hình inbox hoặc bạn không có quyền truy cập. Thử lại sau.</string>
     <string name="notification_detail_title">Chi tiết thông báo</string>
     <string name="notification_detail_no_title">(Không tiêu đề)</string>
+    <string name="notification_detail_not_found_title">Không mở được thông báo</string>
+    <string name="notification_detail_not_found_subtitle">Thông báo có thể đã bị xóa hoặc chưa đồng bộ. Thử lại sau.</string>
     <string name="notification_detail_time">%1$s</string>
     <string name="notification_detail_read_at">Đã đọc: %1$s</string>
     <string name="notification_detail_payload_type">Loại</string>
