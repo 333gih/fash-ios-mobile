@@ -34,6 +34,10 @@ extension AppRouter {
             }
         case "in_app_ux_survey":
             uxSurveyKey = payload.isEmpty ? "fash_ux_v1" : payload
+        case "in_app_sign_in":
+            if isGuestMode {
+                guestPromoSignInRequested = true
+            }
         case "external_url", "deeplink":
             guard !payload.isEmpty, let url = URL(string: payload) else { break }
             UIApplication.shared.open(url)

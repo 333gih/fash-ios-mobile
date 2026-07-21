@@ -897,6 +897,10 @@
 "guest_login_sheet_continue_browsing" = "Keep browsing";
 "guest_login_sheet_privacy_note" = "You can explore Home and Explore first. We only ask you to sign in when you want to chat, buy, sell, or save listings.";
 "guest_login_sheet_sign_in" = "Sign in / create account";
+"guest_local_reminder_title" = "Fash is waiting for you";
+"guest_local_reminder_body" = "Discover more pre-loved fashion — sign up for daily picks made for you.";
+"guest_signup_nudge_title" = "Sign up for daily picks";
+"guest_signup_nudge_body" = "Create a free account — Fash learns your taste and sends updates from shops you follow.";
 "guest_login_sheet_title" = "Sign in when you are ready";
 "guest_tab_chat_body" = "Chat with sellers after sign-in — clearer and safer for both sides.";
 "guest_tab_chat_title" = "Messages";

@@ -9,6 +9,7 @@ struct GuestMainShell: View {
     @Bindable var chatVM: ChatViewModel
     @Bindable var ordersVM: OrdersViewModel
     @State private var showLoginSheet = false
+    @State private var showSignupNudge = false
     @State private var guestLoginReason: String?
 
     var body: some View {
@@ -24,17 +25,51 @@ struct GuestMainShell: View {
             guestLoginReason = reason
             showLoginSheet = true
         })
+        .task {
+            deps.isGuestBrowseActive = true
+            GuestLocalReengagementScheduler.shared.onGuestShellEntered()
+            if GuestLocalReengagementScheduler.shared.shouldShowSignupNudge() {
+                try? await Task.sleep(for: .seconds(1.5))
+                showSignupNudge = true
+            }
+            try? await Task.sleep(for: .seconds(3))
+            await GuestLocalReengagementScheduler.shared.requestAuthorizationIfNeeded()
+        }
+        .onChange(of: router.guestPromoSignInRequested) { _, requested in
+            guard requested else { return }
+            router.guestPromoSignInRequested = false
+            guestLoginReason = L10n.guestLoginReasonHomeForYou
+            showLoginSheet = true
+        }
         .task { deps.consumePendingDeepLinks(router: router) }
         .sheet(isPresented: $showLoginSheet) {
             GuestLoginSheet(
                 reason: guestLoginReason,
                 onSignIn: {
                     showLoginSheet = false
+                    GuestLocalReengagementScheduler.shared.clearGuestState()
                     deps.isGuestBrowseActive = false
                     router.isGuestMode = false
                     router.loginStep = .email
                 },
                 onContinueBrowsing: { showLoginSheet = false }
+            )
+        }
+        .sheet(isPresented: $showSignupNudge) {
+            let slide = homeVM.guestReengagementSlides.first
+            GuestSignupNudgeSheet(
+                title: slide?.title,
+                bodyText: slide?.subtitle,
+                onDismiss: {
+                    showSignupNudge = false
+                    GuestLocalReengagementScheduler.shared.markSignupNudgeShown()
+                },
+                onSignIn: {
+                    showSignupNudge = false
+                    GuestLocalReengagementScheduler.shared.markSignupNudgeShown()
+                    guestLoginReason = L10n.guestLoginReasonHomeForYou
+                    showLoginSheet = true
+                }
             )
         }
     }

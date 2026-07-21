@@ -897,6 +897,10 @@
 "guest_login_sheet_continue_browsing" = "Tiếp tục xem";
 "guest_login_sheet_privacy_note" = "Bạn có thể khám phá Home và Khám phá trước. Chúng tôi chỉ hỏi đăng nhập khi bạn muốn chat, đặt hàng, đăng bán hoặc lưu tin.";
 "guest_login_sheet_sign_in" = "Đăng nhập / tạo tài khoản";
+"guest_local_reminder_title" = "Fash đang chờ bạn";
+"guest_local_reminder_body" = "Khám phá thêm đồ second-hand — đăng ký để nhận gợi ý riêng mỗi ngày.";
+"guest_signup_nudge_title" = "Đăng ký để nhận gợi ý hàng ngày";
+"guest_signup_nudge_body" = "Tạo tài khoản miễn phí — Fash gợi ý đồ phù hợp gu bạn và gửi tin mới từ shop bạn theo dõi.";
 "guest_login_sheet_title" = "Đăng nhập khi bạn sẵn sàng";
 "guest_tab_chat_body" = "Chat trực tiếp với người bán sau khi đăng nhập — giúp giao dịch minh bạch và an toàn hơn.";
 "guest_tab_chat_title" = "Tin nhắn";

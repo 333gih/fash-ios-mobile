@@ -83,6 +83,7 @@ final class AppRouter {
     var isLaunchWarmupInProgress = false
     var isLoggingOut = false
     var isGuestMode = false
+    var guestPromoSignInRequested = false
     var loginStep: LoginStep?
     var setupGateFetchFailed = false
     var onboardingStep: OnboardingStep?

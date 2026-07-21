@@ -117,6 +117,7 @@ struct RootView: View {
         }
         .onChange(of: deps.authManager.isAuthenticated) { _, authed in
             if authed {
+                GuestLocalReengagementScheduler.shared.clearGuestState()
                 router.isGuestMode = false
                 deps.isGuestBrowseActive = false
             }
@@ -127,13 +128,22 @@ struct RootView: View {
                 AppSessionTracker.shared.onSceneBackground()
                 deps.realtimeManager.sendPresenceBackground()
                 deps.realtimeManager.disconnect(clearSubscriptions: false)
+                if router.isGuestMode {
+                    Task { await GuestLocalReengagementScheduler.shared.scheduleAfterBackground() }
+                }
             case .background:
                 AppSessionTracker.shared.onSceneBackground()
                 deps.realtimeManager.sendPresenceBackground()
                 // Clear Redis presence so backend sends FCM while app is suspended (Android drops WS in background).
                 deps.realtimeManager.disconnect(clearSubscriptions: false)
+                if router.isGuestMode {
+                    Task { await GuestLocalReengagementScheduler.shared.scheduleAfterBackground() }
+                }
             case .active:
                 AppSessionTracker.shared.onSceneBecameActive(deps: deps)
+                if router.isGuestMode {
+                    GuestLocalReengagementScheduler.shared.cancelPending()
+                }
                 guard deps.authSessionStore.read() != nil,
                       !router.isGuestMode,
                       router.loginStep == nil,

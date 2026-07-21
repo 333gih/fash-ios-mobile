@@ -1061,6 +1061,10 @@ enum L10n {
     static var guestLoginSheetContinueBrowsing: String { t("guest_login_sheet_continue_browsing") }
     static var guestLoginSheetPrivacyNote: String { t("guest_login_sheet_privacy_note") }
     static var guestLoginSheetSignIn: String { t("guest_login_sheet_sign_in") }
+    static var guestLocalReminderTitle: String { t("guest_local_reminder_title") }
+    static var guestLocalReminderBody: String { t("guest_local_reminder_body") }
+    static var guestSignupNudgeTitle: String { t("guest_signup_nudge_title") }
+    static var guestSignupNudgeBody: String { t("guest_signup_nudge_body") }
     static var guestLoginSheetTitle: String { t("guest_login_sheet_title") }
     static var guestTabChatBody: String { t("guest_tab_chat_body") }
     static var guestTabChatTitle: String { t("guest_tab_chat_title") }

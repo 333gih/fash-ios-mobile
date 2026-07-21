@@ -24,6 +24,7 @@ final class HomeViewModel {
     var featuredSellers: [FeaturedSellerItem] = []
     var featuredSellersLoading = false
     var promoSlides: [AppAdvertisingSlideItem] = []
+    var guestReengagementSlides: [AppAdvertisingSlideItem] = []
     var homeUxPersonalization = HomeUxPersonalization()
     var tabsLoading: Set<String> = []
     var tabsLoadError: Set<String> = []
@@ -252,7 +253,6 @@ final class HomeViewModel {
         launchProgress: LaunchWaitingProgress? = nil
     ) async {
         async let sellersTask: Void = loadFeaturedSellers(deps: deps, isGuestMode: isGuestMode)
-        async let slidesResult = deps.advertisingRepository.getSlides(publicBrowse: isGuestMode)
 
         if !isGuestMode {
             async let ux: Void = {
@@ -277,9 +277,7 @@ final class HomeViewModel {
         }
         launchProgress?.completeHomeStep()
 
-        if case .success(let slides) = await slidesResult {
-            promoSlides = slides.items
-        }
+        await loadPromoSlides(deps: deps, isGuestMode: isGuestMode)
         launchProgress?.completeHomeStep()
 
         prefetchAdjacentTabs(around: selectedFeedTab, deps: deps, isGuestMode: isGuestMode)
@@ -349,19 +347,47 @@ final class HomeViewModel {
 
         Task { @MainActor in
             async let sellers: Void = loadFeaturedSellers(deps: deps, isGuestMode: isGuestMode)
-            async let slidesResult = deps.advertisingRepository.getSlides(publicBrowse: isGuestMode)
             if !isGuestMode {
                 async let stats: Void = loadBuyerHomeStats(deps: deps, isGuestMode: isGuestMode)
                 async let sizing: Void = refreshSizingBannerState(deps: deps, isGuestMode: isGuestMode)
                 _ = await (stats, sizing)
             }
             _ = await sellers
-            if case .success(let slides) = await slidesResult {
-                promoSlides = slides.items
-            }
+            await loadPromoSlides(deps: deps, isGuestMode: isGuestMode)
             try? await Task.sleep(for: .milliseconds(220))
             guard selectedFeedTab == tabToReload else { return }
             prefetchAdjacentTabs(around: selectedFeedTab, deps: deps, isGuestMode: isGuestMode)
+        }
+    }
+
+    private func loadPromoSlides(deps: AppDependencies, isGuestMode: Bool) async {
+        if isGuestMode {
+            async let mainR = deps.advertisingRepository.getSlides(
+                placement: AdvertisingPlacements.promoSliderMain,
+                publicBrowse: true
+            )
+            async let bannerR = deps.advertisingRepository.getSlides(
+                placement: AdvertisingPlacements.guestHomeBanner,
+                publicBrowse: true
+            )
+            async let reengR = deps.advertisingRepository.getSlides(
+                placement: AdvertisingPlacements.guestReengagement,
+                publicBrowse: true
+            )
+            let main = (try? await mainR.get())?.items ?? []
+            let banner = (try? await bannerR.get())?.items ?? []
+            let reeng = (try? await reengR.get())?.items ?? []
+            promoSlides = banner + main
+            guestReengagementSlides = reeng
+            if let first = reeng.first {
+                GuestLocalReengagementScheduler.shared.updateReminderCopy(
+                    title: first.title,
+                    body: first.subtitle
+                )
+            }
+        } else if case .success(let slides) = await deps.advertisingRepository.getSlides(publicBrowse: false) {
+            promoSlides = slides.items
+            guestReengagementSlides = []
         }
     }
 
