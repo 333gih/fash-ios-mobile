@@ -16,7 +16,9 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     }
 
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-        PushNotificationCoordinator.applyAPNSToken(deviceToken)
+        Task { @MainActor in
+            PushNotificationCoordinator.applyAPNSToken(deviceToken)
+        }
     }
 
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
