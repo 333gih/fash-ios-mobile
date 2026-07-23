@@ -111,23 +111,26 @@ final class AuthRepository {
         platform: String = "ios",
         clientLocale: String? = nil
     ) async -> Result<Void, Error> {
-        do {
-            var body: [String: String] = [
-                "fcm_token": token.trimmingCharacters(in: .whitespaces),
-                "device_platform": platform,
-            ]
-            if let loc = clientLocale?.trimmingCharacters(in: .whitespaces), !loc.isEmpty {
-                body["client_locale"] = loc
-            }
-            _ = try await HttpJson.post(
-                url: AppEnvironment.authServicePath(AppEnvironment.authFcmRegisterPath),
-                body: body,
-                bearer: accessToken
-            )
-            return .success(())
-        } catch {
-            return .failure(error)
+        var body: [String: String] = [
+            "fcm_token": token.trimmingCharacters(in: .whitespaces),
+            "device_platform": platform,
+        ]
+        if let loc = clientLocale?.trimmingCharacters(in: .whitespaces), !loc.isEmpty {
+            body["client_locale"] = loc
         }
+        var lastError: Error?
+        for url in AppEnvironment.authServiceCandidateURLs(AppEnvironment.authFcmRegisterPath) {
+            do {
+                _ = try await HttpJson.post(url: url, body: body, bearer: accessToken)
+                return .success(())
+            } catch {
+                lastError = error
+                if (error as? CoreServiceHttpException)?.statusCode == 404 { continue }
+                return .failure(error)
+            }
+        }
+        if let lastError { return .failure(lastError) }
+        return .failure(NSError(domain: "FcmRegister", code: -1))
     }
 
     private func parseLoginResponse(_ data: Data) throws -> AuthSession {

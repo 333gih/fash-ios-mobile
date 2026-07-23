@@ -56,6 +56,15 @@ enum AppEnvironment {
         return "\(base)/\(AppLocale.coreApiPathSegment())/\(rel)"
     }
 
+    /// Auth URLs to try when locale-prefixed routing may be absent on the gateway (Android [authServiceCandidateUrls] parity).
+    static func authServiceCandidateURLs(_ relative: String) -> [String] {
+        let path = relative.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        let withLocale = authServicePath(path)
+        guard authApiUseLanguagePrefix else { return [withLocale] }
+        let withoutLocale = "\(authServiceBaseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/")))/\(path)"
+        return withoutLocale == withLocale ? [withLocale] : [withLocale, withoutLocale]
+    }
+
     static func apiPath(_ relative: String) -> String {
         let base = apiBaseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         let rel = relative.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
