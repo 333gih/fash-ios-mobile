@@ -516,6 +516,8 @@
     <string name="notification_pt_marketplace_recommendation_continue_browsing">Tiếp tục xem dở</string>
     <string name="notification_pt_marketplace_recommendation_inactive_nudge">Quay lại Fash</string>
     <string name="notification_pt_marketplace_recommendation_inactive_ladder">Nhắc quay lại săn đồ</string>
+    <string name="notification_pt_marketplace_recommendation_daily_comeback">Fash nhớ bạn</string>
+    <string name="notification_pt_marketplace_recommendation_ai_re_engagement">Gợi ý dành riêng cho bạn</string>
     <string name="notification_pt_marketplace_recommendation_sustainable_impact">Thời trang bền vững</string>
     <string name="notification_pt_marketplace_recommendation_community_quiet">Khám phá khi cộng đồng yên ắng</string>
     <string name="notification_pt_marketplace_recommendation_style_drought">Gợi ý thay thế phong cách</string>

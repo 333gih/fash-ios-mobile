@@ -1459,13 +1459,13 @@ enum L10n {
     static var notificationPtMarketplaceOrderFundsReleased: String { t("notification_pt_marketplace_order_funds_released") }
     static var notificationPtMarketplaceOrderMeetupAborted: String { t("notification_pt_marketplace_order_meetup_aborted") }
     static var notificationPtMarketplaceOrderShipped: String { t("notification_pt_marketplace_order_shipped") }
+    static var notificationPtMarketplaceRecommendationAiReEngagement: String { t("notification_pt_marketplace_recommendation_ai_re_engagement") }
     static var notificationPtMarketplaceRecommendationCommunityQuiet: String { t("notification_pt_marketplace_recommendation_community_quiet") }
     static var notificationPtMarketplaceRecommendationContinueBrowsing: String { t("notification_pt_marketplace_recommendation_continue_browsing") }
+    static var notificationPtMarketplaceRecommendationDailyComeback: String { t("notification_pt_marketplace_recommendation_daily_comeback") }
     static var notificationPtMarketplaceRecommendationDailyDigest: String { t("notification_pt_marketplace_recommendation_daily_digest") }
     static var notificationPtMarketplaceRecommendationHuntToday: String { t("notification_pt_marketplace_recommendation_hunt_today") }
     static var notificationPtMarketplaceRecommendationInactiveLadder: String { t("notification_pt_marketplace_recommendation_inactive_ladder") }
-    static var notificationPtMarketplaceRecommendationDailyComeback: String { t("notification_pt_marketplace_recommendation_daily_comeback") }
-    static var notificationPtMarketplaceRecommendationAiReEngagement: String { t("notification_pt_marketplace_recommendation_ai_re_engagement") }
     static var notificationPtMarketplaceRecommendationInactiveNudge: String { t("notification_pt_marketplace_recommendation_inactive_nudge") }
     static var notificationPtMarketplaceRecommendationSimilarSaved: String { t("notification_pt_marketplace_recommendation_similar_saved") }
     static var notificationPtMarketplaceRecommendationSocialStyleMatch: String { t("notification_pt_marketplace_recommendation_social_style_match") }

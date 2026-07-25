@@ -482,6 +482,8 @@
     <string name="notification_pt_marketplace_recommendation_continue_browsing">Continue browsing</string>
     <string name="notification_pt_marketplace_recommendation_inactive_nudge">Come back to Fash</string>
     <string name="notification_pt_marketplace_recommendation_inactive_ladder">We miss your hunt</string>
+    <string name="notification_pt_marketplace_recommendation_daily_comeback">Fash misses you</string>
+    <string name="notification_pt_marketplace_recommendation_ai_re_engagement">Picked just for you</string>
     <string name="notification_pt_marketplace_recommendation_sustainable_impact">Sustainable fashion</string>
     <string name="notification_pt_marketplace_recommendation_community_quiet">Explore while it\'s quiet</string>
     <string name="notification_pt_marketplace_recommendation_style_drought">Alternative style picks</string>

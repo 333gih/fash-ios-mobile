@@ -1263,13 +1263,13 @@
 "notification_pt_marketplace_order_funds_released" = "Payout released to seller";
 "notification_pt_marketplace_order_meetup_aborted" = "Meetup order cancelled";
 "notification_pt_marketplace_order_shipped" = "Order shipped";
+"notification_pt_marketplace_recommendation_ai_re_engagement" = "Picked just for you";
 "notification_pt_marketplace_recommendation_community_quiet" = "Explore while it's quiet";
 "notification_pt_marketplace_recommendation_continue_browsing" = "Continue browsing";
+"notification_pt_marketplace_recommendation_daily_comeback" = "Fash misses you";
 "notification_pt_marketplace_recommendation_daily_digest" = "Today's picks";
 "notification_pt_marketplace_recommendation_hunt_today" = "Hunt today";
 "notification_pt_marketplace_recommendation_inactive_ladder" = "We miss your hunt";
-"notification_pt_marketplace_recommendation_daily_comeback" = "Fash misses you";
-"notification_pt_marketplace_recommendation_ai_re_engagement" = "Picked just for you";
 "notification_pt_marketplace_recommendation_inactive_nudge" = "Come back to Fash";
 "notification_pt_marketplace_recommendation_similar_saved" = "Similar to saved item";
 "notification_pt_marketplace_recommendation_social_style_match" = "New from shop you follow";

@@ -1263,13 +1263,13 @@
 "notification_pt_marketplace_order_funds_released" = "Đã thanh toán cho người bán";
 "notification_pt_marketplace_order_meetup_aborted" = "Đơn gặp mặt đã hủy";
 "notification_pt_marketplace_order_shipped" = "Đơn đã gửi hàng";
+"notification_pt_marketplace_recommendation_ai_re_engagement" = "Gợi ý dành riêng cho bạn";
 "notification_pt_marketplace_recommendation_community_quiet" = "Khám phá khi cộng đồng yên ắng";
 "notification_pt_marketplace_recommendation_continue_browsing" = "Tiếp tục xem dở";
+"notification_pt_marketplace_recommendation_daily_comeback" = "Fash nhớ bạn";
 "notification_pt_marketplace_recommendation_daily_digest" = "Gợi ý hôm nay";
 "notification_pt_marketplace_recommendation_hunt_today" = "Săn hôm nay";
 "notification_pt_marketplace_recommendation_inactive_ladder" = "Nhắc quay lại săn đồ";
-"notification_pt_marketplace_recommendation_daily_comeback" = "Fash nhớ bạn";
-"notification_pt_marketplace_recommendation_ai_re_engagement" = "Gợi ý dành riêng cho bạn";
 "notification_pt_marketplace_recommendation_inactive_nudge" = "Quay lại Fash";
 "notification_pt_marketplace_recommendation_similar_saved" = "Giống món bạn đã lưu";
 "notification_pt_marketplace_recommendation_social_style_match" = "Shop bạn follow vừa đăng";
