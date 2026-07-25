@@ -167,6 +167,7 @@ def swift_build_config(env: dict[str, str], flavor: str) -> str:
         ("publicBrowseClientToken", env.get("PUBLIC_BROWSE_CLIENT_TOKEN", "")),
         ("internalSecret", env.get("INTERNAL_SECRET", "")),
         ("internalServiceBearer", env.get("INTERNAL_SERVICE_BEARER_TOKEN", "")),
+        ("sentryDsn", env.get("SENTRY_DSN", "")),
         ("userAccessStatusPath", env.get("CORE_USER_ACCESS_STATUS_PATH", "api/v1/users/me/setup-status")),
         ("corePaymentInitiatePath", env.get("CORE_PAYMENT_INITIATE_PATH", "api/v1/orders/%s/payments/initiate")),
     ]

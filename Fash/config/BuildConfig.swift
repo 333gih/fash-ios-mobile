@@ -57,4 +57,5 @@ enum BuildConfig {
     static var authChangePasswordPath: String { C.authChangePasswordPath }
     static var authMePath: String { C.authMePath }
     static var authSocialLoginPath: String { C.authSocialLoginPath }
+    static var sentryDsn: String { C.sentryDsn }
 }

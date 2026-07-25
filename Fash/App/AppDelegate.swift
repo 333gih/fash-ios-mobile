@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         PushNotificationCoordinator.configureMessagingIfNeeded()
+        SentryBootstrap.configureIfNeeded()
         Task { @MainActor in
             await PushNotificationCoordinator.shared.syncRemoteNotificationRegistrationOnLaunch()
         }

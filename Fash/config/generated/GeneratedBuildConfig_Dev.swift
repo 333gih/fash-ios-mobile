@@ -25,6 +25,7 @@ enum GeneratedBuildConfig_Dev {
     static let publicBrowseClientToken: String = "4bNy8z9TaA1qVb4rmUDqPFyKs6Gp7x3JXwZmFyAPQkY2RCesuKcTmN5Btb"
     static let internalSecret: String = "8b4d4f3b6c3d45c5e21c2e1a8f1f5b8a4c1d9e7a2f8c6d4b"
     static let internalServiceBearer: String = "8b4d4f3b6c3d45c5e21c2e1a8f1f5b8a4c1d9e7a2f8c6d4b"
+    static let sentryDsn: String = ""
     static let userAccessStatusPath: String = "api/v1/users/me/setup-status"
     static let corePaymentInitiatePath: String = "api/v1/orders/%s/payments/initiate"
     static let authOtpRequestPath: String = "api/v1/auth/otp/request"

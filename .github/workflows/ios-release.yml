@@ -183,6 +183,7 @@ jobs:
       - name: Apply env / Google OAuth build config
         env:
           GOOGLE_IOS_CLIENT_ID: ${{ secrets.GOOGLE_IOS_CLIENT_ID }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN_IOS }}
         run: |
           set -euo pipefail
           ENV_FILE="env/prod.env"
@@ -197,6 +198,15 @@ jobs:
               echo "GOOGLE_IOS_CLIENT_ID=${GOOGLE_IOS_CLIENT_ID}" >> "${ENV_FILE}"
             fi
             echo "Applied GOOGLE_IOS_CLIENT_ID from GitHub secret"
+          fi
+          if [[ -n "${SENTRY_DSN:-}" && "${SCHEME}" == "Fash-Prod" ]]; then
+            if grep -q '^SENTRY_DSN=' "${ENV_FILE}"; then
+              sed -i.bak "s|^SENTRY_DSN=.*|SENTRY_DSN=${SENTRY_DSN}|" "${ENV_FILE}"
+              rm -f "${ENV_FILE}.bak"
+            else
+              echo "SENTRY_DSN=${SENTRY_DSN}" >> "${ENV_FILE}"
+            fi
+            echo "Applied SENTRY_DSN from GitHub secret"
           fi
           python3 scripts/env_to_xcconfig.py
 
