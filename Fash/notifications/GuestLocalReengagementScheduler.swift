@@ -5,8 +5,10 @@ import UserNotifications
 @MainActor
 final class GuestLocalReengagementScheduler {
     static let shared = GuestLocalReengagementScheduler()
+    static let requestId = "guest_local_reminder"
+    static let openGuestHomeKey = "fash_open"
+    static let openGuestHomeValue = "guest_home"
 
-    private let requestId = "guest_local_reminder"
     private let prefs = UserDefaults.standard
     private let inactiveInterval: TimeInterval = 24 * 3600
     private let nudgeCooldown: TimeInterval = 7 * 24 * 3600
@@ -64,10 +66,25 @@ final class GuestLocalReengagementScheduler {
         return cached.isEmpty ? L10n.guestLocalReminderBody : cached
     }
 
+    /// Prompt once, then register for remote/local delivery and schedule if already authorized.
     func requestAuthorizationIfNeeded() async {
+        let center = UNUserNotificationCenter.current()
+        let settings = await center.notificationSettings()
+        switch settings.authorizationStatus {
+        case .authorized, .provisional, .ephemeral:
+            await scheduleAfterBackground()
+            return
+        case .denied:
+            return
+        default:
+            break
+        }
         guard !wasNotificationPermissionPrompted else { return }
         markNotificationPermissionPrompted()
-        _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
+        let granted = (try? await center.requestAuthorization(options: [.alert, .sound, .badge])) ?? false
+        if granted {
+            await scheduleAfterBackground()
+        }
     }
 
     func scheduleAfterBackground() async {
@@ -76,19 +93,19 @@ final class GuestLocalReengagementScheduler {
         guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else {
             return
         }
-        center.removePendingNotificationRequests(withIdentifiers: [requestId])
+        center.removePendingNotificationRequests(withIdentifiers: [Self.requestId])
         let content = UNMutableNotificationContent()
         content.title = reminderTitle()
         content.body = reminderBody()
         content.sound = .default
-        content.userInfo = ["fash_open": "guest_home"]
+        content.userInfo = [Self.openGuestHomeKey: Self.openGuestHomeValue]
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: inactiveInterval, repeats: false)
-        let request = UNNotificationRequest(identifier: requestId, content: content, trigger: trigger)
+        let request = UNNotificationRequest(identifier: Self.requestId, content: content, trigger: trigger)
         try? await center.add(request)
     }
 
     func cancelPending() {
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [requestId])
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [Self.requestId])
     }
 
     func clearGuestState() {
@@ -104,6 +121,44 @@ final class GuestLocalReengagementScheduler {
 
     func markFiredToday() {
         prefs.set(Self.vnDayString(), forKey: Key.lastFiredDay)
+    }
+
+    /// Marks daily cap when a guest reminder was delivered while the app was backgrounded.
+    func syncDeliveredCap() async {
+        let center = UNUserNotificationCenter.current()
+        let delivered = await center.deliveredNotifications()
+        guard delivered.contains(where: { $0.request.identifier == Self.requestId }) else { return }
+        if canFireToday() {
+            markFiredToday()
+        }
+    }
+
+    /// Returns presentation options for guest local reminder; suppresses when daily cap hit.
+    func presentationOptionsForLocalReminder(willPresent notification: UNNotification) async -> UNNotificationPresentationOptions? {
+        guard notification.request.identifier == Self.requestId else { return nil }
+        if !canFireToday() {
+            let center = UNUserNotificationCenter.current()
+            center.removeDeliveredNotifications(withIdentifiers: [Self.requestId])
+            center.removePendingNotificationRequests(withIdentifiers: [Self.requestId])
+            await scheduleAfterBackground()
+            return []
+        }
+        markFiredToday()
+        await scheduleAfterBackground()
+        return [.banner, .list, .sound, .badge]
+    }
+
+    func handleGuestOpenPayload(_ userInfo: [AnyHashable: Any]) -> Bool {
+        guard let raw = userInfo[Self.openGuestHomeKey] as? String,
+              raw.trimmingCharacters(in: .whitespacesAndNewlines) == Self.openGuestHomeValue else {
+            return false
+        }
+        let deps = AppDependencies.shared
+        deps.isGuestBrowseActive = true
+        deps.navigationRouter?.isGuestMode = true
+        markFiredToday()
+        Task { await scheduleAfterBackground() }
+        return true
     }
 
     private static func vnDayString() -> String {

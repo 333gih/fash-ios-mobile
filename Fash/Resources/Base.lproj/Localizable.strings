@@ -1268,6 +1268,8 @@
 "notification_pt_marketplace_recommendation_daily_digest" = "Gợi ý hôm nay";
 "notification_pt_marketplace_recommendation_hunt_today" = "Săn hôm nay";
 "notification_pt_marketplace_recommendation_inactive_ladder" = "Nhắc quay lại săn đồ";
+"notification_pt_marketplace_recommendation_daily_comeback" = "Fash nhớ bạn";
+"notification_pt_marketplace_recommendation_ai_re_engagement" = "Gợi ý dành riêng cho bạn";
 "notification_pt_marketplace_recommendation_inactive_nudge" = "Quay lại Fash";
 "notification_pt_marketplace_recommendation_similar_saved" = "Giống món bạn đã lưu";
 "notification_pt_marketplace_recommendation_social_style_match" = "Shop bạn follow vừa đăng";

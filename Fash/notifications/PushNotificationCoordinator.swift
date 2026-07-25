@@ -240,6 +240,15 @@ extension PushNotificationCoordinator: UNUserNotificationCenterDelegate {
         willPresent notification: UNNotification
     ) async -> UNNotificationPresentationOptions {
         let userInfo = notification.request.content.userInfo
+        if let guestOptions = await GuestLocalReengagementScheduler.shared.presentationOptionsForLocalReminder(willPresent: notification) {
+            if guestOptions.isEmpty {
+                return []
+            }
+            await MainActor.run {
+                PushNotificationCoordinator.shared.handleForegroundNotification(userInfo: userInfo)
+            }
+            return guestOptions
+        }
         await MainActor.run {
             PushNotificationCoordinator.shared.handleForegroundNotification(userInfo: userInfo)
         }
@@ -252,6 +261,9 @@ extension PushNotificationCoordinator: UNUserNotificationCenterDelegate {
     ) async {
         let userInfo = response.notification.request.content.userInfo
         await MainActor.run {
+            if GuestLocalReengagementScheduler.shared.handleGuestOpenPayload(userInfo) {
+                return
+            }
             PushNotificationCoordinator.shared.handleNotificationTap(userInfo: userInfo)
         }
     }

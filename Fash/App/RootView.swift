@@ -143,6 +143,7 @@ struct RootView: View {
                 AppSessionTracker.shared.onSceneBecameActive(deps: deps)
                 if router.isGuestMode {
                     GuestLocalReengagementScheduler.shared.cancelPending()
+                    Task { await GuestLocalReengagementScheduler.shared.syncDeliveredCap() }
                 }
                 guard deps.authSessionStore.read() != nil,
                       !router.isGuestMode,

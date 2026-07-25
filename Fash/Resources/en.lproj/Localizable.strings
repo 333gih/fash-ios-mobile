@@ -1268,6 +1268,8 @@
 "notification_pt_marketplace_recommendation_daily_digest" = "Today's picks";
 "notification_pt_marketplace_recommendation_hunt_today" = "Hunt today";
 "notification_pt_marketplace_recommendation_inactive_ladder" = "We miss your hunt";
+"notification_pt_marketplace_recommendation_daily_comeback" = "Fash misses you";
+"notification_pt_marketplace_recommendation_ai_re_engagement" = "Picked just for you";
 "notification_pt_marketplace_recommendation_inactive_nudge" = "Come back to Fash";
 "notification_pt_marketplace_recommendation_similar_saved" = "Similar to saved item";
 "notification_pt_marketplace_recommendation_social_style_match" = "New from shop you follow";

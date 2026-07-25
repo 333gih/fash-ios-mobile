@@ -189,7 +189,7 @@ final class NotificationsViewModel {
             ) : row
         }
         groups = groups.map { row in
-            guard row.group == item.notificationGroup, row.unreadCount > 0 else { return row }
+            guard row.group == resolveInboxNotificationGroup(item), row.unreadCount > 0 else { return row }
             return NotificationGroupSummaryItem(
                 group: row.group,
                 unreadCount: max(0, row.unreadCount - 1),

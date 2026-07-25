@@ -1464,6 +1464,8 @@ enum L10n {
     static var notificationPtMarketplaceRecommendationDailyDigest: String { t("notification_pt_marketplace_recommendation_daily_digest") }
     static var notificationPtMarketplaceRecommendationHuntToday: String { t("notification_pt_marketplace_recommendation_hunt_today") }
     static var notificationPtMarketplaceRecommendationInactiveLadder: String { t("notification_pt_marketplace_recommendation_inactive_ladder") }
+    static var notificationPtMarketplaceRecommendationDailyComeback: String { t("notification_pt_marketplace_recommendation_daily_comeback") }
+    static var notificationPtMarketplaceRecommendationAiReEngagement: String { t("notification_pt_marketplace_recommendation_ai_re_engagement") }
     static var notificationPtMarketplaceRecommendationInactiveNudge: String { t("notification_pt_marketplace_recommendation_inactive_nudge") }
     static var notificationPtMarketplaceRecommendationSimilarSaved: String { t("notification_pt_marketplace_recommendation_similar_saved") }
     static var notificationPtMarketplaceRecommendationSocialStyleMatch: String { t("notification_pt_marketplace_recommendation_social_style_match") }

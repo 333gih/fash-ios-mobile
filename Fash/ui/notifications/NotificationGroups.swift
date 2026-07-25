@@ -79,3 +79,42 @@ func notificationRowImageURL(_ item: InboxNotificationItem) -> URL? {
     }
     return nil
 }
+
+/** Maps server `notification_group` / payload_type to inbox group — mirrors core-service ResolveGroup. */
+func resolveInboxNotificationGroup(_ item: InboxNotificationItem) -> String {
+    if let group = item.notificationGroup?.trimmingCharacters(in: .whitespacesAndNewlines), !group.isEmpty {
+        return group.uppercased()
+    }
+    let pt = item.payloadType?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? ""
+    if pt.hasPrefix("recommendation.") || pt.hasPrefix("marketplace.recommendation.") {
+        switch pt {
+        case "marketplace.recommendation.inactive_nudge",
+             "marketplace.recommendation.inactive_ladder",
+             "marketplace.recommendation.sustainable_impact",
+             "marketplace.recommendation.daily_comeback",
+             "marketplace.recommendation.ai_re_engagement":
+            return NotificationGroups.reengagement
+        default:
+            return NotificationGroups.recommendation
+        }
+    }
+    switch pt {
+    case "marketplace.follower.new", "marketplace.follower.batch",
+         "marketplace.listing.liked", "marketplace.listing.liked.batch",
+         "marketplace.listing.approved_for_followers":
+        return NotificationGroups.social
+    case "marketplace.chat.message":
+        return NotificationGroups.realtime
+    case "marketplace.chat.offer_received", "marketplace.chat.offer_accepted", "marketplace.chat.offer_declined",
+         "marketplace.order.created", "marketplace.order.shipped", "marketplace.order.cancelled",
+         "marketplace.order.meetup_aborted", "marketplace.order.funds_released", "marketplace.order.dispute_opened",
+         "marketplace.review.received":
+        return NotificationGroups.commerce
+    case "marketplace.referral.invite_rewarded":
+        return NotificationGroups.reengagement
+    case "admin.mobile_push.promo", "admin.app_promo_interstitial":
+        return NotificationGroups.ads
+    default:
+        return NotificationGroups.system
+    }
+}
