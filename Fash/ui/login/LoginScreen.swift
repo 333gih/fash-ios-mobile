@@ -17,6 +17,7 @@ struct LoginScreen: View {
     var onPasswordLoginVerified: () -> Void
 
     private var isGoogleConfigured: Bool { LoginViewModel.isGoogleConfigured() }
+    private var isAppleLoginEnabled: Bool { AppEnvironment.appleLoginEnabled }
     private var formLockedForSocial: Bool { viewModel.isSocialLoading }
     private var emailValid: Bool { LoginEmailValidation.isValid(viewModel.email) }
     private var passwordValid: Bool { !viewModel.password.isEmpty }
@@ -118,13 +119,15 @@ struct LoginScreen: View {
                             )
                             .padding(.top, 10)
 
-                            LoginSocialOutlineButton(
-                                icon: AnyView(AppleBrandIcon()),
-                                label: L10n.loginApple,
-                                enabled: !formLockedForSocial,
-                                action: handleAppleTap
-                            )
-                            .padding(.top, 8)
+                            if isAppleLoginEnabled {
+                                LoginSocialOutlineButton(
+                                    icon: AnyView(AppleBrandIcon()),
+                                    label: L10n.loginApple,
+                                    enabled: !formLockedForSocial,
+                                    action: handleAppleTap
+                                )
+                                .padding(.top, 8)
+                            }
 
                             Button(action: onGuestBrowse) {
                                 Text(L10n.loginContinueWithoutAccount)

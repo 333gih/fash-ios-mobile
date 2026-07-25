@@ -120,6 +120,7 @@ def xcconfig(env: dict[str, str], flavor: str) -> str:
         f"FASH_FACEBOOK_APP_ID = {env.get('FACEBOOK_APP_ID', '')}",
         f"FASH_FACEBOOK_CLIENT_TOKEN = {env.get('FACEBOOK_CLIENT_TOKEN', '')}",
         f"FASH_FACEBOOK_LOGIN_ENABLED = {bool_str(env.get('FACEBOOK_LOGIN_ENABLED', 'false'))}",
+        f"FASH_APPLE_LOGIN_ENABLED = {bool_str(env.get('APPLE_LOGIN_ENABLED', 'true'))}",
         f"FASH_LISTING_SHARE_BASE_URL = {env.get('LISTING_SHARE_BASE_URL', 'https://fash.app/p/l')}",
         f"FASH_LEGAL_PORTAL_BASE_URL = {env.get('LEGAL_PORTAL_BASE_URL', 'https://fashandcurious.com')}",
         f"FASH_PAYMENT_REDIRECT_URL = {env.get('PAYMENT_REDIRECT_URL', 'https://fash.app/payment/callback')}",
@@ -201,6 +202,7 @@ def swift_build_config(env: dict[str, str], flavor: str) -> str:
         ("c2cShipOnlinePaymentEnabled", "C2C_SHIP_ONLINE_PAYMENT_ENABLED", True),
         ("postRequireListingImages", "POST_REQUIRE_LISTING_IMAGES", True),
         ("facebookLoginEnabled", "FACEBOOK_LOGIN_ENABLED", False),
+        ("appleLoginEnabled", "APPLE_LOGIN_ENABLED", True),
         ("useFirebaseMessaging", "USE_FIREBASE_MESSAGING", True),
     ]
     for swift_name, env_key, default in bool_defs:

@@ -26,6 +26,7 @@ enum BuildConfig {
     static var facebookAppId: String { C.facebookAppId }
     static var facebookClientToken: String { C.facebookClientToken }
     static var facebookLoginEnabled: Bool { C.facebookLoginEnabled }
+    static var appleLoginEnabled: Bool { C.appleLoginEnabled }
     static var listingShareBaseURL: String { C.listingShareBaseURL }
     static var legalPortalBaseURL: String { C.legalPortalBaseURL }
     static var paymentRedirectURL: String { C.paymentRedirectURL }

@@ -102,6 +102,7 @@ final class LoginViewModel {
     }
 
     func performAppleSignIn(sessionStore: AuthSessionStore) async -> Bool {
+        guard AppEnvironment.appleLoginEnabled else { return false }
         guard AppleSignInClients.isAvailable() else {
             errorMessage = L10n.loginAppleUnavailable
             return false

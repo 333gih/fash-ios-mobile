@@ -27,6 +27,7 @@ enum AppEnvironment {
     static var googleIosClientId: String { BuildConfig.googleIosClientId }
     static var googleUrlScheme: String { BuildConfig.googleUrlScheme }
     static var facebookLoginEnabled: Bool { BuildConfig.facebookLoginEnabled }
+    static var appleLoginEnabled: Bool { BuildConfig.appleLoginEnabled }
     static var listingShareBaseURL: String { BuildConfig.listingShareBaseURL }
     static var legalPortalBaseURL: String { BuildConfig.legalPortalBaseURL }
     static var paymentRedirectURL: String { BuildConfig.paymentRedirectURL }
