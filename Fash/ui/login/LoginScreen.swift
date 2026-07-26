@@ -110,15 +110,6 @@ struct LoginScreen: View {
                             LoginOrDivider()
                                 .padding(.top, 12)
 
-                            LoginSocialOutlineButton(
-                                icon: AnyView(GoogleBrandIcon()),
-                                label: L10n.loginGoogle,
-                                enabled: !formLockedForSocial,
-                                dimmed: !isGoogleConfigured,
-                                action: handleGoogleTap
-                            )
-                            .padding(.top, 10)
-
                             if isAppleLoginEnabled {
                                 LoginSocialOutlineButton(
                                     icon: AnyView(AppleBrandIcon()),
@@ -126,8 +117,17 @@ struct LoginScreen: View {
                                     enabled: !formLockedForSocial,
                                     action: handleAppleTap
                                 )
-                                .padding(.top, 8)
+                                .padding(.top, 10)
                             }
+
+                            LoginSocialOutlineButton(
+                                icon: AnyView(GoogleBrandIcon()),
+                                label: L10n.loginGoogle,
+                                enabled: !formLockedForSocial,
+                                dimmed: !isGoogleConfigured,
+                                action: handleGoogleTap
+                            )
+                            .padding(.top, isAppleLoginEnabled ? 8 : 10)
 
                             Button(action: onGuestBrowse) {
                                 Text(L10n.loginContinueWithoutAccount)

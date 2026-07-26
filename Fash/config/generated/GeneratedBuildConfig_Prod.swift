@@ -46,7 +46,7 @@ enum GeneratedBuildConfig_Prod {
     static let c2cShipOnlinePaymentEnabled: Bool = false
     static let postRequireListingImages: Bool = true
     static let facebookLoginEnabled: Bool = false
-    static let appleLoginEnabled: Bool = false
+    static let appleLoginEnabled: Bool = true
     static let useFirebaseMessaging: Bool = true
     static let chatMaxOffersPerConversation: Int = 3
 }
