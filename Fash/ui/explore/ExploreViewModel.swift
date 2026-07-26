@@ -71,6 +71,7 @@ final class ExploreViewModel {
     private(set) var listingsFeedEpoch = 0
     private var sellersBrowseGeneration = 0
     private var loadMoreCooldownUntil: Date?
+    private var loadMoreRateLimitUntil: Date?
     private var loadMoreTask: Task<Void, Never>?
     private var lastSuccessfulExploreRefreshAt: Date?
     private var listingsReloadTask: Task<Void, Never>?
@@ -412,8 +413,9 @@ final class ExploreViewModel {
     func loadMore(deps: AppDependencies, isGuestMode: Bool) async {
         guard canLoadMoreListings else { return }
         let now = Date()
+        if FeedLoadMoreThrottle.isBlocked(until: loadMoreRateLimitUntil) { return }
         if let until = loadMoreCooldownUntil, now < until { return }
-        loadMoreCooldownUntil = now.addingTimeInterval(0.4)
+        loadMoreCooldownUntil = now.addingTimeInterval(FeedLoadMoreThrottle.defaultInterval)
         let fetchGen = listingsFetchGeneration
         let offset = items.count
         guard offset > 0 else { return }
@@ -776,8 +778,10 @@ final class ExploreViewModel {
                 lastSuccessfulExploreRefreshAt = Date()
             }
             FeedListingImagePrefetch.prefetch(items: append ? feed : items)
-        case .failure:
-            if !append {
+        case .failure(let error):
+            if append, let blocked = FeedLoadMoreThrottle.blockedUntil(after: error) {
+                loadMoreRateLimitUntil = blocked
+            } else if !append {
                 items = []
                 loadError = true
                 hasMore = false

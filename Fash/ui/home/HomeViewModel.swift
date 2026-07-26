@@ -52,6 +52,9 @@ final class HomeViewModel {
     private var homeUxApplied = false
     private var lastSuccessfulRefreshAt: Date?
     private var lastFollowFeedLoadMoreAt: Date?
+    private var followFeedRateLimitUntil: Date?
+    private var sectionTabLoadMoreAt: [String: Date] = [:]
+    private var sectionTabRateLimitUntil: [String: Date] = [:]
     private var followingDuplicatePageCount = 0
     private var followingTrimTask: Task<Void, Never>?
     private var tabFeedState: [String: HomeTabFeedState] = [:]
@@ -409,7 +412,8 @@ final class HomeViewModel {
         if !fromScrollEdge {
             guard homeScrollBoundary?.allowsFollowingLoadMore ?? true else { return }
         }
-        if let last = lastFollowFeedLoadMoreAt, Date().timeIntervalSince(last) < 0.9 { return }
+        if let last = lastFollowFeedLoadMoreAt, Date().timeIntervalSince(last) < FeedLoadMoreThrottle.followingInterval { return }
+        if FeedLoadMoreThrottle.isBlocked(until: followFeedRateLimitUntil) { return }
         lastFollowFeedLoadMoreAt = Date()
         isLoadingMoreFollowing = true
         let cursor = followingNextCursor
@@ -419,7 +423,13 @@ final class HomeViewModel {
             let result = await FeedPerformance.measure("Home following loadMore cursor=\(cursor ?? "offset:\(offsetFallback ?? 0)")") {
                 await fetchFollowingPage(deps: deps, cursor: cursor, offsetFallback: offsetFallback)
             }
-            guard case .success(let page) = result else { return }
+            guard case .success(let page) = result else {
+                if case .failure(let error) = result,
+                   let blocked = FeedLoadMoreThrottle.blockedUntil(after: error) {
+                    followFeedRateLimitUntil = blocked
+                }
+                return
+            }
             followingHasMore = page.hasMore
             followingNextCursor = page.nextCursor
             if page.items.isEmpty {
@@ -831,6 +841,10 @@ final class HomeViewModel {
         guard hasMore(for: tab), !isLoadingMore(for: tab) else { return }
         guard !isShellLoading, !isRefreshing, !isTabLoading(tab) else { return }
         guard sectionLoadMoreTasks[tab.rawValue] == nil else { return }
+        if FeedLoadMoreThrottle.isBlocked(until: sectionTabRateLimitUntil[tab.rawValue]) { return }
+        if let last = sectionTabLoadMoreAt[tab.rawValue],
+           Date().timeIntervalSince(last) < FeedLoadMoreThrottle.defaultInterval { return }
+        sectionTabLoadMoreAt[tab.rawValue] = Date()
 
         setTabLoadingMore(tab, true)
         let offset = itemsForTab(tab).count
@@ -847,21 +861,27 @@ final class HomeViewModel {
                 surface: tab.analyticsSurface
             )
             guard selectedFeedTab == tab else { return }
-            guard case .success(let page) = result else { return }
-            guard !page.isEmpty else {
-                setTabHasMore(tab, false)
-                return
+            switch result {
+            case .success(let page):
+                guard !page.isEmpty else {
+                    setTabHasMore(tab, false)
+                    return
+                }
+                let added = appendUniqueItems(page, to: tab)
+                if added > 0 {
+                    syncItemsForSelectedTab()
+                    FeedListingImagePrefetch.prefetch(items: Array(page.prefix(8)))
+                }
+                setTabHasMore(
+                    tab,
+                    page.count >= HomeFeedConstants.tabLoadMorePageSize && added > 0
+                )
+                FeedPerformance.log("Home \(tab) loadMore @\(offset) -> +\(added) total=\(itemsForTab(tab).count)")
+            case .failure(let error):
+                if let blocked = FeedLoadMoreThrottle.blockedUntil(after: error) {
+                    sectionTabRateLimitUntil[tab.rawValue] = blocked
+                }
             }
-            let added = appendUniqueItems(page, to: tab)
-            if added > 0 {
-                syncItemsForSelectedTab()
-                FeedListingImagePrefetch.prefetch(items: Array(page.prefix(8)))
-            }
-            setTabHasMore(
-                tab,
-                page.count >= HomeFeedConstants.tabLoadMorePageSize && added > 0
-            )
-            FeedPerformance.log("Home \(tab) loadMore @\(offset) -> +\(added) total=\(itemsForTab(tab).count)")
         }
     }
 

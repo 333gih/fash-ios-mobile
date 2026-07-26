@@ -454,6 +454,7 @@ final class ProfileViewModel {
         var isReloading = false
         var fetchGeneration = 0
         var loadMoreCooldownUntil: Date?
+        var loadMoreRateLimitUntil: Date?
     }
 
     private func pagination(for tab: ProfileListingTab) -> ProfileTabPagination {
@@ -628,7 +629,8 @@ final class ProfileViewModel {
         guard canLoadMore(for: tab) else { return }
         let now = Date()
         if let until = pagination(for: tab).loadMoreCooldownUntil, now < until { return }
-        mutatePagination(for: tab) { $0.loadMoreCooldownUntil = now.addingTimeInterval(0.4) }
+        if FeedLoadMoreThrottle.isBlocked(until: pagination(for: tab).loadMoreRateLimitUntil) { return }
+        mutatePagination(for: tab) { $0.loadMoreCooldownUntil = now.addingTimeInterval(FeedLoadMoreThrottle.defaultInterval) }
 
         let generation = pagination(for: tab).fetchGeneration
         let offset = pagination(for: tab).nextOffset
@@ -669,7 +671,10 @@ final class ProfileViewModel {
             FeedPerformance.log(
                 "Profile \(tab) loadMore @\(offset) -> +\(added) window=\(listings(for: tab).count) logical=\(state.window.logicalStartIndex)"
             )
-        case .failure:
+        case .failure(let error):
+            if let blocked = FeedLoadMoreThrottle.blockedUntil(after: error) {
+                mutatePagination(for: tab) { $0.loadMoreRateLimitUntil = blocked }
+            }
             FeedPerformance.log("Profile \(tab) loadMore @\(offset) failed")
             break
         }
