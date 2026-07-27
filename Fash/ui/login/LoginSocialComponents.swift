@@ -1,3 +1,4 @@
+import AuthenticationServices
 import SwiftUI
 
 struct LoginOrDivider: View {
@@ -51,13 +52,61 @@ struct LoginSocialOutlineButton: View {
     }
 }
 
-struct AppleBrandIcon: View {
+/// App Store Guideline 4.8 — must use Apple's official Sign in with Apple control (not a custom button).
+struct SignInWithAppleOfficialButton: View {
+    var enabled = true
+    let onTap: () -> Void
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    private let spacing = FashSpacing()
+
     var body: some View {
-        Image(systemName: "apple.logo")
-            .font(.system(size: 22, weight: .medium))
-            .foregroundStyle(FashColors.textPrimary)
-            .frame(width: 24, height: 24)
-            .accessibilityHidden(true)
+        SignInWithAppleOfficialButtonRepresentable(
+            style: colorScheme == .dark ? .white : .black,
+            cornerRadius: spacing.radiusSoftMin,
+            enabled: enabled,
+            onTap: onTap
+        )
+        .frame(maxWidth: .infinity)
+        .frame(height: spacing.buttonHeight)
+        .accessibilityLabel(L10n.loginApple)
+    }
+}
+
+private struct SignInWithAppleOfficialButtonRepresentable: UIViewRepresentable {
+    let style: ASAuthorizationAppleIDButton.Style
+    let cornerRadius: CGFloat
+    var enabled: Bool
+    let onTap: () -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onTap: onTap)
+    }
+
+    func makeUIView(context: Context) -> ASAuthorizationAppleIDButton {
+        let button = ASAuthorizationAppleIDButton(type: .signIn, style: style)
+        button.cornerRadius = cornerRadius
+        button.addTarget(context.coordinator, action: #selector(Coordinator.tapped), for: .touchUpInside)
+        return button
+    }
+
+    func updateUIView(_ uiView: ASAuthorizationAppleIDButton, context: Context) {
+        uiView.isEnabled = enabled
+        uiView.alpha = enabled ? 1 : 0.55
+        context.coordinator.onTap = onTap
+    }
+
+    final class Coordinator: NSObject {
+        var onTap: () -> Void
+
+        init(onTap: @escaping () -> Void) {
+            self.onTap = onTap
+        }
+
+        @objc func tapped() {
+            onTap()
+        }
     }
 }
 

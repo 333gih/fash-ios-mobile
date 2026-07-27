@@ -32,4 +32,14 @@ if ! grep -q 'static let appleLoginEnabled: Bool = true' "${GENERATED}"; then
   exit 1
 fi
 
+if ! grep -q 'SignInWithAppleOfficialButton' Fash/ui/login/LoginScreen.swift; then
+  echo "::error::LoginScreen must use SignInWithAppleOfficialButton (ASAuthorizationAppleIDButton) for App Store Guideline 4.8"
+  exit 1
+fi
+
+if ! grep -q 'ASAuthorizationAppleIDButton' Fash/ui/login/LoginSocialComponents.swift; then
+  echo "::error::LoginSocialComponents must wrap ASAuthorizationAppleIDButton for App Store Guideline 4.8"
+  exit 1
+fi
+
 echo "Sign in with Apple enabled for ${SCHEME} (env + GeneratedBuildConfig OK)"

@@ -111,11 +111,9 @@ struct LoginScreen: View {
                                 .padding(.top, 12)
 
                             if isAppleLoginEnabled {
-                                LoginSocialOutlineButton(
-                                    icon: AnyView(AppleBrandIcon()),
-                                    label: L10n.loginApple,
+                                SignInWithAppleOfficialButton(
                                     enabled: !formLockedForSocial,
-                                    action: handleAppleTap
+                                    onTap: handleAppleTap
                                 )
                                 .padding(.top, 10)
                             }
