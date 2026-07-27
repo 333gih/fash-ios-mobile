@@ -52,6 +52,7 @@ jobs:
           python3 scripts/validate_swift_syntax.py
           bash scripts/ci_swift_compile_preflight.sh
           bash scripts/ci_validate_i18n.sh
+          bash scripts/ci_verify_apple_login_enabled.sh Fash-Prod env/prod.env Fash/config/generated/GeneratedBuildConfig_Prod.swift
 
       - name: CI billing reminder
         if: always()
@@ -209,6 +210,7 @@ jobs:
             echo "Applied SENTRY_DSN from GitHub secret"
           fi
           python3 scripts/env_to_xcconfig.py
+          bash scripts/ci_verify_apple_login_enabled.sh "${SCHEME}" "${ENV_FILE}" "Fash/config/generated/GeneratedBuildConfig_Prod.swift"
 
       - name: Prepare Xcode project
         run: bash scripts/ci_ios_prepare.sh "${SCHEME}"
