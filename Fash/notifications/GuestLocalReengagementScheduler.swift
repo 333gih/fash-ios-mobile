@@ -6,6 +6,7 @@ import UserNotifications
 final class GuestLocalReengagementScheduler {
     static let shared = GuestLocalReengagementScheduler()
     static let requestId = "guest_local_reminder"
+    static let eveningRequestId = "guest_local_reminder_evening"
     static let openGuestHomeKey = "fash_open"
     static let openGuestHomeValue = "guest_home"
 
@@ -13,15 +14,65 @@ final class GuestLocalReengagementScheduler {
     private let inactiveInterval: TimeInterval = 24 * 3600
     private let nudgeCooldown: TimeInterval = 7 * 24 * 3600
     private let vnTimeZone = TimeZone(identifier: "Asia/Ho_Chi_Minh") ?? .current
+    private let maxDailyReminders = 2
+    private let eveningHourVN = 20
 
     private enum Key {
         static let lastFiredDay = "guest_reengagement.last_fired_day_vn"
+        static let firedCountDay = "guest_reengagement.fired_count_day_vn"
+        static let firedCount = "guest_reengagement.fired_count_today"
         static let reminderTitle = "guest_reengagement.reminder_title"
         static let reminderBody = "guest_reengagement.reminder_body"
         static let sessionCount = "guest_reengagement.browse_session_count"
         static let nudgeLastShown = "guest_reengagement.signup_nudge_last_shown"
         static let permissionPrompted = "guest_reengagement.notif_permission_prompted"
     }
+
+    private struct ReminderVariant {
+        let titleVi: String
+        let bodyVi: String
+        let titleEn: String
+        let bodyEn: String
+    }
+
+    private let variants: [ReminderVariant] = [
+        ReminderVariant(
+            titleVi: "Fash đang chờ bạn",
+            bodyVi: "Khám phá thêm đồ second-hand — đăng ký để nhận gợi ý riêng mỗi ngày.",
+            titleEn: "Fash is waiting for you",
+            bodyEn: "Discover more pre-loved fashion — sign up for daily picks made for you."
+        ),
+        ReminderVariant(
+            titleVi: "Style mới vừa lên kệ",
+            bodyVi: "Xem bộ sưu tập pre-loved hôm nay — mở Fash không cần đăng nhập.",
+            titleEn: "Fresh pre-loved drops",
+            bodyEn: "Browse today's curated second-hand picks — no login required."
+        ),
+        ReminderVariant(
+            titleVi: "Mùa này mặc gì?",
+            bodyVi: "Gợi ý outfit second-hand phù hợp khí hậu VN — khám phá ngay trên Fash.",
+            titleEn: "What to wear this season?",
+            bodyEn: "Climate-friendly pre-loved outfit ideas are waiting on Fash."
+        ),
+        ReminderVariant(
+            titleVi: "Lưu món yêu thích",
+            bodyVi: "Đăng ký miễn phí để lưu listing và nhận thông báo giảm giá.",
+            titleEn: "Save what you love",
+            bodyEn: "Sign up free to save listings and get price-drop alerts."
+        ),
+        ReminderVariant(
+            titleVi: "Cộng đồng Fash đang sôi động",
+            bodyVi: "Người bán C2C đang đăng hàng mới — ghé xem trước khi hết size.",
+            titleEn: "Fash community is buzzing",
+            bodyEn: "C2C sellers just listed new pieces — browse before they're gone."
+        ),
+        ReminderVariant(
+            titleVi: "Deal second-hand hôm nay",
+            bodyVi: "Món đẹp, giá tốt — mở Fash khám phá kho pre-loved gần bạn.",
+            titleEn: "Today's pre-loved deals",
+            bodyEn: "Great style, better prices — explore pre-loved near you on Fash."
+        ),
+    ]
 
     func onGuestShellEntered() -> Int {
         let next = prefs.integer(forKey: Key.sessionCount) + 1
@@ -58,15 +109,34 @@ final class GuestLocalReengagementScheduler {
 
     func reminderTitle() -> String {
         let cached = prefs.string(forKey: Key.reminderTitle)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        return cached.isEmpty ? L10n.guestLocalReminderTitle : cached
+        if !cached.isEmpty { return cached }
+        return pickVariant().titleVi
     }
 
     func reminderBody() -> String {
         let cached = prefs.string(forKey: Key.reminderBody)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        return cached.isEmpty ? L10n.guestLocalReminderBody : cached
+        if !cached.isEmpty { return cached }
+        return pickVariant().bodyVi
     }
 
-    /// Prompt once, then register for remote/local delivery and schedule if already authorized.
+    private func pickVariant() -> ReminderVariant {
+        let session = prefs.integer(forKey: Key.sessionCount)
+        let hour = vnHour()
+        let idx = (session + hour + Calendar.current.component(.day, from: Date())) % variants.count
+        let v = variants[max(0, idx)]
+        let isEn = Locale.current.language.languageCode?.identifier == "en"
+        if isEn {
+            return ReminderVariant(titleVi: v.titleEn, bodyVi: v.bodyEn, titleEn: v.titleEn, bodyEn: v.bodyEn)
+        }
+        return v
+    }
+
+    private func vnHour() -> Int {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = vnTimeZone
+        return cal.component(.hour, from: Date())
+    }
+
     func requestAuthorizationIfNeeded() async {
         let center = UNUserNotificationCenter.current()
         let settings = await center.notificationSettings()
@@ -93,53 +163,102 @@ final class GuestLocalReengagementScheduler {
         guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else {
             return
         }
-        center.removePendingNotificationRequests(withIdentifiers: [Self.requestId])
+        center.removePendingNotificationRequests(withIdentifiers: [Self.requestId, Self.eveningRequestId])
+
+        let variant = pickVariant()
         let content = UNMutableNotificationContent()
-        content.title = reminderTitle()
-        content.body = reminderBody()
+        content.title = variant.titleVi
+        content.body = variant.bodyVi
         content.sound = .default
         content.userInfo = [Self.openGuestHomeKey: Self.openGuestHomeValue]
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: inactiveInterval, repeats: false)
         let request = UNNotificationRequest(identifier: Self.requestId, content: content, trigger: trigger)
         try? await center.add(request)
+
+        if remainingToday() > 0 {
+            await scheduleEveningSlot(center: center, variant: pickVariant())
+        }
+    }
+
+    private func scheduleEveningSlot(center: UNUserNotificationCenter, variant: ReminderVariant) async {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = vnTimeZone
+        let now = Date()
+        var comps = cal.dateComponents([.year, .month, .day], from: now)
+        comps.hour = eveningHourVN
+        comps.minute = 0
+        guard var fireDate = cal.date(from: comps) else { return }
+        if fireDate <= now {
+            fireDate = cal.date(byAdding: .day, value: 1, to: fireDate) ?? fireDate
+        }
+        let content = UNMutableNotificationContent()
+        content.title = variant.titleVi
+        content.body = variant.bodyVi
+        content.sound = .default
+        content.userInfo = [Self.openGuestHomeKey: Self.openGuestHomeValue]
+        let triggerComps = cal.dateComponents([.year, .month, .day, .hour, .minute], from: fireDate)
+        let trigger = UNCalendarNotificationTrigger(dateMatching: triggerComps, repeats: false)
+        let request = UNNotificationRequest(identifier: Self.eveningRequestId, content: content, trigger: trigger)
+        try? await center.add(request)
     }
 
     func cancelPending() {
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [Self.requestId])
+        UNUserNotificationCenter.current().removePendingNotificationRequests(
+            withIdentifiers: [Self.requestId, Self.eveningRequestId]
+        )
     }
 
     func clearGuestState() {
         cancelPending()
         prefs.removeObject(forKey: Key.reminderTitle)
         prefs.removeObject(forKey: Key.reminderBody)
+        prefs.removeObject(forKey: Key.firedCount)
+        prefs.removeObject(forKey: Key.firedCountDay)
     }
 
     func canFireToday() -> Bool {
-        let today = Self.vnDayString()
-        return prefs.string(forKey: Key.lastFiredDay) != today
+        remainingToday() > 0
+    }
+
+    private func remainingToday() -> Int {
+        resetDailyCountIfNeeded()
+        let count = prefs.integer(forKey: Key.firedCount)
+        return max(0, maxDailyReminders - count)
     }
 
     func markFiredToday() {
+        resetDailyCountIfNeeded()
+        let count = prefs.integer(forKey: Key.firedCount) + 1
+        prefs.set(count, forKey: Key.firedCount)
         prefs.set(Self.vnDayString(), forKey: Key.lastFiredDay)
+        prefs.set(Self.vnDayString(), forKey: Key.firedCountDay)
     }
 
-    /// Marks daily cap when a guest reminder was delivered while the app was backgrounded.
+    private func resetDailyCountIfNeeded() {
+        let today = Self.vnDayString()
+        if prefs.string(forKey: Key.firedCountDay) != today {
+            prefs.set(0, forKey: Key.firedCount)
+            prefs.set(today, forKey: Key.firedCountDay)
+        }
+    }
+
     func syncDeliveredCap() async {
         let center = UNUserNotificationCenter.current()
         let delivered = await center.deliveredNotifications()
-        guard delivered.contains(where: { $0.request.identifier == Self.requestId }) else { return }
+        let ids = Set([Self.requestId, Self.eveningRequestId])
+        guard delivered.contains(where: { ids.contains($0.request.identifier) }) else { return }
         if canFireToday() {
             markFiredToday()
         }
     }
 
-    /// Returns presentation options for guest local reminder; suppresses when daily cap hit.
     func presentationOptionsForLocalReminder(willPresent notification: UNNotification) async -> UNNotificationPresentationOptions? {
-        guard notification.request.identifier == Self.requestId else { return nil }
+        let id = notification.request.identifier
+        guard id == Self.requestId || id == Self.eveningRequestId else { return nil }
         if !canFireToday() {
             let center = UNUserNotificationCenter.current()
-            center.removeDeliveredNotifications(withIdentifiers: [Self.requestId])
-            center.removePendingNotificationRequests(withIdentifiers: [Self.requestId])
+            center.removeDeliveredNotifications(withIdentifiers: [id])
+            center.removePendingNotificationRequests(withIdentifiers: [id])
             await scheduleAfterBackground()
             return []
         }
