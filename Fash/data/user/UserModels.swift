@@ -55,12 +55,11 @@ struct UserAccessStatus: Equatable {
     var meetingSchedulingSuspendedUntil: String? = nil
 
     func needsPasswordSetup() -> Bool {
-        if !onboardingDone { return false }
-        if passwordSet == true { return false }
-        if passwordSet == false { return true }
-        if isChangePassword == true { return true }
         if nextStep?.trimmingCharacters(in: .whitespaces).lowercased() == "password" { return true }
-        return false
+        if isChangePassword == false { return false }
+        if passwordSet == true { return false }
+        if !onboardingDone { return false }
+        return isChangePassword == true
     }
 
     var canAccessHome: Bool {
