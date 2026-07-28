@@ -509,15 +509,15 @@ struct RootView: View {
 
     private func resolveNeedsOnboardingAfterProfileSubmit() async -> Bool {
         if onboardingVM.onboardingStep != .completed { return true }
-        for attempt in 0..<4 {
+        for attempt in 0..<8 {
             if case .success(let status) = await deps.userRepository.getUserAccessStatus(), status.canAccessHome {
                 return false
             }
-            if attempt < 3 {
-                try? await Task.sleep(for: .milliseconds(350))
+            if attempt < 7 {
+                try? await Task.sleep(for: .milliseconds(500))
             }
         }
-        return false
+        return true
     }
 
     private func dismissChat() {

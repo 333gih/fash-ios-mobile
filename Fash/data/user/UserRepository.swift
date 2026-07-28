@@ -75,20 +75,12 @@ final class UserRepository {
         guard let body = try? JSONSerialization.data(withJSONObject: json) else {
             return .failure(URLError(.cannotParseResponse))
         }
-        let urlString = AppEnvironment.apiPath("api/v1/users/me/shopping-preferences")
-        guard let url = URL(string: urlString) else { return .failure(URLError(.badURL)) }
-        var req = URLRequest(url: url)
-        req.httpMethod = "PUT"
-        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        req.httpBody = body
         do {
-            let (data, http) = try await client.data(for: req)
-            guard (200..<300).contains(http.statusCode) else {
-                throw CoreServiceHttpException(
-                    statusCode: http.statusCode,
-                    message: CoreServiceErrors.parseMessage(data: data, statusCode: http.statusCode)
-                )
-            }
+            _ = try await RepositoryHttp.executeCorePut(
+                relativePath: "api/v1/users/me/shopping-preferences",
+                client: client,
+                body: body
+            )
             return .success(())
         } catch {
             return .failure(error)

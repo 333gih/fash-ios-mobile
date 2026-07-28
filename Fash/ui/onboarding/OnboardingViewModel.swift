@@ -203,6 +203,8 @@ final class OnboardingViewModel {
         Task {
             isSubmitting = true
             defer { isSubmitting = false }
+            // Ensure profile stub exists before shopping-preferences PUT (skip does not save tags).
+            _ = await deps.userRepository.putUserAestheticTags([])
             if case .success(let status) = await deps.userRepository.getUserAccessStatus() {
                 advanceAfterStatus(status, completedStep: .aestheticTags, deps: deps)
             }
@@ -237,8 +239,9 @@ final class OnboardingViewModel {
                 )
                 advanceAfterStatus(base.merging(shoppingPreferencesConfigured: true), completedStep: .shoppingPreferences, deps: deps)
                 onSuccess()
-            case .failure:
-                deps.showSnackbar(L10n.onboardingShoppingError)
+            case .failure(let err):
+                let msg = FashErrorPresentation.userMessage(for: err)
+                deps.showSnackbar(msg.isEmpty ? L10n.onboardingShoppingError : msg)
             }
         }
     }
