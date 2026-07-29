@@ -563,7 +563,7 @@ final class ExploreViewModel {
     func loadFeaturedSellers(deps: AppDependencies, isGuestMode: Bool) async {
         switch await deps.searchRepository.getFeaturedSellers(limit: 10, publicBrowse: isGuestMode) {
         case .success(let sellers):
-            featuredSellers = sellers
+            featuredSellers = FeaturedSellerItem.shopReady(sellers)
         case .failure:
             featuredSellers = []
         }

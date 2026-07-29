@@ -115,7 +115,7 @@ final class FeaturedSellersViewModel {
                 return .failure(error)
             case .success(let page):
                 total = page.total
-                for seller in page.items {
+                for seller in page.items where seller.isShopReady {
                     let key = seller.sellerKey
                     guard !key.isEmpty, seen.insert(key).inserted else { continue }
                     accumulated.append(seller)

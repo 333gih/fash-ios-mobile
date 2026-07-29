@@ -20,6 +20,17 @@ struct FeaturedSellerItem: Equatable, Identifiable {
         return username.trimmingCharacters(in: .whitespaces)
     }
 
+    /// Shop-ready sellers have a handle, live listings, and preview IDs for the see-all screen.
+    var isShopReady: Bool {
+        !username.trimmingCharacters(in: .whitespaces).isEmpty
+            && listingCount > 0
+            && !previewListingIds.isEmpty
+    }
+
+    static func shopReady(_ sellers: [FeaturedSellerItem]) -> [FeaturedSellerItem] {
+        sellers.filter(\.isShopReady)
+    }
+
     /// Android `FeaturedSellerItem.toUserSearchResult()`.
     func toUserSearchResult() -> UserSearchResult {
         UserSearchResult(

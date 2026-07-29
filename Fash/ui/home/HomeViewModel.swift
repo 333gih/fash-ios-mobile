@@ -300,7 +300,7 @@ final class HomeViewModel {
         }
         switch await fetchFeaturedSellersWithRetry(deps: deps, isGuestMode: isGuestMode) {
         case .success(let sellers):
-            featuredSellers = sellers
+            featuredSellers = FeaturedSellerItem.shopReady(sellers)
         case .failure:
             break
         }
