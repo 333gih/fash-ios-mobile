@@ -565,6 +565,7 @@
     <string name="notification_action_open_invite_friends">Mở mời bạn bè</string>
     <string name="notification_action_open_following">Mở đang theo dõi</string>
     <string name="notification_action_open_explore">Mở Khám phá</string>
+    <string name="notification_action_complete_profile">Hoàn thiện hồ sơ</string>
     <string name="notification_detail_more_label">Thêm chi tiết</string>
     <string name="notification_detail_actions_heading">Điều hướng</string>
     <string name="notification_row_no_title">Thông báo</string>

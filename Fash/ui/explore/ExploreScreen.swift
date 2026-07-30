@@ -241,7 +241,7 @@ struct ExploreScreen: View {
             if viewModel.isSizingFilterActive || viewModel.shoppingContext?.chipLabel() != nil {
                 ExploreActivePersonalFilterChips(
                     sizingActive: viewModel.isSizingFilterActive,
-                    seasonContextLabel: viewModel.shoppingContext?.chipLabel(),
+                    seasonContextLabel: viewModel.effectiveSeasonContextLabel(),
                     onClearSizing: {
                         viewModel.setSizingModeFilter(nil)
                         Task {

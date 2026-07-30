@@ -36,6 +36,7 @@ final class RecommendationRepository {
         sellerDistrictId: String? = nil,
         sellerWardId: String? = nil,
         surface: String? = nil,
+        seasonKey: String? = nil,
         excludeListingIds: [String]? = nil
     ) async -> Result<[ListingFeedItem], Error> {
         var parts = ["limit=\(limit)", "offset=\(offset)"]
@@ -73,6 +74,9 @@ final class RecommendationRepository {
         }
         if let surf = surface?.trimmingCharacters(in: .whitespaces), !surf.isEmpty {
             parts.append("surface=\(enc(surf))")
+        }
+        if let sk = seasonKey?.trimmingCharacters(in: .whitespaces), !sk.isEmpty {
+            parts.append("season_key=\(enc(sk))")
         }
         let excludeCsv = excludeListingIds?
             .map { $0.trimmingCharacters(in: .whitespaces) }

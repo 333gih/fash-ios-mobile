@@ -12,7 +12,8 @@ struct NotificationScreen: View {
     var onOpenListing: (String) -> Void = { _ in }
     var onOpenChat: (String) -> Void = { _ in }
     var onOpenFollowConnections: (Int) -> Void = { _ in }
-    var onOpenExplore: () -> Void = {}
+    var onOpenExplore: (ExploreNavigationFilter?) -> Void = { _ in }
+    var onOpenOnboarding: () -> Void = {}
     var onOpenInviteFriends: () -> Void = {}
 
     init(
@@ -25,7 +26,8 @@ struct NotificationScreen: View {
         onOpenListing: @escaping (String) -> Void = { _ in },
         onOpenChat: @escaping (String) -> Void = { _ in },
         onOpenFollowConnections: @escaping (Int) -> Void = { _ in },
-        onOpenExplore: @escaping () -> Void = {},
+        onOpenExplore: @escaping (ExploreNavigationFilter?) -> Void = { _ in },
+        onOpenOnboarding: @escaping () -> Void = {},
         onOpenInviteFriends: @escaping () -> Void = {}
     ) {
         _viewModel = State(initialValue: NotificationsViewModel(userRepository: userRepository))
@@ -38,6 +40,7 @@ struct NotificationScreen: View {
         self.onOpenChat = onOpenChat
         self.onOpenFollowConnections = onOpenFollowConnections
         self.onOpenExplore = onOpenExplore
+        self.onOpenOnboarding = onOpenOnboarding
         self.onOpenInviteFriends = onOpenInviteFriends
     }
 
@@ -133,6 +136,7 @@ struct NotificationScreen: View {
                 onOpenChat: onOpenChat,
                 onOpenFollowConnections: onOpenFollowConnections,
                 onOpenExplore: onOpenExplore,
+                onOpenOnboarding: onOpenOnboarding,
                 onOpenInviteFriends: onOpenInviteFriends
             )
         } else {

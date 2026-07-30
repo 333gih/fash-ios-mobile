@@ -1325,6 +1325,7 @@ enum L10n {
     static var noImage: String { t("no_image") }
     static var notificationActionOpenChat: String { t("notification_action_open_chat") }
     static var notificationActionOpenExplore: String { t("notification_action_open_explore") }
+    static var notificationActionCompleteProfile: String { t("notification_action_complete_profile") }
     static var notificationActionOpenFollowers: String { t("notification_action_open_followers") }
     static var notificationActionOpenFollowing: String { t("notification_action_open_following") }
     static var notificationActionOpenInviteFriends: String { t("notification_action_open_invite_friends") }

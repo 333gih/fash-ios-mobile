@@ -33,6 +33,10 @@ final class GuestLocalReengagementScheduler {
         let bodyVi: String
         let titleEn: String
         let bodyEn: String
+        let action: String
+        let exploreSurface: String?
+        let seasonLabelVi: String?
+        let seasonLabelEn: String?
     }
 
     private let variants: [ReminderVariant] = [
@@ -40,37 +44,61 @@ final class GuestLocalReengagementScheduler {
             titleVi: "Fash đang chờ bạn",
             bodyVi: "Khám phá thêm đồ second-hand — đăng ký để nhận gợi ý riêng mỗi ngày.",
             titleEn: "Fash is waiting for you",
-            bodyEn: "Discover more pre-loved fashion — sign up for daily picks made for you."
+            bodyEn: "Discover more pre-loved fashion — sign up for daily picks made for you.",
+            action: NotificationExploreNavigation.guestActionOpenHomeSignup,
+            exploreSurface: nil,
+            seasonLabelVi: nil,
+            seasonLabelEn: nil
         ),
         ReminderVariant(
             titleVi: "Style mới vừa lên kệ",
             bodyVi: "Xem bộ sưu tập pre-loved hôm nay — mở Fash không cần đăng nhập.",
             titleEn: "Fresh pre-loved drops",
-            bodyEn: "Browse today's curated second-hand picks — no login required."
+            bodyEn: "Browse today's curated second-hand picks — no login required.",
+            action: NotificationExploreNavigation.guestActionOpenExplore,
+            exploreSurface: "explore",
+            seasonLabelVi: nil,
+            seasonLabelEn: nil
         ),
         ReminderVariant(
             titleVi: "Mùa này mặc gì?",
             bodyVi: "Gợi ý outfit second-hand phù hợp khí hậu VN — khám phá ngay trên Fash.",
             titleEn: "What to wear this season?",
-            bodyEn: "Climate-friendly pre-loved outfit ideas are waiting on Fash."
+            bodyEn: "Climate-friendly pre-loved outfit ideas are waiting on Fash.",
+            action: NotificationExploreNavigation.guestActionOpenExplore,
+            exploreSurface: "seasonal_near_you",
+            seasonLabelVi: "Mùa này",
+            seasonLabelEn: "This season"
         ),
         ReminderVariant(
             titleVi: "Lưu món yêu thích",
             bodyVi: "Đăng ký miễn phí để lưu listing và nhận thông báo giảm giá.",
             titleEn: "Save what you love",
-            bodyEn: "Sign up free to save listings and get price-drop alerts."
+            bodyEn: "Sign up free to save listings and get price-drop alerts.",
+            action: NotificationExploreNavigation.guestActionOpenHomeSignup,
+            exploreSurface: nil,
+            seasonLabelVi: nil,
+            seasonLabelEn: nil
         ),
         ReminderVariant(
             titleVi: "Cộng đồng Fash đang sôi động",
             bodyVi: "Người bán C2C đang đăng hàng mới — ghé xem trước khi hết size.",
             titleEn: "Fash community is buzzing",
-            bodyEn: "C2C sellers just listed new pieces — browse before they're gone."
+            bodyEn: "C2C sellers just listed new pieces — browse before they're gone.",
+            action: NotificationExploreNavigation.guestActionOpenExplore,
+            exploreSurface: "explore",
+            seasonLabelVi: nil,
+            seasonLabelEn: nil
         ),
         ReminderVariant(
             titleVi: "Deal second-hand hôm nay",
             bodyVi: "Món đẹp, giá tốt — mở Fash khám phá kho pre-loved gần bạn.",
             titleEn: "Today's pre-loved deals",
-            bodyEn: "Great style, better prices — explore pre-loved near you on Fash."
+            bodyEn: "Great style, better prices — explore pre-loved near you on Fash.",
+            action: NotificationExploreNavigation.guestActionOpenExplore,
+            exploreSurface: "explore",
+            seasonLabelVi: nil,
+            seasonLabelEn: nil
         ),
     ]
 
@@ -110,25 +138,47 @@ final class GuestLocalReengagementScheduler {
     func reminderTitle() -> String {
         let cached = prefs.string(forKey: Key.reminderTitle)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if !cached.isEmpty { return cached }
-        return pickVariant().titleVi
+        let v = selectedVariant()
+        return isEnglishLocale() ? v.titleEn : v.titleVi
     }
 
     func reminderBody() -> String {
         let cached = prefs.string(forKey: Key.reminderBody)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if !cached.isEmpty { return cached }
-        return pickVariant().bodyVi
+        let v = selectedVariant()
+        return isEnglishLocale() ? v.bodyEn : v.bodyVi
     }
 
-    private func pickVariant() -> ReminderVariant {
+    private func isEnglishLocale() -> Bool {
+        Locale.current.language.languageCode?.identifier == "en"
+    }
+
+    private func selectedVariant() -> ReminderVariant {
+        let cachedTitle = prefs.string(forKey: Key.reminderTitle)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !cachedTitle.isEmpty {
+            return variants.first(where: { $0.titleVi == cachedTitle || $0.titleEn == cachedTitle }) ?? variants[0]
+        }
         let session = prefs.integer(forKey: Key.sessionCount)
         let hour = vnHour()
         let idx = (session + hour + Calendar.current.component(.day, from: Date())) % variants.count
-        let v = variants[max(0, idx)]
-        let isEn = Locale.current.language.languageCode?.identifier == "en"
-        if isEn {
-            return ReminderVariant(titleVi: v.titleEn, bodyVi: v.bodyEn, titleEn: v.titleEn, bodyEn: v.bodyEn)
+        return variants[max(0, idx)]
+    }
+
+    private func pickVariant() -> ReminderVariant {
+        selectedVariant()
+    }
+
+    private func guestPayload(for variant: ReminderVariant) -> [String: String] {
+        var out = [NotificationExploreNavigation.guestActionKey: variant.action]
+        if let surface = variant.exploreSurface?.trimmingCharacters(in: .whitespacesAndNewlines), !surface.isEmpty {
+            out[NotificationExploreNavigation.guestExploreSurfaceKey] = surface
         }
-        return v
+        let isEn = Locale.current.language.languageCode?.identifier == "en"
+        let seasonLabel = isEn ? variant.seasonLabelEn : variant.seasonLabelVi
+        if let seasonLabel, !seasonLabel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            out[NotificationExploreNavigation.guestExploreSeasonLabelKey] = seasonLabel
+        }
+        return out
     }
 
     private func vnHour() -> Int {
@@ -165,18 +215,18 @@ final class GuestLocalReengagementScheduler {
         }
         center.removePendingNotificationRequests(withIdentifiers: [Self.requestId, Self.eveningRequestId])
 
-        let variant = pickVariant()
+        let variant = selectedVariant()
         let content = UNMutableNotificationContent()
-        content.title = variant.titleVi
-        content.body = variant.bodyVi
+        content.title = isEnglishLocale() ? variant.titleEn : variant.titleVi
+        content.body = isEnglishLocale() ? variant.bodyEn : variant.bodyVi
         content.sound = .default
-        content.userInfo = [Self.openGuestHomeKey: Self.openGuestHomeValue]
+        content.userInfo = guestPayload(for: variant)
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: inactiveInterval, repeats: false)
         let request = UNNotificationRequest(identifier: Self.requestId, content: content, trigger: trigger)
         try? await center.add(request)
 
         if remainingToday() > 0 {
-            await scheduleEveningSlot(center: center, variant: pickVariant())
+            await scheduleEveningSlot(center: center, variant: selectedVariant())
         }
     }
 
@@ -192,10 +242,10 @@ final class GuestLocalReengagementScheduler {
             fireDate = cal.date(byAdding: .day, value: 1, to: fireDate) ?? fireDate
         }
         let content = UNMutableNotificationContent()
-        content.title = variant.titleVi
-        content.body = variant.bodyVi
+        content.title = isEnglishLocale() ? variant.titleEn : variant.titleVi
+        content.body = isEnglishLocale() ? variant.bodyEn : variant.bodyVi
         content.sound = .default
-        content.userInfo = [Self.openGuestHomeKey: Self.openGuestHomeValue]
+        content.userInfo = guestPayload(for: variant)
         let triggerComps = cal.dateComponents([.year, .month, .day, .hour, .minute], from: fireDate)
         let trigger = UNCalendarNotificationTrigger(dateMatching: triggerComps, repeats: false)
         let request = UNNotificationRequest(identifier: Self.eveningRequestId, content: content, trigger: trigger)
@@ -268,6 +318,33 @@ final class GuestLocalReengagementScheduler {
     }
 
     func handleGuestOpenPayload(_ userInfo: [AnyHashable: Any]) -> Bool {
+        var stringMap: [String: String] = [:]
+        for (key, value) in userInfo {
+            guard let key = key as? String else { continue }
+            if let string = value as? String {
+                stringMap[key] = string
+            }
+        }
+        if let filter = NotificationExploreNavigation.parseFromGuestPayload(stringMap) {
+            let deps = AppDependencies.shared
+            deps.isGuestBrowseActive = true
+            deps.navigationRouter?.isGuestMode = true
+            deps.navigationRouter?.pendingExploreNavigationFilter = filter
+            deps.navigationRouter?.showExploreOverlay = true
+            markFiredToday()
+            Task { await scheduleAfterBackground() }
+            return true
+        }
+        if stringMap[NotificationExploreNavigation.guestActionKey] ==
+            NotificationExploreNavigation.guestActionOpenHomeSignup {
+            let deps = AppDependencies.shared
+            deps.isGuestBrowseActive = true
+            deps.navigationRouter?.isGuestMode = true
+            deps.navigationRouter?.pendingGuestSignupNudge = true
+            markFiredToday()
+            Task { await scheduleAfterBackground() }
+            return true
+        }
         guard let raw = userInfo[Self.openGuestHomeKey] as? String,
               raw.trimmingCharacters(in: .whitespacesAndNewlines) == Self.openGuestHomeValue else {
             return false

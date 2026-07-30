@@ -164,8 +164,17 @@ enum RealtimeNotificationRouter {
             router.showInviteFriendsScreen = true
             return
         }
-        if nav == "order", let orderId = InAppNotificationNavigation.orderId(from: data) {
+        if nav == "onboarding" {
+            InAppNotificationNavigation.openOnboarding(router: router)
+            return
+        }
+        if nav == "order" || nav == "orders", let orderId = InAppNotificationNavigation.orderId(from: data) {
             InAppNotificationNavigation.openOrder(orderId: orderId, router: router, deps: deps)
+            return
+        }
+        if let filter = NotificationExploreNavigation.parseFromStringMap(data),
+           NotificationExploreNavigation.isExplorePrimaryIntent(data.mapValues { $0 as Any }) {
+            InAppNotificationNavigation.openExplore(filter: filter, router: router)
             return
         }
 

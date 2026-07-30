@@ -91,6 +91,9 @@ final class AppRouter {
     var showExploreOverlay = false
     var exploreSearchExpanded = false
     var pendingExploreProfileFilter: ExploreProfileFilterRequest?
+    var pendingExploreNavigationFilter: ExploreNavigationFilter?
+    var pendingOpenOnboarding = false
+    var pendingGuestSignupNudge = false
 
     // MainNav overlays
     var showNotificationScreen = false

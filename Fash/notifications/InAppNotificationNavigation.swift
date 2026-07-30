@@ -72,6 +72,15 @@ enum InAppNotificationNavigation {
         router.selectedOrderId = oid
     }
 
+    static func openExplore(filter: ExploreNavigationFilter?, router: AppRouter) {
+        router.pendingExploreNavigationFilter = filter
+        router.showExploreOverlay = true
+    }
+
+    static func openOnboarding(router: AppRouter) {
+        router.pendingOpenOnboarding = true
+    }
+
     private static func normalized(_ value: String?) -> String {
         value?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? ""
     }

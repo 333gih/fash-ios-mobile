@@ -55,6 +55,11 @@ struct GuestMainShell: View {
                 onContinueBrowsing: { showLoginSheet = false }
             )
         }
+        .onChange(of: router.pendingGuestSignupNudge) { _, pending in
+            guard pending else { return }
+            router.pendingGuestSignupNudge = false
+            showSignupNudge = true
+        }
         .sheet(isPresented: $showSignupNudge) {
             let slide = homeVM.guestReengagementSlides.first
             GuestSignupNudgeSheet(

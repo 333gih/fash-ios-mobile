@@ -66,8 +66,11 @@ struct MainNavScreen: View {
                 onOpenFollowConnections: { tab in
                     router.dismissNotificationsAndNavigate(.followConnections(tab))
                 },
-                onOpenExplore: {
-                    router.dismissNotificationsAndNavigate(.explore)
+                onOpenExplore: { filter in
+                    router.dismissNotificationsAndNavigate(.explore(filter))
+                },
+                onOpenOnboarding: {
+                    router.dismissNotificationsAndNavigate(.onboarding)
                 },
                 onOpenInviteFriends: {
                     router.dismissNotificationsAndNavigate(.inviteFriends)
@@ -314,6 +317,15 @@ struct MainNavScreen: View {
         }
         .onChange(of: router.pendingExploreProfileFilter) { _, _ in
             Task { await applyPendingExploreProfileFilter() }
+        }
+        .onChange(of: router.pendingExploreNavigationFilter) { _, filter in
+            guard filter != nil else { return }
+            Task { await applyPendingExploreNavigationFilter() }
+        }
+        .onChange(of: router.pendingOpenOnboarding) { _, pending in
+            guard pending else { return }
+            router.pendingOpenOnboarding = false
+            router.onboardingStep = .aestheticTags
         }
         .onChange(of: router.selectedTab) { _, tab in
             guard !isGuestMode else { return }
@@ -709,6 +721,13 @@ struct MainNavScreen: View {
             countryId: req.countryId,
             countryIso2: req.countryIso2
         )
+        openExploreOverlay(expandSearch: false)
+    }
+
+    private func applyPendingExploreNavigationFilter() async {
+        guard let filter = router.pendingExploreNavigationFilter else { return }
+        router.pendingExploreNavigationFilter = nil
+        await exploreVM.openFromNotificationFilter(filter, deps: deps, isGuestMode: isGuestMode)
         openExploreOverlay(expandSearch: false)
     }
 

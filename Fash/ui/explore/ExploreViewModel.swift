@@ -66,6 +66,11 @@ final class ExploreViewModel {
     var countries: [CommonCountryDto] = []
     var filterCatalogLoading = false
     var shoppingContext: ShoppingContext?
+    var exploreSurface: String?
+    var notificationSeasonKey: String?
+    var notificationSeasonLabel: String?
+    /// When true, overlay close must not wipe notification-applied filters (parity with Android persist).
+    var preserveFiltersOnOverlayClose = false
 
     private var listingsFetchGeneration = 0
     private(set) var listingsFeedEpoch = 0
@@ -509,10 +514,15 @@ final class ExploreViewModel {
         maxPriceText = ""
         selectedConditionFilter = nil
         setSizingModeFilter(nil)
+        clearNotificationExploreContext()
     }
 
-    /// Called when the Explore overlay closes — fresh session on next open.
+    /// Called when the Explore overlay closes — fresh session on next open unless notification filters are active.
     func resetSessionOnOverlayClose() {
+        if preserveFiltersOnOverlayClose {
+            preserveFiltersOnOverlayClose = false
+            return
+        }
         autocompleteTask?.cancel()
         autocompleteTask = nil
         autocompleteSuggestions = []
@@ -543,9 +553,47 @@ final class ExploreViewModel {
         sellersLoading = false
         sellersLoadError = false
         loadMoreCooldownUntil = nil
+        exploreSurface = nil
+        notificationSeasonKey = nil
+        notificationSeasonLabel = nil
+    }
+
+    func effectiveSeasonContextLabel() -> String? {
+        let fromNotif = notificationSeasonLabel?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let fromNotif, !fromNotif.isEmpty { return fromNotif }
+        return shoppingContext?.chipLabel()
+    }
+
+    func clearNotificationExploreContext() {
+        exploreSurface = nil
+        notificationSeasonKey = nil
+        notificationSeasonLabel = nil
+        preserveFiltersOnOverlayClose = false
+    }
+
+    func openFromNotificationFilter(
+        _ filter: ExploreNavigationFilter,
+        deps: AppDependencies,
+        isGuestMode: Bool
+    ) async {
+        preserveFiltersOnOverlayClose = true
+        exploreSurface = filter.surface?.trimmingCharacters(in: .whitespaces).nilIfEmpty
+        notificationSeasonKey = filter.seasonKey?.trimmingCharacters(in: .whitespaces).nilIfEmpty
+        notificationSeasonLabel = filter.seasonLabel?.trimmingCharacters(in: .whitespaces).nilIfEmpty
+        await openFromProfileFilter(
+            deps: deps,
+            categoryId: filter.categoryId,
+            brandId: filter.brandId,
+            aestheticTagId: filter.aestheticTagId,
+            searchQuery: filter.searchQuery ?? "",
+            countryId: nil,
+            countryIso2: nil
+        )
+        await loadListings(deps: deps, isGuestMode: isGuestMode, offset: 0, append: false)
     }
 
     func clearAllFilters(deps: AppDependencies, isGuestMode: Bool) async {
+        clearNotificationExploreContext()
         clearMarketplaceFilterFields()
         await clearExploreConstraints(deps: deps, isGuestMode: isGuestMode)
     }
@@ -715,7 +763,8 @@ final class ExploreViewModel {
                 limit: exploreFeedPageSize,
                 offset: offset,
                 sizingMode: sizingModeFilter,
-                surface: "explore"
+                surface: exploreSurface?.trimmingCharacters(in: .whitespaces).nilIfEmpty ?? "explore",
+                seasonKey: notificationSeasonKey?.trimmingCharacters(in: .whitespaces).nilIfEmpty
             )
         }
         if isGuestMode {

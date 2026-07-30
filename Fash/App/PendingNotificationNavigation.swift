@@ -6,8 +6,9 @@ enum PendingNotificationNavigation: Equatable {
     case listing(String)
     case chat(String)
     case followConnections(Int)
-    case explore
+    case explore(ExploreNavigationFilter?)
     case inviteFriends
+    case onboarding
 }
 
 extension AppRouter {
@@ -47,10 +48,13 @@ extension AppRouter {
         case .followConnections(let tab):
             followConnectionsInitialTab = tab
             showFollowConnections = true
-        case .explore:
+        case .explore(let filter):
+            pendingExploreNavigationFilter = filter
             showExploreOverlay = true
         case .inviteFriends:
             showInviteFriendsScreen = true
+        case .onboarding:
+            pendingOpenOnboarding = true
         }
     }
 }

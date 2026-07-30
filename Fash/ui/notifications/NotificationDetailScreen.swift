@@ -8,7 +8,8 @@ struct NotificationDetailScreen: View {
     var onOpenListing: (String, String?) -> Void = { _, _ in }
     var onOpenChat: (String) -> Void = { _ in }
     var onOpenFollowConnections: (Int) -> Void = { _ in }
-    var onOpenExplore: () -> Void = {}
+    var onOpenExplore: (ExploreNavigationFilter?) -> Void = { _ in }
+    var onOpenOnboarding: () -> Void = {}
     var onOpenInviteFriends: () -> Void = {}
 
     @State private var showRawPayload = false
@@ -212,6 +213,7 @@ struct NotificationDetailScreen: View {
             || actions.openFollowingTab
             || actions.openExploreTab
             || actions.openInviteFriends
+            || actions.openOnboarding
         if hasActions {
             Text(L10n.notificationDetailActionsHeading)
                 .font(FashTypography.labelLarge.weight(.semibold))
@@ -235,7 +237,18 @@ struct NotificationDetailScreen: View {
                     actionButton(L10n.notificationActionOpenFollowing) { onOpenFollowConnections(0) }
                 }
                 if actions.openExploreTab {
-                    actionButton(L10n.notificationActionOpenExplore, action: onOpenExplore)
+                    if let label = actions.exploreFilter?.seasonLabel?.trimmingCharacters(in: .whitespacesAndNewlines),
+                       !label.isEmpty {
+                        Text(label)
+                            .font(FashTypography.bodySmall)
+                            .foregroundStyle(FashColors.textSecondary)
+                    }
+                    actionButton(L10n.notificationActionOpenExplore) {
+                        onOpenExplore(actions.exploreFilter)
+                    }
+                }
+                if actions.openOnboarding {
+                    actionButton(L10n.notificationActionCompleteProfile, action: onOpenOnboarding)
                 }
                 if actions.openInviteFriends {
                     actionButton(L10n.notificationActionOpenInviteFriends, action: onOpenInviteFriends)

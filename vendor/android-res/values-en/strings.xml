@@ -531,6 +531,7 @@
     <string name="notification_action_open_invite_friends">Open invite friends</string>
     <string name="notification_action_open_following">Open following</string>
     <string name="notification_action_open_explore">Open Explore</string>
+    <string name="notification_action_complete_profile">Complete profile</string>
     <string name="notification_detail_more_label">More detail</string>
     <string name="notification_detail_actions_heading">Go to</string>
     <string name="notification_row_no_title">Notification</string>

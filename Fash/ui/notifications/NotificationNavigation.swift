@@ -10,6 +10,8 @@ struct NotificationDetailActions: Equatable {
     let openFollowingTab: Bool
     let openExploreTab: Bool
     let openInviteFriends: Bool
+    let openOnboarding: Bool
+    let exploreFilter: ExploreNavigationFilter?
     let richDetailBody: String?
     let imageUrl: String?
 }
@@ -28,6 +30,8 @@ enum NotificationNavigation {
                 openFollowingTab: false,
                 openExploreTab: false,
                 openInviteFriends: false,
+                openOnboarding: false,
+                exploreFilter: nil,
                 richDetailBody: richBody,
                 imageUrl: promo.remoteImageUrls.first
             )
@@ -48,6 +52,11 @@ enum NotificationNavigation {
 
         let openFollowingTab = nav == "following_tab"
         let openExploreTab = nav == "explore_tab" || nav == "explore"
+            || (nav == "home" && feedSurfaceEqualsSeasonal(data))
+            || NotificationExploreNavigation.isExplorePrimaryIntent(data)
+        let openOnboarding = nav == "onboarding"
+            || ptype == "marketplace.recommendation.profile_completion"
+        let exploreFilter = NotificationExploreNavigation.parseFromNotificationData(data)
         let openInviteFriends = nav == "in_app_invite_friends"
             || ptype == "marketplace.referral.invite_rewarded"
 
@@ -75,6 +84,8 @@ enum NotificationNavigation {
             openFollowingTab: openFollowingTab,
             openExploreTab: openExploreTab,
             openInviteFriends: openInviteFriends,
+            openOnboarding: openOnboarding,
+            exploreFilter: exploreFilter,
             richDetailBody: rich,
             imageUrl: imageUrl
         )
@@ -101,5 +112,10 @@ enum NotificationNavigation {
 
     static func sellerUserIdFromData(_ data: [String: Any]?) -> String? {
         firstStringFromDataCi(data, "seller_user_id", "sellerUserId", "seller_id", "sellerId")
+    }
+
+    private static func feedSurfaceEqualsSeasonal(_ data: [String: Any]?) -> Bool {
+        let surface = firstStringFromDataCi(data, "feed_surface", "feedSurface")?.lowercased() ?? ""
+        return surface == "seasonal_near_you"
     }
 }

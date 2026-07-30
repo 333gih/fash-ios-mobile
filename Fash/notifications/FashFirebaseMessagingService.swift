@@ -92,6 +92,19 @@ enum FashFirebaseMessagingService {
                 }
                 return
             }
+            let nav = data["nav_target"]?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                ?? data["navTarget"]?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                ?? ""
+            if nav == "onboarding", let router = deps.navigationRouter {
+                InAppNotificationNavigation.openOnboarding(router: router)
+                return
+            }
+            if nav == "order" || nav == "orders",
+               let orderId = InAppNotificationNavigation.orderId(from: data),
+               let router = deps.navigationRouter {
+                InAppNotificationNavigation.openOrder(orderId: orderId, router: router, deps: deps)
+                return
+            }
             if let inboxId = data["user_notification_id"]?.trimmingCharacters(in: .whitespacesAndNewlines), !inboxId.isEmpty {
                 deps.pendingInboxNotificationId = inboxId
                 deps.navigationRouter?.showNotificationScreen = true
