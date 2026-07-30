@@ -1141,6 +1141,7 @@
 "nav_post_fab_label" = "ĐĂNG TIN";
 "nav_profile" = "Cá nhân";
 "no_image" = "Không có ảnh";
+"notification_action_complete_profile" = "Hoàn thiện hồ sơ";
 "notification_action_open_chat" = "Mở chat";
 "notification_action_open_explore" = "Mở Khám phá";
 "notification_action_open_followers" = "Mở người theo dõi bạn";

@@ -1141,6 +1141,7 @@
 "nav_post_fab_label" = "POST";
 "nav_profile" = "Profile";
 "no_image" = "No image";
+"notification_action_complete_profile" = "Complete profile";
 "notification_action_open_chat" = "Open chat";
 "notification_action_open_explore" = "Open Explore";
 "notification_action_open_followers" = "Open followers";
