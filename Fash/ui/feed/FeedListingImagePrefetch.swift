@@ -15,7 +15,7 @@ enum FeedListingImagePrefetch {
         let colW = columnWidthPoints ?? defaultColumnWidthPoints()
         let scale = UIScreen.main.scale
         
-        let resources: [ImageResource] = items.prefix(maxItems).compactMap { item -> ImageResource? in
+        let resources: [Kingfisher.ImageResource] = items.prefix(maxItems).compactMap { item -> Kingfisher.ImageResource? in
             let raw = item.coverImageUrl.trimmingCharacters(in: .whitespaces)
             let path = raw.isEmpty ? (item.imageUrls.first ?? "") : raw
             guard !path.isEmpty else { return nil }
@@ -35,7 +35,7 @@ enum FeedListingImagePrefetch {
             )
             let cacheKey = "feed_\(item.id)_\(Int(colW))_\(Int(pixelSize.width))x\(Int(pixelSize.height))"
             
-            return ImageResource(downloadURL: url, cacheKey: cacheKey)
+            return Kingfisher.ImageResource(downloadURL: url, cacheKey: cacheKey)
         }
         
         guard !resources.isEmpty else { return }
