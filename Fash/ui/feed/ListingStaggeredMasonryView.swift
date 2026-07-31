@@ -70,7 +70,6 @@ struct ListingStaggeredMasonryView<Cell: View, Footer: View>: View {
             let isAppend = Self.isTrailingIdAppend(oldIds: oldIds, newIds: newIds)
             refreshLayout(forceFull: !isAppend)
         }
-        .onChange(of: engagementLayoutSignature) { _, _ in refreshLayout() }
     }
 
     private var widthProbe: some View {
@@ -88,17 +87,6 @@ struct ListingStaggeredMasonryView<Cell: View, Footer: View>: View {
 
     private var itemIdsSignature: [String] {
         items.map(\.id)
-    }
-
-    /// Like/save updates keep the same ids — refresh cached column entries.
-    private var engagementLayoutSignature: Int {
-        var hasher = Hasher()
-        for item in items {
-            hasher.combine(item.id)
-            hasher.combine(item.isLiked)
-            hasher.combine(item.isSaved)
-        }
-        return hasher.finalize()
     }
 
     private var itemsById: [String: ListingFeedItem] {
@@ -161,13 +149,13 @@ struct ListingStaggeredMasonryView<Cell: View, Footer: View>: View {
         Group {
             if eagerLayout {
                 VStack(spacing: gap) {
-                    ForEach(entries, id: \.item.masonryCellId) { entry in
+                    ForEach(entries, id: \.item.id) { entry in
                         masonryTile(entry)
                     }
                 }
             } else {
                 LazyVStack(spacing: gap) {
-                    ForEach(entries, id: \.item.masonryCellId) { entry in
+                    ForEach(entries, id: \.item.id) { entry in
                         masonryTile(entry)
                     }
                 }

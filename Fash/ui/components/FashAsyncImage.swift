@@ -31,6 +31,7 @@ struct FashAsyncImage: View {
                 .setProcessor(DownsamplingImageProcessor(size: targetPixelSize))
                 .fade(duration: 0.2)
                 .placeholder { FashAsyncImagePlaceholder() }
+                .cancelOnDisappear(true)
                 .resizable()
                 .aspectRatio(contentMode: contentMode)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -40,6 +41,7 @@ struct FashAsyncImage: View {
             KFImage(imageURL)
                 .fade(duration: 0.2)
                 .placeholder { FashAsyncImagePlaceholder() }
+                .cancelOnDisappear(true)
                 .resizable()
                 .aspectRatio(contentMode: contentMode)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

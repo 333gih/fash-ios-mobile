@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Discovery grid cell — Android [ListingGridCard].
-struct ListingGridCard: View {
+struct ListingGridCard: View, Equatable {
     @Environment(\.fashSpacing) private var spacing
     @Environment(\.listingMasonryColumnWidth) private var masonryColumnWidth
     let item: ListingFeedItem
@@ -15,6 +15,19 @@ struct ListingGridCard: View {
     var relationMatchLabel: String? = nil
     var onLike: (() -> Void)? = nil
     var onSave: (() -> Void)? = nil
+    
+    // Equatable conformance: compare only data properties, ignore closures
+    static func == (lhs: ListingGridCard, rhs: ListingGridCard) -> Bool {
+        lhs.item.id == rhs.item.id &&
+        lhs.item.isLiked == rhs.item.isLiked &&
+        lhs.item.isSaved == rhs.item.isSaved &&
+        lhs.imageAspectRatio == rhs.imageAspectRatio &&
+        lhs.compactFooter == rhs.compactFooter &&
+        lhs.showQuickActions == rhs.showQuickActions &&
+        lhs.statusOverlayLabel == rhs.statusOverlayLabel &&
+        lhs.relationHighlight == rhs.relationHighlight &&
+        lhs.relationMatchLabel == rhs.relationMatchLabel
+    }
 
     private enum FooterMetrics {
         static let rowSpacing: CGFloat = 2

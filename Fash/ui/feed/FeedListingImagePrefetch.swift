@@ -13,7 +13,9 @@ enum FeedListingImagePrefetch {
 
     static func prefetch(items: [ListingFeedItem], columnWidthPoints: CGFloat? = nil) {
         let colW = columnWidthPoints ?? defaultColumnWidthPoints()
-        let urls: [URL] = items.prefix(maxItems).compactMap { item -> URL? in
+        let scale = UIScreen.main.scale
+        
+        let resources: [ImageResource] = items.prefix(maxItems).compactMap { item -> ImageResource? in
             let raw = item.coverImageUrl.trimmingCharacters(in: .whitespaces)
             let path = raw.isEmpty ? (item.imageUrls.first ?? "") : raw
             guard !path.isEmpty else { return nil }
@@ -24,9 +26,34 @@ enum FeedListingImagePrefetch {
                 aspectRatio: ratio
             )
             guard !feedUrl.isEmpty, let url = URL(string: feedUrl) else { return nil }
-            return url
+            
+            // Match the cache key used by FashAsyncImage display
+            let pixelSize = FeedListingImageSizer.pixelSize(
+                columnWidthPoints: colW,
+                aspectRatio: ratio,
+                scale: scale
+            )
+            let cacheKey = "feed_\(item.id)_\(Int(colW))_\(Int(pixelSize.width))x\(Int(pixelSize.height))"
+            
+            return ImageResource(downloadURL: url, cacheKey: cacheKey)
         }
-        guard !urls.isEmpty else { return }
-        ImagePrefetcher(urls: urls).start()
+        
+        guard !resources.isEmpty else { return }
+        
+        // Use the same processor and options as FashAsyncImage
+        let targetSize = FeedListingImageSizer.pixelSize(
+            columnWidthPoints: colW,
+            aspectRatio: 1.0, // Average aspect ratio for processor init
+            scale: scale
+        )
+        
+        ImagePrefetcher(
+            resources: resources,
+            options: [
+                .processor(DownsamplingImageProcessor(size: targetSize)),
+                .scaleFactor(scale),
+                .cacheOriginalImage
+            ]
+        ).start()
     }
 }

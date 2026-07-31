@@ -828,7 +828,7 @@ final class HomeViewModel {
         guard case .success(let loaded) = result else { return false }
         sections.huntToday = loaded
         let limit = sectionLimit(for: .huntToday, fallback: HomeFeedConstants.huntTodayLimit)
-        setTabHasMore(.huntToday, loaded.count >= limit)
+        setTabHasMore(.huntToday, loaded.count == limit)
         if selectedFeedTab == .huntToday { syncItemsForSelectedTab() }
         return true
     }
@@ -874,7 +874,7 @@ final class HomeViewModel {
                 }
                 setTabHasMore(
                     tab,
-                    page.count >= HomeFeedConstants.tabLoadMorePageSize && added > 0
+                    page.count == HomeFeedConstants.tabLoadMorePageSize && added > 0
                 )
                 FeedPerformance.log("Home \(tab) loadMore @\(offset) -> +\(added) total=\(itemsForTab(tab).count)")
             case .failure(let error):
@@ -1019,12 +1019,12 @@ final class HomeViewModel {
         sections.shoppingContext = loaded.shoppingContext ?? sections.shoppingContext
         recommendationSectionsFetched = true
         if !loaded.huntToday.isEmpty {
-            setTabHasMore(.huntToday, loaded.huntToday.count >= huntLimit)
+            setTabHasMore(.huntToday, loaded.huntToday.count == huntLimit)
         }
-        setTabHasMore(.forYou, loaded.forYou.count >= forYouLimit)
-        setTabHasMore(.stylePicks, loaded.stylePicks.count >= styleLimit)
-        setTabHasMore(.similarSaved, loaded.similarToSaved.count >= similarLimit)
-        setTabHasMore(.seasonalNearYou, loaded.seasonalNearYou.count >= seasonalLimit)
+        setTabHasMore(.forYou, loaded.forYou.count == forYouLimit)
+        setTabHasMore(.stylePicks, loaded.stylePicks.count == styleLimit)
+        setTabHasMore(.similarSaved, loaded.similarToSaved.count == similarLimit)
+        setTabHasMore(.seasonalNearYou, loaded.seasonalNearYou.count == seasonalLimit)
         syncItemsForSelectedTab()
         return true
     }

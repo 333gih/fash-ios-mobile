@@ -586,7 +586,7 @@ final class ProfileViewModel {
             mutatePagination(for: tab) {
                 $0.nextOffset = nextListingOffset(afterFetchingAt: 0, rawCount: page.rawCount)
                 let pageSize = ProfileListingConstants.listingPageSize
-                let fullPage = page.rawCount >= pageSize
+                let fullPage = page.rawCount == pageSize
                 let summaryGap = displayCount(for: tab) > page.items.count
                 $0.hasMore = fullPage || summaryGap
             }
@@ -601,7 +601,7 @@ final class ProfileViewModel {
                         $0.nextOffset = nextListingOffset(afterFetchingAt: 0, rawCount: fallback.rawCount)
                         let pageSize = ProfileListingConstants.listingPageSize
                         let summaryGap = displayCount(for: tab) > fallback.items.count
-                        $0.hasMore = fallback.rawCount >= pageSize || summaryGap
+                        $0.hasMore = fallback.rawCount == pageSize || summaryGap
                     }
                     FeedPerformance.log(
                         "Profile \(tab) unfiltered fallback -> items=\(fallback.items.count) summary=\(displayCount(for: tab))"

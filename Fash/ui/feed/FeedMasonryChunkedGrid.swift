@@ -128,7 +128,7 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
                 let liveItem = itemsById[entry.item.id] ?? entry.item
                 let tileHeight = ListingMasonryGrid.tileHeight(columnWidth: columnWidth, item: liveItem)
                 cell(liveItem, entry.index)
-                    .id(liveItem.masonryCellId)
+                    .id(liveItem.id)
                     .environment(\.listingMasonryColumnWidth, columnWidth)
                     .frame(width: columnWidth, height: max(1, tileHeight), alignment: .top)
                     .clipped()

@@ -642,11 +642,11 @@ final class SellerProfileViewModel {
             setListings(page.items, for: tab)
             mutatePagination(for: tab) { state in
                 state.nextOffset = nextListingOffset(afterFetchingAt: 0, rawCount: page.rawCount)
-                state.hasMore = page.rawCount >= SellerStorefrontConstants.listingPageSize
+                state.hasMore = page.rawCount == SellerStorefrontConstants.listingPageSize
             }
             prefetchStorefrontImages(page.items)
             FeedPerformance.log(
-                "Seller \(tab) first page -> items=\(page.items.count) hasMore=\(page.rawCount >= SellerStorefrontConstants.listingPageSize)"
+                "Seller \(tab) first page -> items=\(page.items.count) hasMore=\(page.rawCount == SellerStorefrontConstants.listingPageSize)"
             )
         case .failure:
             if listings(for: tab).isEmpty {

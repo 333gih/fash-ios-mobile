@@ -1,10 +1,10 @@
 import SwiftUI
 
-/// Android `Modifier.listingCardMarquee()` — `basicMarquee(900ms, 1200ms, 35.dp)`.
+/// Android `Modifier.listingCardMarquee()` — optimized for performance.
 enum ListingCardMarquee {
-    static let initialDelayMs: UInt64 = 900
-    static let repeatDelayMs: UInt64 = 1_200
-    static let velocity: CGFloat = 35
+    static let initialDelayMs: UInt64 = 2_000  // Increased from 900ms to reduce animation churn
+    static let repeatDelayMs: UInt64 = 2_000   // Increased from 1200ms to reduce frequency
+    static let velocity: CGFloat = 30          // Slightly slower for smoother animation
 }
 
 /// Single-line marquee for listing grid footers (title, seller, condition, secondary meta).

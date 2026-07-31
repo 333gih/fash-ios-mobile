@@ -865,7 +865,7 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
         gap: CGFloat
     ) -> some View {
         VStack(alignment: .leading, spacing: gap) {
-            ForEach(entries, id: \.item.masonryCellId) { entry in
+            ForEach(entries, id: \.item.id) { entry in
                 profileMasonryTile(item: entry.item, index: entry.index)
             }
         }

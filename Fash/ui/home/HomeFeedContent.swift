@@ -341,14 +341,27 @@ struct HomeFeedContent: View {
                         index: index,
                         surface: analyticsSurface,
                         imageAspectRatio: ListingMasonryGrid.masonryAspectRatio(for: item),
-                        onPrefetchLoadMore: viewModel.selectedFeedTab == .following
-                            ? {
+                        onPrefetchLoadMore: {
+                            let tab = viewModel.selectedFeedTab
+                            // Following tab: window trim
+                            if tab == .following {
                                 viewModel.scheduleFollowingWindowTrim(
                                     visibleIndex: index,
                                     columnWidth: masonryColumnWidth
                                 )
                             }
-                            : nil,
+                            // All tabs: prefetch next page when near end
+                            if FeedPaginationPolicy.shouldPrefetchNextPage(
+                                appearedIndex: index,
+                                totalCount: viewModel.items.count
+                            ) {
+                                viewModel.loadMore(
+                                    deps: deps,
+                                    isGuestMode: isGuestMode,
+                                    fromScrollEdge: false
+                                )
+                            }
+                        },
                         onTap: {
                             viewModel.reportListingClick(
                                 item: item,

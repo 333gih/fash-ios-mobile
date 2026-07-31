@@ -711,7 +711,7 @@ final class ExploreViewModel {
         switch result {
         case .success(let feed):
             items = feed
-            hasMore = feed.count >= exploreFeedPageSize
+            hasMore = feed.count == exploreFeedPageSize
             loadError = false
             lastSuccessfulExploreRefreshAt = Date()
             FeedListingImagePrefetch.prefetch(items: feed)
@@ -814,14 +814,14 @@ final class ExploreViewModel {
                 var seen = Set(items.map(\.id))
                 let fresh = feed.filter { seen.insert($0.id).inserted }
                 guard !fresh.isEmpty || feed.isEmpty else {
-                    hasMore = feed.count >= exploreFeedPageSize
+                    hasMore = feed.count == exploreFeedPageSize
                     return
                 }
                 items = items + fresh
             } else {
                 items = feed
             }
-            hasMore = feed.count >= exploreFeedPageSize
+            hasMore = feed.count == exploreFeedPageSize
             loadError = false
             if !append {
                 lastSuccessfulExploreRefreshAt = Date()

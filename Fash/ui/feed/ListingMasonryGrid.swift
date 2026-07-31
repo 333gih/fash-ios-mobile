@@ -437,7 +437,7 @@ struct ListingMasonryColumnFeed<Content: View>: View {
     @ViewBuilder
     private func masonryColumn(_ column: [(index: Int, item: ListingFeedItem)]) -> some View {
         LazyVStack(alignment: .leading, spacing: gap) {
-            ForEach(column, id: \.item.masonryCellId) { entry in
+            ForEach(column, id: \.item.id) { entry in
                 let tileHeight = ListingMasonryGrid.tileHeight(
                     columnWidth: columnWidth,
                     item: entry.item
