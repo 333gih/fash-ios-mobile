@@ -136,6 +136,36 @@ final class RealtimeManager: @unchecked Sendable {
         sendFrame(["type": "presence", "state": "background"])
     }
 
+    /// Sends background presence, waits for the frame to leave the socket, then disconnects.
+    /// Ensures Redis clears `presence:active` before FCM suppression would skip iOS tray delivery.
+    func markBackgroundAndDisconnect(clearSubscriptions: Bool = false) {
+        intentionalDisconnect = true
+        reconnectTask?.cancel()
+        reconnectTask = nil
+
+        lock.lock()
+        let connected = state == .connected
+        let task = webSocketTask
+        lock.unlock()
+
+        guard connected, let task else {
+            disconnect(clearSubscriptions: clearSubscriptions)
+            return
+        }
+
+        guard let data = try? JSONSerialization.data(withJSONObject: ["type": "presence", "state": "background"]),
+              let text = String(data: data, encoding: .utf8) else {
+            disconnect(clearSubscriptions: clearSubscriptions)
+            return
+        }
+
+        task.send(.string(text)) { [weak self] _ in
+            Task { @MainActor in
+                self?.disconnect(clearSubscriptions: clearSubscriptions)
+            }
+        }
+    }
+
     func sendTypingStart(conversationId: String) {
         let id = conversationId.trimmingCharacters(in: .whitespaces)
         guard !id.isEmpty else { return }

@@ -252,6 +252,13 @@ extension PushNotificationCoordinator: UNUserNotificationCenterDelegate {
         await MainActor.run {
             PushNotificationCoordinator.shared.handleForegroundNotification(userInfo: userInfo)
         }
+        let wsConnected = await MainActor.run {
+            AppDependencies.shared.realtimeManager.isConnected
+        }
+        if wsConnected {
+            // Foreground + WS: in-app path already handled above; skip duplicate tray banner.
+            return []
+        }
         return [.banner, .list, .sound, .badge]
     }
 

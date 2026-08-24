@@ -127,15 +127,13 @@ struct RootView: View {
             case .inactive:
                 AppSessionTracker.shared.onSceneBackground()
                 deps.realtimeManager.sendPresenceBackground()
-                deps.realtimeManager.disconnect(clearSubscriptions: false)
                 if router.isGuestMode {
                     Task { await GuestLocalReengagementScheduler.shared.scheduleAfterBackground() }
                 }
             case .background:
                 AppSessionTracker.shared.onSceneBackground()
-                deps.realtimeManager.sendPresenceBackground()
-                // Clear Redis presence so backend sends FCM while app is suspended (Android drops WS in background).
-                deps.realtimeManager.disconnect(clearSubscriptions: false)
+                // Wait for presence frame before closing WS so server clears online keys (FCM path).
+                deps.realtimeManager.markBackgroundAndDisconnect(clearSubscriptions: false)
                 if router.isGuestMode {
                     Task { await GuestLocalReengagementScheduler.shared.scheduleAfterBackground() }
                 }
