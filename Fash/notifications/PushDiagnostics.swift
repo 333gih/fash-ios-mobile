@@ -29,13 +29,24 @@ enum PushDiagnostics {
         }
         let prefix = trimmed.count > 8 ? String(trimmed.prefix(8)) + "…" : trimmed
         let kind: String
-        if trimmed.count >= 100, trimmed.contains(":") {
+        if looksLikeFCMRegistration(trimmed) {
             kind = "fcm_registration"
-        } else if trimmed.count == 64, trimmed.allSatisfy(\.isHexDigit) {
+        } else if looksLikeRawAPNSHex(trimmed) {
             kind = "raw_apns_hex"
         } else {
             kind = "unknown"
         }
         info("\(context): token_prefix=\(prefix) length=\(trimmed.count) kind=\(kind)")
+    }
+
+    static func looksLikeRawAPNSHex(_ token: String) -> Bool {
+        let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.count == 64 && trimmed.allSatisfy(\.isHexDigit)
+    }
+
+    static func looksLikeFCMRegistration(_ token: String) -> Bool {
+        let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.count >= 100, trimmed.contains(":") { return true }
+        return trimmed.count >= 140
     }
 }

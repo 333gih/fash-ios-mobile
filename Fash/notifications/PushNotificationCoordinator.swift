@@ -173,7 +173,7 @@ final class PushNotificationCoordinator: NSObject {
                 if let error {
                     PushDiagnostics.warning("FCM deleteToken on logout: \(error.localizedDescription)")
                 } else {
-                    PushDiagnostics.info("FCM token deleted on logout")
+                    PushDiagnostics.info("FCM token deleted on logout kind=fcm_registration")
                 }
                 continuation.resume()
             }

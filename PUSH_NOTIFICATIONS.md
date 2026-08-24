@@ -6,7 +6,7 @@ iOS đăng ký token qua **cùng endpoint** với Android:
 
 ```json
 {
-  "fcm_token": "<FCM registration token hoặc hex APNs device token>",
+  "fcm_token": "<FCM registration token>",
   "device_platform": "ios",
   "client_locale": "vi"
 }
@@ -18,8 +18,8 @@ Bearer JWT bắt buộc (sau login). Backend lưu vào bảng `fcm_tokens` — x
 
 | Mode | Env | Hành vi |
 |------|-----|---------|
-| **Pure APNs** (hiện tại) | `USE_FIREBASE_MESSAGING=false` | Hex APNs device token → `POST /auth/fcm/register`, không init Firebase |
-| **Firebase FCM** (tùy chọn sau) | `USE_FIREBASE_MESSAGING=true` + `GoogleService-Info.plist` | APNs token → FCM registration token → `POST /auth/fcm/register` |
+| **Firebase FCM** (prod / TestFlight) | `USE_FIREBASE_MESSAGING=true` + `GoogleService-Info.plist` | APNs token → FCM registration token → `POST /auth/fcm/register`. Raw APNs hex is **not** registered. |
+| **Pure APNs** (legacy fallback) | `USE_FIREBASE_MESSAGING=false` | Hex APNs device token → `POST /auth/fcm/register`, không init Firebase — backend FCM send will reject these tokens. |
 
 Cấu hình trong `env/prod.env` / `env/dev.env` → `BuildConfig.useFirebaseMessaging` + Info.plist `USE_FIREBASE_MESSAGING`.
 
@@ -33,10 +33,10 @@ Sau này switch transport: đổi `USE_FIREBASE_MESSAGING=false` trong env, ch�
 4. Sau login, app gọi `POST /auth/fcm/register` với Bearer JWT.
 5. Server (notification-service) gửi push qua FCM Admin SDK → APNs → iPhone.
 
-## Foreground display (build 299+)
+## Foreground display (build 326+)
 
-- Tray banner **luôn hiển thị** khi app foreground (`willPresent` → `.banner, .sound, .list, .badge`) — parity personal-os.
-- In-app overlay vẫn chạy song song qua `FashFirebaseMessagingService.handleForegroundNotification`.
+- In-app overlay via `FashFirebaseMessagingService.handleForegroundNotification`.
+- Tray banner (`willPresent` → `.banner, .sound, .list, .badge`) khi **không** có WebSocket; nếu WS connected thì ẩn tray để tránh duplicate với in-app.
 
 ## Bước 1 — Firebase Console (project `fash-3526e`)
 

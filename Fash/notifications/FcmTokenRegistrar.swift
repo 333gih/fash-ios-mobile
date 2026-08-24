@@ -8,6 +8,8 @@ final class FcmTokenRegistrar {
     private let authRepository: AuthRepository
     private let sessionStore: AuthSessionStore
     private let clientLocaleProvider: () -> String
+    private let registerLock = NSLock()
+    private var registerInFlight = false
 
     init(
         authRepository: AuthRepository,
@@ -19,24 +21,51 @@ final class FcmTokenRegistrar {
         self.clientLocaleProvider = clientLocaleProvider
     }
 
-    /// Registers stashed token after session restore/login (personal-os `registerPendingToken`).
+    /// Registers stashed FCM token after session restore/login.
+    /// When Firebase Messaging is enabled, never falls back to raw APNs hex (`fash.apns.device_token`).
     func registerPendingToken() async {
-        let token = UserDefaults.standard.string(forKey: Self.pendingTokenKey)?
+        let pending = UserDefaults.standard.string(forKey: Self.pendingTokenKey)?
             .trimmingCharacters(in: .whitespacesAndNewlines)
-            ?? UserDefaults.standard.string(forKey: PushNotificationCoordinator.apnsDeviceTokenKey)?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let token, !token.isEmpty else {
+        if let pending, !pending.isEmpty {
+            logD("registerPendingToken: attempting stashed FCM token")
+            await registerDeviceToken(pending)
             return
         }
-        logD("registerPendingToken: attempting stashed token")
-        await registerDeviceToken(token)
+        guard !PushNotificationCoordinator.usesFirebaseMessaging else {
+            return
+        }
+        let hex = UserDefaults.standard.string(forKey: PushNotificationCoordinator.apnsDeviceTokenKey)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let hex, !hex.isEmpty else { return }
+        logD("registerPendingToken: pure-APNs path, using stored device token")
+        await registerDeviceToken(hex)
     }
 
     func registerDeviceToken(_ token: String) async {
         let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         PushDiagnostics.logTokenMetadata(trimmed, context: "FcmTokenRegistrar.registerDeviceToken")
+        if PushNotificationCoordinator.usesFirebaseMessaging, PushDiagnostics.looksLikeRawAPNSHex(trimmed) {
+            PushDiagnostics.warning("FcmTokenRegistrar: rejected_raw_apns_hex — will not POST /auth/fcm/register")
+            return
+        }
+        registerLock.lock()
+        if registerInFlight {
+            registerLock.unlock()
+            logD("registerDeviceToken: skipped overlapping in-flight register")
+            return
+        }
+        registerInFlight = true
+        registerLock.unlock()
+        defer {
+            registerLock.lock()
+            registerInFlight = false
+            registerLock.unlock()
+        }
         guard let session = sessionStore.read() else {
+            if PushDiagnostics.looksLikeRawAPNSHex(trimmed), PushNotificationCoordinator.usesFirebaseMessaging {
+                return
+            }
             stashPendingToken(trimmed)
             logD("registerDeviceToken: no session, stashed pending token")
             return
