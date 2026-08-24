@@ -18,12 +18,12 @@ final class PushNotificationCoordinator: NSObject {
     private var hasRequestedAuthorization = false
 
     /// True when a Firebase config plist is bundled (CI decodes the secret before archive).
-    static var isFirebaseConfigured: Bool {
+    nonisolated static var isFirebaseConfigured: Bool {
         Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist") != nil
     }
 
     /// Effective transport: only when explicitly enabled in env AND plist is bundled.
-    static var usesFirebaseMessaging: Bool {
+    nonisolated static var usesFirebaseMessaging: Bool {
         guard BuildConfig.useFirebaseMessaging else { return false }
         return isFirebaseConfigured
     }
