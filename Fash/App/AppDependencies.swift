@@ -39,6 +39,7 @@ final class AppDependencies {
     let notificationPreferencesRepository: NotificationPreferencesRepository
     let corePaymentRepository: CorePaymentRepository
     let uxSurveyRepository: UxSurveyRepository
+    let appMaintenance: AppMaintenanceController
     let browseSessionStore: BrowseSessionStore
     let feedEventReporter: FeedEventReporter
     let uxTabTracker: UxTabTracker
@@ -118,6 +119,7 @@ final class AppDependencies {
         advertisingRepository = AdvertisingRepository(client: securedClient)
         sellerProductPackageRepository = SellerProductPackageRepository(client: securedClient)
         appPromoInterstitialRepository = AppPromoInterstitialRepository(client: securedClient)
+        appMaintenance = AppMaintenanceController(repository: AppStatusRepository(client: securedClient))
         editorialGuideRepository = EditorialGuideRepository()
         dealRepository = DealRepository(client: securedClient)
         userShippingAddressRepository = UserShippingAddressRepository(client: securedClient)

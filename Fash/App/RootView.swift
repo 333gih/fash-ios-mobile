@@ -19,6 +19,7 @@ struct RootView: View {
     @State private var launchProgress = LaunchWaitingProgress()
     @State private var showGuestLoginSheet = false
     @State private var guestLoginReason: String?
+    @State private var shellEpoch = 0
 
     var body: some View {
         FashTheme {
@@ -36,6 +37,20 @@ struct RootView: View {
                 }
             }
             .animation(.easeInOut(duration: 0.22), value: deps.snackbarMessage)
+            .fullScreenCover(isPresented: Binding(
+                get: { deps.appMaintenance.isMaintenance },
+                set: { _ in }
+            )) {
+                MaintenanceScreen(
+                    title: deps.appMaintenance.displayTitle(defaultTitle: L10n.maintenanceTitle),
+                    message: deps.appMaintenance.displayMessage(defaultMessage: L10n.maintenanceBody),
+                    onRetry: {
+                        Task { await deps.appMaintenance.refreshNow() }
+                    }
+                )
+                .interactiveDismissDisabled(true)
+                .environment(\.locale, AppLocale.locale)
+            }
             .fullScreenCover(isPresented: $router.showExploreOverlay) {
                 ExploreOverlayHost(
                     viewModel: exploreVM,
@@ -112,6 +127,22 @@ struct RootView: View {
             _ = await brandingFloor.value
             router.showSplash = false
         }
+        .task(id: scenePhase) {
+            guard scenePhase == .active else { return }
+            while !Task.isCancelled {
+                await deps.appMaintenance.refreshNow()
+                let nanos: UInt64 = deps.appMaintenance.isMaintenance ? 15_000_000_000 : 45_000_000_000
+                try? await Task.sleep(nanoseconds: nanos)
+            }
+        }
+        .onChange(of: deps.appMaintenance.isMaintenance) { wasOn, isOn in
+            if isOn {
+                router.resetToHomePreservingSession()
+            } else if wasOn {
+                router.resetToHomePreservingSession()
+                shellEpoch += 1
+            }
+        }
         .onAppear {
             deps.navigationRouter = router
         }
@@ -139,6 +170,7 @@ struct RootView: View {
                 }
             case .active:
                 AppSessionTracker.shared.onSceneBecameActive(deps: deps)
+                Task { await deps.appMaintenance.refreshNow() }
                 if router.isGuestMode {
                     GuestLocalReengagementScheduler.shared.cancelPending()
                     Task { await GuestLocalReengagementScheduler.shared.syncDeliveredCap() }
@@ -171,7 +203,15 @@ struct RootView: View {
                 deps.pendingDeepLinkSellerUsername != nil ||
                 deps.pendingOpenInviteFriends
 
-        if router.showSplash ||
+        if deps.appMaintenance.isMaintenance {
+            MaintenanceScreen(
+                title: deps.appMaintenance.displayTitle(defaultTitle: L10n.maintenanceTitle),
+                message: deps.appMaintenance.displayMessage(defaultMessage: L10n.maintenanceBody),
+                onRetry: {
+                    Task { await deps.appMaintenance.refreshNow() }
+                }
+            )
+        } else if router.showSplash ||
             router.isLoggingOut ||
             (router.isLaunchWarmupInProgress && !hasPendingDeepLinkAction) {
             FashWaitingScreen()
@@ -184,6 +224,7 @@ struct RootView: View {
                 chatVM: chatVM,
                 ordersVM: ordersVM
             )
+            .id(shellEpoch)
         } else if let step = router.loginStep {
             loginFlow(step: step)
         } else if router.setupGateFetchFailed {
@@ -202,6 +243,7 @@ struct RootView: View {
                 chatVM: chatVM,
                 ordersVM: ordersVM
             )
+            .id(shellEpoch)
         } else {
             FashWaitingScreen()
         }

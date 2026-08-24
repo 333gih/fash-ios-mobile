@@ -144,6 +144,45 @@ final class AppRouter {
     /// Set when closing listing preview sheet before opening product detail.
     var pendingListingIdAfterPreview: String?
 
+    /// Dismiss overlays and land on Home without logging out (end of maintenance).
+    func resetToHomePreservingSession() {
+        selectedTab = .home
+        showExploreOverlay = false
+        exploreSearchExpanded = false
+        pendingExploreProfileFilter = nil
+        pendingExploreNavigationFilter = nil
+        showNotificationScreen = false
+        notificationDetailId = nil
+        pendingNotificationNavigation = nil
+        showSettingsScreen = false
+        showChangePasswordScreen = false
+        showNotificationPreferencesScreen = false
+        featureTourActive = false
+        closeListingDetailFlow()
+        sellerShopUsername = nil
+        editListingId = nil
+        profileEditReturn = nil
+        showEditProfile = false
+        selectedConversationId = nil
+        selectedOrderId = nil
+        showOrdersScreen = false
+        showShippingAddressList = false
+        showAddAddressScreen = false
+        selectedCheckoutListingId = nil
+        homeEditorialSlug = nil
+        showHomeDeliveringScreen = false
+        showSellerPackagesScreen = false
+        showFollowConnections = false
+        showFeaturedSellersAll = false
+        showInviteFriendsScreen = false
+        showEditorialListScreen = false
+        uxSurveyKey = nil
+        sellerPackageCheckout = nil
+        chatOrderDetailOverlayId = nil
+        orderIdPendingCancel = nil
+        pendingListingIdAfterPreview = nil
+    }
+
     var hasBlockingOverlay: Bool {
         listingDetailRootId != nil
             || sellerShopUsername != nil

@@ -1144,6 +1144,9 @@
     <string name="setup_gate_error_body">Check your connection and try again. The app needs your setup status before opening the home experience.</string>
     <string name="setup_gate_retry">Try again</string>
     <string name="setup_gate_sign_out">Sign out</string>
+    <string name="maintenance_title">Fash is under maintenance</string>
+    <string name="maintenance_body">We\'ll be back shortly. Thanks for your patience.</string>
+    <string name="maintenance_retry">Try again</string>
     <string name="edit_profile_title">Edit profile</string>
     <string name="edit_profile_section_basic">Basic info</string>
     <string name="edit_profile_section_style">Style</string>

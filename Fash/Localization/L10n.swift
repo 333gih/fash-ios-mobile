@@ -1301,6 +1301,9 @@ enum L10n {
     static var loginWithPassword: String { t("login_with_password") }
     static var logoutFailed: String { t("logout_failed") }
     static var logoutSuccess: String { t("logout_success") }
+    static var maintenanceBody: String { t("maintenance_body") }
+    static var maintenanceRetry: String { t("maintenance_retry") }
+    static var maintenanceTitle: String { t("maintenance_title") }
     static var meetingCheckInRequiresOnMyWay: String { t("meeting_check_in_requires_on_my_way") }
     static var meetingIdentityReverifyAckDone: String { t("meeting_identity_reverify_ack_done") }
     static var meetingIdentityReverifyAckError: String { t("meeting_identity_reverify_ack_error") }

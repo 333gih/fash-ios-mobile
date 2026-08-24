@@ -1119,6 +1119,9 @@
 "login_with_password" = "Sign in with password";
 "logout_failed" = "Sign out failed.";
 "logout_success" = "Signed out successfully.";
+"maintenance_body" = "We'll be back shortly. Thanks for your patience.";
+"maintenance_retry" = "Try again";
+"maintenance_title" = "Fash is under maintenance";
 "meeting_check_in_requires_on_my_way" = "Tap «On my way» before confirming you’ve arrived.";
 "meeting_identity_reverify_ack_done" = "I’m done";
 "meeting_identity_reverify_ack_error" = "Could not clear the flag yet. Finish verification or try again.";
