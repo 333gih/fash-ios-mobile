@@ -1125,6 +1125,14 @@
 "maintenance_warning_body" = "Lưu việc đang làm. App vẫn dùng được đến khi khóa.";
 "maintenance_warning_countdown" = "Còn %1$d giây — lưu việc đang làm";
 "maintenance_warning_title" = "Fash sắp bảo trì";
+"maintenance_resume_warning_title" = "Ổn rồi — Fash vẫn mở";
+"maintenance_resume_warning_body" = "Đã hủy bảo trì. Tiếp tục xem và mua sắm nhé.";
+"maintenance_resume_back_online_title" = "Fash đã trở lại";
+"maintenance_resume_back_online_body" = "Mọi thứ chạy ổn trở lại. Khám phá ngay nhé.";
+"maintenance_resume_back_online_body_notes" = "Có vài thay đổi mới sau bảo trì:";
+"maintenance_resume_whats_new" = "Có gì mới";
+"maintenance_resume_cta_continue" = "Tiếp tục";
+"maintenance_resume_cta_explore" = "Khám phá Fash";
 "meeting_check_in_requires_on_my_way" = "Bấm «Tôi đang trên đường đến» trước khi xác nhận đã đến nơi.";
 "meeting_identity_reverify_ack_done" = "Đã hoàn tất";
 "meeting_identity_reverify_ack_error" = "Chưa xử lý được. Kiểm tra đã hoàn tất xác minh hoặc thử lại.";

@@ -8,6 +8,10 @@ struct AppMaintenanceStatus: Equatable {
     var countdownSeconds: Int
     var title: String?
     var message: String?
+    var updatedAtIso: String?
+    var resumeMoment: String?
+    var releaseNotesTitle: String?
+    var releaseNotes: String?
 
     var isLocked: Bool { maintenance || phase.caseInsensitiveCompare("maintenance") == .orderedSame }
     var isWarning: Bool { !isLocked && phase.caseInsensitiveCompare("warning") == .orderedSame }
@@ -20,7 +24,11 @@ struct AppMaintenanceStatus: Equatable {
         startsAtIso: nil,
         countdownSeconds: 0,
         title: nil,
-        message: nil
+        message: nil,
+        updatedAtIso: nil,
+        resumeMoment: nil,
+        releaseNotesTitle: nil,
+        releaseNotes: nil
     )
 
     func remainingSeconds(now: Date = Date()) -> Int {
@@ -65,7 +73,11 @@ struct AppMaintenanceStatus: Equatable {
             startsAtIso: stringValue(payload["starts_at"]),
             countdownSeconds: countdown,
             title: stringValue(payload["title"]),
-            message: stringValue(payload["message"])
+            message: stringValue(payload["message"]),
+            updatedAtIso: stringValue(payload["updated_at"]),
+            resumeMoment: stringValue(payload["resume_moment"]),
+            releaseNotesTitle: stringValue(payload["release_notes_title"]),
+            releaseNotes: stringValue(payload["release_notes"])
         )
     }
 

@@ -1125,6 +1125,14 @@
 "maintenance_warning_body" = "Save your work. The app stays usable until lock.";
 "maintenance_warning_countdown" = "%1$d seconds left — save your work";
 "maintenance_warning_title" = "Fash maintenance soon";
+"maintenance_resume_warning_title" = "All clear — Fash stays open";
+"maintenance_resume_warning_body" = "Maintenance was cancelled. Pick up where you left off.";
+"maintenance_resume_back_online_title" = "Fash is back";
+"maintenance_resume_back_online_body" = "Everything's running smoothly again. Jump back in.";
+"maintenance_resume_back_online_body_notes" = "A few things changed while we were away:";
+"maintenance_resume_whats_new" = "What's new";
+"maintenance_resume_cta_continue" = "Continue";
+"maintenance_resume_cta_explore" = "Explore Fash";
 "meeting_check_in_requires_on_my_way" = "Tap «On my way» before confirming you’ve arrived.";
 "meeting_identity_reverify_ack_done" = "I’m done";
 "meeting_identity_reverify_ack_error" = "Could not clear the flag yet. Finish verification or try again.";

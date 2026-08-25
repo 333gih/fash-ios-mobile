@@ -55,9 +55,23 @@ struct RootView: View {
                         )
                     }
                     .zIndex(20)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
+                if let resume = deps.appMaintenance.pendingResume {
+                    MaintenanceResumeOverlay(
+                        presentation: resume,
+                        onDismiss: { deps.appMaintenance.dismissResumePresentation() },
+                        onExplore: {
+                            deps.appMaintenance.dismissResumePresentation()
+                            router.resetToHomePreservingSession()
+                            router.showExploreOverlay = true
+                        }
+                    )
+                    .zIndex(40)
                 }
             }
             .animation(.easeInOut(duration: 0.22), value: deps.snackbarMessage)
+            .animation(.easeInOut(duration: 0.28), value: deps.appMaintenance.isWarning)
             .transition(.opacity)
             .fullScreenCover(isPresented: $router.showExploreOverlay) {
                 ExploreOverlayHost(
