@@ -10,6 +10,9 @@ enum FashFirebaseMessagingService {
     @MainActor
     static func handleForegroundNotification(userInfo: [AnyHashable: Any]) {
         let data = stringDataMap(from: userInfo)
+        if AppDependencies.shared.appMaintenance.applyFromPushData(data) {
+            return
+        }
         guard isNotificationForLoggedInUser(data) else { return }
 
         if data["type"] == AccountSwitchDeepLinks.fcmType {
@@ -63,6 +66,9 @@ enum FashFirebaseMessagingService {
     private static func routeFromPushData(_ data: [String: String]) {
         Task { @MainActor in
             let deps = AppDependencies.shared
+            if deps.appMaintenance.applyFromPushData(data) {
+                return
+            }
             if let prompt = AccountSwitchDeepLinks.parseFromFcmData(data) {
                 deps.requestAccountSwitchPrompt(prompt)
                 return

@@ -20,9 +20,21 @@ struct RootView: View {
     @State private var showGuestLoginSheet = false
     @State private var guestLoginReason: String?
     @State private var shellEpoch = 0
+    @State private var maintenanceRealtimeId: UUID?
 
     var body: some View {
         FashTheme {
+            if deps.appMaintenance.isMaintenance {
+                MaintenanceScreen(
+                    title: deps.appMaintenance.displayTitle(defaultTitle: L10n.maintenanceTitle),
+                    message: deps.appMaintenance.displayMessage(defaultMessage: L10n.maintenanceBody),
+                    onRetry: {
+                        Task { await deps.appMaintenance.refreshNow() }
+                    }
+                )
+                .interactiveDismissDisabled(true)
+                .environment(\.locale, AppLocale.locale)
+            } else {
             ZStack {
                 rootContent
                 FashGlobalDialogHost()
@@ -37,20 +49,6 @@ struct RootView: View {
                 }
             }
             .animation(.easeInOut(duration: 0.22), value: deps.snackbarMessage)
-            .fullScreenCover(isPresented: Binding(
-                get: { deps.appMaintenance.isMaintenance },
-                set: { _ in }
-            )) {
-                MaintenanceScreen(
-                    title: deps.appMaintenance.displayTitle(defaultTitle: L10n.maintenanceTitle),
-                    message: deps.appMaintenance.displayMessage(defaultMessage: L10n.maintenanceBody),
-                    onRetry: {
-                        Task { await deps.appMaintenance.refreshNow() }
-                    }
-                )
-                .interactiveDismissDisabled(true)
-                .environment(\.locale, AppLocale.locale)
-            }
             .fullScreenCover(isPresented: $router.showExploreOverlay) {
                 ExploreOverlayHost(
                     viewModel: exploreVM,
@@ -115,8 +113,10 @@ struct RootView: View {
                     onContinueBrowsing: { showGuestLoginSheet = false }
                 )
             }
+            }
         }
         .task {
+            await deps.appMaintenance.refreshNow()
             deps.prefetchSessionValidation()
             async let sessionValidated = deps.awaitSessionValidation()
             async let brandingFloor = Task {
@@ -131,20 +131,25 @@ struct RootView: View {
             guard scenePhase == .active else { return }
             while !Task.isCancelled {
                 await deps.appMaintenance.refreshNow()
-                let nanos: UInt64 = deps.appMaintenance.isMaintenance ? 15_000_000_000 : 45_000_000_000
+                let nanos: UInt64 = deps.appMaintenance.isMaintenance ? 5_000_000_000 : 8_000_000_000
                 try? await Task.sleep(nanoseconds: nanos)
             }
         }
         .onChange(of: deps.appMaintenance.isMaintenance) { wasOn, isOn in
-            if isOn {
-                router.resetToHomePreservingSession()
-            } else if wasOn {
-                router.resetToHomePreservingSession()
+            router.resetToHomePreservingSession()
+            if wasOn && !isOn {
                 shellEpoch += 1
             }
         }
         .onAppear {
             deps.navigationRouter = router
+            if maintenanceRealtimeId == nil {
+                maintenanceRealtimeId = deps.realtimeManager.addEventListener { event in
+                    if case .appStatusChanged(let status) = event {
+                        deps.appMaintenance.apply(status)
+                    }
+                }
+            }
         }
         .onChange(of: deps.authManager.isAuthenticated) { _, authed in
             if authed {
@@ -203,14 +208,8 @@ struct RootView: View {
                 deps.pendingDeepLinkSellerUsername != nil ||
                 deps.pendingOpenInviteFriends
 
-        if deps.appMaintenance.isMaintenance {
-            MaintenanceScreen(
-                title: deps.appMaintenance.displayTitle(defaultTitle: L10n.maintenanceTitle),
-                message: deps.appMaintenance.displayMessage(defaultMessage: L10n.maintenanceBody),
-                onRetry: {
-                    Task { await deps.appMaintenance.refreshNow() }
-                }
-            )
+        if !deps.appMaintenance.isReady {
+            FashWaitingScreen()
         } else if router.showSplash ||
             router.isLoggingOut ||
             (router.isLaunchWarmupInProgress && !hasPendingDeepLinkAction) {

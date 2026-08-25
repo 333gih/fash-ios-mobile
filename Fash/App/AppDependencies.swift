@@ -119,7 +119,7 @@ final class AppDependencies {
         advertisingRepository = AdvertisingRepository(client: securedClient)
         sellerProductPackageRepository = SellerProductPackageRepository(client: securedClient)
         appPromoInterstitialRepository = AppPromoInterstitialRepository(client: securedClient)
-        appMaintenance = AppMaintenanceController(repository: AppStatusRepository(client: securedClient))
+        appMaintenance = AppMaintenanceController(repository: AppStatusRepository())
         editorialGuideRepository = EditorialGuideRepository()
         dealRepository = DealRepository(client: securedClient)
         userShippingAddressRepository = UserShippingAddressRepository(client: securedClient)

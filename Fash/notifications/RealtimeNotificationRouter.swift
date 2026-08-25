@@ -68,6 +68,8 @@ enum RealtimeNotificationRouter {
                     chatVM: chatVM
                 )
             }
+        case .appStatusChanged(let status):
+            deps.appMaintenance.apply(status)
         case .feedRefresh:
             Task {
                 await homeVM.handleFeedRefresh(deps: deps, isGuestMode: isGuestMode)

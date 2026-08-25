@@ -27,6 +27,7 @@ enum RealtimeEvent: Equatable {
     case inboxRefresh
     case notificationShow(title: String, body: String, data: [String: String]?, userNotificationId: String?)
     case appPromoShow(campaignJson: String)
+    case appStatusChanged(AppMaintenanceStatus)
     case pong
     case unknown(type: String)
 
@@ -137,6 +138,9 @@ enum RealtimeEvent: Equatable {
             let campaign = payload["campaign"] as? [String: Any] ?? root["campaign"] as? [String: Any] ?? [:]
             let json = (try? JSONSerialization.data(withJSONObject: campaign)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
             return .appPromoShow(campaignJson: json)
+        case "app.status.changed":
+            let merged = payload.isEmpty ? root : payload
+            return .appStatusChanged(AppMaintenanceStatus.parse(from: merged))
         case "pong":
             return .pong
         default:
