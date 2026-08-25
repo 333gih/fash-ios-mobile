@@ -20,6 +20,8 @@ final class ExploreViewModel {
     var sellerPreviewPosts: [String: [ListingFeedItem]] = [:]
     var sellersLoading = false
     var sellersLoadError = false
+    var sellersHasMore = false
+    var sellersLoadingMore = false
     var quickInterestChips: [String] = []
     var primarySection: ExplorePrimarySection = .listings
     var isLoading = false
@@ -75,6 +77,8 @@ final class ExploreViewModel {
     private var listingsFetchGeneration = 0
     private(set) var listingsFeedEpoch = 0
     private var sellersBrowseGeneration = 0
+    private var sellerBrowseSeen = Set<String>()
+    private var sellerBrowseNextOffset = 0
     private var loadMoreCooldownUntil: Date?
     private var loadMoreRateLimitUntil: Date?
     private var loadMoreTask: Task<Void, Never>?
@@ -243,7 +247,8 @@ final class ExploreViewModel {
                     suggestions = []
                 }
             case .sellers:
-                if case .success(let users) = await deps.userRepository.searchUsers(query: snapshot, limit: 8, publicBrowse: isGuestMode) {
+                let peopleQ = PeopleSearchQuery.normalize(snapshot)
+                if case .success(let users) = await deps.userRepository.searchUsers(query: peopleQ, limit: 8, publicBrowse: isGuestMode) {
                     suggestions = users.compactMap { u -> String? in
                         let uu = u.username.trimmingCharacters(in: .whitespaces)
                         if !uu.isEmpty { return "@\(uu)" }
@@ -302,7 +307,9 @@ final class ExploreViewModel {
     }
 
     func selectSearchSuggestionAndSubmit(_ text: String, deps: AppDependencies, isGuestMode: Bool) async {
-        let t = text.trimmingCharacters(in: .whitespaces)
+        let t = primarySection == .sellers
+            ? PeopleSearchQuery.normalize(text)
+            : text.trimmingCharacters(in: .whitespaces)
         guard !t.isEmpty else { return }
         autocompleteTask?.cancel()
         query = t
@@ -416,6 +423,10 @@ final class ExploreViewModel {
     }
 
     func loadMore(deps: AppDependencies, isGuestMode: Bool) async {
+        if primarySection == .sellers {
+            await loadMoreSellers(deps: deps, isGuestMode: isGuestMode)
+            return
+        }
         guard canLoadMoreListings else { return }
         let now = Date()
         if FeedLoadMoreThrottle.isBlocked(until: loadMoreRateLimitUntil) { return }
@@ -447,6 +458,8 @@ final class ExploreViewModel {
             await fetchListingsFirstPage(deps: deps, isGuestMode: isGuestMode)
             setSearchBarExpanded(false)
         case .sellers:
+            let q = PeopleSearchQuery.normalize(query)
+            guard !q.isEmpty else { return }
             committedSellerSearchQuery = q
             await searchSellers(deps: deps, isGuestMode: isGuestMode, query: q)
             setSearchBarExpanded(false)
@@ -552,6 +565,10 @@ final class ExploreViewModel {
         loadError = false
         sellersLoading = false
         sellersLoadError = false
+        sellersHasMore = false
+        sellersLoadingMore = false
+        sellerBrowseSeen.removeAll()
+        sellerBrowseNextOffset = 0
         loadMoreCooldownUntil = nil
         exploreSurface = nil
         notificationSeasonKey = nil
@@ -838,6 +855,23 @@ final class ExploreViewModel {
         }
     }
 
+    private func sellerBrowseKey(_ seller: UserSearchResult) -> String {
+        let uid = seller.userId.trimmingCharacters(in: .whitespaces)
+        if !uid.isEmpty { return uid }
+        return seller.username.trimmingCharacters(in: .whitespaces)
+    }
+
+    private func fetchSellerBrowsePage(
+        deps: AppDependencies,
+        isGuestMode: Bool,
+        offset: Int
+    ) async -> Result<FeaturedSellersPage, Error> {
+        if isGuestMode {
+            return await deps.searchRepository.browseFeaturedSellersPage(limit: exploreFeedPageSize, offset: offset)
+        }
+        return await deps.searchRepository.getFeaturedSellersPage(limit: exploreFeedPageSize, offset: offset)
+    }
+
     private func refreshSellerBrowse(deps: AppDependencies, isGuestMode: Bool) async {
         sellersBrowseGeneration += 1
         let gen = sellersBrowseGeneration
@@ -845,25 +879,64 @@ final class ExploreViewModel {
         sellersLoading = true
         sellersLoadError = false
         sellerPreviewPosts = [:]
+        sellerBrowseSeen.removeAll()
+        sellerBrowseNextOffset = 0
         defer { sellersLoading = false }
-        switch await deps.userRepository.searchUsers(query: "a", limit: 40, publicBrowse: isGuestMode) {
-        case .success(let users):
+        switch await fetchSellerBrowsePage(deps: deps, isGuestMode: isGuestMode, offset: 0) {
+        case .success(let page):
             guard gen == sellersBrowseGeneration else { return }
+            var users: [UserSearchResult] = []
+            for seller in page.items where seller.isShopReady {
+                let u = seller.toUserSearchResult()
+                let key = sellerBrowseKey(u)
+                guard !key.isEmpty, sellerBrowseSeen.insert(key).inserted else { continue }
+                users.append(u)
+            }
             sellerResults = users
+            sellerBrowseNextOffset = page.items.count
+            sellersHasMore = page.items.count >= exploreFeedPageSize && (page.total <= 0 || sellerBrowseNextOffset < page.total)
             sellersLoadError = false
             if !users.isEmpty {
-                await loadSellerListingPreviews(deps: deps, isGuestMode: isGuestMode, expectedGen: gen)
+                await loadSellerListingPreviews(deps: deps, isGuestMode: isGuestMode, expectedGen: gen, replace: true)
             }
         case .failure:
             guard gen == sellersBrowseGeneration else { return }
             sellerResults = []
             sellerPreviewPosts = [:]
+            sellersHasMore = false
             sellersLoadError = true
         }
     }
 
+    func loadMoreSellers(deps: AppDependencies, isGuestMode: Bool) async {
+        guard committedSellerSearchQuery.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        guard sellersHasMore, !sellersLoadingMore, !sellersLoading else { return }
+        let gen = sellersBrowseGeneration
+        sellersLoadingMore = true
+        defer { sellersLoadingMore = false }
+        let offset = sellerBrowseNextOffset
+        switch await fetchSellerBrowsePage(deps: deps, isGuestMode: isGuestMode, offset: offset) {
+        case .success(let page):
+            guard gen == sellersBrowseGeneration else { return }
+            var acc = sellerResults
+            for seller in page.items where seller.isShopReady {
+                let u = seller.toUserSearchResult()
+                let key = sellerBrowseKey(u)
+                guard !key.isEmpty, sellerBrowseSeen.insert(key).inserted else { continue }
+                acc.append(u)
+            }
+            sellerResults = acc
+            sellerBrowseNextOffset = offset + page.items.count
+            sellersHasMore = page.items.count >= exploreFeedPageSize && (page.total <= 0 || sellerBrowseNextOffset < page.total)
+            await loadSellerListingPreviews(deps: deps, isGuestMode: isGuestMode, expectedGen: gen, replace: false)
+        case .failure:
+            guard gen == sellersBrowseGeneration else { return }
+            sellersHasMore = false
+        }
+    }
+
     private func searchSellers(deps: AppDependencies, isGuestMode: Bool, query: String) async {
-        let q = query.trimmingCharacters(in: .whitespaces)
+        let q = PeopleSearchQuery.normalize(query)
         guard !q.isEmpty else {
             await refreshSellerBrowse(deps: deps, isGuestMode: isGuestMode)
             return
@@ -872,6 +945,7 @@ final class ExploreViewModel {
         let gen = sellersBrowseGeneration
         sellersLoading = true
         sellersLoadError = false
+        sellersHasMore = false
         sellerPreviewPosts = [:]
         defer { sellersLoading = false }
         switch await deps.userRepository.searchUsers(query: q, limit: 50, publicBrowse: isGuestMode) {
@@ -880,7 +954,7 @@ final class ExploreViewModel {
             sellerResults = users
             sellersLoadError = false
             if !users.isEmpty {
-                await loadSellerListingPreviews(deps: deps, isGuestMode: isGuestMode, expectedGen: gen)
+                await loadSellerListingPreviews(deps: deps, isGuestMode: isGuestMode, expectedGen: gen, replace: true)
             }
         case .failure:
             guard gen == sellersBrowseGeneration else { return }
@@ -894,16 +968,19 @@ final class ExploreViewModel {
     private func loadSellerListingPreviews(
         deps: AppDependencies,
         isGuestMode: Bool,
-        expectedGen: Int
+        expectedGen: Int,
+        replace: Bool
     ) async {
-        sellerPreviewPosts = [:]
+        if replace {
+            sellerPreviewPosts = [:]
+        }
         let sellers = sellerResults
+        let existing = sellerPreviewPosts
         await withTaskGroup(of: (String, [ListingFeedItem]).self) { group in
             for seller in sellers {
-                let key = seller.userId.trimmingCharacters(in: .whitespaces).isEmpty
-                    ? seller.username.trimmingCharacters(in: .whitespaces)
-                    : seller.userId.trimmingCharacters(in: .whitespaces)
+                let key = sellerBrowseKey(seller)
                 guard !key.isEmpty else { continue }
+                if !replace, existing[key] != nil { continue }
                 group.addTask {
                     let listings: [ListingFeedItem]
                     switch await deps.listingRepository.getListingsBySeller(

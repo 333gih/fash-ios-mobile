@@ -432,6 +432,17 @@ struct ExploreScreen: View {
                             )
                             .padding(.horizontal, spacing.editorialStart)
                     }
+                    if viewModel.committedSellerSearchQuery.isEmpty &&
+                        (viewModel.sellersHasMore || viewModel.sellersLoadingMore) {
+                        FeedLoadMoreFooter(
+                            enabled: viewModel.sellersHasMore,
+                            isLoadingMore: viewModel.sellersLoadingMore,
+                            anchorItemCount: viewModel.sellerResults.count
+                        ) {
+                            Task { await viewModel.loadMoreSellers(deps: deps, isGuestMode: isGuestMode) }
+                        }
+                        .padding(.horizontal, spacing.editorialStart)
+                    }
                     HomeBrandFooterStrip()
                 }
             }

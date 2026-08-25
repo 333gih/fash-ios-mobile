@@ -51,6 +51,15 @@ struct FeaturedSellersScreen: View {
                                 await viewModel.ensurePreviewCoversLoaded(seller, deps: deps, isGuestMode: isGuestMode)
                             }
                         }
+                        if viewModel.hasMore || viewModel.isLoadingMore {
+                            FeedLoadMoreFooter(
+                                enabled: viewModel.hasMore,
+                                isLoadingMore: viewModel.isLoadingMore,
+                                anchorItemCount: viewModel.items.count
+                            ) {
+                                Task { await viewModel.loadMore(deps: deps, isGuestMode: isGuestMode) }
+                            }
+                        }
                     }
                     .padding(.horizontal, spacing.editorialStart)
                     .padding(.top, 8)
@@ -62,7 +71,7 @@ struct FeaturedSellersScreen: View {
             }
         }
         .task {
-            await viewModel.reloadOnPresent(deps: deps, isGuestMode: isGuestMode)
+            await viewModel.ensureLoaded(deps: deps, isGuestMode: isGuestMode)
         }
     }
 

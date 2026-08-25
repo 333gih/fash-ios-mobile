@@ -10,19 +10,28 @@ final class FeaturedSellersViewModel {
     var loadError = false
     var loadErrorDetail: String?
     var isRefreshing = false
+    var isLoadingMore = false
+    var hasMore = false
     var totalCount = 0
     var previewCoverUrlsBySellerKey: [String: [String?]] = [:]
 
-    /// Android `ReloadWhenVisible` + `refresh()` when the see-all overlay opens.
-    func reloadOnPresent(deps: AppDependencies, isGuestMode: Bool) async {
-        guard !isLoading, !isRefreshing else { return }
-        await refresh(deps: deps, isGuestMode: isGuestMode)
-    }
+    private var seenKeys = Set<String>()
+    private var nextOffset = 0
+    private var lastLoadedAt: Date?
+
+    private static let pageSize = 20
+    private static let memoryCacheTTL: TimeInterval = 60
 
     func ensureLoaded(deps: AppDependencies, isGuestMode: Bool) async {
-        guard items.isEmpty else { return }
         guard !isLoading, !isRefreshing else { return }
-        await load(deps: deps, isGuestMode: isGuestMode)
+        if !items.isEmpty, let last = lastLoadedAt, Date().timeIntervalSince(last) < Self.memoryCacheTTL {
+            return
+        }
+        if items.isEmpty {
+            await load(deps: deps, isGuestMode: isGuestMode)
+        } else {
+            await refresh(deps: deps, isGuestMode: isGuestMode)
+        }
     }
 
     func load(deps: AppDependencies, isGuestMode: Bool) async {
@@ -31,13 +40,16 @@ final class FeaturedSellersViewModel {
         loadErrorDetail = nil
         defer { isLoading = false }
 
-        switch await loadAllPages(deps: deps, isGuestMode: isGuestMode) {
-        case .success(let result):
-            items = result.items
-            totalCount = result.total
+        switch await fetchPage(deps: deps, isGuestMode: isGuestMode, offset: 0) {
+        case .success(let page):
+            nextOffset = 0
+            merge(page: page, replace: true)
         case .failure(let error):
             items = []
             totalCount = 0
+            hasMore = false
+            nextOffset = 0
+            seenKeys.removeAll()
             loadError = true
             loadErrorDetail = FashErrorPresentation.userMessage(for: error)
         }
@@ -49,14 +61,27 @@ final class FeaturedSellersViewModel {
         loadErrorDetail = nil
         defer { isRefreshing = false }
 
-        switch await loadAllPages(deps: deps, isGuestMode: isGuestMode) {
-        case .success(let result):
-            items = result.items
-            totalCount = result.total
+        switch await fetchPage(deps: deps, isGuestMode: isGuestMode, offset: 0) {
+        case .success(let page):
+            nextOffset = 0
+            merge(page: page, replace: true)
             previewCoverUrlsBySellerKey = [:]
         case .failure(let error):
             loadError = true
             loadErrorDetail = FashErrorPresentation.userMessage(for: error)
+        }
+    }
+
+    func loadMore(deps: AppDependencies, isGuestMode: Bool) async {
+        guard hasMore, !isLoadingMore, !isLoading, !isRefreshing else { return }
+        isLoadingMore = true
+        defer { isLoadingMore = false }
+        let offset = nextOffset
+        switch await fetchPage(deps: deps, isGuestMode: isGuestMode, offset: offset) {
+        case .success(let page):
+            merge(page: page, replace: false)
+        case .failure:
+            hasMore = false
         }
     }
 
@@ -67,7 +92,12 @@ final class FeaturedSellersViewModel {
         loadErrorDetail = nil
         isLoading = false
         isRefreshing = false
+        isLoadingMore = false
+        hasMore = false
         totalCount = 0
+        nextOffset = 0
+        lastLoadedAt = nil
+        seenKeys.removeAll()
     }
 
     func ensurePreviewCoversLoaded(_ seller: FeaturedSellerItem, deps: AppDependencies, isGuestMode: Bool) async {
@@ -95,38 +125,29 @@ final class FeaturedSellersViewModel {
         previewCoverUrlsBySellerKey[key] = urls
     }
 
-    private func loadAllPages(deps: AppDependencies, isGuestMode: Bool) async -> Result<(items: [FeaturedSellerItem], total: Int), Error> {
-        let pageSize = 50
-        var accumulated: [FeaturedSellerItem] = []
-        var seen = Set<String>()
-        var offset = 0
-        var total = 0
-
-        while true {
-            let pageResult: Result<FeaturedSellersPage, Error>
-            if isGuestMode {
-                pageResult = await deps.searchRepository.browseFeaturedSellersPage(limit: pageSize, offset: offset)
-            } else {
-                pageResult = await deps.searchRepository.getFeaturedSellersPage(limit: pageSize, offset: offset)
-            }
-
-            switch pageResult {
-            case .failure(let error):
-                return .failure(error)
-            case .success(let page):
-                total = page.total
-                for seller in page.items where seller.isShopReady {
-                    let key = seller.sellerKey
-                    guard !key.isEmpty, seen.insert(key).inserted else { continue }
-                    accumulated.append(seller)
-                }
-                if page.items.count < pageSize { break }
-                if total > 0, accumulated.count >= total { break }
-                offset += page.items.count
-                if offset > 5_000 { break }
-            }
+    private func fetchPage(
+        deps: AppDependencies,
+        isGuestMode: Bool,
+        offset: Int
+    ) async -> Result<FeaturedSellersPage, Error> {
+        if isGuestMode {
+            return await deps.searchRepository.browseFeaturedSellersPage(limit: Self.pageSize, offset: offset)
         }
+        return await deps.searchRepository.getFeaturedSellersPage(limit: Self.pageSize, offset: offset)
+    }
 
-        return .success((accumulated, total))
+    private func merge(page: FeaturedSellersPage, replace: Bool) {
+        if replace { seenKeys.removeAll() }
+        var acc = replace ? [FeaturedSellerItem]() : items
+        for seller in page.items where seller.isShopReady {
+            let key = seller.sellerKey
+            guard !key.isEmpty, seenKeys.insert(key).inserted else { continue }
+            acc.append(seller)
+        }
+        items = acc
+        totalCount = page.total
+        nextOffset += page.items.count
+        hasMore = page.items.count >= Self.pageSize && (page.total <= 0 || nextOffset < page.total)
+        lastLoadedAt = Date()
     }
 }
