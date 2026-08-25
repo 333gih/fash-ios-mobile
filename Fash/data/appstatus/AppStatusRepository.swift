@@ -2,16 +2,68 @@ import Foundation
 
 struct AppMaintenanceStatus: Equatable {
     var maintenance: Bool
+    var phase: String
+    var mode: String
+    var startsAtIso: String?
+    var countdownSeconds: Int
     var title: String?
     var message: String?
 
-    static let open = AppMaintenanceStatus(maintenance: false, title: nil, message: nil)
+    var isLocked: Bool { maintenance || phase.caseInsensitiveCompare("maintenance") == .orderedSame }
+    var isWarning: Bool { !isLocked && phase.caseInsensitiveCompare("warning") == .orderedSame }
+    var sawRestricted: Bool { isWarning || isLocked }
+
+    static let open = AppMaintenanceStatus(
+        maintenance: false,
+        phase: "open",
+        mode: "none",
+        startsAtIso: nil,
+        countdownSeconds: 0,
+        title: nil,
+        message: nil
+    )
+
+    func remainingSeconds(now: Date = Date()) -> Int {
+        if let iso = startsAtIso?.trimmingCharacters(in: .whitespacesAndNewlines), !iso.isEmpty,
+           let date = Self.parseISO(iso) {
+            return max(0, Int(date.timeIntervalSince(now)))
+        }
+        return max(0, countdownSeconds)
+    }
+
+    func pollIntervalNanoseconds() -> UInt64 {
+        if isWarning { return 1_000_000_000 }
+        if isLocked { return 5_000_000_000 }
+        return 8_000_000_000
+    }
 
     static func parse(from raw: [String: Any]) -> AppMaintenanceStatus {
         let payload = (raw["data"] as? [String: Any]) ?? raw
-        let maintenance = boolValue(payload["maintenance"]) || boolValue(payload["enabled"])
+        let phaseRaw = stringValue(payload["phase"]) ?? ""
+        let locked = boolValue(payload["maintenance"]) || boolValue(payload["enabled"]) ||
+            phaseRaw.caseInsensitiveCompare("maintenance") == .orderedSame
+        let phase: String
+        if locked {
+            phase = "maintenance"
+        } else if phaseRaw.caseInsensitiveCompare("warning") == .orderedSame {
+            phase = "warning"
+        } else {
+            phase = phaseRaw.isEmpty ? "open" : phaseRaw
+        }
+        let countdown: Int
+        if let n = payload["countdown_seconds"] as? Int {
+            countdown = n
+        } else if let n = payload["countdown_seconds"] as? NSNumber {
+            countdown = n.intValue
+        } else {
+            countdown = 0
+        }
         return AppMaintenanceStatus(
-            maintenance: maintenance,
+            maintenance: locked,
+            phase: phase,
+            mode: stringValue(payload["mode"]) ?? "none",
+            startsAtIso: stringValue(payload["starts_at"]),
+            countdownSeconds: countdown,
             title: stringValue(payload["title"]),
             message: stringValue(payload["message"])
         )
@@ -23,6 +75,14 @@ struct AppMaintenanceStatus: Equatable {
             return nil
         }
         return parse(from: root)
+    }
+
+    private static func parseISO(_ raw: String) -> Date? {
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let d = iso.date(from: raw) { return d }
+        iso.formatOptions = [.withInternetDateTime]
+        return iso.date(from: raw)
     }
 }
 

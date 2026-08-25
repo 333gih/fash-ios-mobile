@@ -34,8 +34,9 @@ struct RootView: View {
                 )
                 .interactiveDismissDisabled(true)
                 .environment(\.locale, AppLocale.locale)
+                .transition(.opacity)
             } else {
-            ZStack {
+            ZStack(alignment: .top) {
                 rootContent
                 FashGlobalDialogHost()
                 if let message = deps.snackbarMessage {
@@ -47,8 +48,17 @@ struct RootView: View {
                     }
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
+                if deps.appMaintenance.isWarning {
+                    TimelineView(.periodic(from: .now, by: 1)) { timeline in
+                        MaintenanceWarningBanner(
+                            remainingSeconds: deps.appMaintenance.status.remainingSeconds(now: timeline.date)
+                        )
+                    }
+                    .zIndex(20)
+                }
             }
             .animation(.easeInOut(duration: 0.22), value: deps.snackbarMessage)
+            .transition(.opacity)
             .fullScreenCover(isPresented: $router.showExploreOverlay) {
                 ExploreOverlayHost(
                     viewModel: exploreVM,
@@ -115,6 +125,7 @@ struct RootView: View {
             }
             }
         }
+        .animation(.easeInOut(duration: 0.35), value: deps.appMaintenance.isMaintenance)
         .task {
             await deps.appMaintenance.refreshNow()
             deps.prefetchSessionValidation()
@@ -131,8 +142,7 @@ struct RootView: View {
             guard scenePhase == .active else { return }
             while !Task.isCancelled {
                 await deps.appMaintenance.refreshNow()
-                let nanos: UInt64 = deps.appMaintenance.isMaintenance ? 5_000_000_000 : 8_000_000_000
-                try? await Task.sleep(nanoseconds: nanos)
+                try? await Task.sleep(nanoseconds: deps.appMaintenance.status.pollIntervalNanoseconds())
             }
         }
         .onChange(of: deps.appMaintenance.isMaintenance) { wasOn, isOn in

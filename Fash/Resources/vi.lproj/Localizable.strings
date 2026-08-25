@@ -1122,6 +1122,9 @@
 "maintenance_body" = "Chúng tôi sẽ trở lại sớm. Cảm ơn bạn đã kiên nhẫn.";
 "maintenance_retry" = "Thử lại";
 "maintenance_title" = "Fash đang bảo trì";
+"maintenance_warning_body" = "Lưu việc đang làm. App vẫn dùng được đến khi khóa.";
+"maintenance_warning_countdown" = "Còn %1$d giây — lưu việc đang làm";
+"maintenance_warning_title" = "Fash sắp bảo trì";
 "meeting_check_in_requires_on_my_way" = "Bấm «Tôi đang trên đường đến» trước khi xác nhận đã đến nơi.";
 "meeting_identity_reverify_ack_done" = "Đã hoàn tất";
 "meeting_identity_reverify_ack_error" = "Chưa xử lý được. Kiểm tra đã hoàn tất xác minh hoặc thử lại.";
@@ -1245,6 +1248,7 @@
 "notification_preferences_save_error" = "Không lưu được tùy chọn. Vui lòng thử lại.";
 "notification_preferences_subtitle" = "Quản lý gợi ý sản phẩm và thời gian không làm phiền.";
 "notification_preferences_title" = "Tùy chọn thông báo";
+"notification_pt_admin_app_maintenance" = "Bảo trì ứng dụng";
 "notification_pt_admin_app_promo_interstitial" = "Ưu đãi trong ứng dụng";
 "notification_pt_admin_mobile_push" = "Thông báo từ cổng quản trị";
 "notification_pt_admin_mobile_push_announcement" = "Thông báo chung (cổng quản trị)";

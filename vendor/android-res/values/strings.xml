@@ -1172,6 +1172,10 @@
     <string name="maintenance_title">Fash đang bảo trì</string>
     <string name="maintenance_body">Chúng tôi sẽ trở lại sớm. Cảm ơn bạn đã kiên nhẫn.</string>
     <string name="maintenance_retry">Thử lại</string>
+    <string name="maintenance_warning_title">Fash sắp bảo trì</string>
+    <string name="maintenance_warning_body">Lưu việc đang làm. App vẫn dùng được đến khi khóa.</string>
+    <string name="maintenance_warning_countdown">Còn %1$d giây — lưu việc đang làm</string>
+    <string name="notification_pt_admin_app_maintenance">Bảo trì ứng dụng</string>
 
     <string name="edit_profile_title">Chỉnh sửa hồ sơ</string>
     <string name="edit_profile_section_basic">Thông tin cơ bản</string>

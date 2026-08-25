@@ -42,6 +42,7 @@ enum NotificationInboxLabels {
         case "admin.mobile_push.transactional": return L10n.notificationPtAdminMobilePushTransactional
         case "admin.mobile_push.ops": return L10n.notificationPtAdminMobilePushOps
         case "admin.app_promo_interstitial": return L10n.notificationPtAdminAppPromoInterstitial
+        case "admin.app_maintenance": return L10n.notificationPtAdminAppMaintenance
         default: return nil
         }
     }

@@ -1122,6 +1122,9 @@
 "maintenance_body" = "We'll be back shortly. Thanks for your patience.";
 "maintenance_retry" = "Try again";
 "maintenance_title" = "Fash is under maintenance";
+"maintenance_warning_body" = "Save your work. The app stays usable until lock.";
+"maintenance_warning_countdown" = "%1$d seconds left — save your work";
+"maintenance_warning_title" = "Fash maintenance soon";
 "meeting_check_in_requires_on_my_way" = "Tap «On my way» before confirming you’ve arrived.";
 "meeting_identity_reverify_ack_done" = "I’m done";
 "meeting_identity_reverify_ack_error" = "Could not clear the flag yet. Finish verification or try again.";
@@ -1245,6 +1248,7 @@
 "notification_preferences_save_error" = "Could not save preferences. Please try again.";
 "notification_preferences_subtitle" = "Manage product recommendations and do-not-disturb hours.";
 "notification_preferences_title" = "Notification preferences";
+"notification_pt_admin_app_maintenance" = "App maintenance";
 "notification_pt_admin_app_promo_interstitial" = "In-app promotion";
 "notification_pt_admin_mobile_push" = "Admin message";
 "notification_pt_admin_mobile_push_announcement" = "Announcement (admin)";

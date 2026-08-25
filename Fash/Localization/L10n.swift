@@ -1304,6 +1304,11 @@ enum L10n {
     static var maintenanceBody: String { t("maintenance_body") }
     static var maintenanceRetry: String { t("maintenance_retry") }
     static var maintenanceTitle: String { t("maintenance_title") }
+    static var maintenanceWarningBody: String { t("maintenance_warning_body") }
+    static func maintenanceWarningCountdown(_ a1: CVarArg) -> String {
+        String(format: t("maintenance_warning_countdown"), a1)
+    }
+    static var maintenanceWarningTitle: String { t("maintenance_warning_title") }
     static var meetingCheckInRequiresOnMyWay: String { t("meeting_check_in_requires_on_my_way") }
     static var meetingIdentityReverifyAckDone: String { t("meeting_identity_reverify_ack_done") }
     static var meetingIdentityReverifyAckError: String { t("meeting_identity_reverify_ack_error") }
@@ -1441,6 +1446,7 @@ enum L10n {
     static var notificationPreferencesSaveError: String { t("notification_preferences_save_error") }
     static var notificationPreferencesSubtitle: String { t("notification_preferences_subtitle") }
     static var notificationPreferencesTitle: String { t("notification_preferences_title") }
+    static var notificationPtAdminAppMaintenance: String { t("notification_pt_admin_app_maintenance") }
     static var notificationPtAdminAppPromoInterstitial: String { t("notification_pt_admin_app_promo_interstitial") }
     static var notificationPtAdminMobilePush: String { t("notification_pt_admin_mobile_push") }
     static var notificationPtAdminMobilePushAnnouncement: String { t("notification_pt_admin_mobile_push_announcement") }
