@@ -1175,6 +1175,14 @@
     <string name="maintenance_warning_title">Fash sắp bảo trì</string>
     <string name="maintenance_warning_body">Lưu việc đang làm. App vẫn dùng được đến khi khóa.</string>
     <string name="maintenance_warning_countdown">Còn %1$d giây — lưu việc đang làm</string>
+    <string name="maintenance_resume_warning_title">Ổn rồi — Fash vẫn mở</string>
+    <string name="maintenance_resume_warning_body">Đã hủy bảo trì. Tiếp tục xem và mua sắm nhé.</string>
+    <string name="maintenance_resume_back_online_title">Fash đã trở lại</string>
+    <string name="maintenance_resume_back_online_body">Mọi thứ chạy ổn trở lại. Khám phá ngay nhé.</string>
+    <string name="maintenance_resume_back_online_body_notes">Có vài thay đổi mới sau bảo trì:</string>
+    <string name="maintenance_resume_whats_new">Có gì mới</string>
+    <string name="maintenance_resume_cta_continue">Tiếp tục</string>
+    <string name="maintenance_resume_cta_explore">Khám phá Fash</string>
     <string name="notification_pt_admin_app_maintenance">Bảo trì ứng dụng</string>
 
     <string name="edit_profile_title">Chỉnh sửa hồ sơ</string>

@@ -1149,6 +1149,14 @@
     <string name="maintenance_warning_title">Fash maintenance soon</string>
     <string name="maintenance_warning_body">Save your work. The app stays usable until lock.</string>
     <string name="maintenance_warning_countdown">%1$d seconds left — save your work</string>
+    <string name="maintenance_resume_warning_title">All clear — Fash stays open</string>
+    <string name="maintenance_resume_warning_body">Maintenance was cancelled. Pick up where you left off.</string>
+    <string name="maintenance_resume_back_online_title">Fash is back</string>
+    <string name="maintenance_resume_back_online_body">Everything\'s running smoothly again. Jump back in.</string>
+    <string name="maintenance_resume_back_online_body_notes">A few things changed while we were away:</string>
+    <string name="maintenance_resume_whats_new">What\'s new</string>
+    <string name="maintenance_resume_cta_continue">Continue</string>
+    <string name="maintenance_resume_cta_explore">Explore Fash</string>
     <string name="notification_pt_admin_app_maintenance">App maintenance</string>
     <string name="setup_gate_sign_out">Sign out</string>
     <string name="edit_profile_title">Edit profile</string>

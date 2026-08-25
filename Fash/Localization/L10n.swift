@@ -1302,6 +1302,14 @@ enum L10n {
     static var logoutFailed: String { t("logout_failed") }
     static var logoutSuccess: String { t("logout_success") }
     static var maintenanceBody: String { t("maintenance_body") }
+    static var maintenanceResumeBackOnlineBody: String { t("maintenance_resume_back_online_body") }
+    static var maintenanceResumeBackOnlineBodyNotes: String { t("maintenance_resume_back_online_body_notes") }
+    static var maintenanceResumeBackOnlineTitle: String { t("maintenance_resume_back_online_title") }
+    static var maintenanceResumeCtaContinue: String { t("maintenance_resume_cta_continue") }
+    static var maintenanceResumeCtaExplore: String { t("maintenance_resume_cta_explore") }
+    static var maintenanceResumeWarningBody: String { t("maintenance_resume_warning_body") }
+    static var maintenanceResumeWarningTitle: String { t("maintenance_resume_warning_title") }
+    static var maintenanceResumeWhatsNew: String { t("maintenance_resume_whats_new") }
     static var maintenanceRetry: String { t("maintenance_retry") }
     static var maintenanceTitle: String { t("maintenance_title") }
     static var maintenanceWarningBody: String { t("maintenance_warning_body") }
@@ -1309,14 +1317,6 @@ enum L10n {
         String(format: t("maintenance_warning_countdown"), a1)
     }
     static var maintenanceWarningTitle: String { t("maintenance_warning_title") }
-    static var maintenanceResumeWarningTitle: String { t("maintenance_resume_warning_title") }
-    static var maintenanceResumeWarningBody: String { t("maintenance_resume_warning_body") }
-    static var maintenanceResumeBackOnlineTitle: String { t("maintenance_resume_back_online_title") }
-    static var maintenanceResumeBackOnlineBody: String { t("maintenance_resume_back_online_body") }
-    static var maintenanceResumeBackOnlineBodyNotes: String { t("maintenance_resume_back_online_body_notes") }
-    static var maintenanceResumeWhatsNew: String { t("maintenance_resume_whats_new") }
-    static var maintenanceResumeCtaContinue: String { t("maintenance_resume_cta_continue") }
-    static var maintenanceResumeCtaExplore: String { t("maintenance_resume_cta_explore") }
     static var meetingCheckInRequiresOnMyWay: String { t("meeting_check_in_requires_on_my_way") }
     static var meetingIdentityReverifyAckDone: String { t("meeting_identity_reverify_ack_done") }
     static var meetingIdentityReverifyAckError: String { t("meeting_identity_reverify_ack_error") }
