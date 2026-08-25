@@ -1157,6 +1157,12 @@
     <string name="maintenance_resume_whats_new">What\'s new</string>
     <string name="maintenance_resume_cta_continue">Continue</string>
     <string name="maintenance_resume_cta_explore">Explore Fash</string>
+    <string name="maintenance_session_safe">Your sign-in session is kept safe.</string>
+    <string name="maintenance_return_apology">Sorry for the interruption — Fash is ready for you to keep shopping second-hand.</string>
+    <string name="maintenance_return_default_note_1">Browse and discover preloved items more smoothly</string>
+    <string name="maintenance_return_default_note_2">Chat and orders are stable again</string>
+    <string name="maintenance_return_default_note_3">Performance improvements after maintenance</string>
+    <string name="maintenance_return_cta_home">Go to Home</string>
     <string name="notification_pt_admin_app_maintenance">App maintenance</string>
     <string name="setup_gate_sign_out">Sign out</string>
     <string name="edit_profile_title">Edit profile</string>

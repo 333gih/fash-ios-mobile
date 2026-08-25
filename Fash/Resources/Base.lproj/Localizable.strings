@@ -1129,6 +1129,12 @@
 "maintenance_resume_warning_title" = "Ổn rồi — Fash vẫn mở";
 "maintenance_resume_whats_new" = "Có gì mới";
 "maintenance_retry" = "Thử lại";
+"maintenance_return_apology" = "Xin lỗi vì gián đoạn — Fash đã sẵn sàng cho bạn tiếp tục mua sắm second-hand.";
+"maintenance_return_cta_home" = "Về trang chủ";
+"maintenance_return_default_note_1" = "Duyệt và tìm đồ second-hand mượt hơn";
+"maintenance_return_default_note_2" = "Chat và đơn hàng ổn định trở lại";
+"maintenance_return_default_note_3" = "Cải thiện hiệu năng sau bảo trì";
+"maintenance_session_safe" = "Phiên đăng nhập của bạn vẫn được giữ an toàn.";
 "maintenance_title" = "Fash đang bảo trì";
 "maintenance_warning_body" = "Lưu việc đang làm. App vẫn dùng được đến khi khóa.";
 "maintenance_warning_countdown" = "Còn %1$d giây — lưu việc đang làm";

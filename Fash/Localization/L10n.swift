@@ -1311,6 +1311,12 @@ enum L10n {
     static var maintenanceResumeWarningTitle: String { t("maintenance_resume_warning_title") }
     static var maintenanceResumeWhatsNew: String { t("maintenance_resume_whats_new") }
     static var maintenanceRetry: String { t("maintenance_retry") }
+    static var maintenanceReturnApology: String { t("maintenance_return_apology") }
+    static var maintenanceReturnCtaHome: String { t("maintenance_return_cta_home") }
+    static var maintenanceReturnDefaultNote1: String { t("maintenance_return_default_note_1") }
+    static var maintenanceReturnDefaultNote2: String { t("maintenance_return_default_note_2") }
+    static var maintenanceReturnDefaultNote3: String { t("maintenance_return_default_note_3") }
+    static var maintenanceSessionSafe: String { t("maintenance_session_safe") }
     static var maintenanceTitle: String { t("maintenance_title") }
     static var maintenanceWarningBody: String { t("maintenance_warning_body") }
     static func maintenanceWarningCountdown(_ a1: CVarArg) -> String {

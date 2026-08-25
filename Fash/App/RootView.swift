@@ -35,6 +35,21 @@ struct RootView: View {
                 .interactiveDismissDisabled(true)
                 .environment(\.locale, AppLocale.locale)
                 .transition(.opacity)
+            } else if let resume = deps.appMaintenance.pendingResume, resume.isBackOnline {
+                MaintenanceReturnScreen(
+                    presentation: resume,
+                    onExplore: {
+                        deps.appMaintenance.dismissResumePresentation()
+                        router.resetToHomePreservingSession()
+                        router.showExploreOverlay = true
+                    },
+                    onHome: {
+                        deps.appMaintenance.dismissResumePresentation()
+                        router.resetToHomePreservingSession()
+                    }
+                )
+                .environment(\.locale, AppLocale.locale)
+                .transition(.opacity)
             } else {
             ZStack(alignment: .top) {
                 rootContent
@@ -57,15 +72,10 @@ struct RootView: View {
                     .zIndex(20)
                     .transition(.move(edge: .top).combined(with: .opacity))
                 }
-                if let resume = deps.appMaintenance.pendingResume {
+                if let resume = deps.appMaintenance.pendingResume, resume.isWarningCleared {
                     MaintenanceResumeOverlay(
                         presentation: resume,
-                        onDismiss: { deps.appMaintenance.dismissResumePresentation() },
-                        onExplore: {
-                            deps.appMaintenance.dismissResumePresentation()
-                            router.resetToHomePreservingSession()
-                            router.showExploreOverlay = true
-                        }
+                        onDismiss: { deps.appMaintenance.dismissResumePresentation() }
                     )
                     .zIndex(40)
                 }

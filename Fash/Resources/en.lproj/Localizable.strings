@@ -1129,6 +1129,12 @@
 "maintenance_resume_warning_title" = "All clear — Fash stays open";
 "maintenance_resume_whats_new" = "What's new";
 "maintenance_retry" = "Try again";
+"maintenance_return_apology" = "Sorry for the interruption — Fash is ready for you to keep shopping second-hand.";
+"maintenance_return_cta_home" = "Go to Home";
+"maintenance_return_default_note_1" = "Browse and discover preloved items more smoothly";
+"maintenance_return_default_note_2" = "Chat and orders are stable again";
+"maintenance_return_default_note_3" = "Performance improvements after maintenance";
+"maintenance_session_safe" = "Your sign-in session is kept safe.";
 "maintenance_title" = "Fash is under maintenance";
 "maintenance_warning_body" = "Save your work. The app stays usable until lock.";
 "maintenance_warning_countdown" = "%1$d seconds left — save your work";

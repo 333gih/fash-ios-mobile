@@ -6,13 +6,15 @@ import Observation
 final class AppMaintenanceController {
     private static let persistedOnKey = "fash.app.maintenance.last"
     private static let persistedPhaseKey = "fash.app.maintenance.phase"
+    private static let persistedStartsAtKey = "fash.app.maintenance.starts_at"
+    private static let persistedCountdownKey = "fash.app.maintenance.countdown"
     private static let seenResumeKey = "fash.app.maintenance.seen_resume"
 
     private(set) var status: AppMaintenanceStatus
     private(set) var isReady: Bool = false
     private(set) var pendingResume: MaintenanceResumePresentation?
-    var isMaintenance: Bool { status.isLocked }
-    var isWarning: Bool { status.isWarning }
+    var isMaintenance: Bool { status.isEffectivelyLocked() }
+    var isWarning: Bool { status.isWarning && !status.isEffectivelyLocked() }
 
     private var sawRestrictedThisSession = false
     private let repository: AppStatusRepository
@@ -35,6 +37,8 @@ final class AppMaintenanceController {
         maybeQueueResume(prev: prev, next: next)
         UserDefaults.standard.set(next.isLocked, forKey: Self.persistedOnKey)
         UserDefaults.standard.set(next.phase, forKey: Self.persistedPhaseKey)
+        UserDefaults.standard.set(next.startsAtIso, forKey: Self.persistedStartsAtKey)
+        UserDefaults.standard.set(next.countdownSeconds, forKey: Self.persistedCountdownKey)
     }
 
     func dismissResumePresentation() {
@@ -102,6 +106,8 @@ final class AppMaintenanceController {
 
     private static func loadPersisted() -> AppMaintenanceStatus {
         let phase = UserDefaults.standard.string(forKey: persistedPhaseKey) ?? ""
+        let startsAt = UserDefaults.standard.string(forKey: persistedStartsAtKey)
+        let countdown = UserDefaults.standard.integer(forKey: persistedCountdownKey)
         let locked = UserDefaults.standard.bool(forKey: persistedOnKey) ||
             phase.caseInsensitiveCompare("maintenance") == .orderedSame
         if locked {
@@ -109,8 +115,8 @@ final class AppMaintenanceController {
                 maintenance: true,
                 phase: "maintenance",
                 mode: "none",
-                startsAtIso: nil,
-                countdownSeconds: 0,
+                startsAtIso: startsAt,
+                countdownSeconds: countdown,
                 title: nil,
                 message: nil,
                 updatedAtIso: nil,
@@ -124,8 +130,8 @@ final class AppMaintenanceController {
                 maintenance: false,
                 phase: "warning",
                 mode: "none",
-                startsAtIso: nil,
-                countdownSeconds: 0,
+                startsAtIso: startsAt,
+                countdownSeconds: countdown,
                 title: nil,
                 message: nil,
                 updatedAtIso: nil,

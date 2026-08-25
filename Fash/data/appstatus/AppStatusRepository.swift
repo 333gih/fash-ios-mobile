@@ -17,6 +17,13 @@ struct AppMaintenanceStatus: Equatable {
     var isWarning: Bool { !isLocked && phase.caseInsensitiveCompare("warning") == .orderedSame }
     var sawRestricted: Bool { isWarning || isLocked }
 
+    /// Warning countdown elapsed locally — show lock until server confirms (fixes background resume gap).
+    func isEffectivelyLocked(now: Date = Date()) -> Bool {
+        if isLocked { return true }
+        if isWarning && remainingSeconds(now: now) <= 0 { return true }
+        return false
+    }
+
     static let open = AppMaintenanceStatus(
         maintenance: false,
         phase: "open",
