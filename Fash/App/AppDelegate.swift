@@ -47,6 +47,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     ) {
         Task { @MainActor in
             PushNotificationCoordinator.shared.appDidReceiveRemoteMessage(userInfo)
+            FashFirebaseMessagingService.handleForegroundNotification(userInfo: userInfo)
             completionHandler(.newData)
         }
     }

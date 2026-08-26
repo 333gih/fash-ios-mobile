@@ -151,7 +151,16 @@ struct RootView: View {
         }
         .animation(.easeInOut(duration: 0.35), value: deps.appMaintenance.isMaintenance)
         .task {
-            await deps.appMaintenance.refreshNow()
+            await withTaskGroup(of: Void.self) { group in
+                group.addTask { @MainActor in
+                    await deps.appMaintenance.refreshNow()
+                }
+                group.addTask {
+                    try? await Task.sleep(for: .seconds(4))
+                }
+                _ = await group.next()
+                group.cancelAll()
+            }
             deps.prefetchSessionValidation()
             async let sessionValidated = deps.awaitSessionValidation()
             async let brandingFloor = Task {

@@ -49,6 +49,7 @@ final class PushNotificationCoordinator: NSObject {
             }
         }
         Messaging.messaging().delegate = PushNotificationCoordinator.shared
+        subscribeToAppStatusTopic()
         PushDiagnostics.info("Firebase FCM configured")
     }
 
@@ -116,6 +117,17 @@ final class PushNotificationCoordinator: NSObject {
         Messaging.messaging().apnsToken != nil
     }
 
+    static func subscribeToAppStatusTopic() {
+        guard usesFirebaseMessaging else { return }
+        Messaging.messaging().subscribe(toTopic: AppStatusPush.fcmTopic) { error in
+            if let error {
+                PushDiagnostics.warning("FCM topic subscribe failed: \(error.localizedDescription)")
+            } else {
+                PushDiagnostics.info("FCM subscribed topic=\(AppStatusPush.fcmTopic)")
+            }
+        }
+    }
+
     /// If the user already granted permission, register with APNs on cold start (before login UI).
     func syncRemoteNotificationRegistrationOnLaunch() async {
         let settings = await UNUserNotificationCenter.current().notificationSettings()
@@ -178,6 +190,7 @@ final class PushNotificationCoordinator: NSObject {
                 continuation.resume()
             }
         }
+        subscribeToAppStatusTopic()
     }
 
     /// Requests notification permission and registers with APNs (required before FCM token on real device).
@@ -229,6 +242,7 @@ extension PushNotificationCoordinator: MessagingDelegate {
         guard let fcmToken, !fcmToken.isEmpty else { return }
         PushDiagnostics.logTokenMetadata(fcmToken, context: "MessagingDelegate token refresh")
         Task { @MainActor in
+            PushNotificationCoordinator.subscribeToAppStatusTopic()
             await AppDependencies.shared.fcmTokenRegistrar.registerDeviceToken(fcmToken)
         }
     }

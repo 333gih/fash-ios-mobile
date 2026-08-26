@@ -1,13 +1,18 @@
 import Foundation
+import Network
 import Observation
 
 @Observable
 @MainActor
 final class AppMaintenanceController {
+    static let fcmTopic = AppStatusPush.fcmTopic
+
     private static let persistedOnKey = "fash.app.maintenance.last"
     private static let persistedPhaseKey = "fash.app.maintenance.phase"
     private static let persistedStartsAtKey = "fash.app.maintenance.starts_at"
     private static let persistedCountdownKey = "fash.app.maintenance.countdown"
+    private static let persistedTitleKey = "fash.app.maintenance.title"
+    private static let persistedMessageKey = "fash.app.maintenance.message"
     private static let seenResumeKey = "fash.app.maintenance.seen_resume"
 
     private(set) var status: AppMaintenanceStatus
@@ -18,8 +23,9 @@ final class AppMaintenanceController {
     var isWarning: Bool { status.isWarning && !status.isEffectivelyLocked() }
 
     private var sawRestrictedThisSession = false
-    private var confirmedFromNetwork = false
     private let repository: AppStatusRepository
+    private var pathMonitor: NWPathMonitor?
+    private var lastPathSatisfied: Bool?
 
     init(repository: AppStatusRepository) {
         self.repository = repository
@@ -27,6 +33,7 @@ final class AppMaintenanceController {
         if status.sawRestricted {
             sawRestrictedThisSession = true
         }
+        startConnectivityRefresh()
     }
 
     func apply(_ next: AppMaintenanceStatus) {
@@ -56,10 +63,7 @@ final class AppMaintenanceController {
             apply(try await repository.fetch())
         } catch {
             isReady = true
-            // Keep a persisted lock (user can retry). Only fail-open when we were not locked.
-            if !confirmedFromNetwork && !status.isLocked {
-                applyInternal(.open, fromNetwork: false)
-            }
+            // Keep last snapshot (including persisted lock/warning). Never fail-open to Home.
         }
     }
 
@@ -77,9 +81,6 @@ final class AppMaintenanceController {
         let prev = status
         status = next
         isReady = true
-        if fromNetwork {
-            confirmedFromNetwork = true
-        }
         if next.sawRestricted {
             sawRestrictedThisSession = true
         }
@@ -90,13 +91,20 @@ final class AppMaintenanceController {
     }
 
     private func persistSnapshot(_ next: AppMaintenanceStatus) {
-        // Warning is a 60s in-session state — persisting it makes the next cold start look locked
-        // after the countdown has elapsed.
-        let persistLocked = next.isLocked
-        UserDefaults.standard.set(persistLocked, forKey: Self.persistedOnKey)
-        UserDefaults.standard.set(persistLocked ? "maintenance" : "open", forKey: Self.persistedPhaseKey)
+        let phase: String
+        if next.isLocked {
+            phase = "maintenance"
+        } else if next.isWarning {
+            phase = "warning"
+        } else {
+            phase = "open"
+        }
+        UserDefaults.standard.set(next.isLocked, forKey: Self.persistedOnKey)
+        UserDefaults.standard.set(phase, forKey: Self.persistedPhaseKey)
         UserDefaults.standard.set(next.startsAtIso, forKey: Self.persistedStartsAtKey)
         UserDefaults.standard.set(next.countdownSeconds, forKey: Self.persistedCountdownKey)
+        UserDefaults.standard.set(next.title, forKey: Self.persistedTitleKey)
+        UserDefaults.standard.set(next.message, forKey: Self.persistedMessageKey)
     }
 
     private func maybeQueueResume(prev: AppMaintenanceStatus, next: AppMaintenanceStatus) {
@@ -112,6 +120,24 @@ final class AppMaintenanceController {
         )
     }
 
+    private func startConnectivityRefresh() {
+        guard pathMonitor == nil else { return }
+        let monitor = NWPathMonitor()
+        pathMonitor = monitor
+        monitor.pathUpdateHandler = { [weak self] path in
+            let ok = path.status == .satisfied
+            Task { @MainActor in
+                guard let self else { return }
+                let prev = self.lastPathSatisfied
+                self.lastPathSatisfied = ok
+                if ok, prev == false {
+                    await self.refreshNow()
+                }
+            }
+        }
+        monitor.start(queue: DispatchQueue.global(qos: .utility))
+    }
+
     private static func hasSeenResume(_ token: String) -> Bool {
         UserDefaults.standard.string(forKey: seenResumeKey) == token
     }
@@ -124,6 +150,8 @@ final class AppMaintenanceController {
         let phase = UserDefaults.standard.string(forKey: persistedPhaseKey) ?? ""
         let startsAt = UserDefaults.standard.string(forKey: persistedStartsAtKey)
         let countdown = UserDefaults.standard.integer(forKey: persistedCountdownKey)
+        let title = UserDefaults.standard.string(forKey: persistedTitleKey)
+        let message = UserDefaults.standard.string(forKey: persistedMessageKey)
         let locked = UserDefaults.standard.bool(forKey: persistedOnKey) ||
             phase.caseInsensitiveCompare("maintenance") == .orderedSame
         if locked {
@@ -133,15 +161,29 @@ final class AppMaintenanceController {
                 mode: "none",
                 startsAtIso: startsAt,
                 countdownSeconds: countdown,
-                title: nil,
-                message: nil,
+                title: title,
+                message: message,
                 updatedAtIso: nil,
                 resumeMoment: nil,
                 releaseNotesTitle: nil,
                 releaseNotes: nil
             )
         }
-        // Stale warning snapshots from older builds must not lock the next launch.
+        if phase.caseInsensitiveCompare("warning") == .orderedSame {
+            return AppMaintenanceStatus(
+                maintenance: false,
+                phase: "warning",
+                mode: "none",
+                startsAtIso: startsAt,
+                countdownSeconds: countdown,
+                title: title,
+                message: message,
+                updatedAtIso: nil,
+                resumeMoment: nil,
+                releaseNotesTitle: nil,
+                releaseNotes: nil
+            )
+        }
         return .open
     }
 }

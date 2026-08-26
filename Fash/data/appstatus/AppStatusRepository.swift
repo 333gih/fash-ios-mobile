@@ -1,5 +1,9 @@
 import Foundation
 
+enum AppStatusPush {
+    static let fcmTopic = "fash_app_status"
+}
+
 struct AppMaintenanceStatus: Equatable {
     var maintenance: Bool
     var phase: String
