@@ -19,6 +19,9 @@ final class NotificationsViewModel {
     var selectedDetailItem: InboxNotificationItem?
     var unreadCount = 0
     var markAllReadBusy = false
+    var pushDetailLoading = false
+    var pushDetailNotFound = false
+    private var pushDetailTask: Task<Void, Never>?
 
     var canMarkAllReadInSelectedGroup: Bool {
         guard let group = selectedGroup else { return false }
@@ -37,6 +40,7 @@ final class NotificationsViewModel {
     }
 
     func refresh() async {
+        if pushDetailLoading { return }
         if selectedGroup == nil {
             await refreshGroups()
         } else {
@@ -52,10 +56,15 @@ final class NotificationsViewModel {
     }
 
     func closeGroup() {
+        pushDetailTask?.cancel()
+        pushDetailTask = nil
         selectedGroup = nil
         items = []
         hasMore = false
         selectedDetailId = nil
+        selectedDetailItem = nil
+        pushDetailLoading = false
+        pushDetailNotFound = false
         Task { await refreshGroups() }
     }
 
@@ -167,15 +176,141 @@ final class NotificationsViewModel {
 
     func openDetail(_ id: String) {
         selectedDetailId = id
-        if let item = items.first(where: { $0.id == id }) {
+        if let item = items.first(where: { $0.id == id }) ?? selectedDetailItem, item.id == id {
             selectedDetailItem = item
         }
     }
 
     func closeDetail() {
+        pushDetailTask?.cancel()
+        pushDetailTask = nil
         selectedDetailId = nil
         selectedDetailItem = nil
+        pushDetailLoading = false
+        pushDetailNotFound = false
     }
+
+    /// Resolve a tray-tap / deep-link inbox id (Android `openInboxDetailFromPush`).
+    func openInboxDetailFromPush(_ notificationId: String) {
+        let id = notificationId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !id.isEmpty else { return }
+        if selectedDetailItem?.id == id, !pushDetailLoading { return }
+        pushDetailTask?.cancel()
+        selectedDetailId = id
+        selectedDetailItem = items.first(where: { $0.id == id })
+        pushDetailNotFound = false
+        if selectedDetailItem != nil {
+            pushDetailLoading = false
+            if let item = selectedDetailItem {
+                Task { await markReadIfNeeded(item) }
+            }
+            return
+        }
+        pushDetailLoading = true
+        pushDetailTask = Task { await resolvePushDetail(id) }
+    }
+
+    private func resolvePushDetail(_ id: String) async {
+        defer {
+            if !Task.isCancelled {
+                pushDetailLoading = false
+            }
+        }
+        if groups.isEmpty {
+            await refreshGroups()
+        }
+        guard !Task.isCancelled else { return }
+        if let cached = items.first(where: { $0.id == id }) {
+            applyResolvedPushItem(cached)
+            return
+        }
+        guard let item = await findNotificationInInbox(id) else {
+            guard !Task.isCancelled else { return }
+            pushDetailNotFound = true
+            return
+        }
+        guard !Task.isCancelled else { return }
+        applyResolvedPushItem(item)
+    }
+
+    private func applyResolvedPushItem(_ item: InboxNotificationItem) {
+        selectedDetailItem = item
+        selectedDetailId = item.id
+        pushDetailNotFound = false
+        if let group = item.notificationGroup?.trimmingCharacters(in: .whitespacesAndNewlines), !group.isEmpty {
+            selectedGroup = group
+            Task { await loadGroupItemsForPushDetail(group: group, resolved: item) }
+        }
+        Task { await markReadIfNeeded(item) }
+    }
+
+    private func findNotificationInInbox(_ id: String) async -> InboxNotificationItem? {
+        var beforeId: String? = nil
+        for _ in 0..<Self.pushDetailMaxPages {
+            guard !Task.isCancelled else { return nil }
+            switch await listNotificationsWithRetry(beforeId: beforeId, group: nil) {
+            case .success(let page):
+                if let match = page.items.first(where: { $0.id == id }) {
+                    return match
+                }
+                if page.items.count < Self.pageLimit { return nil }
+                beforeId = page.items.last?.id
+                if beforeId == nil { return nil }
+            case .failure:
+                return nil
+            }
+        }
+        return nil
+    }
+
+    private func loadGroupItemsForPushDetail(group: String, resolved: InboxNotificationItem) async {
+        switch await userRepository.listMyNotifications(limit: Self.pageLimit, group: group) {
+        case .success(let page):
+            if page.items.contains(where: { $0.id == resolved.id }) {
+                items = page.items
+            } else {
+                items = [resolved] + page.items
+            }
+            hasMore = page.items.count >= Self.pageLimit
+        case .failure:
+            if items.isEmpty { items = [resolved] }
+        }
+    }
+
+    private func listNotificationsWithRetry(beforeId: String?, group: String?) async -> Result<InboxNotificationsPage, Error> {
+        var last: Result<InboxNotificationsPage, Error> = .failure(URLError(.unknown))
+        for attempt in 0..<Self.inboxLoadRetryAttempts {
+            let result = await userRepository.listMyNotifications(
+                limit: Self.pageLimit,
+                beforeId: beforeId,
+                group: group
+            )
+            if case .success = result { return result }
+            last = result
+            if case .failure(let error) = result, !Self.isTransientInboxFailure(error) {
+                return result
+            }
+            try? await Task.sleep(for: .milliseconds(Self.inboxRetryBaseDelayMs * (attempt + 1)))
+        }
+        return last
+    }
+
+    private static func isTransientInboxFailure(_ error: Error) -> Bool {
+        if let http = error as? CoreServiceHttpException {
+            return http.statusCode == 401 || http.statusCode == 408 || http.statusCode >= 500
+        }
+        let ns = error as NSError
+        if ns.domain == NSURLErrorDomain {
+            return true
+        }
+        let message = error.localizedDescription.lowercased()
+        return message.contains("timeout") || message.contains("401") || message.contains("connection")
+    }
+
+    private static let pageLimit = 30
+    private static let pushDetailMaxPages = 15
+    private static let inboxLoadRetryAttempts = 4
+    private static let inboxRetryBaseDelayMs = 350
 
     func markReadIfNeeded(_ item: InboxNotificationItem) async {
         guard item.isUnread else { return }

@@ -52,8 +52,38 @@ struct NotificationScreen: View {
         ZStack(alignment: .bottom) {
             NavigationStack {
                 Group {
-                    if let detailId = viewModel.selectedDetailId ?? detailId {
-                        detailContent(detailId)
+                    if let item = viewModel.selectedDetailItem {
+                        NotificationDetailScreen(
+                            item: item,
+                            onDismiss: {
+                                viewModel.closeDetail()
+                                if self.detailId != nil { onDismiss() }
+                            },
+                            onOpenOrder: onOpenOrder,
+                            onOpenListing: { listingId, _ in onOpenListing(listingId) },
+                            onOpenChat: onOpenChat,
+                            onOpenFollowConnections: onOpenFollowConnections,
+                            onOpenExplore: onOpenExplore,
+                            onOpenOnboarding: onOpenOnboarding,
+                            onOpenInviteFriends: onOpenInviteFriends
+                        )
+                    } else if viewModel.pushDetailNotFound {
+                        FashEmptyStateView(
+                            title: L10n.notificationDetailNotFoundTitle,
+                            subtitle: L10n.notificationDetailNotFoundSubtitle,
+                            systemImage: "bell.slash",
+                            actionTitle: L10n.feedRetry
+                        ) {
+                            if let detailId, !detailId.isEmpty {
+                                viewModel.openInboxDetailFromPush(detailId)
+                            } else if let id = viewModel.selectedDetailId {
+                                viewModel.openInboxDetailFromPush(id)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else if let detailId = viewModel.selectedDetailId ?? detailId, !detailId.isEmpty {
+                        ProgressView()
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else if viewModel.selectedGroup == nil {
                         groupList
                     } else {
@@ -64,9 +94,12 @@ struct NotificationScreen: View {
                 .navigationBarTitleDisplayMode(.large)
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
-                        if viewModel.selectedDetailId == nil && detailId == nil {
+                        if viewModel.selectedDetailItem == nil {
                             Button {
-                                if viewModel.selectedGroup != nil {
+                                if viewModel.selectedDetailId != nil || viewModel.pushDetailNotFound || detailId != nil {
+                                    viewModel.closeDetail()
+                                    if detailId != nil { onDismiss() }
+                                } else if viewModel.selectedGroup != nil {
                                     viewModel.closeGroup()
                                 } else {
                                     onDismiss()
@@ -94,12 +127,18 @@ struct NotificationScreen: View {
                     }
                 }
                 .task {
-                    await viewModel.refresh()
                     if let detailId, !detailId.isEmpty {
-                        viewModel.openDetail(detailId)
+                        viewModel.openInboxDetailFromPush(detailId)
+                    } else {
+                        await viewModel.refresh()
                     }
                 }
+                .task(id: detailId) {
+                    guard let detailId, !detailId.isEmpty else { return }
+                    viewModel.openInboxDetailFromPush(detailId)
+                }
                 .onChange(of: deps.inboxUnreadRefreshGeneration) { _, _ in
+                    guard !viewModel.pushDetailLoading else { return }
                     Task { await viewModel.refresh() }
                 }
             }
@@ -110,44 +149,14 @@ struct NotificationScreen: View {
         }
         .background(FashColors.screen)
         .fashEdgeBackNavigation {
-            if viewModel.selectedDetailId != nil {
+            if viewModel.selectedDetailId != nil || viewModel.selectedDetailItem != nil || viewModel.pushDetailNotFound {
                 viewModel.closeDetail()
-            } else if let detailId, !detailId.isEmpty {
-                viewModel.closeDetail()
+                if detailId != nil { onDismiss() }
             } else if viewModel.selectedGroup != nil {
                 viewModel.closeGroup()
             } else {
                 onDismiss()
             }
-        }
-    }
-
-    @ViewBuilder
-    private func detailContent(_ detailId: String) -> some View {
-        if let item = viewModel.selectedDetailItem ?? viewModel.items.first(where: { $0.id == detailId }) {
-            NotificationDetailScreen(
-                item: item,
-                onDismiss: {
-                    viewModel.closeDetail()
-                    if self.detailId != nil { onDismiss() }
-                },
-                onOpenOrder: onOpenOrder,
-                onOpenListing: { listingId, _ in onOpenListing(listingId) },
-                onOpenChat: onOpenChat,
-                onOpenFollowConnections: onOpenFollowConnections,
-                onOpenExplore: onOpenExplore,
-                onOpenOnboarding: onOpenOnboarding,
-                onOpenInviteFriends: onOpenInviteFriends
-            )
-        } else {
-            ProgressView()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .task {
-                    await viewModel.refresh()
-                    if let item = viewModel.items.first(where: { $0.id == detailId }) {
-                        viewModel.openDetail(item)
-                    }
-                }
         }
     }
 

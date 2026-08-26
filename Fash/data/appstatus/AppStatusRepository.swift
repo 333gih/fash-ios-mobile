@@ -17,6 +17,24 @@ struct AppMaintenanceStatus: Equatable {
     var isWarning: Bool { !isLocked && phase.caseInsensitiveCompare("warning") == .orderedSame }
     var sawRestricted: Bool { isWarning || isLocked }
 
+    /// When leaving warning/lock, prefer the server `resumeMoment`; otherwise infer so the
+    /// return UI still shows if the payload omitted the field.
+    func inferredResumeMoment(previous: AppMaintenanceStatus) -> String? {
+        if !previous.sawRestricted || sawRestricted { return nil }
+        if let fromServer = resumeMoment?.trimmingCharacters(in: .whitespacesAndNewlines), !fromServer.isEmpty {
+            return fromServer
+        }
+        return previous.isLocked ? "back_online" : "warning_cleared"
+    }
+
+    func resumeDedupeToken(previous: AppMaintenanceStatus) -> String {
+        if let token = updatedAtIso?.trimmingCharacters(in: .whitespacesAndNewlines), !token.isEmpty {
+            return token
+        }
+        let moment = inferredResumeMoment(previous: previous) ?? "open"
+        return "local:\(moment):\(previous.phase)"
+    }
+
     /// Warning countdown elapsed locally — show lock until server confirms (fixes background resume gap).
     func isEffectivelyLocked(now: Date = Date()) -> Bool {
         if isLocked { return true }
@@ -139,7 +157,7 @@ final class AppStatusRepository {
         guard let url = URL(string: urlString) else { throw URLError(.badURL) }
         var req = URLRequest(url: url)
         req.httpMethod = "GET"
-        req.timeoutInterval = 8
+        req.timeoutInterval = 4
         req.setValue("application/json", forHTTPHeaderField: "Accept")
         req.setValue("Fash-iOS/1.0.3", forHTTPHeaderField: "User-Agent")
         req.setValue(AppLocale.coreApiPathSegment(), forHTTPHeaderField: "Accept-Language")

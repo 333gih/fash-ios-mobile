@@ -185,7 +185,7 @@ enum RealtimeNotificationRouter {
             router.notificationDetailId = inboxId
             return
         }
-        if let inboxId = data["user_notification_id"]?.trimmingCharacters(in: .whitespaces), !inboxId.isEmpty {
+        if let inboxId = FashFirebaseMessagingService.inboxNotificationId(from: data) {
             router.showNotificationScreen = true
             router.notificationDetailId = inboxId
             return

@@ -35,7 +35,7 @@ enum FashFirebaseMessagingService {
                 campaign: campaign,
                 deps: deps,
                 openConversationId: ChatNotificationPresence.openConversationId(deps: deps),
-                userNotificationId: data["user_notification_id"],
+                userNotificationId: inboxNotificationId(from: data),
                 chatVM: nil
             )
             return
@@ -53,7 +53,7 @@ enum FashFirebaseMessagingService {
             deps.showInAppNotification(FashInAppNotificationSession(
                 title: title,
                 body: body,
-                userNotificationId: data["user_notification_id"],
+                userNotificationId: inboxNotificationId(from: data),
                 dataMap: data
             ))
             AppDependencies.shared.requestInboxUnreadRefresh()
@@ -84,18 +84,13 @@ enum FashFirebaseMessagingService {
                     campaign: campaign,
                     deps: deps,
                     openConversationId: ChatNotificationPresence.openConversationId(deps: deps),
-                    userNotificationId: data["user_notification_id"],
+                    userNotificationId: inboxNotificationId(from: data),
                     chatVM: nil
                 )
                 return
             }
             if let deepLink = data["deep_link"]?.trimmingCharacters(in: .whitespacesAndNewlines), !deepLink.isEmpty,
-               let url = URL(string: deepLink) {
-                if let router = deps.navigationRouter {
-                    DeepLinkRouter.handle(url: url, router: router, deps: deps)
-                } else {
-                    storePendingDeepLink(url: url, deps: deps)
-                }
+               routeDeepLink(deepLink, deps: deps) {
                 return
             }
             let nav = data["nav_target"]?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -111,7 +106,7 @@ enum FashFirebaseMessagingService {
                 InAppNotificationNavigation.openOrder(orderId: orderId, router: router, deps: deps)
                 return
             }
-            if let inboxId = data["user_notification_id"]?.trimmingCharacters(in: .whitespacesAndNewlines), !inboxId.isEmpty {
+            if let inboxId = inboxNotificationId(from: data) {
                 deps.pendingInboxNotificationId = inboxId
                 deps.navigationRouter?.showNotificationScreen = true
                 deps.navigationRouter?.notificationDetailId = inboxId
@@ -148,17 +143,110 @@ enum FashFirebaseMessagingService {
         return sessionUid.caseInsensitiveCompare(recipient) == .orderedSame
     }
 
+    /// Ledger row id from tray / FCM data (`user_notification_id`, `notification_id`, or `fash://inbox/{id}`).
+    static func inboxNotificationId(from data: [String: String]) -> String? {
+        for key in ["user_notification_id", "notification_id", "inbox_notification_id"] {
+            let value = data[key]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            if !value.isEmpty { return value }
+        }
+        if let deepLink = data["deep_link"]?.trimmingCharacters(in: .whitespacesAndNewlines),
+           let id = inboxId(fromDeepLink: deepLink) {
+            return id
+        }
+        return nil
+    }
+
+    @MainActor
+    private static func routeDeepLink(_ deepLink: String, deps: AppDependencies) -> Bool {
+        if let inboxId = inboxId(fromDeepLink: deepLink) {
+            deps.pendingInboxNotificationId = inboxId
+            deps.navigationRouter?.showNotificationScreen = true
+            deps.navigationRouter?.notificationDetailId = inboxId
+            return true
+        }
+        guard let url = URL(string: deepLink) else { return false }
+        let host = url.host?.lowercased() ?? ""
+        switch host {
+        case "listing", "profile", "invite":
+            if let router = deps.navigationRouter {
+                DeepLinkRouter.handle(url: url, router: router, deps: deps)
+            } else {
+                storePendingDeepLink(url: url, deps: deps)
+            }
+            return true
+        default:
+            if url.scheme?.lowercased() == "https" || url.scheme?.lowercased() == "http" {
+                if let router = deps.navigationRouter {
+                    DeepLinkRouter.handle(url: url, router: router, deps: deps)
+                    return true
+                }
+            }
+            return false
+        }
+    }
+
+    private static func inboxId(fromDeepLink raw: String) -> String? {
+        guard let url = URL(string: raw.trimmingCharacters(in: .whitespacesAndNewlines)) else { return nil }
+        guard url.scheme?.lowercased() == "fash", url.host?.lowercased() == "inbox" else { return nil }
+        let path = url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        return path.isEmpty ? nil : path
+    }
+
     private static func stringDataMap(from userInfo: [AnyHashable: Any]) -> [String: String] {
         var out: [String: String] = [:]
-        for (key, value) in userInfo {
-            guard let key = key as? String else { continue }
-            if key.hasPrefix("gcm.") || key.hasPrefix("google.") { continue }
-            if let string = value as? String {
-                out[key] = string
+        mergeDictionary(userInfo, into: &out)
+        if let dataStr = out["data"], let nested = jsonObject(from: dataStr) {
+            mergeDictionary(nested, into: &out)
+        }
+        applyApsAlertFallback(userInfo, into: &out)
+        return out
+    }
+
+    private static func mergeDictionary(_ dict: [AnyHashable: Any], into out: inout [String: String]) {
+        for (rawKey, value) in dict {
+            guard let key = rawKey as? String, !key.isEmpty else { continue }
+            if key.hasPrefix("gcm.") || key.hasPrefix("google.") || key.hasPrefix("fcm.") { continue }
+            if key == "aps" { continue }
+            if let nested = value as? [AnyHashable: Any] {
+                mergeDictionary(nested, into: &out)
+                continue
+            }
+            if let nested = value as? [String: Any] {
+                mergeDictionary(Dictionary(uniqueKeysWithValues: nested.map { ($0.key as AnyHashable, $0.value) }), into: &out)
+                continue
+            }
+            let string: String?
+            if let s = value as? String {
+                string = s
             } else if let number = value as? NSNumber {
-                out[key] = number.stringValue
+                string = number.stringValue
+            } else {
+                string = nil
+            }
+            guard let string, !string.isEmpty else { continue }
+            if out[key] == nil || out[key]?.isEmpty == true {
+                out[key] = string
             }
         }
-        return out
+    }
+
+    private static func jsonObject(from raw: String) -> [AnyHashable: Any]? {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let data = trimmed.data(using: .utf8), !trimmed.isEmpty else { return nil }
+        return (try? JSONSerialization.jsonObject(with: data)) as? [AnyHashable: Any]
+    }
+
+    private static func applyApsAlertFallback(_ userInfo: [AnyHashable: Any], into out: inout [String: String]) {
+        guard let aps = userInfo["aps"] as? [AnyHashable: Any] else { return }
+        if let alert = aps["alert"] as? [AnyHashable: Any] {
+            if out["title"] == nil, let title = alert["title"] as? String, !title.isEmpty {
+                out["title"] = title
+            }
+            if out["body"] == nil, let body = alert["body"] as? String, !body.isEmpty {
+                out["body"] = body
+            }
+        } else if let alert = aps["alert"] as? String, !alert.isEmpty, out["body"] == nil {
+            out["body"] = alert
+        }
     }
 }

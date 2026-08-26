@@ -336,6 +336,15 @@ final class HomeViewModel {
         tabLoadTasks[tab.rawValue] = nil
     }
 
+    /// End of maintenance — drop hung in-flight flags and fetch a fresh Home.
+    func reloadAfterMaintenance(deps: AppDependencies, isGuestMode: Bool) {
+        lastSuccessfulRefreshAt = nil
+        isRefreshing = false
+        isShellLoading = false
+        invalidateAllTabFeeds()
+        ensureTabLoaded(selectedFeedTab, deps: deps, isGuestMode: isGuestMode, force: true)
+    }
+
     func pullToRefresh(deps: AppDependencies, isGuestMode: Bool = false) async {
         isRefreshing = true
         defer { isRefreshing = false }

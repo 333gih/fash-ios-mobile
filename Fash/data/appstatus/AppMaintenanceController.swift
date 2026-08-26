@@ -11,12 +11,14 @@ final class AppMaintenanceController {
     private static let seenResumeKey = "fash.app.maintenance.seen_resume"
 
     private(set) var status: AppMaintenanceStatus
-    private(set) var isReady: Bool = false
+    /// Persisted snapshot is enough to paint the first frame — do not block Home on GET /app/status.
+    private(set) var isReady: Bool = true
     private(set) var pendingResume: MaintenanceResumePresentation?
     var isMaintenance: Bool { status.isEffectivelyLocked() }
     var isWarning: Bool { status.isWarning && !status.isEffectivelyLocked() }
 
     private var sawRestrictedThisSession = false
+    private var confirmedFromNetwork = false
     private let repository: AppStatusRepository
 
     init(repository: AppStatusRepository) {
@@ -28,17 +30,7 @@ final class AppMaintenanceController {
     }
 
     func apply(_ next: AppMaintenanceStatus) {
-        let prev = status
-        status = next
-        isReady = true
-        if next.sawRestricted {
-            sawRestrictedThisSession = true
-        }
-        maybeQueueResume(prev: prev, next: next)
-        UserDefaults.standard.set(next.isLocked, forKey: Self.persistedOnKey)
-        UserDefaults.standard.set(next.phase, forKey: Self.persistedPhaseKey)
-        UserDefaults.standard.set(next.startsAtIso, forKey: Self.persistedStartsAtKey)
-        UserDefaults.standard.set(next.countdownSeconds, forKey: Self.persistedCountdownKey)
+        applyInternal(next, fromNetwork: true)
     }
 
     func dismissResumePresentation() {
@@ -64,8 +56,9 @@ final class AppMaintenanceController {
             apply(try await repository.fetch())
         } catch {
             isReady = true
-            if !sawRestrictedThisSession && !status.sawRestricted {
-                apply(.open)
+            // Keep a persisted lock (user can retry). Only fail-open when we were not locked.
+            if !confirmedFromNetwork && !status.isLocked {
+                applyInternal(.open, fromNetwork: false)
             }
         }
     }
@@ -80,13 +73,36 @@ final class AppMaintenanceController {
         return defaultMessage
     }
 
+    private func applyInternal(_ next: AppMaintenanceStatus, fromNetwork: Bool) {
+        let prev = status
+        status = next
+        isReady = true
+        if fromNetwork {
+            confirmedFromNetwork = true
+        }
+        if next.sawRestricted {
+            sawRestrictedThisSession = true
+        }
+        if fromNetwork {
+            maybeQueueResume(prev: prev, next: next)
+        }
+        persistSnapshot(next)
+    }
+
+    private func persistSnapshot(_ next: AppMaintenanceStatus) {
+        // Warning is a 60s in-session state — persisting it makes the next cold start look locked
+        // after the countdown has elapsed.
+        let persistLocked = next.isLocked
+        UserDefaults.standard.set(persistLocked, forKey: Self.persistedOnKey)
+        UserDefaults.standard.set(persistLocked ? "maintenance" : "open", forKey: Self.persistedPhaseKey)
+        UserDefaults.standard.set(next.startsAtIso, forKey: Self.persistedStartsAtKey)
+        UserDefaults.standard.set(next.countdownSeconds, forKey: Self.persistedCountdownKey)
+    }
+
     private func maybeQueueResume(prev: AppMaintenanceStatus, next: AppMaintenanceStatus) {
         guard sawRestrictedThisSession else { return }
-        guard prev.sawRestricted, !next.sawRestricted else { return }
-        guard let moment = next.resumeMoment?.trimmingCharacters(in: .whitespacesAndNewlines), !moment.isEmpty else {
-            return
-        }
-        let token = (next.updatedAtIso ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let moment = next.inferredResumeMoment(previous: prev) else { return }
+        let token = next.resumeDedupeToken(previous: prev)
         guard !token.isEmpty, !Self.hasSeenResume(token) else { return }
         pendingResume = MaintenanceResumePresentation(
             moment: moment,
@@ -125,21 +141,7 @@ final class AppMaintenanceController {
                 releaseNotes: nil
             )
         }
-        if phase.caseInsensitiveCompare("warning") == .orderedSame {
-            return AppMaintenanceStatus(
-                maintenance: false,
-                phase: "warning",
-                mode: "none",
-                startsAtIso: startsAt,
-                countdownSeconds: countdown,
-                title: nil,
-                message: nil,
-                updatedAtIso: nil,
-                resumeMoment: nil,
-                releaseNotesTitle: nil,
-                releaseNotes: nil
-            )
-        }
+        // Stale warning snapshots from older builds must not lock the next launch.
         return .open
     }
 }

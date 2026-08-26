@@ -173,6 +173,10 @@ struct RootView: View {
             router.resetToHomePreservingSession()
             if wasOn && !isOn {
                 shellEpoch += 1
+                homeVM.reloadAfterMaintenance(deps: deps, isGuestMode: router.isGuestMode)
+                Task {
+                    await exploreVM.refresh(deps: deps, isGuestMode: router.isGuestMode)
+                }
             }
         }
         .onAppear {
@@ -242,9 +246,7 @@ struct RootView: View {
                 deps.pendingDeepLinkSellerUsername != nil ||
                 deps.pendingOpenInviteFriends
 
-        if !deps.appMaintenance.isReady {
-            FashWaitingScreen()
-        } else if router.showSplash ||
+        if router.showSplash ||
             router.isLoggingOut ||
             (router.isLaunchWarmupInProgress && !hasPendingDeepLinkAction) {
             FashWaitingScreen()
