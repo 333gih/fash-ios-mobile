@@ -106,8 +106,8 @@ final class AppMaintenanceController {
         guard !token.isEmpty, !Self.hasSeenResume(token) else { return }
         pendingResume = MaintenanceResumePresentation(
             moment: moment,
-            releaseNotesTitle: next.releaseNotesTitle,
-            releaseNotes: next.releaseNotes,
+            releaseNotesTitle: next.resumeTitle(previous: prev),
+            releaseNotes: next.resumeBody(previous: prev),
             updatedAtToken: token
         )
     }

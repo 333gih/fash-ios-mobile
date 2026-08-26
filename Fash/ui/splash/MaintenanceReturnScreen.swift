@@ -16,9 +16,9 @@ struct MaintenanceReturnScreen: View {
                     startPoint: .top,
                     endPoint: .bottom
                 )
-                .frame(height: 280)
+                .frame(height: 220)
                 .overlay(alignment: .bottom) {
-                    MaintenanceMascotImage(maxWidth: 200)
+                    MaintenanceMascotImage(maxWidth: 160)
                         .scaleEffect(appeared ? 1 : 0.88)
                         .opacity(appeared ? 1 : 0)
                         .padding(.bottom, 8)
@@ -27,8 +27,9 @@ struct MaintenanceReturnScreen: View {
                 VStack(spacing: 12) {
                     Text(displayTitle)
                         .font(.title2.weight(.bold))
+                        .foregroundStyle(FashColors.textPrimary)
                         .multilineTextAlignment(.center)
-                    Text(L10n.maintenanceReturnApology)
+                    Text(displayBody)
                         .font(.subheadline)
                         .foregroundStyle(FashColors.textSecondary)
                         .multilineTextAlignment(.center)
@@ -36,9 +37,11 @@ struct MaintenanceReturnScreen: View {
                 .padding(.horizontal, 28)
                 .padding(.top, 8)
 
-                notesCard
-                    .padding(.horizontal, 20)
-                    .padding(.top, 20)
+                if showNotesCard {
+                    notesCard
+                        .padding(.horizontal, 20)
+                        .padding(.top, 20)
+                }
 
                 VStack(spacing: 10) {
                     FashPrimaryButton(title: L10n.maintenanceResumeCtaExplore, action: onExplore)
@@ -67,7 +70,7 @@ struct MaintenanceReturnScreen: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(FashColors.textSecondary)
                 .textCase(.uppercase)
-            ForEach(noteLines, id: \.self) { line in
+            ForEach(presentation.noteLines, id: \.self) { line in
                 HStack(alignment: .top, spacing: 10) {
                     Circle()
                         .fill(FashColors.brandPrimary)
@@ -85,6 +88,7 @@ struct MaintenanceReturnScreen: View {
         .background(FashColors.surfaceContainerHigh, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
+    /// Admin reopen title only — never the lock-screen title.
     private var displayTitle: String {
         if let custom = presentation.releaseNotesTitle?.trimmingCharacters(in: .whitespacesAndNewlines), !custom.isEmpty {
             return custom
@@ -92,12 +96,14 @@ struct MaintenanceReturnScreen: View {
         return L10n.maintenanceResumeBackOnlineTitle
     }
 
-    private var noteLines: [String] {
-        if !presentation.noteLines.isEmpty { return presentation.noteLines }
-        return [
-            L10n.maintenanceReturnDefaultNote1,
-            L10n.maintenanceReturnDefaultNote2,
-            L10n.maintenanceReturnDefaultNote3,
-        ]
+    /// Admin message / release notes, else generic thank-you. No invented changelog bullets.
+    private var displayBody: String {
+        if showNotesCard { return L10n.maintenanceReturnApology }
+        if presentation.noteLines.count == 1 { return presentation.noteLines[0] }
+        return L10n.maintenanceReturnApology
+    }
+
+    private var showNotesCard: Bool {
+        presentation.noteLines.count >= 2
     }
 }

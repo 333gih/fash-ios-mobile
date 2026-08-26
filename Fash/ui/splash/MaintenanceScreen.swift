@@ -13,15 +13,16 @@ struct MaintenanceScreen: View {
                     startPoint: .top,
                     endPoint: .bottom
                 )
-                .frame(height: 260)
+                .frame(height: 220)
                 .overlay(alignment: .bottom) {
-                    MaintenanceMascotImage(maxWidth: 190)
+                    MaintenanceMascotImage(maxWidth: 160)
                         .padding(.bottom, 4)
                 }
 
                 VStack(spacing: 14) {
                     Text(title)
                         .font(.title2.weight(.bold))
+                        .foregroundStyle(FashColors.textPrimary)
                         .multilineTextAlignment(.center)
                     Text(message)
                         .font(.body)

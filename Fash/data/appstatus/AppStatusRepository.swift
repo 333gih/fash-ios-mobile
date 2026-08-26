@@ -35,6 +35,24 @@ struct AppMaintenanceStatus: Equatable {
         return "local:\(moment):\(previous.phase)"
     }
 
+    /// Reopen-sheet title: admin release-notes title only (not the lock-screen title).
+    func resumeTitle(previous: AppMaintenanceStatus) -> String? {
+        Self.firstNonBlank(releaseNotesTitle, previous.releaseNotesTitle)
+    }
+
+    /// Reopen body: admin release notes, else maintenance message, else nil (app generic copy).
+    func resumeBody(previous: AppMaintenanceStatus) -> String? {
+        Self.firstNonBlank(releaseNotes, previous.releaseNotes, message, previous.message)
+    }
+
+    private static func firstNonBlank(_ values: String?...) -> String? {
+        for raw in values {
+            guard let t = raw?.trimmingCharacters(in: .whitespacesAndNewlines), !t.isEmpty else { continue }
+            return t
+        }
+        return nil
+    }
+
     /// Warning countdown elapsed locally — show lock until server confirms (fixes background resume gap).
     func isEffectivelyLocked(now: Date = Date()) -> Bool {
         if isLocked { return true }
