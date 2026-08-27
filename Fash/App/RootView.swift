@@ -470,6 +470,8 @@ struct RootView: View {
                 pkg: pkg,
                 onDismiss: { router.sellerPackageCheckout = nil }
             )
+        case .sellerPackageTools:
+            SellerPackageToolsScreen(onDismiss: { router.showSellerPackageTools = false })
         case .chatOrderDetail(let id):
             OrderDetailScreen(
                 orderId: id,

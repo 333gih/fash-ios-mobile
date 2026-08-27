@@ -483,6 +483,8 @@ struct MainNavScreen: View {
                     },
                     onShippingAddressesClick: { router.showShippingAddressList = true },
                     onInviteFriendsClick: { router.showInviteFriendsScreen = true },
+                    onOpenSellerPackages: { router.showSellerPackagesScreen = true },
+                    onOpenSellerPackageTools: { router.showSellerPackageTools = true },
                     onListingClick: { id, _ in deps.presentListingDetail(listingId: id, router: router) },
                     onEditListingClick: { id in
                         router.selectedListingId = nil

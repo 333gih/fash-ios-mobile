@@ -9,6 +9,8 @@ struct ProfileScreen: View {
     var onOpenFollowConnections: (Int) -> Void = { _ in }
     var onShippingAddressesClick: () -> Void = {}
     var onInviteFriendsClick: () -> Void = {}
+    var onOpenSellerPackages: () -> Void = {}
+    var onOpenSellerPackageTools: () -> Void = {}
     /// Wishlist and other buyer-facing taps — product detail / preview.
     var onListingClick: (String, String?) -> Void = { _, _ in }
     /// Own listings (selling, in review, rejected, sold) — Android `editListingId` from Profile.
@@ -27,7 +29,19 @@ struct ProfileScreen: View {
     /// Home journey → wishlist / in-review: pin grid after content settles.
     @State private var pendingExternalGridScroll = false
     @State private var externalGridScrollTask: Task<Void, Never>?
-    @State private var profileScrollBoundary = HomeFeedScrollBoundary()
+    @State private var entitlementSummary: UserEntitlementSummary?
+    @State private var entitlementLoading = false
+
+    private func refreshEntitlements() {
+        entitlementLoading = true
+        Task {
+            let result = await deps.userEntitlementRepository.fetchEntitlements()
+            await MainActor.run {
+                entitlementLoading = false
+                if case .success(let s) = result { entitlementSummary = s }
+            }
+        }
+    }
 
     private var showBlockingLoadError: Bool {
         viewModel.loadError && viewModel.profile == nil && !viewModel.isLoading && !viewModel.isRefreshing
@@ -79,6 +93,7 @@ struct ProfileScreen: View {
             syncSelectedTabFromViewModel()
             _ = applyProfileTabOpenRequestIfNeeded()
             tryApplyPendingExternalGridScroll()
+            refreshEntitlements()
             Task { await viewModel.ensureListingsLoaded(for: selectedProfileTab, deps: deps) }
         }
         .onChange(of: viewModel.profileTabOpenGeneration) { _, _ in
@@ -268,6 +283,14 @@ struct ProfileScreen: View {
                 onFollowingTap: { onOpenFollowConnections(0) }
             )
             ProfileSizingReferenceCard(profile: viewModel.profile, onEdit: onEditProfile)
+            SellerPackageEntitlementCard(
+                summary: entitlementSummary,
+                loading: entitlementLoading,
+                onRefresh: refreshEntitlements,
+                onUpgrade: onOpenSellerPackages,
+                onOpenTools: onOpenSellerPackageTools
+            )
+            .padding(.horizontal, spacing.editorialStart)
             ProfileQuickActionsCard(
                 username: viewModel.profile?.username ?? viewModel.username,
                 displayName: viewModel.profile?.displayName ?? viewModel.displayName,

@@ -131,6 +131,7 @@ final class AppRouter {
     var homeEditorialSlug: String?
     var showHomeDeliveringScreen = false
     var showSellerPackagesScreen = false
+    var showSellerPackageTools = false
     var showFollowConnections = false
     var followConnectionsInitialTab = 0
     var showFeaturedSellersAll = false
@@ -210,6 +211,7 @@ final class AppRouter {
     func popOverlay() {
         if chatOrderDetailOverlayId != nil { chatOrderDetailOverlayId = nil; return }
         if sellerPackageCheckout != nil { sellerPackageCheckout = nil; return }
+        if showSellerPackageTools { showSellerPackageTools = false; return }
         if uxSurveyKey != nil { uxSurveyKey = nil; return }
         if showEditorialListScreen { showEditorialListScreen = false; return }
         if showChangePasswordScreen { showChangePasswordScreen = false; return }

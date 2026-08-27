@@ -32,6 +32,7 @@ final class AppDependencies {
     let publicCatalogRepository: PublicCommonCatalogRepository
     let advertisingRepository: AdvertisingRepository
     let sellerProductPackageRepository: SellerProductPackageRepository
+    let userEntitlementRepository: UserEntitlementRepository
     let appPromoInterstitialRepository: AppPromoInterstitialRepository
     let editorialGuideRepository: EditorialGuideRepository
     let dealRepository: DealRepository
@@ -118,6 +119,7 @@ final class AppDependencies {
         publicCatalogRepository = PublicCommonCatalogRepository()
         advertisingRepository = AdvertisingRepository(client: securedClient)
         sellerProductPackageRepository = SellerProductPackageRepository(client: securedClient)
+        userEntitlementRepository = UserEntitlementRepository(client: securedClient)
         appPromoInterstitialRepository = AppPromoInterstitialRepository(client: securedClient)
         appMaintenance = AppMaintenanceController(repository: AppStatusRepository())
         editorialGuideRepository = EditorialGuideRepository()

@@ -3,8 +3,12 @@ import SwiftUI
 /// Package detail + checkout — Android [SellerPackageCheckoutScreen].
 struct SellerPackageCheckoutScreen: View {
     @Environment(\.fashSpacing) private var spacing
+    @Environment(AppDependencies.self) private var deps
     let pkg: SellerProductPackage
     var onDismiss: () -> Void = {}
+
+    @State private var mockPurchaseInFlight = false
+    @State private var purchaseMessage: String?
 
     private var comingSoon: Bool { !pkg.isReleased }
 
@@ -117,9 +121,25 @@ struct SellerPackageCheckoutScreen: View {
                     .buttonStyle(FashFilledButtonStyle(enabledOpacity: 0.5))
                     .disabled(true)
             } else {
-                Button(L10n.sellerPackagesPayAmount(FeedPriceFormat.format(pkg.priceVnd))) {}
-                    .buttonStyle(FashFilledButtonStyle(enabledOpacity: 0.5))
-                    .disabled(true)
+                Button(mockPurchaseInFlight ? L10n.loading : L10n.sellerPackagesMockPurchase) {
+                    Task {
+                        mockPurchaseInFlight = true
+                        let result = await deps.userEntitlementRepository.mockPurchasePackage(packageId: pkg.id)
+                        mockPurchaseInFlight = false
+                        switch result {
+                        case .success:
+                            purchaseMessage = L10n.sellerPackagesPurchaseSuccess
+                            onDismiss()
+                        case .failure(let err):
+                            purchaseMessage = err.localizedDescription
+                        }
+                    }
+                }
+                .buttonStyle(FashFilledButtonStyle())
+                .disabled(mockPurchaseInFlight)
+            }
+            if let purchaseMessage {
+                Text(purchaseMessage).font(FashTypography.labelSmall).foregroundStyle(FashColors.textSecondary)
             }
             Button(L10n.sellerPackagesBackToList, action: onDismiss)
                 .buttonStyle(FashOutlinedBrandButtonStyle())

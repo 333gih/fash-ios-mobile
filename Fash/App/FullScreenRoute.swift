@@ -22,6 +22,7 @@ enum FullScreenRoute: Identifiable {
     case editorialList
     case uxSurvey(String)
     case sellerPackageCheckout(SellerProductPackage)
+    case sellerPackageTools
     case chatOrderDetail(String)
 
     var id: String {
@@ -47,6 +48,7 @@ enum FullScreenRoute: Identifiable {
         case .editorialList: return "editorialList"
         case .uxSurvey(let key): return "uxSurvey-\(key)"
         case .sellerPackageCheckout(let pkg): return "pkgCheckout-\(pkg.code)"
+        case .sellerPackageTools: return "sellerPackageTools"
         case .chatOrderDetail(let id): return "chatOrder-\(id)"
         }
     }
@@ -77,6 +79,7 @@ extension AppRouter {
         if showShippingAddressList { return .shippingAddresses }
         if let slug = homeEditorialSlug { return .homeEditorial(slug) }
         if showHomeDeliveringScreen { return .homeDelivering }
+        if showSellerPackageTools { return .sellerPackageTools }
         if sellerPackageCheckout != nil { return .sellerPackageCheckout(sellerPackageCheckout!) }
         if showSellerPackagesScreen { return .sellerPackages }
         if showFollowConnections { return .followConnections }
