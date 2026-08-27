@@ -2363,31 +2363,32 @@ enum L10n {
         String(format: t("seller_packages_duration_days"), a1)
     }
     static var sellerPackagesEmpty: String { t("seller_packages_empty") }
+    static var sellerPackagesEntitlementEmpty: String { t("seller_packages_entitlement_empty") }
+    static var sellerPackagesEntitlementTitle: String { t("seller_packages_entitlement_title") }
+    static var sellerPackagesEntitlementUpgrade: String { t("seller_packages_entitlement_upgrade") }
     static var sellerPackagesFeatureAuthenticity: String { t("seller_packages_feature_authenticity") }
+    static var sellerPackagesFeatureExplore: String { t("seller_packages_feature_explore") }
     static var sellerPackagesFeatureExploreBoost: String { t("seller_packages_feature_explore_boost") }
     static var sellerPackagesFeatureFanpage: String { t("seller_packages_feature_fanpage") }
     static var sellerPackagesFeatureSocial: String { t("seller_packages_feature_social") }
     static var sellerPackagesLoadError: String { t("seller_packages_load_error") }
+    static var sellerPackagesMockPurchase: String { t("seller_packages_mock_purchase") }
     static func sellerPackagesPayAmount(_ a1: CVarArg) -> String {
         String(format: t("seller_packages_pay_amount"), a1)
     }
     static func sellerPackagesPricePerMonth(_ a1: CVarArg, _ a2: CVarArg) -> String {
         String(format: t("seller_packages_price_per_month"), a1, a2)
     }
+    static var sellerPackagesPurchaseSuccess: String { t("seller_packages_purchase_success") }
     static var sellerPackagesScreenSubtitle: String { t("seller_packages_screen_subtitle") }
     static var sellerPackagesScreenTitle: String { t("seller_packages_screen_title") }
-    static var sellerPackagesMockPurchase: String { t("seller_packages_mock_purchase") }
-    static var sellerPackagesPurchaseSuccess: String { t("seller_packages_purchase_success") }
-    static var sellerPackagesEntitlementTitle: String { t("seller_packages_entitlement_title") }
-    static var sellerPackagesEntitlementEmpty: String { t("seller_packages_entitlement_empty") }
-    static var sellerPackagesEntitlementUpgrade: String { t("seller_packages_entitlement_upgrade") }
-    static var sellerPackagesToolsTitle: String { t("seller_packages_tools_title") }
-    static var sellerPackagesToolsListingId: String { t("seller_packages_tools_listing_id") }
-    static var sellerPackagesToolsCaption: String { t("seller_packages_tools_caption") }
-    static var sellerPackagesToolsVerify: String { t("seller_packages_tools_verify") }
     static var sellerPackagesToolsBoost: String { t("seller_packages_tools_boost") }
+    static var sellerPackagesToolsCaption: String { t("seller_packages_tools_caption") }
     static var sellerPackagesToolsFanpage: String { t("seller_packages_tools_fanpage") }
+    static var sellerPackagesToolsListingId: String { t("seller_packages_tools_listing_id") }
     static var sellerPackagesToolsSocial: String { t("seller_packages_tools_social") }
+    static var sellerPackagesToolsTitle: String { t("seller_packages_tools_title") }
+    static var sellerPackagesToolsVerify: String { t("seller_packages_tools_verify") }
     static var sessionExpiredMessage: String { t("session_expired_message") }
     static func settingsAboutEnvLine(_ a1: CVarArg, _ a2: CVarArg) -> String {
         String(format: t("settings_about_env_line"), a1, a2)

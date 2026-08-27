@@ -1946,6 +1946,19 @@
     <string name="seller_packages_coming_soon_cta">Coming soon</string>
     <string name="seller_packages_pay_amount">Pay %1$s</string>
     <string name="seller_packages_back_to_list">Back to packages</string>
+    <string name="seller_packages_mock_purchase">Try payment (Dev)</string>
+    <string name="seller_packages_purchase_success">Package activated successfully</string>
+    <string name="seller_packages_entitlement_title">Your utility package</string>
+    <string name="seller_packages_entitlement_empty">No package information yet</string>
+    <string name="seller_packages_entitlement_upgrade">Upgrade package</string>
+    <string name="seller_packages_feature_explore">Explore priority</string>
+    <string name="seller_packages_tools_title">Utility package tools</string>
+    <string name="seller_packages_tools_listing_id">Listing ID</string>
+    <string name="seller_packages_tools_caption">Note / caption</string>
+    <string name="seller_packages_tools_verify">Submit Real/Fake verification</string>
+    <string name="seller_packages_tools_boost">Boost on Explore</string>
+    <string name="seller_packages_tools_fanpage">Request Fash fanpage feature</string>
+    <string name="seller_packages_tools_social">Request TikTok / Instagram promo</string>
 
     <!-- Invite friends (growth + referral messaging) -->
     <string name="invite_screen_title">Invite friends</string>

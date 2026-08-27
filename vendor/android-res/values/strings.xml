@@ -2024,6 +2024,19 @@
     <string name="seller_packages_coming_soon_cta">Sắp ra mắt</string>
     <string name="seller_packages_pay_amount">Thanh toán %1$s</string>
     <string name="seller_packages_back_to_list">Quay lại danh sách gói</string>
+    <string name="seller_packages_mock_purchase">Thanh toán thử (Dev)</string>
+    <string name="seller_packages_purchase_success">Đã kích hoạt gói thành công</string>
+    <string name="seller_packages_entitlement_title">Gói tiện ích của bạn</string>
+    <string name="seller_packages_entitlement_empty">Chưa có thông tin gói</string>
+    <string name="seller_packages_entitlement_upgrade">Nâng cấp gói</string>
+    <string name="seller_packages_feature_explore">Ưu tiên Khám phá</string>
+    <string name="seller_packages_tools_title">Công cụ gói tiện ích</string>
+    <string name="seller_packages_tools_listing_id">Mã tin đăng</string>
+    <string name="seller_packages_tools_caption">Ghi chú / caption</string>
+    <string name="seller_packages_tools_verify">Gửi xác minh Real/Fake</string>
+    <string name="seller_packages_tools_boost">Đẩy tin Khám phá</string>
+    <string name="seller_packages_tools_fanpage">Yêu cầu fanpage Fash</string>
+    <string name="seller_packages_tools_social">Yêu cầu TikTok / Instagram</string>
 
     <!-- Invite friends (growth + referral messaging) -->
     <string name="invite_screen_title">Mời bạn bè</string>
