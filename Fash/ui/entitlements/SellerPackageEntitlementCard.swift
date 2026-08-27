@@ -12,7 +12,7 @@ struct SellerPackageEntitlementCard: View {
             Text(L10n.sellerPackagesEntitlementTitle)
                 .font(FashTypography.titleSmall.weight(.bold))
             if loading && summary == nil {
-                Text(L10n.loading)
+                Text(L10n.exploreFilterLoading)
             } else if let summary {
                 Text(summary.packageName.isEmpty ? summary.packageCode : summary.packageName)
                     .font(FashTypography.bodyMedium.weight(.semibold))

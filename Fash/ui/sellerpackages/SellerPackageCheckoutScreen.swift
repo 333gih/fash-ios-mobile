@@ -121,7 +121,7 @@ struct SellerPackageCheckoutScreen: View {
                     .buttonStyle(FashFilledButtonStyle(enabledOpacity: 0.5))
                     .disabled(true)
             } else {
-                Button(mockPurchaseInFlight ? L10n.loading : L10n.sellerPackagesMockPurchase) {
+                Button(mockPurchaseInFlight ? L10n.exploreFilterLoading : L10n.sellerPackagesMockPurchase) {
                     Task {
                         mockPurchaseInFlight = true
                         let result = await deps.userEntitlementRepository.mockPurchasePackage(packageId: pkg.id)

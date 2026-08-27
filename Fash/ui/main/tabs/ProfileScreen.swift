@@ -29,6 +29,7 @@ struct ProfileScreen: View {
     /// Home journey → wishlist / in-review: pin grid after content settles.
     @State private var pendingExternalGridScroll = false
     @State private var externalGridScrollTask: Task<Void, Never>?
+    @State private var profileScrollBoundary = HomeFeedScrollBoundary()
     @State private var entitlementSummary: UserEntitlementSummary?
     @State private var entitlementLoading = false
 
