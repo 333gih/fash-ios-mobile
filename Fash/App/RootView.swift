@@ -173,9 +173,17 @@ struct RootView: View {
         }
         .task(id: scenePhase) {
             guard scenePhase == .active else { return }
+            var consecutiveFailures = 0
             while !Task.isCancelled {
-                await deps.appMaintenance.refreshNow()
-                try? await Task.sleep(nanoseconds: deps.appMaintenance.status.pollIntervalNanoseconds())
+                let ok = await deps.appMaintenance.refreshNow()
+                if ok {
+                    consecutiveFailures = 0
+                } else {
+                    consecutiveFailures = min(consecutiveFailures + 1, 4)
+                }
+                let base = deps.appMaintenance.status.pollIntervalNanoseconds()
+                let extra = UInt64(consecutiveFailures) * 5_000_000_000
+                try? await Task.sleep(nanoseconds: base + extra)
             }
         }
         .onChange(of: deps.appMaintenance.isMaintenance) { wasOn, isOn in

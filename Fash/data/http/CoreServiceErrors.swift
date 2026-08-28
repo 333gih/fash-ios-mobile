@@ -125,3 +125,36 @@ struct CoreServiceHttpException: Error, LocalizedError {
     var retryAfterSeconds: Int? { serviceError.retryAfterSeconds }
     var errorDescription: String? { CoreServiceErrors.localizedMessage(serviceError) }
 }
+
+/// Shared retry / URL-fallback policy so an outage (503) does not fan out into dozens of HTTP errors.
+enum CoreHttpRetry {
+    /// Kong / upstream overloaded or in maintenance — the host already answered.
+    static func isUnavailable(_ statusCode: Int) -> Bool {
+        statusCode == 502 || statusCode == 503 || statusCode == 504
+    }
+
+    /// Locale-prefix fallback is only useful when the lang path 404s or the socket never connected.
+    static func shouldTryNextCoreCandidate(_ error: Error) -> Bool {
+        if let http = error as? CoreServiceHttpException {
+            return http.statusCode == 404
+        }
+        if error is URLError { return true }
+        let ns = error as NSError
+        return ns.domain == NSURLErrorDomain
+    }
+
+    /// Immediate one-shot retry (listing detail). Skip gateway 502–504 — Retry-After / poll handles those.
+    static func shouldRetryOnce(_ error: Error) -> Bool {
+        if error is URLError { return true }
+        if let http = error as? CoreServiceHttpException {
+            switch http.statusCode {
+            case 408, 429, 500, 501:
+                return true
+            default:
+                return false
+            }
+        }
+        let ns = error as NSError
+        return ns.domain == NSURLErrorDomain
+    }
+}

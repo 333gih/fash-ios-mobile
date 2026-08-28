@@ -58,12 +58,14 @@ final class AppMaintenanceController {
         return true
     }
 
-    func refreshNow() async {
+    func refreshNow() async -> Bool {
         do {
             apply(try await repository.fetch())
+            return true
         } catch {
             isReady = true
             // Keep last snapshot (including persisted lock/warning). Never fail-open to Home.
+            return false
         }
     }
 
@@ -78,6 +80,7 @@ final class AppMaintenanceController {
     }
 
     private func applyInternal(_ next: AppMaintenanceStatus, fromNetwork: Bool) {
+        if status == next, isReady { return }
         let prev = status
         status = next
         isReady = true

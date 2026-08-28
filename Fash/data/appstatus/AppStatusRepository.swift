@@ -170,6 +170,7 @@ final class AppStatusRepository {
                 return try await fetch(urlString: urlString)
             } catch {
                 lastError = error
+                if !CoreHttpRetry.shouldTryNextCoreCandidate(error) { break }
             }
         }
         throw lastError

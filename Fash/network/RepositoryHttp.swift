@@ -75,6 +75,7 @@ enum RepositoryHttp {
                 return try await executeGetWithResponse(urlString: urlString, client: client)
             } catch {
                 lastError = error
+                if !CoreHttpRetry.shouldTryNextCoreCandidate(error) { break }
             }
         }
         throw lastError
@@ -103,6 +104,7 @@ enum RepositoryHttp {
                 return try await executeGet(urlString: urlString, client: client)
             } catch {
                 lastError = error
+                if !CoreHttpRetry.shouldTryNextCoreCandidate(error) { break }
             }
         }
         throw lastError
@@ -176,14 +178,17 @@ enum RepositoryHttp {
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.httpBody = body
-        let (_, http): (Data, HTTPURLResponse)
+        let (data, http): (Data, HTTPURLResponse)
         if publicBrowse {
-            (_, http) = try await PublicBrowseHttp.data(for: req)
+            (data, http) = try await PublicBrowseHttp.data(for: req)
         } else {
-            (_, http) = try await client.data(for: req)
+            (data, http) = try await client.data(for: req)
         }
         guard (200..<300).contains(http.statusCode) else {
-            throw URLError(.badServerResponse)
+            throw CoreServiceHttpException(
+                statusCode: http.statusCode,
+                message: CoreServiceErrors.parseMessage(data: data, statusCode: http.statusCode)
+            )
         }
     }
 
@@ -208,6 +213,7 @@ enum RepositoryHttp {
                 return
             } catch {
                 lastError = error
+                if !CoreHttpRetry.shouldTryNextCoreCandidate(error) { break }
             }
         }
         throw lastError
@@ -237,6 +243,7 @@ enum RepositoryHttp {
                 return
             } catch {
                 lastError = error
+                if !CoreHttpRetry.shouldTryNextCoreCandidate(error) { break }
             }
         }
         throw lastError
@@ -268,6 +275,7 @@ enum RepositoryHttp {
                 return
             } catch {
                 lastError = error
+                if !CoreHttpRetry.shouldTryNextCoreCandidate(error) { break }
             }
         }
         throw lastError

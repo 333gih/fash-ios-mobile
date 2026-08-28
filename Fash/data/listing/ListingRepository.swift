@@ -131,16 +131,7 @@ final class ListingRepository {
     }
 
     private func shouldRetryListingDetailFetch(_ error: Error) -> Bool {
-        if error is URLError { return true }
-        if let http = error as? CoreServiceHttpException {
-            switch http.statusCode {
-            case 408, 429, 500...599:
-                return true
-            default:
-                return false
-            }
-        }
-        return false
+        CoreHttpRetry.shouldRetryOnce(error)
     }
 
     func getListingPreviewDetail(listingId: String, publicBrowse: Bool = false) async -> Result<ListingPreviewDetail?, Error> {

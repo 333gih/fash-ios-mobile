@@ -296,15 +296,7 @@ final class NotificationsViewModel {
     }
 
     private static func isTransientInboxFailure(_ error: Error) -> Bool {
-        if let http = error as? CoreServiceHttpException {
-            return http.statusCode == 401 || http.statusCode == 408 || http.statusCode >= 500
-        }
-        let ns = error as NSError
-        if ns.domain == NSURLErrorDomain {
-            return true
-        }
-        let message = error.localizedDescription.lowercased()
-        return message.contains("timeout") || message.contains("401") || message.contains("connection")
+        CoreHttpRetry.shouldRetryOnce(error)
     }
 
     private static let pageLimit = 30
