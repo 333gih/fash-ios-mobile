@@ -2060,6 +2060,8 @@
     <string name="seller_packages_tools_success_boost">Đã đẩy tin trên Khám phá.</string>
     <string name="seller_packages_tools_success_fanpage">Đã gửi yêu cầu fanpage Fash.</string>
     <string name="seller_packages_tools_success_social">Đã gửi yêu cầu TikTok / Instagram.</string>
+    <string name="seller_packages_tools_success_request">Đã gửi yêu cầu thành công.</string>
+    <string name="seller_packages_tools_submit">Gửi yêu cầu</string>
     <string name="seller_packages_tools_empty_package">Chưa có gói tiện ích. Nâng cấp để dùng xác minh, đẩy tin và quảng bá.</string>
 
     <!-- Invite friends (growth + referral messaging) -->

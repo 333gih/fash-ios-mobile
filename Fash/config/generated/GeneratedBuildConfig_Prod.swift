@@ -25,7 +25,7 @@ enum GeneratedBuildConfig_Prod {
     static let publicBrowseClientToken: String = "4bNy8z9TaA1qVb4rmUDqPFyKs6Gp7x3JXwZmFyAPQkY2RCesuKcTmN5Btb"
     static let internalSecret: String = "8b4d4f3b6c3d45c5e21c2e1a8f1f5b8a4c1d9e7a2f8c6d4b"
     static let internalServiceBearer: String = "8b4d4f3b6c3d45c5e21c2e1a8f1f5b8a4c1d9e7a2f8c6d4b"
-    static let sentryDsn: String = "https://39692d3a0a14550fd5922a6b8c0ccc74@o4511796852686848.ingest.de.sentry.io/4511796866383952"
+    static let sentryDsn: String = "https://ac885199e795d09a0416501ef362f8c0@o4511796852686848.ingest.de.sentry.io/4511796860026960"
     static let userAccessStatusPath: String = "api/v1/users/me/setup-status"
     static let corePaymentInitiatePath: String = "api/v1/orders/%s/payments/initiate"
     static let authOtpRequestPath: String = "api/v1/auth/otp/request"

@@ -2036,9 +2036,11 @@
 "seller_packages_tools_quota_remaining" = "%1$d left";
 "seller_packages_tools_quota_unlimited" = "Unlimited";
 "seller_packages_tools_social" = "Request TikTok / Instagram promo";
+"seller_packages_tools_submit" = "Submit request";
 "seller_packages_tools_subtitle" = "Use your package perks to verify, boost, and promote your listings.";
 "seller_packages_tools_success_boost" = "Listing boosted on Explore.";
 "seller_packages_tools_success_fanpage" = "Fash fanpage request sent.";
+"seller_packages_tools_success_request" = "Request sent successfully.";
 "seller_packages_tools_success_social" = "TikTok / Instagram request sent.";
 "seller_packages_tools_success_verify" = "Real/Fake verification request sent.";
 "seller_packages_tools_title" = "Utility package tools";

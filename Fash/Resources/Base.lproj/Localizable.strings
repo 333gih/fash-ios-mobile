@@ -2036,9 +2036,11 @@
 "seller_packages_tools_quota_remaining" = "Còn %1$d lượt";
 "seller_packages_tools_quota_unlimited" = "Không giới hạn";
 "seller_packages_tools_social" = "Yêu cầu TikTok / Instagram";
+"seller_packages_tools_submit" = "Gửi yêu cầu";
 "seller_packages_tools_subtitle" = "Dùng quyền lợi gói để xác minh, đẩy tin và quảng bá tin đăng của bạn.";
 "seller_packages_tools_success_boost" = "Đã đẩy tin trên Khám phá.";
 "seller_packages_tools_success_fanpage" = "Đã gửi yêu cầu fanpage Fash.";
+"seller_packages_tools_success_request" = "Đã gửi yêu cầu thành công.";
 "seller_packages_tools_success_social" = "Đã gửi yêu cầu TikTok / Instagram.";
 "seller_packages_tools_success_verify" = "Đã gửi yêu cầu xác minh Real/Fake.";
 "seller_packages_tools_title" = "Công cụ gói tiện ích";

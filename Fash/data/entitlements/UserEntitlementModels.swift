@@ -9,6 +9,11 @@ struct UserEntitlementSummary: Equatable {
 
 struct FeatureUsageSummary: Equatable {
     var enabled: Bool = false
+    var featureGroup: String = ""
+    var executionKind: String = ""
+    var name: String = ""
+    var description: String = ""
+    var requiresListing: Bool = false
     var used: Int64 = 0
     var remaining: Int64?
     var unlimited: Bool = false

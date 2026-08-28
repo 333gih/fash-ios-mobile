@@ -2408,9 +2408,11 @@ enum L10n {
     }
     static var sellerPackagesToolsQuotaUnlimited: String { t("seller_packages_tools_quota_unlimited") }
     static var sellerPackagesToolsSocial: String { t("seller_packages_tools_social") }
+    static var sellerPackagesToolsSubmit: String { t("seller_packages_tools_submit") }
     static var sellerPackagesToolsSubtitle: String { t("seller_packages_tools_subtitle") }
     static var sellerPackagesToolsSuccessBoost: String { t("seller_packages_tools_success_boost") }
     static var sellerPackagesToolsSuccessFanpage: String { t("seller_packages_tools_success_fanpage") }
+    static var sellerPackagesToolsSuccessRequest: String { t("seller_packages_tools_success_request") }
     static var sellerPackagesToolsSuccessSocial: String { t("seller_packages_tools_success_social") }
     static var sellerPackagesToolsSuccessVerify: String { t("seller_packages_tools_success_verify") }
     static var sellerPackagesToolsTitle: String { t("seller_packages_tools_title") }

@@ -1,10 +1,9 @@
 import SwiftUI
 
-private enum SellerPackageToolKind: Equatable {
-    case verify
-    case boost
-    case fanpage
-    case social
+private struct ToolFeatureEntry: Identifiable {
+    let key: String
+    let feature: FeatureUsageSummary
+    var id: String { key }
 }
 
 struct SellerPackageToolsScreen: View {
@@ -19,7 +18,21 @@ struct SellerPackageToolsScreen: View {
     @State private var caption = ""
     @State private var loading = true
     @State private var listingsLoading = true
-    @State private var submitting: SellerPackageToolKind?
+    @State private var submittingFeatureKey: String?
+
+    private let groupOrder = ["verification", "visibility", "social_promo"]
+
+    private var groupedFeatures: [(String, [ToolFeatureEntry])] {
+        let feats = summary?.features ?? [:]
+        let grouped = Dictionary(grouping: feats.map { ToolFeatureEntry(key: $0.key, feature: $0.value) }) {
+            $0.feature.featureGroup.isEmpty ? "other" : $0.feature.featureGroup
+        }
+        let ordered = groupOrder.filter { grouped[$0] != nil } + grouped.keys.filter { !groupOrder.contains($0) }.sorted()
+        return ordered.compactMap { key in
+            guard let items = grouped[key] else { return nil }
+            return (key, items)
+        }
+    }
 
     var body: some View {
         FashScreenScaffold(title: L10n.sellerPackagesToolsTitle, showBack: true, onBack: onDismiss) {
@@ -30,42 +43,14 @@ struct SellerPackageToolsScreen: View {
                         .foregroundStyle(FashColors.textSecondary)
                     packageStatusCard
                     listingPicker
-                    toolCard(
-                        icon: "checkmark.seal.fill",
-                        title: L10n.sellerPackagesFeatureAuthenticity,
-                        description: L10n.sellerPackagesToolsDescVerify,
-                        feature: summary?.features["authenticity_verify"],
-                        cta: L10n.sellerPackagesToolsVerify,
-                        kind: .verify,
-                        showsCaption: false
-                    )
-                    toolCard(
-                        icon: "sparkles",
-                        title: L10n.sellerPackagesFeatureExploreBoost,
-                        description: L10n.sellerPackagesToolsDescBoost,
-                        feature: summary?.features["explore_boost"],
-                        cta: L10n.sellerPackagesToolsBoost,
-                        kind: .boost,
-                        showsCaption: false
-                    )
-                    toolCard(
-                        icon: "megaphone",
-                        title: L10n.sellerPackagesFeatureFanpage,
-                        description: L10n.sellerPackagesToolsDescFanpage,
-                        feature: summary?.features["fanpage_spotlight"],
-                        cta: L10n.sellerPackagesToolsFanpage,
-                        kind: .fanpage,
-                        showsCaption: true
-                    )
-                    toolCard(
-                        icon: "square.and.arrow.up",
-                        title: L10n.sellerPackagesFeatureSocial,
-                        description: L10n.sellerPackagesToolsDescSocial,
-                        feature: summary?.features["social_tiktok_instagram"],
-                        cta: L10n.sellerPackagesToolsSocial,
-                        kind: .social,
-                        showsCaption: true
-                    )
+                    ForEach(groupedFeatures, id: \.0) { group, entries in
+                        Text(groupLabel(group))
+                            .font(FashTypography.titleSmall.weight(.semibold))
+                            .foregroundStyle(FashColors.textPrimary)
+                        ForEach(entries) { entry in
+                            toolCard(entry: entry)
+                        }
+                    }
                 }
                 .padding(.leading, spacing.editorialStart)
                 .padding(.trailing, spacing.editorialEnd)
@@ -182,25 +167,20 @@ struct SellerPackageToolsScreen: View {
     }
 
     @ViewBuilder
-    private func toolCard(
-        icon: String,
-        title: String,
-        description: String,
-        feature: FeatureUsageSummary?,
-        cta: String,
-        kind: SellerPackageToolKind,
-        showsCaption: Bool
-    ) -> some View {
+    private func toolCard(entry: ToolFeatureEntry) -> some View {
+        let feature = entry.feature
+        let kind = feature.executionKind.isEmpty ? "request" : feature.executionKind
+        let showsCaption = kind != "boost"
         let canUse = SellerPackageQuota.canUse(feature)
-        let locked = feature == nil || !(feature?.enabled ?? false)
+        let locked = !feature.enabled
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top, spacing: 12) {
-                SellerPackageIconBadge(systemImage: icon)
+                SellerPackageIconBadge(systemImage: featureIcon(entry.key, kind: kind))
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(title)
+                    Text(featureTitle(entry.key, feature: feature))
                         .font(FashTypography.titleSmall.weight(.bold))
                         .foregroundStyle(FashColors.textPrimary)
-                    Text(description)
+                    Text(featureDescription(entry.key, feature: feature))
                         .font(FashTypography.bodySmall)
                         .foregroundStyle(FashColors.textSecondary)
                 }
@@ -219,13 +199,13 @@ struct SellerPackageToolsScreen: View {
                     .foregroundStyle(FashColors.textSecondary)
                 Button(L10n.sellerPackagesEntitlementUpgrade, action: onUpgrade)
                     .buttonStyle(FashOutlinedBrandButtonStyle())
-                    .disabled(submitting != nil)
+                    .disabled(submittingFeatureKey != nil)
             } else {
                 FashPrimaryButton(
-                    title: cta,
-                    isLoading: submitting == kind,
-                    enabled: canUse && (submitting == nil || submitting == kind),
-                    action: { submit(kind) }
+                    title: featureCta(kind: kind),
+                    isLoading: submittingFeatureKey == entry.key,
+                    enabled: canUse && (submittingFeatureKey == nil || submittingFeatureKey == entry.key),
+                    action: { submit(entry: entry, kind: kind, showsCaption: showsCaption) }
                 )
             }
         }
@@ -237,6 +217,49 @@ struct SellerPackageToolsScreen: View {
                 .stroke(FashColors.outlineMuted.opacity(0.5), lineWidth: 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: spacing.radiusCard, style: .continuous))
+    }
+
+    private func groupLabel(_ group: String) -> String {
+        switch group {
+        case "verification": return "Xác minh"
+        case "visibility": return "Hiển thị"
+        case "social_promo": return "Quảng bá"
+        default: return group.replacingOccurrences(of: "_", with: " ").capitalized
+        }
+    }
+
+    private func featureIcon(_ key: String, kind: String) -> String {
+        if kind == "boost" || key == "explore_boost" { return "sparkles" }
+        if key.contains("social") { return "square.and.arrow.up" }
+        if key.contains("fanpage") { return "megaphone" }
+        if key.contains("authenticity") || key.contains("verify") { return "checkmark.seal.fill" }
+        return "star.fill"
+    }
+
+    private func featureTitle(_ key: String, feature: FeatureUsageSummary) -> String {
+        if !feature.name.isEmpty { return feature.name }
+        switch key {
+        case "authenticity_verify": return L10n.sellerPackagesFeatureAuthenticity
+        case "explore_boost": return L10n.sellerPackagesFeatureExploreBoost
+        case "fanpage_spotlight": return L10n.sellerPackagesFeatureFanpage
+        case "social_tiktok_instagram": return L10n.sellerPackagesFeatureSocial
+        default: return key.replacingOccurrences(of: "_", with: " ").capitalized
+        }
+    }
+
+    private func featureDescription(_ key: String, feature: FeatureUsageSummary) -> String {
+        if !feature.description.isEmpty { return feature.description }
+        switch key {
+        case "authenticity_verify": return L10n.sellerPackagesToolsDescVerify
+        case "explore_boost": return L10n.sellerPackagesToolsDescBoost
+        case "fanpage_spotlight": return L10n.sellerPackagesToolsDescFanpage
+        case "social_tiktok_instagram": return L10n.sellerPackagesToolsDescSocial
+        default: return ""
+        }
+    }
+
+    private func featureCta(kind: String) -> String {
+        kind == "boost" ? L10n.sellerPackagesToolsBoost : L10n.sellerPackagesToolsVerify
     }
 
     private func bootstrap() async {
@@ -260,37 +283,29 @@ struct SellerPackageToolsScreen: View {
         }
     }
 
-    private func submit(_ kind: SellerPackageToolKind) {
+    private func submit(entry: ToolFeatureEntry, kind: String, showsCaption: Bool) {
         let id = listingId.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard submitting == nil else { return }
+        guard submittingFeatureKey == nil else { return }
         guard !id.isEmpty else {
             deps.showSnackbar(L10n.sellerPackagesToolsNeedListing)
             return
         }
-        if kind == .fanpage || kind == .social {
-            guard !caption.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-                deps.showSnackbar(L10n.sellerPackagesToolsNeedCaption)
-                return
-            }
+        if showsCaption && caption.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            deps.showSnackbar(L10n.sellerPackagesToolsNeedCaption)
+            return
         }
-        submitting = kind
+        submittingFeatureKey = entry.key
         Task {
-            let result: Result<Void, Error>
-            switch kind {
-            case .verify:
-                result = await deps.userEntitlementRepository.requestAuthenticity(listingId: id)
-            case .boost:
-                result = await deps.userEntitlementRepository.applyExploreBoost(listingId: id)
-            case .fanpage:
-                result = await deps.userEntitlementRepository.requestFanpage(listingId: id, caption: caption)
-            case .social:
-                result = await deps.userEntitlementRepository.requestSocialPromo(listingId: id, caption: caption)
-            }
+            let result = await deps.userEntitlementRepository.invokeFeature(
+                featureKey: entry.key,
+                listingId: id,
+                caption: caption
+            )
             await MainActor.run {
-                submitting = nil
+                submittingFeatureKey = nil
                 switch result {
                 case .success:
-                    deps.showSnackbar(successMessage(kind))
+                    deps.showSnackbar(successMessage(kind: kind))
                     Task { await refreshEntitlements() }
                 case .failure(let error):
                     deps.showSnackbar(error.localizedDescription)
@@ -305,13 +320,8 @@ struct SellerPackageToolsScreen: View {
         }
     }
 
-    private func successMessage(_ kind: SellerPackageToolKind) -> String {
-        switch kind {
-        case .verify: return L10n.sellerPackagesToolsSuccessVerify
-        case .boost: return L10n.sellerPackagesToolsSuccessBoost
-        case .fanpage: return L10n.sellerPackagesToolsSuccessFanpage
-        case .social: return L10n.sellerPackagesToolsSuccessSocial
-        }
+    private func successMessage(kind: String) -> String {
+        kind == "boost" ? L10n.sellerPackagesToolsSuccessBoost : L10n.sellerPackagesToolsSuccessVerify
     }
 }
 

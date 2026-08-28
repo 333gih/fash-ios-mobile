@@ -1982,6 +1982,8 @@
     <string name="seller_packages_tools_success_boost">Listing boosted on Explore.</string>
     <string name="seller_packages_tools_success_fanpage">Fash fanpage request sent.</string>
     <string name="seller_packages_tools_success_social">TikTok / Instagram request sent.</string>
+    <string name="seller_packages_tools_success_request">Request sent successfully.</string>
+    <string name="seller_packages_tools_submit">Submit request</string>
     <string name="seller_packages_tools_empty_package">No utility package yet. Upgrade to verify, boost, and promote listings.</string>
 
     <!-- Invite friends (growth + referral messaging) -->
