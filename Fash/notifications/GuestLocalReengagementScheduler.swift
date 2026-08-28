@@ -13,9 +13,9 @@ final class GuestLocalReengagementScheduler {
     private let prefs = UserDefaults.standard
     private let inactiveInterval: TimeInterval = 24 * 3600
     private let nudgeCooldown: TimeInterval = 7 * 24 * 3600
-    private let vnTimeZone = TimeZone(identifier: "Asia/Ho_Chi_Minh") ?? .current
+    private let deviceTimeZone = TimeZone.current
     private let maxDailyReminders = 2
-    private let eveningHourVN = 20
+    private let eveningHourLocal = 20
 
     private enum Key {
         static let lastFiredDay = "guest_reengagement.last_fired_day_vn"
@@ -178,12 +178,13 @@ final class GuestLocalReengagementScheduler {
         if let seasonLabel, !seasonLabel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             out[NotificationExploreNavigation.guestExploreSeasonLabelKey] = seasonLabel
         }
+        out["scenario_id"] = "guest_local"
         return out
     }
 
     private func vnHour() -> Int {
         var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = vnTimeZone
+        cal.timeZone = deviceTimeZone
         return cal.component(.hour, from: Date())
     }
 
@@ -232,10 +233,10 @@ final class GuestLocalReengagementScheduler {
 
     private func scheduleEveningSlot(center: UNUserNotificationCenter, variant: ReminderVariant) async {
         var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = vnTimeZone
+        cal.timeZone = deviceTimeZone
         let now = Date()
         var comps = cal.dateComponents([.year, .month, .day], from: now)
-        comps.hour = eveningHourVN
+        comps.hour = eveningHourLocal
         comps.minute = 0
         guard var fireDate = cal.date(from: comps) else { return }
         if fireDate <= now {
@@ -327,6 +328,7 @@ final class GuestLocalReengagementScheduler {
         }
         if let filter = NotificationExploreNavigation.parseFromGuestPayload(stringMap) {
             let deps = AppDependencies.shared
+            reportGuestOpen(stringMap)
             deps.isGuestBrowseActive = true
             deps.navigationRouter?.isGuestMode = true
             deps.navigationRouter?.pendingExploreNavigationFilter = filter
@@ -338,6 +340,7 @@ final class GuestLocalReengagementScheduler {
         if stringMap[NotificationExploreNavigation.guestActionKey] ==
             NotificationExploreNavigation.guestActionOpenHomeSignup {
             let deps = AppDependencies.shared
+            reportGuestOpen(stringMap)
             deps.isGuestBrowseActive = true
             deps.navigationRouter?.isGuestMode = true
             deps.navigationRouter?.pendingGuestSignupNudge = true
@@ -350,6 +353,7 @@ final class GuestLocalReengagementScheduler {
             return false
         }
         let deps = AppDependencies.shared
+        reportGuestOpen(stringMap)
         deps.isGuestBrowseActive = true
         deps.navigationRouter?.isGuestMode = true
         markFiredToday()
@@ -357,10 +361,16 @@ final class GuestLocalReengagementScheduler {
         return true
     }
 
+    private func reportGuestOpen(_ data: [String: String]) {
+        var payload = data
+        payload["scenario_id"] = "guest_local"
+        NotificationEngagementReporter.reportOpen(reporter: AppDependencies.shared.feedEventReporter, data: payload)
+    }
+
     private static func vnDayString() -> String {
         let formatter = DateFormatter()
         formatter.calendar = Calendar(identifier: .gregorian)
-        formatter.timeZone = TimeZone(identifier: "Asia/Ho_Chi_Minh")
+        formatter.timeZone = TimeZone.current
         formatter.dateFormat = "yyyy-MM-dd"
         return formatter.string(from: Date())
     }

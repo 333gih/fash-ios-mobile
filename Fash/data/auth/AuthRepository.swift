@@ -6,6 +6,18 @@ final class AuthRepository {
     private static let clientChannel = "fash_ios_app"
     private static let clientPlatform = "ios"
 
+    private static var ianaTimezone: String {
+        TimeZone.current.identifier
+    }
+
+    private static func authClientFields() -> [String: String] {
+        [
+            "client_channel": clientChannel,
+            "client_platform": clientPlatform,
+            "timezone": ianaTimezone,
+        ]
+    }
+
     init(applicationId: String = AppEnvironment.authApplicationId) {
         self.applicationId = applicationId.trimmingCharacters(in: .whitespaces)
     }
@@ -15,9 +27,7 @@ final class AuthRepository {
             let data = try await HttpJson.post(url: AppEnvironment.authServicePath(AppEnvironment.authOtpRequestPath), body: [
                 "email": email.trimmingCharacters(in: .whitespaces),
                 "application_id": applicationId,
-                "client_channel": Self.clientChannel,
-                "client_platform": Self.clientPlatform,
-            ])
+            ].merging(Self.authClientFields()) { _, new in new })
             if data.isEmpty { return .success(false) }
             let json = try HttpJson.dictionary(data)
             return .success(json["is_new_user"] as? Bool ?? false)
@@ -32,9 +42,7 @@ final class AuthRepository {
                 "email": email.trimmingCharacters(in: .whitespaces),
                 "password": password,
                 "application_id": applicationId,
-                "client_channel": Self.clientChannel,
-                "client_platform": Self.clientPlatform,
-            ])
+            ].merging(Self.authClientFields()) { _, new in new })
             return .success(try parseLoginResponse(data))
         } catch {
             return .failure(error)
@@ -47,9 +55,7 @@ final class AuthRepository {
                 "email": email.trimmingCharacters(in: .whitespaces),
                 "otp": otp.trimmingCharacters(in: .whitespaces),
                 "application_id": applicationId,
-                "client_channel": Self.clientChannel,
-                "client_platform": Self.clientPlatform,
-            ])
+            ].merging(Self.authClientFields()) { _, new in new })
             return .success(try parseLoginResponse(data))
         } catch {
             return .failure(error)
@@ -63,9 +69,7 @@ final class AuthRepository {
                 "refresh_token": refreshToken.trimmingCharacters(in: .whitespaces),
                 "user_agent": "Fash-iOS/1.0.3",
                 "ip_address": ClientIpAddress.localIpv4OrEmpty(),
-                "client_channel": Self.clientChannel,
-                "client_platform": Self.clientPlatform,
-            ])
+            ].merging(Self.authClientFields()) { _, new in new })
             return .success(try parseLoginResponse(data))
         } catch {
             return .failure(error)
@@ -78,9 +82,7 @@ final class AuthRepository {
                 "provider": provider.lowercased(),
                 "provider_token": providerToken.trimmingCharacters(in: .whitespaces),
                 "application_id": applicationId,
-                "client_channel": Self.clientChannel,
-                "client_platform": Self.clientPlatform,
-            ])
+            ].merging(Self.authClientFields()) { _, new in new })
             return .success(try parseLoginResponse(data))
         } catch {
             return .failure(error)
@@ -122,6 +124,7 @@ final class AuthRepository {
         var body: [String: String] = [
             "fcm_token": token.trimmingCharacters(in: .whitespaces),
             "device_platform": platform,
+            "timezone": Self.ianaTimezone,
         ]
         if let loc = clientLocale?.trimmingCharacters(in: .whitespaces), !loc.isEmpty {
             body["client_locale"] = loc
