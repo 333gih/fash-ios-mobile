@@ -20,6 +20,7 @@ struct SellerPackageEntitlementCard: View {
                 featureLine(L10n.sellerPackagesFeatureAuthenticity, summary.features["authenticity_verify"])
                 featureLine(L10n.sellerPackagesFeatureExploreBoost, summary.features["explore_boost"])
                 featureLine(L10n.sellerPackagesFeatureFanpage, summary.features["fanpage_spotlight"])
+                featureLine(L10n.sellerPackagesFeatureSocial, summary.features["social_tiktok_instagram"])
             } else {
                 Text(L10n.sellerPackagesEntitlementEmpty)
             }

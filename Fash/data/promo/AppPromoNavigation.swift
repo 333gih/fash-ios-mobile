@@ -5,6 +5,11 @@ import UIKit
 @MainActor
 enum AppPromoNavigation {
     static func applyPrimary(campaign: AppPromoCampaign, router: AppRouter) {
+        if campaign.kind == .sellerPackage {
+            router.sellerPackageCheckout = nil
+            router.showSellerPackagesScreen = true
+            return
+        }
         guard let action = campaign.primaryAction else { return }
         apply(action: action, router: router)
     }

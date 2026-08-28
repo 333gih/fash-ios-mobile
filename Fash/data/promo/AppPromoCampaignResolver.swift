@@ -45,7 +45,8 @@ enum AppPromoCampaignResolver {
                 remoteMessage: L10n.appPromoSellerPackageMessage,
                 remoteBadge: L10n.appPromoSellerPackageBadge,
                 remotePrimaryLabel: L10n.appPromoSellerPackagePrimary,
-                remoteSecondaryLabel: L10n.appPromoSecondaryLater
+                remoteSecondaryLabel: L10n.appPromoSecondaryLater,
+                primaryAction: AppPromoButtonAction(type: "in_app_product_packages", payload: "")
             )
         }
 
