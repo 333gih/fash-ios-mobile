@@ -2363,7 +2363,9 @@ enum L10n {
         String(format: t("seller_packages_duration_days"), a1)
     }
     static var sellerPackagesEmpty: String { t("seller_packages_empty") }
+    static var sellerPackagesEntitlementActive: String { t("seller_packages_entitlement_active") }
     static var sellerPackagesEntitlementEmpty: String { t("seller_packages_entitlement_empty") }
+    static var sellerPackagesEntitlementRefresh: String { t("seller_packages_entitlement_refresh") }
     static var sellerPackagesEntitlementTitle: String { t("seller_packages_entitlement_title") }
     static var sellerPackagesEntitlementUpgrade: String { t("seller_packages_entitlement_upgrade") }
     static var sellerPackagesFeatureAuthenticity: String { t("seller_packages_feature_authenticity") }
@@ -2384,9 +2386,33 @@ enum L10n {
     static var sellerPackagesScreenTitle: String { t("seller_packages_screen_title") }
     static var sellerPackagesToolsBoost: String { t("seller_packages_tools_boost") }
     static var sellerPackagesToolsCaption: String { t("seller_packages_tools_caption") }
+    static var sellerPackagesToolsCaptionHelper: String { t("seller_packages_tools_caption_helper") }
+    static var sellerPackagesToolsDescBoost: String { t("seller_packages_tools_desc_boost") }
+    static var sellerPackagesToolsDescFanpage: String { t("seller_packages_tools_desc_fanpage") }
+    static var sellerPackagesToolsDescSocial: String { t("seller_packages_tools_desc_social") }
+    static var sellerPackagesToolsDescVerify: String { t("seller_packages_tools_desc_verify") }
+    static var sellerPackagesToolsEmptyPackage: String { t("seller_packages_tools_empty_package") }
     static var sellerPackagesToolsFanpage: String { t("seller_packages_tools_fanpage") }
+    static var sellerPackagesToolsListingHelper: String { t("seller_packages_tools_listing_helper") }
     static var sellerPackagesToolsListingId: String { t("seller_packages_tools_listing_id") }
+    static var sellerPackagesToolsLockedHint: String { t("seller_packages_tools_locked_hint") }
+    static var sellerPackagesToolsNeedCaption: String { t("seller_packages_tools_need_caption") }
+    static var sellerPackagesToolsNeedListing: String { t("seller_packages_tools_need_listing") }
+    static var sellerPackagesToolsNoListings: String { t("seller_packages_tools_no_listings") }
+    static var sellerPackagesToolsOpen: String { t("seller_packages_tools_open") }
+    static var sellerPackagesToolsPickListing: String { t("seller_packages_tools_pick_listing") }
+    static var sellerPackagesToolsQuotaExhausted: String { t("seller_packages_tools_quota_exhausted") }
+    static var sellerPackagesToolsQuotaLocked: String { t("seller_packages_tools_quota_locked") }
+    static func sellerPackagesToolsQuotaRemaining(_ a1: CVarArg) -> String {
+        String(format: t("seller_packages_tools_quota_remaining"), a1)
+    }
+    static var sellerPackagesToolsQuotaUnlimited: String { t("seller_packages_tools_quota_unlimited") }
     static var sellerPackagesToolsSocial: String { t("seller_packages_tools_social") }
+    static var sellerPackagesToolsSubtitle: String { t("seller_packages_tools_subtitle") }
+    static var sellerPackagesToolsSuccessBoost: String { t("seller_packages_tools_success_boost") }
+    static var sellerPackagesToolsSuccessFanpage: String { t("seller_packages_tools_success_fanpage") }
+    static var sellerPackagesToolsSuccessSocial: String { t("seller_packages_tools_success_social") }
+    static var sellerPackagesToolsSuccessVerify: String { t("seller_packages_tools_success_verify") }
     static var sellerPackagesToolsTitle: String { t("seller_packages_tools_title") }
     static var sellerPackagesToolsVerify: String { t("seller_packages_tools_verify") }
     static var sessionExpiredMessage: String { t("session_expired_message") }
