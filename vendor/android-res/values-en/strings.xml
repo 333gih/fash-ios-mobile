@@ -2111,6 +2111,11 @@
     <string name="home_section_for_you_title">Picked for you</string>
     <string name="home_section_similar_to_saved_subtitle">Because you saved items in this style</string>
     <string name="home_section_similar_to_saved_title">Similar to saved items</string>
+    <string name="home_section_daily_outfit_drop_title">Today\'s outfit drop</string>
+    <string name="home_section_daily_outfit_drop_subtitle">Curated combos for your size and style</string>
+    <string name="product_complete_the_look_title">Complete the look</string>
+    <string name="product_complete_the_look_subtitle">Matching pieces to style with this item</string>
+    <string name="product_complete_the_look_quota">You\'ve used today\'s complete-the-look tries. Come back tomorrow.</string>
     <string name="home_section_trending_styles_subtitle">Tap to filter on Explore</string>
     <string name="home_section_trending_styles_title">Trending styles</string>
     <string name="listing_badge_just_listed">Just listed</string>

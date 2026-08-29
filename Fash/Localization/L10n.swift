@@ -1153,6 +1153,8 @@ enum L10n {
     static var homeQuickOrders: String { t("home_quick_orders") }
     static var homeQuickSell: String { t("home_quick_sell") }
     static var homeSeasonalNearYouTitle: String { t("home_seasonal_near_you_title") }
+    static var homeSectionDailyOutfitDropSubtitle: String { t("home_section_daily_outfit_drop_subtitle") }
+    static var homeSectionDailyOutfitDropTitle: String { t("home_section_daily_outfit_drop_title") }
     static var homeSectionEditorialSubtitle: String { t("home_section_editorial_subtitle") }
     static var homeSectionEditorialTitle: String { t("home_section_editorial_title") }
     static var homeSectionForYouSubtitle: String { t("home_section_for_you_subtitle") }
@@ -1163,11 +1165,6 @@ enum L10n {
     static var homeSectionRecommendedSellersTitle: String { t("home_section_recommended_sellers_title") }
     static var homeSectionSimilarToSavedSubtitle: String { t("home_section_similar_to_saved_subtitle") }
     static var homeSectionSimilarToSavedTitle: String { t("home_section_similar_to_saved_title") }
-    static var homeSectionDailyOutfitDropTitle: String { t("home_section_daily_outfit_drop_title") }
-    static var homeSectionDailyOutfitDropSubtitle: String { t("home_section_daily_outfit_drop_subtitle") }
-    static var productCompleteTheLookTitle: String { t("product_complete_the_look_title") }
-    static var productCompleteTheLookSubtitle: String { t("product_complete_the_look_subtitle") }
-    static var productCompleteTheLookQuota: String { t("product_complete_the_look_quota") }
     static var homeSectionTrendingStylesSubtitle: String { t("home_section_trending_styles_subtitle") }
     static var homeSectionTrendingStylesTitle: String { t("home_section_trending_styles_title") }
     static var homeSectionTrendingSubtitle: String { t("home_section_trending_subtitle") }
@@ -2047,6 +2044,9 @@ enum L10n {
     static var productBuyNow: String { t("product_buy_now") }
     static var productCategory: String { t("product_category") }
     static var productChat: String { t("product_chat") }
+    static var productCompleteTheLookQuota: String { t("product_complete_the_look_quota") }
+    static var productCompleteTheLookSubtitle: String { t("product_complete_the_look_subtitle") }
+    static var productCompleteTheLookTitle: String { t("product_complete_the_look_title") }
     static var productConditionLabel: String { t("product_condition_label") }
     static var productContinueCheckout: String { t("product_continue_checkout") }
     static var productDetailError: String { t("product_detail_error") }

@@ -987,6 +987,8 @@
 "home_quick_orders" = "Orders";
 "home_quick_sell" = "Sell";
 "home_seasonal_near_you_title" = "Seasonal near you";
+"home_section_daily_outfit_drop_subtitle" = "Curated combos for your size and style";
+"home_section_daily_outfit_drop_title" = "Today's outfit drop";
 "home_section_editorial_subtitle" = "Short reads on outfits, pre-loved finds, and safer buying — tap a card to jump to related picks in Explore.";
 "home_section_editorial_title" = "Guides";
 "home_section_for_you_subtitle" = "Based on your recent activity";
@@ -997,11 +999,6 @@
 "home_section_recommended_sellers_title" = "Shops worth a look";
 "home_section_similar_to_saved_subtitle" = "Because you saved items in this style";
 "home_section_similar_to_saved_title" = "Similar to saved items";
-"home_section_daily_outfit_drop_title" = "Today's outfit drop";
-"home_section_daily_outfit_drop_subtitle" = "Curated combos for your size and style";
-"product_complete_the_look_title" = "Complete the look";
-"product_complete_the_look_subtitle" = "Matching pieces to style with this item";
-"product_complete_the_look_quota" = "You've used today's complete-the-look tries. Come back tomorrow.";
 "home_section_trending_styles_subtitle" = "Tap to filter on Explore";
 "home_section_trending_styles_title" = "Trending styles";
 "home_section_trending_subtitle" = "Pick a category to jump into Explore with that filter.";
@@ -1767,6 +1764,9 @@
 "product_buy_now" = "Buy now";
 "product_category" = "Category";
 "product_chat" = "Message";
+"product_complete_the_look_quota" = "You've used today's complete-the-look tries. Come back tomorrow.";
+"product_complete_the_look_subtitle" = "Matching pieces to style with this item";
+"product_complete_the_look_title" = "Complete the look";
 "product_condition_label" = "Condition";
 "product_continue_checkout" = "Continue checkout";
 "product_detail_error" = "Could not load product. Try again.";
