@@ -2159,6 +2159,17 @@
     <string name="home_section_similar_to_saved_subtitle">Vì bạn đã lưu đồ phong cách này</string>
     <string name="home_section_daily_outfit_drop_title">Bộ ghép hôm nay</string>
     <string name="home_section_daily_outfit_drop_subtitle">Outfit được ghép theo size và gu của bạn</string>
+    <string name="outfit_set_detail_title">Xem bộ ghép</string>
+    <string name="outfit_set_detail_hint">Chạm từng món để xem chi tiết và mua</string>
+    <string name="outfit_set_item_real_badge">Real badge</string>
+    <string name="outfit_set_item_boost">Nổi bật</string>
+    <string name="outfit_slot_top">Áo</string>
+    <string name="outfit_slot_bottom">Quần / váy</string>
+    <string name="outfit_slot_shoes">Giày</string>
+    <string name="outfit_slot_dress">Váy / jumpsuit</string>
+    <string name="outfit_slot_outer">Áo khoác</string>
+    <string name="outfit_slot_bag">Túi / phụ kiện</string>
+    <string name="outfit_slot_item">Món</string>
     <string name="product_complete_the_look_title">Ghép với món này</string>
     <string name="product_complete_the_look_subtitle">Gợi ý phụ kiện và món bổ sung</string>
     <string name="product_complete_the_look_quota">Bạn đã dùng hết lượt ghép hôm nay. Thử lại vào ngày mai.</string>

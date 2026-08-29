@@ -2113,6 +2113,17 @@
     <string name="home_section_similar_to_saved_title">Similar to saved items</string>
     <string name="home_section_daily_outfit_drop_title">Today\'s outfit drop</string>
     <string name="home_section_daily_outfit_drop_subtitle">Curated combos for your size and style</string>
+    <string name="outfit_set_detail_title">Outfit set</string>
+    <string name="outfit_set_detail_hint">Tap each piece to view details and buy</string>
+    <string name="outfit_set_item_real_badge">Real badge</string>
+    <string name="outfit_set_item_boost">Featured</string>
+    <string name="outfit_slot_top">Top</string>
+    <string name="outfit_slot_bottom">Bottom</string>
+    <string name="outfit_slot_shoes">Shoes</string>
+    <string name="outfit_slot_dress">Dress</string>
+    <string name="outfit_slot_outer">Outerwear</string>
+    <string name="outfit_slot_bag">Bag / accessory</string>
+    <string name="outfit_slot_item">Item</string>
     <string name="product_complete_the_look_title">Complete the look</string>
     <string name="product_complete_the_look_subtitle">Matching pieces to style with this item</string>
     <string name="product_complete_the_look_quota">You\'ve used today\'s complete-the-look tries. Come back tomorrow.</string>

@@ -1155,17 +1155,6 @@ enum L10n {
     static var homeSeasonalNearYouTitle: String { t("home_seasonal_near_you_title") }
     static var homeSectionDailyOutfitDropSubtitle: String { t("home_section_daily_outfit_drop_subtitle") }
     static var homeSectionDailyOutfitDropTitle: String { t("home_section_daily_outfit_drop_title") }
-    static var outfitSetDetailTitle: String { t("outfit_set_detail_title") }
-    static var outfitSetDetailHint: String { t("outfit_set_detail_hint") }
-    static var outfitSetItemRealBadge: String { t("outfit_set_item_real_badge") }
-    static var outfitSetItemBoost: String { t("outfit_set_item_boost") }
-    static var outfitSlotTop: String { t("outfit_slot_top") }
-    static var outfitSlotBottom: String { t("outfit_slot_bottom") }
-    static var outfitSlotShoes: String { t("outfit_slot_shoes") }
-    static var outfitSlotDress: String { t("outfit_slot_dress") }
-    static var outfitSlotOuter: String { t("outfit_slot_outer") }
-    static var outfitSlotBag: String { t("outfit_slot_bag") }
-    static var outfitSlotItem: String { t("outfit_slot_item") }
     static var homeSectionEditorialSubtitle: String { t("home_section_editorial_subtitle") }
     static var homeSectionEditorialTitle: String { t("home_section_editorial_title") }
     static var homeSectionForYouSubtitle: String { t("home_section_for_you_subtitle") }
@@ -1866,6 +1855,17 @@ enum L10n {
     static var otpVerify: String { t("otp_verify") }
     static var otpVerifyFailed: String { t("otp_verify_failed") }
     static var otpVerifySuccess: String { t("otp_verify_success") }
+    static var outfitSetDetailHint: String { t("outfit_set_detail_hint") }
+    static var outfitSetDetailTitle: String { t("outfit_set_detail_title") }
+    static var outfitSetItemBoost: String { t("outfit_set_item_boost") }
+    static var outfitSetItemRealBadge: String { t("outfit_set_item_real_badge") }
+    static var outfitSlotBag: String { t("outfit_slot_bag") }
+    static var outfitSlotBottom: String { t("outfit_slot_bottom") }
+    static var outfitSlotDress: String { t("outfit_slot_dress") }
+    static var outfitSlotItem: String { t("outfit_slot_item") }
+    static var outfitSlotOuter: String { t("outfit_slot_outer") }
+    static var outfitSlotShoes: String { t("outfit_slot_shoes") }
+    static var outfitSlotTop: String { t("outfit_slot_top") }
     static var passwordChangeErrorGeneric: String { t("password_change_error_generic") }
     static var passwordChangeSuccess: String { t("password_change_success") }
     static var passwordConfirmLabel: String { t("password_confirm_label") }
