@@ -1082,6 +1082,7 @@ enum L10n {
     static var guestTopbarSignInCd: String { t("guest_topbar_sign_in_cd") }
     static var homeBrandFooterSub: String { t("home_brand_footer_sub") }
     static var homeBrandMarketplace: String { t("home_brand_marketplace") }
+    static var homeDailyOutfitDropAction: String { t("home_daily_outfit_drop_action") }
     static var homeDeliveringComingSoonBody: String { t("home_delivering_coming_soon_body") }
     static var homeDeliveringComingSoonTitle: String { t("home_delivering_coming_soon_title") }
     static var homeDeliveringListIntro: String { t("home_delivering_list_intro") }
@@ -1355,6 +1356,7 @@ enum L10n {
     static var notificationActionOpenInviteFriends: String { t("notification_action_open_invite_friends") }
     static var notificationActionOpenListing: String { t("notification_action_open_listing") }
     static var notificationActionOpenOrder: String { t("notification_action_open_order") }
+    static var notificationActionOpenOutfitDailyDrop: String { t("notification_action_open_outfit_daily_drop") }
     static var notificationChannelChatDesc: String { t("notification_channel_chat_desc") }
     static var notificationChannelChatName: String { t("notification_channel_chat_name") }
     static var notificationChannelGeneralDesc: String { t("notification_channel_general_desc") }
@@ -1490,6 +1492,7 @@ enum L10n {
     static var notificationPtMarketplaceRecommendationContinueBrowsing: String { t("notification_pt_marketplace_recommendation_continue_browsing") }
     static var notificationPtMarketplaceRecommendationDailyComeback: String { t("notification_pt_marketplace_recommendation_daily_comeback") }
     static var notificationPtMarketplaceRecommendationDailyDigest: String { t("notification_pt_marketplace_recommendation_daily_digest") }
+    static var notificationPtMarketplaceRecommendationDailyOutfitDrop: String { t("notification_pt_marketplace_recommendation_daily_outfit_drop") }
     static var notificationPtMarketplaceRecommendationHuntToday: String { t("notification_pt_marketplace_recommendation_hunt_today") }
     static var notificationPtMarketplaceRecommendationInactiveLadder: String { t("notification_pt_marketplace_recommendation_inactive_ladder") }
     static var notificationPtMarketplaceRecommendationInactiveNudge: String { t("notification_pt_marketplace_recommendation_inactive_nudge") }
@@ -1855,6 +1858,10 @@ enum L10n {
     static var otpVerify: String { t("otp_verify") }
     static var otpVerifyFailed: String { t("otp_verify_failed") }
     static var otpVerifySuccess: String { t("otp_verify_success") }
+    static func outfitDailyDropCtaSubtitle(_ a1: CVarArg) -> String {
+        String(format: t("outfit_daily_drop_cta_subtitle"), a1)
+    }
+    static var outfitDailyDropListEmpty: String { t("outfit_daily_drop_list_empty") }
     static var outfitSetDetailHint: String { t("outfit_set_detail_hint") }
     static var outfitSetDetailTitle: String { t("outfit_set_detail_title") }
     static var outfitSetItemBoost: String { t("outfit_set_item_boost") }

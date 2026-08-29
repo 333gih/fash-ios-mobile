@@ -520,6 +520,12 @@ struct RootView: View {
             } else {
                 Color.clear.onAppear { router.dismissFullScreen() }
             }
+        case .dailyOutfitDropList:
+            DailyOutfitDropListScreen(
+                initialSets: homeVM.dailyOutfitDrop,
+                onDismiss: { router.showDailyOutfitDropList = false },
+                onSetClick: { set in router.outfitSetDetail = set }
+            )
         }
     }
 

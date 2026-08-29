@@ -11,6 +11,8 @@ struct NotificationDetailActions: Equatable {
     let openExploreTab: Bool
     let openInviteFriends: Bool
     let openOnboarding: Bool
+    let openOutfitDailyDrop: Bool
+    let outfitSetId: String?
     let exploreFilter: ExploreNavigationFilter?
     let richDetailBody: String?
     let imageUrl: String?
@@ -31,6 +33,8 @@ enum NotificationNavigation {
                 openExploreTab: false,
                 openInviteFriends: false,
                 openOnboarding: false,
+                openOutfitDailyDrop: false,
+                outfitSetId: nil,
                 exploreFilter: nil,
                 richDetailBody: richBody,
                 imageUrl: promo.remoteImageUrls.first
@@ -60,6 +64,12 @@ enum NotificationNavigation {
         let openInviteFriends = nav == "in_app_invite_friends"
             || ptype == "marketplace.referral.invite_rewarded"
 
+        let feedSurface = firstStringFromDataCi(data, "feed_surface", "feedSurface")?.lowercased() ?? ""
+        let outfitSetId = firstStringFromDataCi(data, "set_id", "setId")
+        let openOutfitDailyDrop = ptype == "marketplace.recommendation.daily_outfit_drop"
+            || nav == "outfit_daily_drop"
+            || (nav == "home" && feedSurface == "outfit_daily_drop")
+
         let rich = firstStringFromDataCi(data, "detail_body", "detailBody", "rich_body", "richBody")
         let imageUrl = firstStringFromDataCi(
             data,
@@ -85,6 +95,8 @@ enum NotificationNavigation {
             openExploreTab: openExploreTab,
             openInviteFriends: openInviteFriends,
             openOnboarding: openOnboarding,
+            openOutfitDailyDrop: openOutfitDailyDrop,
+            outfitSetId: outfitSetId,
             exploreFilter: exploreFilter,
             richDetailBody: rich,
             imageUrl: imageUrl

@@ -15,6 +15,7 @@ struct NotificationScreen: View {
     var onOpenExplore: (ExploreNavigationFilter?) -> Void = { _ in }
     var onOpenOnboarding: () -> Void = {}
     var onOpenInviteFriends: () -> Void = {}
+    var onOpenOutfitDailyDrop: (String?) -> Void = { _ in }
 
     init(
         userRepository: UserRepository,
@@ -28,7 +29,8 @@ struct NotificationScreen: View {
         onOpenFollowConnections: @escaping (Int) -> Void = { _ in },
         onOpenExplore: @escaping (ExploreNavigationFilter?) -> Void = { _ in },
         onOpenOnboarding: @escaping () -> Void = {},
-        onOpenInviteFriends: @escaping () -> Void = {}
+        onOpenInviteFriends: @escaping () -> Void = {},
+        onOpenOutfitDailyDrop: @escaping (String?) -> Void = { _ in }
     ) {
         _viewModel = State(initialValue: NotificationsViewModel(userRepository: userRepository))
         self.promoSlides = promoSlides
@@ -42,6 +44,7 @@ struct NotificationScreen: View {
         self.onOpenExplore = onOpenExplore
         self.onOpenOnboarding = onOpenOnboarding
         self.onOpenInviteFriends = onOpenInviteFriends
+        self.onOpenOutfitDailyDrop = onOpenOutfitDailyDrop
     }
 
     private var showPromoFooter: Bool {
@@ -65,7 +68,8 @@ struct NotificationScreen: View {
                             onOpenFollowConnections: onOpenFollowConnections,
                             onOpenExplore: onOpenExplore,
                             onOpenOnboarding: onOpenOnboarding,
-                            onOpenInviteFriends: onOpenInviteFriends
+                            onOpenInviteFriends: onOpenInviteFriends,
+                            onOpenOutfitDailyDrop: { setId in onOpenOutfitDailyDrop(setId) }
                         )
                     } else if viewModel.pushDetailNotFound {
                         FashEmptyStateView(

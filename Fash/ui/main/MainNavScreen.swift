@@ -74,6 +74,9 @@ struct MainNavScreen: View {
                 },
                 onOpenInviteFriends: {
                     router.dismissNotificationsAndNavigate(.inviteFriends)
+                },
+                onOpenOutfitDailyDrop: { setId in
+                    router.dismissNotificationsAndNavigate(.outfitDailyDrop(setId: setId))
                 }
             )
             .environment(\.locale, AppLocale.locale)
@@ -326,6 +329,18 @@ struct MainNavScreen: View {
             guard pending else { return }
             router.pendingOpenOnboarding = false
             router.onboardingStep = .aestheticTags
+        }
+        .onChange(of: router.pendingOutfitSetId) { _, setId in
+            guard let setId, !setId.isEmpty else { return }
+            router.pendingOutfitSetId = nil
+            Task {
+                let result = await deps.recommendationRepository.fetchOutfitSet(id: setId)
+                if case .success(let set) = result, let set {
+                    router.outfitSetDetail = set
+                } else {
+                    router.showDailyOutfitDropList = true
+                }
+            }
         }
         .onChange(of: router.selectedTab) { _, tab in
             guard !isGuestMode else { return }

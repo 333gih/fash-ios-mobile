@@ -9,6 +9,7 @@ enum PendingNotificationNavigation: Equatable {
     case explore(ExploreNavigationFilter?)
     case inviteFriends
     case onboarding
+    case outfitDailyDrop(setId: String?)
 }
 
 extension AppRouter {
@@ -55,6 +56,13 @@ extension AppRouter {
             showInviteFriendsScreen = true
         case .onboarding:
             pendingOpenOnboarding = true
+        case .outfitDailyDrop(let setId):
+            selectedTab = .home
+            if let setId, !setId.isEmpty {
+                pendingOutfitSetId = setId
+            } else {
+                showDailyOutfitDropList = true
+            }
         }
     }
 }

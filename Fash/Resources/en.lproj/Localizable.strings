@@ -918,6 +918,7 @@
 "guest_topbar_sign_in_cd" = "Sign in or create account";
 "home_brand_footer_sub" = "SHAPING VIETNAMESE STYLE";
 "home_brand_marketplace" = "FASH MARKETPLACE";
+"home_daily_outfit_drop_action" = "View outfits";
 "home_delivering_coming_soon_body" = "Shipping with in-app payment is coming soon. You'll manage deliveries here when it launches.";
 "home_delivering_coming_soon_title" = "Coming soon";
 "home_delivering_list_intro" = "Orders on the way to buyers. Track status and update delivery details here.";
@@ -1171,6 +1172,7 @@
 "notification_action_open_invite_friends" = "Open invite friends";
 "notification_action_open_listing" = "View listing";
 "notification_action_open_order" = "View order";
+"notification_action_open_outfit_daily_drop" = "View outfit sets";
 "notification_channel_chat_desc" = "Chat notifications";
 "notification_channel_chat_name" = "Messages";
 "notification_channel_general_desc" = "General notifications";
@@ -1292,6 +1294,7 @@
 "notification_pt_marketplace_recommendation_continue_browsing" = "Continue browsing";
 "notification_pt_marketplace_recommendation_daily_comeback" = "Fash misses you";
 "notification_pt_marketplace_recommendation_daily_digest" = "Today's picks";
+"notification_pt_marketplace_recommendation_daily_outfit_drop" = "Today's outfit recommendations";
 "notification_pt_marketplace_recommendation_hunt_today" = "Hunt today";
 "notification_pt_marketplace_recommendation_inactive_ladder" = "We miss your hunt";
 "notification_pt_marketplace_recommendation_inactive_nudge" = "Come back to Fash";
@@ -1591,6 +1594,8 @@
 "otp_verify" = "Verify";
 "otp_verify_failed" = "Invalid or expired code. Try again.";
 "otp_verify_success" = "Verified successfully.";
+"outfit_daily_drop_cta_subtitle" = "%d curated sets for your size & style";
+"outfit_daily_drop_list_empty" = "No outfit sets today";
 "outfit_set_detail_hint" = "Tap each piece to view details and buy";
 "outfit_set_detail_title" = "Outfit set";
 "outfit_set_item_boost" = "Featured";

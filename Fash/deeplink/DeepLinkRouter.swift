@@ -32,6 +32,12 @@ enum DeepLinkRouter {
             deps.pendingReferralToken = components?.queryItems?.first(where: { $0.name == "r" })?.value
             deps.pendingReferrerUsername = components?.queryItems?.first(where: { $0.name == "ref" })?.value
             router.showInviteFriendsScreen = true
+        case "outfit-set":
+            router.selectedTab = .home
+            router.pendingOutfitSetId = path
+        case "outfit-daily-drop":
+            router.selectedTab = .home
+            router.showDailyOutfitDropList = true
         default:
             break
         }

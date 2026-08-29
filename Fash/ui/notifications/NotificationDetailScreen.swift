@@ -11,6 +11,7 @@ struct NotificationDetailScreen: View {
     var onOpenExplore: (ExploreNavigationFilter?) -> Void = { _ in }
     var onOpenOnboarding: () -> Void = {}
     var onOpenInviteFriends: () -> Void = {}
+    var onOpenOutfitDailyDrop: (String?) -> Void = { _ in }
 
     @State private var showRawPayload = false
     @State private var promoGalleryIndex = 0
@@ -214,6 +215,7 @@ struct NotificationDetailScreen: View {
             || actions.openExploreTab
             || actions.openInviteFriends
             || actions.openOnboarding
+            || actions.openOutfitDailyDrop
         if hasActions {
             Text(L10n.notificationDetailActionsHeading)
                 .font(FashTypography.labelLarge.weight(.semibold))
@@ -222,9 +224,14 @@ struct NotificationDetailScreen: View {
                 if let orderId = actions.orderId {
                     actionButton(L10n.notificationActionOpenOrder) { onOpenOrder(orderId) }
                 }
-                if let listingId = actions.listingId {
+                if let listingId = actions.listingId, !actions.openOutfitDailyDrop {
                     actionButton(L10n.notificationActionOpenListing) {
                         onOpenListing(listingId, actions.sellerUserId)
+                    }
+                }
+                if actions.openOutfitDailyDrop {
+                    actionButton(L10n.notificationActionOpenOutfitDailyDrop) {
+                        onOpenOutfitDailyDrop(actions.outfitSetId)
                     }
                 }
                 if let conversationId = actions.conversationId {

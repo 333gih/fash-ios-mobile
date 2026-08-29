@@ -148,6 +148,8 @@ final class AppRouter {
     var pendingListingIdAfterPreview: String?
     /// Daily outfit drop — full set review before opening individual PDPs.
     var outfitSetDetail: OutfitSetCard?
+    var showDailyOutfitDropList = false
+    var pendingOutfitSetId: String?
 
     /// Dismiss overlays and land on Home without logging out (end of maintenance).
     func resetToHomePreservingSession() {
@@ -188,6 +190,8 @@ final class AppRouter {
         chatOrderDetailOverlayId = nil
         orderIdPendingCancel = nil
         outfitSetDetail = nil
+        showDailyOutfitDropList = false
+        pendingOutfitSetId = nil
         pendingListingIdAfterPreview = nil
     }
 
@@ -247,6 +251,7 @@ final class AppRouter {
             return
         }
         if outfitSetDetail != nil { outfitSetDetail = nil; return }
+        if showDailyOutfitDropList { showDailyOutfitDropList = false; return }
         if sellerShopUsername != nil { sellerShopUsername = nil; return }
     }
 

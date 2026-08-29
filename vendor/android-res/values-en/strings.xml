@@ -2113,6 +2113,11 @@
     <string name="home_section_similar_to_saved_title">Similar to saved items</string>
     <string name="home_section_daily_outfit_drop_title">Today\'s outfit drop</string>
     <string name="home_section_daily_outfit_drop_subtitle">Curated combos for your size and style</string>
+    <string name="home_daily_outfit_drop_action">View outfits</string>
+    <string name="outfit_daily_drop_cta_subtitle">%d curated sets for your size &amp; style</string>
+    <string name="outfit_daily_drop_list_empty">No outfit sets today</string>
+    <string name="notification_action_open_outfit_daily_drop">View outfit sets</string>
+    <string name="notification_pt_marketplace_recommendation_daily_outfit_drop">Today\'s outfit recommendations</string>
     <string name="outfit_set_detail_title">Outfit set</string>
     <string name="outfit_set_detail_hint">Tap each piece to view details and buy</string>
     <string name="outfit_set_item_real_badge">Real badge</string>

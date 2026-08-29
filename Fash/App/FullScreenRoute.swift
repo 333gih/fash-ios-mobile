@@ -25,6 +25,7 @@ enum FullScreenRoute: Identifiable {
     case sellerPackageTools
     case chatOrderDetail(String)
     case outfitSet(String)
+    case dailyOutfitDropList
 
     var id: String {
         switch self {
@@ -52,6 +53,7 @@ enum FullScreenRoute: Identifiable {
         case .sellerPackageTools: return "sellerPackageTools"
         case .chatOrderDetail(let id): return "chatOrder-\(id)"
         case .outfitSet(let id): return "outfitSet-\(id)"
+        case .dailyOutfitDropList: return "dailyOutfitDropList"
         }
     }
 }
@@ -69,6 +71,7 @@ extension AppRouter {
         if exploreOverlayListingId != nil { return nil }
         if let root = listingDetailRootId { return .listingFlow(root) }
         if outfitSetDetail != nil { return .outfitSet(outfitSetDetail!.id) }
+        if showDailyOutfitDropList { return .dailyOutfitDropList }
         if let user = sellerShopUsername { return .seller(user) }
         if let editId = editListingId { return .editListing(editId) }
         if showEditProfile { return .editProfile }

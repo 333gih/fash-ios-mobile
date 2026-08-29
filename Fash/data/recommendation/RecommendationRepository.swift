@@ -166,6 +166,42 @@ final class RecommendationRepository {
         }
     }
 
+    func fetchDailyOutfitDrop(limit: Int = 24) async -> Result<[OutfitSetCard], Error> {
+        do {
+            let response = try await RepositoryHttp.executeCoreGetWithResponse(
+                relativePath: "api/v1/recommendations/outfit-daily-drop?limit=\(max(1, limit))",
+                client: client
+            )
+            let root = try await Task.detached(priority: .userInitiated) {
+                try RepositoryHttp.jsonObject(response.data)
+            }.value
+            let payload = (root["data"] as? [String: Any]) ?? root
+            return .success(OutfitStylistParse.parseSets(payload["sets"]))
+        } catch {
+            return .failure(error)
+        }
+    }
+
+    func fetchOutfitSet(id: String) async -> Result<OutfitSetCard?, Error> {
+        let trimmed = id.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return .success(nil) }
+        do {
+            let enc = trimmed.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? trimmed
+            let response = try await RepositoryHttp.executeCoreGetWithResponse(
+                relativePath: "api/v1/recommendations/outfit-sets/\(enc)",
+                client: client
+            )
+            let root = try await Task.detached(priority: .userInitiated) {
+                try RepositoryHttp.jsonObject(response.data)
+            }.value
+            let payload = (root["data"] as? [String: Any]) ?? root
+            guard let setObj = payload["set"] as? [String: Any] else { return .success(nil) }
+            return .success(OutfitStylistParse.parseSet(setObj))
+        } catch {
+            return .failure(error)
+        }
+    }
+
     func recordFeedEvents(
         publicBrowse: Bool,
         sessionId: String,

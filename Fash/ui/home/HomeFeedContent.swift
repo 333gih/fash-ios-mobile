@@ -248,14 +248,9 @@ struct HomeFeedContent: View {
             }
 
             if !viewModel.dailyOutfitDrop.isEmpty {
-                HomeDailyOutfitDropSection(
-                    sets: viewModel.dailyOutfitDrop,
-                    onListingClick: { listingId in
-                        deps.presentListingDetail(listingId: listingId, router: router)
-                    },
-                    onSetClick: { set in
-                        router.outfitSetDetail = set
-                    }
+                HomeDailyOutfitDropCtaBanner(
+                    setCount: viewModel.dailyOutfitDrop.count,
+                    onClick: { router.showDailyOutfitDropList = true }
                 )
             }
 

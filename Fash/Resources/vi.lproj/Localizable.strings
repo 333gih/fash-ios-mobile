@@ -918,6 +918,7 @@
 "guest_topbar_sign_in_cd" = "Đăng nhập hoặc tạo tài khoản";
 "home_brand_footer_sub" = "ĐỊNH HÌNH PHONG CÁCH VIỆT";
 "home_brand_marketplace" = "FASH MARKETPLACE";
+"home_daily_outfit_drop_action" = "Xem bộ ghép";
 "home_delivering_coming_soon_body" = "Tính năng giao hàng với thanh toán trong app sắp ra mắt. Bạn sẽ quản lý giao hàng tại đây khi tính năng mở.";
 "home_delivering_coming_soon_title" = "Sắp ra mắt";
 "home_delivering_list_intro" = "Đơn hàng đang giao tới người mua. Theo dõi trạng thái và cập nhật thông tin giao hàng tại đây.";
@@ -1171,6 +1172,7 @@
 "notification_action_open_invite_friends" = "Mở mời bạn bè";
 "notification_action_open_listing" = "Xem tin đăng";
 "notification_action_open_order" = "Xem đơn hàng";
+"notification_action_open_outfit_daily_drop" = "Xem bộ ghép";
 "notification_channel_chat_desc" = "Thông báo chat";
 "notification_channel_chat_name" = "Tin nhắn";
 "notification_channel_general_desc" = "Thông báo chung";
@@ -1292,6 +1294,7 @@
 "notification_pt_marketplace_recommendation_continue_browsing" = "Tiếp tục xem dở";
 "notification_pt_marketplace_recommendation_daily_comeback" = "Fash nhớ bạn";
 "notification_pt_marketplace_recommendation_daily_digest" = "Gợi ý hôm nay";
+"notification_pt_marketplace_recommendation_daily_outfit_drop" = "Gợi ý bộ ghép hôm nay";
 "notification_pt_marketplace_recommendation_hunt_today" = "Săn hôm nay";
 "notification_pt_marketplace_recommendation_inactive_ladder" = "Nhắc quay lại săn đồ";
 "notification_pt_marketplace_recommendation_inactive_nudge" = "Quay lại Fash";
@@ -1591,6 +1594,8 @@
 "otp_verify" = "Xác minh";
 "otp_verify_failed" = "Mã không đúng hoặc đã hết hạn. Thử lại.";
 "otp_verify_success" = "Xác minh thành công.";
+"outfit_daily_drop_cta_subtitle" = "%d bộ ghép theo size & gu của bạn";
+"outfit_daily_drop_list_empty" = "Chưa có bộ ghép hôm nay";
 "outfit_set_detail_hint" = "Chạm từng món để xem chi tiết và mua";
 "outfit_set_detail_title" = "Xem bộ ghép";
 "outfit_set_item_boost" = "Nổi bật";

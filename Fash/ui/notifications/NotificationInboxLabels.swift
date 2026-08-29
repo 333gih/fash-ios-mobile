@@ -36,6 +36,7 @@ enum NotificationInboxLabels {
         case "marketplace.recommendation.taste_neighbor": return L10n.notificationPtMarketplaceRecommendationTasteNeighbor
         case "marketplace.recommendation.hunt_today": return L10n.notificationPtMarketplaceRecommendationHuntToday
         case "marketplace.recommendation.social_style_match": return L10n.notificationPtMarketplaceRecommendationSocialStyleMatch
+        case "marketplace.recommendation.daily_outfit_drop": return L10n.notificationPtMarketplaceRecommendationDailyOutfitDrop
         case "admin.mobile_push": return L10n.notificationPtAdminMobilePush
         case "admin.mobile_push.announcement": return L10n.notificationPtAdminMobilePushAnnouncement
         case "admin.mobile_push.promo": return L10n.notificationPtAdminMobilePushPromo
