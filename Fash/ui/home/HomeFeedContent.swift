@@ -250,7 +250,9 @@ struct HomeFeedContent: View {
             if !viewModel.dailyOutfitDrop.isEmpty {
                 HomeDailyOutfitDropSection(
                     sets: viewModel.dailyOutfitDrop,
-                    onListingClick: { listingId in onListingClick(listingId, nil) }
+                    onListingClick: { listingId in
+                        deps.presentListingDetail(listingId: listingId, router: router)
+                    }
                 )
             }
 

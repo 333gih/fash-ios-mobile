@@ -135,7 +135,7 @@ struct ProductDetailScreen: View {
                     ProductDetailComponents.completeTheLookSection(
                         set: viewModel.completeTheLook,
                         quotaHit: viewModel.completeTheLookQuotaHit,
-                        onListingTap: onListingClick
+                        onListingTap: { id, _ in onListingClick(id) }
                     )
                     .padding(.horizontal, spacing.editorialStart)
                     ProductDetailDiscoveryHub(
