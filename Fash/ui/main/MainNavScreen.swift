@@ -10,6 +10,7 @@ struct MainNavScreen: View {
     @Bindable var ordersVM: OrdersViewModel
     var isGuestMode = false
     var onRequestSignIn: ((String) -> Void)? = nil
+    var preLoginGuideAnchorsEnabled: Bool = false
     @State private var postVM = PostViewModel()
     @State private var addressBookVM = AddressBookViewModel()
     @State private var notificationsVM: NotificationsViewModel?
@@ -571,7 +572,7 @@ struct MainNavScreen: View {
                 case .post: return postVM.navReselectLoading
                 }
             },
-            featureTourAnchorsEnabled: showFeatureTour
+            featureTourAnchorsEnabled: showFeatureTour || preLoginGuideAnchorsEnabled
         )
     }
 

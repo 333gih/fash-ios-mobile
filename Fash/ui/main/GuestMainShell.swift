@@ -12,6 +12,7 @@ struct GuestMainShell: View {
     @State private var showSignupNudge = false
     @State private var guestLoginReason: String?
     @State private var showPreLoginGuide = !PreLoginMascotGuideStore.hasCompleted
+    @State private var preLoginAnchorFrames: [FeatureTourAnchor: CGRect] = [:]
 
     var body: some View {
         MainNavScreen(
@@ -22,6 +23,7 @@ struct GuestMainShell: View {
             chatVM: chatVM,
             ordersVM: ordersVM,
             isGuestMode: true,
+            preLoginGuideAnchorsEnabled: showPreLoginGuide,
             onRequestSignIn: { reason in
             guestLoginReason = reason
             showLoginSheet = true
@@ -78,9 +80,13 @@ struct GuestMainShell: View {
                 }
             )
         }
+        .onPreferenceChange(FeatureTourAnchorKey.self) { preLoginAnchorFrames = $0 }
         .overlay {
             if showPreLoginGuide, AppWelcomeIntroStore.hasCompleted {
-                PreLoginMascotGuideOverlay(context: .guestShell) {
+                PreLoginMascotGuideOverlay(
+                    context: .guestShell,
+                    anchorFrames: preLoginAnchorFrames
+                ) {
                     showPreLoginGuide = false
                 }
                 .environment(\.locale, AppLocale.locale)

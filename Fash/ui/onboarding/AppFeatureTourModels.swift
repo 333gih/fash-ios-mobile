@@ -8,6 +8,9 @@ enum FeatureTourAnchor: Hashable {
     case bottomChat
     case bottomProfile
     case topActionsRow
+    case loginEmailForm
+    case loginSocialRow
+    case loginGuestBrowse
 }
 
 /// Guided tour steps — Android [AppTourStep].

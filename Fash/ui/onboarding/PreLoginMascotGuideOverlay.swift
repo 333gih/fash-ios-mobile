@@ -5,107 +5,89 @@ enum PreLoginMascotGuideContext {
     case guestShell
 }
 
-private struct PreLoginMascotSlide: Identifiable {
+private struct PreLoginGuideSlide: Identifiable {
     let id: Int
     let title: String
     let body: String
-    let mascotImage: String
+    let anchor: FeatureTourAnchor?
 }
 
-/// Mascot-led pager shown once before login or on first guest shell entry.
+/// Mascot spotlight coach marks on login / guest shell — one focused target per step.
 struct PreLoginMascotGuideOverlay: View {
     let context: PreLoginMascotGuideContext
+    var anchorFrames: [FeatureTourAnchor: CGRect] = [:]
     var onFinish: () -> Void
 
     @State private var selection = 0
 
-    private var slides: [PreLoginMascotSlide] {
+    private var slides: [PreLoginGuideSlide] {
         switch context {
         case .loginScreen:
             return [
-                PreLoginMascotSlide(id: 0, title: L10n.appTourIntroTitle, body: L10n.appTourIntroBody, mascotImage: "FashMascotPointUp"),
-                PreLoginMascotSlide(id: 1, title: L10n.preLoginLoginEmailTitle, body: L10n.preLoginLoginEmailBody, mascotImage: "FashMascotPointDown"),
-                PreLoginMascotSlide(id: 2, title: L10n.preLoginLoginSocialTitle, body: L10n.preLoginLoginSocialBody, mascotImage: "FashMascotPointLeft"),
-                PreLoginMascotSlide(id: 3, title: L10n.preLoginLoginGuestTitle, body: L10n.preLoginLoginGuestBody, mascotImage: "FashMascotPointUp"),
+                PreLoginGuideSlide(id: 0, title: L10n.appTourIntroTitle, body: L10n.appTourIntroBody, anchor: nil),
+                PreLoginGuideSlide(id: 1, title: L10n.preLoginLoginEmailTitle, body: L10n.preLoginLoginEmailBody, anchor: .loginEmailForm),
+                PreLoginGuideSlide(id: 2, title: L10n.preLoginLoginSocialTitle, body: L10n.preLoginLoginSocialBody, anchor: .loginSocialRow),
+                PreLoginGuideSlide(id: 3, title: L10n.preLoginLoginGuestTitle, body: L10n.preLoginLoginGuestBody, anchor: .loginGuestBrowse),
             ]
         case .guestShell:
             return [
-                PreLoginMascotSlide(id: 0, title: L10n.appTourIntroTitle, body: L10n.appTourIntroBody, mascotImage: "FashMascotPointUp"),
-                PreLoginMascotSlide(id: 1, title: L10n.appTourNavHomeTitle, body: L10n.appTourNavHomeBody, mascotImage: "FashMascotPointLeft"),
-                PreLoginMascotSlide(id: 2, title: L10n.preLoginGuestSignInTitle, body: L10n.preLoginGuestSignInBody, mascotImage: "FashMascotPointDown"),
+                PreLoginGuideSlide(id: 0, title: L10n.appTourIntroTitle, body: L10n.appTourIntroBody, anchor: nil),
+                PreLoginGuideSlide(id: 1, title: L10n.appTourNavHomeTitle, body: L10n.appTourNavHomeBody, anchor: .bottomHome),
+                PreLoginGuideSlide(id: 2, title: L10n.preLoginGuestSignInTitle, body: L10n.preLoginGuestSignInBody, anchor: .bottomProfile),
             ]
         }
     }
 
+    private var slide: PreLoginGuideSlide { slides[selection] }
     private var isLast: Bool { selection >= slides.count - 1 }
 
     var body: some View {
-        ZStack {
-            Color.black.opacity(0.58).ignoresSafeArea()
-            VStack(spacing: 16) {
-                HStack {
-                    Spacer()
-                    Button(L10n.appTourSkip) {
-                        PreLoginMascotGuideStore.markCompleted()
-                        onFinish()
-                    }
-                    .font(FashTypography.labelLarge)
-                    .foregroundStyle(FashColors.textSecondary)
+        MascotSpotlightOverlay(
+            title: slide.title,
+            bodyText: slide.body,
+            anchor: slide.anchor,
+            anchorFrames: anchorFrames,
+            stepIndex: selection,
+            stepCount: slides.count,
+            showBack: selection > 0,
+            isLast: isLast,
+            onBack: {
+                withAnimation(.easeInOut(duration: 0.22)) {
+                    selection = max(selection - 1, 0)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 12)
+            },
+            onNext: advance,
+            onSkip: finish
+        )
+    }
 
-                VStack(spacing: 12) {
-                    FashMascotGuideImage(name: slides[selection].mascotImage, size: 96)
-                    Text(slides[selection].title)
-                        .font(FashTypography.titleSmall.weight(.bold))
-                        .foregroundStyle(FashColors.textPrimary)
-                        .multilineTextAlignment(.center)
-                    Text(slides[selection].body)
-                        .font(FashTypography.bodyMedium)
-                        .foregroundStyle(FashColors.textSecondary)
-                        .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .padding(.horizontal, 24)
-                .padding(.vertical, 20)
-                .frame(maxWidth: .infinity)
-                .background(FashColors.screen)
-                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                .padding(.horizontal, 20)
-
-                FashPromoPageIndicator(pageCount: slides.count, currentPage: selection)
-
-                FashPrimaryButton(
-                    title: isLast ? L10n.appTourDone : L10n.welcomeIntroNext,
-                    showsArrow: !isLast
-                ) {
-                    if isLast {
-                        PreLoginMascotGuideStore.markCompleted()
-                        onFinish()
-                    } else {
-                        withAnimation(.easeInOut(duration: 0.25)) {
-                            selection = min(selection + 1, slides.count - 1)
-                        }
-                    }
-                }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 24)
+    private func advance() {
+        if isLast {
+            finish()
+        } else {
+            withAnimation(.easeInOut(duration: 0.22)) {
+                selection = min(selection + 1, slides.count - 1)
             }
         }
-        .accessibilityAddTraits(.isModal)
+    }
+
+    private func finish() {
+        PreLoginMascotGuideStore.markCompleted()
+        onFinish()
     }
 }
 
 struct FashMascotGuideImage: View {
     let name: String
     var size: CGFloat = 72
+    var flipHorizontal: Bool = false
 
     var body: some View {
         Image(name)
             .resizable()
             .scaledToFit()
             .frame(width: size, height: size)
+            .scaleEffect(x: flipHorizontal ? -1 : 1, y: 1)
             .shadow(color: FashColors.brandPrimary.opacity(0.18), radius: 8, y: 4)
     }
 }

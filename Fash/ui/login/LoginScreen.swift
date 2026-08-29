@@ -7,6 +7,7 @@ struct LoginScreen: View {
     @Bindable private var localeController = AppLocaleController.shared
     @State private var loginHeroVM = LoginHeroSlidesViewModel()
     @State private var showPreLoginGuide = !PreLoginMascotGuideStore.hasCompleted
+    @State private var preLoginAnchorFrames: [FeatureTourAnchor: CGRect] = [:]
     @State private var brandProgress: CGFloat = 0
     @State private var heroProgress: CGFloat = 0
     @State private var formProgress: CGFloat = 0
@@ -105,6 +106,7 @@ struct LoginScreen: View {
                             )
                             .padding(.top, 10)
                         }
+                        .featureTourAnchor(.loginEmailForm, enabled: showPreLoginGuide)
                         .loginEntrance(progress: formProgress, offsetY: 22)
 
                         VStack(spacing: 0) {
@@ -139,11 +141,13 @@ struct LoginScreen: View {
                                 .buttonStyle(.plain)
                                 .disabled(formLockedForSocial || viewModel.isOtpLoading)
                                 .padding(.top, 4)
+                                .featureTourAnchor(.loginGuestBrowse, enabled: showPreLoginGuide)
                             }
 
                             LoginLegalFooter()
                                 .padding(.top, 8)
                         }
+                        .featureTourAnchor(.loginSocialRow, enabled: showPreLoginGuide)
                         .loginEntrance(progress: bottomProgress, offsetY: 18)
                         .padding(.bottom, 24)
                     }
@@ -167,9 +171,13 @@ struct LoginScreen: View {
             }
         }
         .background(FashColors.screen)
+        .onPreferenceChange(FeatureTourAnchorKey.self) { preLoginAnchorFrames = $0 }
         .overlay {
             if showPreLoginGuide, AppWelcomeIntroStore.hasCompleted {
-                PreLoginMascotGuideOverlay(context: .loginScreen) {
+                PreLoginMascotGuideOverlay(
+                    context: .loginScreen,
+                    anchorFrames: preLoginAnchorFrames
+                ) {
                     showPreLoginGuide = false
                 }
                 .environment(\.locale, AppLocale.locale)
