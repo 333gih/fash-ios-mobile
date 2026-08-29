@@ -2063,6 +2063,16 @@
     <string name="seller_packages_tools_success_request">Đã gửi yêu cầu thành công.</string>
     <string name="seller_packages_tools_submit">Gửi yêu cầu</string>
     <string name="seller_packages_tools_empty_package">Chưa có gói tiện ích. Nâng cấp để dùng xác minh, đẩy tin và quảng bá.</string>
+    <string name="seller_packages_tools_search_listings">Tìm tin đăng</string>
+    <string name="seller_packages_tools_tap_pick_listing">Chạm để chọn tin đăng</string>
+    <string name="seller_packages_tools_change_listing">Đổi</string>
+    <string name="seller_packages_tools_advanced_listing_id">Nâng cao: nhập mã tin</string>
+    <string name="seller_packages_tools_status_pending">Đang chờ xử lý</string>
+    <string name="seller_packages_tools_result_confidence">Kết quả: %1$d%% — %2$s</string>
+    <string name="seller_packages_tools_badge_granted">Đã cấp nhãn Real trên tin đăng</string>
+    <string name="seller_packages_feature_real_badge">Nhãn Real trên tin</string>
+    <string name="seller_packages_upgrade_highlight">Bạn cần %1$s — gói %2$s trở lên có tính năng này.</string>
+    <string name="seller_packages_tools_success_boost_affinity">Đã kích hoạt 7 ngày — ưu tiên theo sở thích người xem.</string>
 
     <!-- Invite friends (growth + referral messaging) -->
     <string name="invite_screen_title">Mời bạn bè</string>

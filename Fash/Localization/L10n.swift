@@ -2372,8 +2372,8 @@ enum L10n {
     static var sellerPackagesFeatureExplore: String { t("seller_packages_feature_explore") }
     static var sellerPackagesFeatureExploreBoost: String { t("seller_packages_feature_explore_boost") }
     static var sellerPackagesFeatureFanpage: String { t("seller_packages_feature_fanpage") }
-    static var sellerPackagesFeatureSocial: String { t("seller_packages_feature_social") }
     static var sellerPackagesFeatureRealBadge: String { t("seller_packages_feature_real_badge") }
+    static var sellerPackagesFeatureSocial: String { t("seller_packages_feature_social") }
     static var sellerPackagesLoadError: String { t("seller_packages_load_error") }
     static var sellerPackagesMockPurchase: String { t("seller_packages_mock_purchase") }
     static func sellerPackagesPayAmount(_ a1: CVarArg) -> String {
@@ -2405,27 +2405,27 @@ enum L10n {
     static var sellerPackagesToolsNoListings: String { t("seller_packages_tools_no_listings") }
     static var sellerPackagesToolsOpen: String { t("seller_packages_tools_open") }
     static var sellerPackagesToolsPickListing: String { t("seller_packages_tools_pick_listing") }
-    static func sellerPackagesToolsResultConfidence(_ a1: CVarArg, _ a2: CVarArg) -> String {
-        String(format: t("seller_packages_tools_result_confidence"), a1, a2)
-    }
-    static var sellerPackagesToolsSearchListings: String { t("seller_packages_tools_search_listings") }
-    static var sellerPackagesToolsStatusPending: String { t("seller_packages_tools_status_pending") }
-    static var sellerPackagesToolsSuccessBoostAffinity: String { t("seller_packages_tools_success_boost_affinity") }
-    static var sellerPackagesToolsTapPickListing: String { t("seller_packages_tools_tap_pick_listing") }
     static var sellerPackagesToolsQuotaExhausted: String { t("seller_packages_tools_quota_exhausted") }
     static var sellerPackagesToolsQuotaLocked: String { t("seller_packages_tools_quota_locked") }
     static func sellerPackagesToolsQuotaRemaining(_ a1: CVarArg) -> String {
         String(format: t("seller_packages_tools_quota_remaining"), a1)
     }
     static var sellerPackagesToolsQuotaUnlimited: String { t("seller_packages_tools_quota_unlimited") }
+    static func sellerPackagesToolsResultConfidence(_ a1: CVarArg, _ a2: CVarArg) -> String {
+        String(format: t("seller_packages_tools_result_confidence"), a1, a2)
+    }
+    static var sellerPackagesToolsSearchListings: String { t("seller_packages_tools_search_listings") }
     static var sellerPackagesToolsSocial: String { t("seller_packages_tools_social") }
+    static var sellerPackagesToolsStatusPending: String { t("seller_packages_tools_status_pending") }
     static var sellerPackagesToolsSubmit: String { t("seller_packages_tools_submit") }
     static var sellerPackagesToolsSubtitle: String { t("seller_packages_tools_subtitle") }
     static var sellerPackagesToolsSuccessBoost: String { t("seller_packages_tools_success_boost") }
+    static var sellerPackagesToolsSuccessBoostAffinity: String { t("seller_packages_tools_success_boost_affinity") }
     static var sellerPackagesToolsSuccessFanpage: String { t("seller_packages_tools_success_fanpage") }
     static var sellerPackagesToolsSuccessRequest: String { t("seller_packages_tools_success_request") }
     static var sellerPackagesToolsSuccessSocial: String { t("seller_packages_tools_success_social") }
     static var sellerPackagesToolsSuccessVerify: String { t("seller_packages_tools_success_verify") }
+    static var sellerPackagesToolsTapPickListing: String { t("seller_packages_tools_tap_pick_listing") }
     static var sellerPackagesToolsTitle: String { t("seller_packages_tools_title") }
     static var sellerPackagesToolsVerify: String { t("seller_packages_tools_verify") }
     static func sellerPackagesUpgradeHighlight(_ a1: CVarArg, _ a2: CVarArg) -> String {

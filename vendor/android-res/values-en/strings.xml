@@ -1985,6 +1985,16 @@
     <string name="seller_packages_tools_success_request">Request sent successfully.</string>
     <string name="seller_packages_tools_submit">Submit request</string>
     <string name="seller_packages_tools_empty_package">No utility package yet. Upgrade to verify, boost, and promote listings.</string>
+    <string name="seller_packages_tools_search_listings">Search listings</string>
+    <string name="seller_packages_tools_tap_pick_listing">Tap to choose a listing</string>
+    <string name="seller_packages_tools_change_listing">Change</string>
+    <string name="seller_packages_tools_advanced_listing_id">Advanced: enter listing ID</string>
+    <string name="seller_packages_tools_status_pending">Pending review</string>
+    <string name="seller_packages_tools_result_confidence">Result: %1$d%% — %2$s</string>
+    <string name="seller_packages_tools_badge_granted">Verified Real badge granted on listing</string>
+    <string name="seller_packages_feature_real_badge">Verified Real badge</string>
+    <string name="seller_packages_upgrade_highlight">You need %1$s — available from %2$s and above.</string>
+    <string name="seller_packages_tools_success_boost_affinity">Active for 7 days — prioritized for similar viewers.</string>
 
     <!-- Invite friends (growth + referral messaging) -->
     <string name="invite_screen_title">Invite friends</string>
