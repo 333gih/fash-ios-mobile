@@ -23,11 +23,12 @@ struct GuestMainShell: View {
             chatVM: chatVM,
             ordersVM: ordersVM,
             isGuestMode: true,
-            preLoginGuideAnchorsEnabled: showPreLoginGuide,
             onRequestSignIn: { reason in
             guestLoginReason = reason
             showLoginSheet = true
-        })
+        },
+            preLoginGuideAnchorsEnabled: showPreLoginGuide
+        )
         .task {
             deps.isGuestBrowseActive = true
             GuestLocalReengagementScheduler.shared.onGuestShellEntered()
