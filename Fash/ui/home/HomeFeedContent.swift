@@ -252,6 +252,9 @@ struct HomeFeedContent: View {
                     sets: viewModel.dailyOutfitDrop,
                     onListingClick: { listingId in
                         deps.presentListingDetail(listingId: listingId, router: router)
+                    },
+                    onSetClick: { set in
+                        router.outfitSetDetail = set
                     }
                 )
             }

@@ -24,6 +24,7 @@ enum FullScreenRoute: Identifiable {
     case sellerPackageCheckout(SellerProductPackage)
     case sellerPackageTools
     case chatOrderDetail(String)
+    case outfitSet(String)
 
     var id: String {
         switch self {
@@ -50,6 +51,7 @@ enum FullScreenRoute: Identifiable {
         case .sellerPackageCheckout(let pkg): return "pkgCheckout-\(pkg.code)"
         case .sellerPackageTools: return "sellerPackageTools"
         case .chatOrderDetail(let id): return "chatOrder-\(id)"
+        case .outfitSet(let id): return "outfitSet-\(id)"
         }
     }
 }
@@ -66,6 +68,7 @@ extension AppRouter {
     var fullScreenRoute: FullScreenRoute? {
         if exploreOverlayListingId != nil { return nil }
         if let root = listingDetailRootId { return .listingFlow(root) }
+        if outfitSetDetail != nil { return .outfitSet(outfitSetDetail!.id) }
         if let user = sellerShopUsername { return .seller(user) }
         if let editId = editListingId { return .editListing(editId) }
         if showEditProfile { return .editProfile }

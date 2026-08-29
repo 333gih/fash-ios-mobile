@@ -508,6 +508,18 @@ struct RootView: View {
                     router.sellerShopUsername = username
                 }
             )
+        case .outfitSet:
+            if let set = router.outfitSetDetail {
+                OutfitSetDetailScreen(
+                    set: set,
+                    onDismiss: { router.outfitSetDetail = nil },
+                    onItemClick: { listingId in
+                        deps.presentListingDetail(listingId: listingId, router: router)
+                    }
+                )
+            } else {
+                Color.clear.onAppear { router.dismissFullScreen() }
+            }
         }
     }
 

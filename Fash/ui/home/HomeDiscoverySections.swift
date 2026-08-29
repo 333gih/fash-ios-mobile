@@ -129,6 +129,7 @@ struct HomeDailyOutfitDropSection: View {
     @Environment(\.fashSpacing) private var spacing
     let sets: [OutfitSetCard]
     var onListingClick: (String) -> Void
+    var onSetClick: (OutfitSetCard) -> Void = { _ in }
     var includeHorizontalEdgePadding: Bool = true
 
     var body: some View {
@@ -166,9 +167,7 @@ struct HomeDailyOutfitDropSection: View {
                             .background(FashColors.surfaceContainerLow)
                             .clipShape(RoundedRectangle(cornerRadius: spacing.radiusSoftMin))
                             .onTapGesture {
-                                if let id = set.items.first?.listingId {
-                                    onListingClick(id)
-                                }
+                                onSetClick(set)
                             }
                         }
                     }

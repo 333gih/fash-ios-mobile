@@ -989,6 +989,17 @@
 "home_seasonal_near_you_title" = "Seasonal near you";
 "home_section_daily_outfit_drop_subtitle" = "Curated combos for your size and style";
 "home_section_daily_outfit_drop_title" = "Today's outfit drop";
+"outfit_set_detail_title" = "Outfit set";
+"outfit_set_detail_hint" = "Tap each piece to view details and buy";
+"outfit_set_item_real_badge" = "Real badge";
+"outfit_set_item_boost" = "Featured";
+"outfit_slot_top" = "Top";
+"outfit_slot_bottom" = "Bottom";
+"outfit_slot_shoes" = "Shoes";
+"outfit_slot_dress" = "Dress";
+"outfit_slot_outer" = "Outerwear";
+"outfit_slot_bag" = "Bag / accessory";
+"outfit_slot_item" = "Item";
 "home_section_editorial_subtitle" = "Short reads on outfits, pre-loved finds, and safer buying — tap a card to jump to related picks in Explore.";
 "home_section_editorial_title" = "Guides";
 "home_section_for_you_subtitle" = "Based on your recent activity";

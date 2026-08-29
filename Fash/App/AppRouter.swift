@@ -146,6 +146,8 @@ final class AppRouter {
     var orderIdPendingCancel: String?
     /// Set when closing listing preview sheet before opening product detail.
     var pendingListingIdAfterPreview: String?
+    /// Daily outfit drop — full set review before opening individual PDPs.
+    var outfitSetDetail: OutfitSetCard?
 
     /// Dismiss overlays and land on Home without logging out (end of maintenance).
     func resetToHomePreservingSession() {
@@ -185,6 +187,7 @@ final class AppRouter {
         sellerPackageCheckout = nil
         chatOrderDetailOverlayId = nil
         orderIdPendingCancel = nil
+        outfitSetDetail = nil
         pendingListingIdAfterPreview = nil
     }
 
@@ -243,6 +246,7 @@ final class AppRouter {
             popListingDetail()
             return
         }
+        if outfitSetDetail != nil { outfitSetDetail = nil; return }
         if sellerShopUsername != nil { sellerShopUsername = nil; return }
     }
 
