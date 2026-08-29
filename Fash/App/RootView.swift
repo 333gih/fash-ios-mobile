@@ -21,6 +21,7 @@ struct RootView: View {
     @State private var guestLoginReason: String?
     @State private var shellEpoch = 0
     @State private var maintenanceRealtimeId: UUID?
+    @State private var showWelcomeIntro = !AppWelcomeIntroStore.hasCompleted
 
     var body: some View {
         FashTheme {
@@ -267,6 +268,8 @@ struct RootView: View {
             router.isLoggingOut ||
             (router.isLaunchWarmupInProgress && !hasPendingDeepLinkAction) {
             FashWaitingScreen()
+        } else if showWelcomeIntro && router.loginStep == nil && !router.isGuestMode && needsOnboarding == nil {
+            welcomeIntroFlow()
         } else if router.isGuestMode {
             GuestMainShell(
                 router: router,
@@ -530,6 +533,28 @@ struct RootView: View {
     }
 
     @ViewBuilder
+    private func welcomeIntroFlow() -> some View {
+        WelcomeIntroScreen(
+            onSignIn: {
+                AppWelcomeIntroStore.markCompleted()
+                showWelcomeIntro = false
+                router.isGuestMode = false
+                deps.isGuestBrowseActive = false
+                router.loginStep = .email
+            },
+            onBrowseGuest: PublicBrowseHttp.isConfigured ? {
+                AppWelcomeIntroStore.markCompleted()
+                showWelcomeIntro = false
+                router.isGuestMode = true
+                deps.isGuestBrowseActive = true
+                needsOnboarding = false
+                Task { await prepareMainShellEntry() }
+            } : nil
+        )
+        .environment(\.locale, AppLocale.locale)
+    }
+
+    @ViewBuilder
     private func loginFlow(step: LoginStep) -> some View {
         switch step {
         case .email:
@@ -668,6 +693,12 @@ struct RootView: View {
         let sessionValid = hasSession ? await deps.revalidateSession() : false
         if !hasSession || !sessionValid {
             needsOnboarding = nil
+            if !AppWelcomeIntroStore.hasCompleted {
+                router.isGuestMode = false
+                deps.isGuestBrowseActive = false
+                router.loginStep = nil
+                return
+            }
             if PublicBrowseHttp.isConfigured {
                 router.isGuestMode = true
                 deps.isGuestBrowseActive = true

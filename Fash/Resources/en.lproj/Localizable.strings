@@ -2134,3 +2134,15 @@
 "welcome_banner_dialog_action" = "Get started";
 "welcome_banner_dialog_message" = "Browse listings, save favorites, chat with sellers, and open Notifications so you never miss an update. You can close this anytime — it will not show again after you tap Get started.";
 "welcome_banner_dialog_title" = "Welcome to Fash";
+"welcome_intro_browse_guest" = "Browse without signing in";
+"welcome_intro_next" = "Next";
+"welcome_intro_sign_in" = "Sign in";
+"welcome_intro_skip" = "Skip";
+"welcome_intro_slide1_body" = "A second-hand fashion marketplace — hunt deals, resell pieces, and discover your style in one app.";
+"welcome_intro_slide1_title" = "Welcome to Fash";
+"welcome_intro_slide2_body" = "Listings matched to your size, taste, and season — scroll a feed that feels like a fashion magazine.";
+"welcome_intro_slide2_title" = "Discover & hunt deals";
+"welcome_intro_slide3_body" = "Curated sets from real listings — review each piece, save favorites, and buy when you are ready.";
+"welcome_intro_slide3_title" = "Daily outfit picks";
+"welcome_intro_slide4_body" = "Chat directly, track orders, and pay securely — sign in whenever you are ready.";
+"welcome_intro_slide4_title" = "Buy & sell with confidence";

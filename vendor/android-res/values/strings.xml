@@ -93,6 +93,19 @@
     <string name="app_tour_nav_profile_body">Xem tin đăng của bạn, danh sách đã lưu, theo dõi và cài đặt tài khoản (menu ⋮ trên hồ sơ).</string>
     <string name="app_tour_top_bar_title">Thanh trên cùng</string>
     <string name="app_tour_top_bar_body">Tìm kiếm nhanh, mở hộp thông báo để xem tin nhắn và hoạt động, và biểu tượng túi để vào đơn hàng của bạn.</string>
+    <!-- First-install welcome intro (pre-login) -->
+    <string name="welcome_intro_skip">Bỏ qua</string>
+    <string name="welcome_intro_next">Tiếp</string>
+    <string name="welcome_intro_sign_in">Đăng nhập</string>
+    <string name="welcome_intro_browse_guest">Xem không cần đăng nhập</string>
+    <string name="welcome_intro_slide1_title">Chào mừng đến Fash</string>
+    <string name="welcome_intro_slide1_body">Chợ thời trang second-hand — săn deal, bán lại và khám phá gu của bạn trong một ứng dụng.</string>
+    <string name="welcome_intro_slide2_title">Khám phá &amp; săn deal</string>
+    <string name="welcome_intro_slide2_body">Tin đăng được gợi ý theo size, gu và mùa — lướt feed như tạp chí thời trang.</string>
+    <string name="welcome_intro_slide3_title">Bộ ghép mỗi ngày</string>
+    <string name="welcome_intro_slide3_body">Outfit được ghép theo tủ đồ thật — xem từng món, lưu yêu thích rồi mua khi sẵn sàng.</string>
+    <string name="welcome_intro_slide4_title">Mua bán an toàn</string>
+    <string name="welcome_intro_slide4_body">Chat trực tiếp, theo dõi đơn hàng và thanh toán tin cậy — đăng nhập khi bạn muốn.</string>
     <string name="dialog_title_success">Thành công</string>
     <string name="dialog_title_error">Lỗi</string>
     <string name="dialog_title_info">Thông tin</string>

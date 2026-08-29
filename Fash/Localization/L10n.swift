@@ -2524,4 +2524,16 @@ enum L10n {
     static var welcomeBannerDialogAction: String { t("welcome_banner_dialog_action") }
     static var welcomeBannerDialogMessage: String { t("welcome_banner_dialog_message") }
     static var welcomeBannerDialogTitle: String { t("welcome_banner_dialog_title") }
+    static var welcomeIntroBrowseGuest: String { t("welcome_intro_browse_guest") }
+    static var welcomeIntroNext: String { t("welcome_intro_next") }
+    static var welcomeIntroSignIn: String { t("welcome_intro_sign_in") }
+    static var welcomeIntroSkip: String { t("welcome_intro_skip") }
+    static var welcomeIntroSlide1Body: String { t("welcome_intro_slide1_body") }
+    static var welcomeIntroSlide1Title: String { t("welcome_intro_slide1_title") }
+    static var welcomeIntroSlide2Body: String { t("welcome_intro_slide2_body") }
+    static var welcomeIntroSlide2Title: String { t("welcome_intro_slide2_title") }
+    static var welcomeIntroSlide3Body: String { t("welcome_intro_slide3_body") }
+    static var welcomeIntroSlide3Title: String { t("welcome_intro_slide3_title") }
+    static var welcomeIntroSlide4Body: String { t("welcome_intro_slide4_body") }
+    static var welcomeIntroSlide4Title: String { t("welcome_intro_slide4_title") }
 }

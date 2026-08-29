@@ -2134,3 +2134,15 @@
 "welcome_banner_dialog_action" = "Bắt đầu";
 "welcome_banner_dialog_message" = "Khám phá tin đăng, lưu yêu thích, chat với người bán và mở mục thông báo để không bỏ lỡ cập nhật. Bạn có thể đóng hộp thoại này bất cứ lúc nào — chúng sẽ không hiện lại sau khi bạn bấm Bắt đầu.";
 "welcome_banner_dialog_title" = "Chào mừng đến với Fash";
+"welcome_intro_browse_guest" = "Xem không cần đăng nhập";
+"welcome_intro_next" = "Tiếp";
+"welcome_intro_sign_in" = "Đăng nhập";
+"welcome_intro_skip" = "Bỏ qua";
+"welcome_intro_slide1_body" = "Chợ thời trang second-hand — săn deal, bán lại và khám phá gu của bạn trong một ứng dụng.";
+"welcome_intro_slide1_title" = "Chào mừng đến Fash";
+"welcome_intro_slide2_body" = "Tin đăng được gợi ý theo size, gu và mùa — lướt feed như tạp chí thời trang.";
+"welcome_intro_slide2_title" = "Khám phá & săn deal";
+"welcome_intro_slide3_body" = "Outfit được ghép theo tủ đồ thật — xem từng món, lưu yêu thích rồi mua khi sẵn sàng.";
+"welcome_intro_slide3_title" = "Bộ ghép mỗi ngày";
+"welcome_intro_slide4_body" = "Chat trực tiếp, theo dõi đơn hàng và thanh toán tin cậy — đăng nhập khi bạn muốn.";
+"welcome_intro_slide4_title" = "Mua bán an toàn";

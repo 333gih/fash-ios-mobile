@@ -92,6 +92,19 @@
     <string name="app_tour_nav_profile_body">See your listings, saved items, follows, and account tools. Open the ⋮ menu on Profile for settings and sign-out.</string>
     <string name="app_tour_top_bar_title">Top bar</string>
     <string name="app_tour_top_bar_body">Search anywhere in the app, open Notifications for messages and activity, and use the bag icon to jump to your orders.</string>
+    <!-- First-install welcome intro (pre-login) -->
+    <string name="welcome_intro_skip">Skip</string>
+    <string name="welcome_intro_next">Next</string>
+    <string name="welcome_intro_sign_in">Sign in</string>
+    <string name="welcome_intro_browse_guest">Browse without signing in</string>
+    <string name="welcome_intro_slide1_title">Welcome to Fash</string>
+    <string name="welcome_intro_slide1_body">A second-hand fashion marketplace — hunt deals, resell pieces, and discover your style in one app.</string>
+    <string name="welcome_intro_slide2_title">Discover &amp; hunt deals</string>
+    <string name="welcome_intro_slide2_body">Listings matched to your size, taste, and season — scroll a feed that feels like a fashion magazine.</string>
+    <string name="welcome_intro_slide3_title">Daily outfit picks</string>
+    <string name="welcome_intro_slide3_body">Curated sets from real listings — review each piece, save favorites, and buy when you are ready.</string>
+    <string name="welcome_intro_slide4_title">Buy &amp; sell with confidence</string>
+    <string name="welcome_intro_slide4_body">Chat directly, track orders, and pay securely — sign in whenever you are ready.</string>
     <string name="dialog_title_success">Success</string>
     <string name="dialog_title_error">Error</string>
     <string name="dialog_title_info">Information</string>
