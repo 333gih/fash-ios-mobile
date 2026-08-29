@@ -7,6 +7,7 @@ struct HomeRecommendationSections: Equatable {
     var continueBrowsing: [ListingFeedItem] = []
     var similarToSaved: [ListingFeedItem] = []
     var seasonalNearYou: [ListingFeedItem] = []
+    var dailyOutfitDrop: [OutfitSetCard] = []
     var shoppingContext: ShoppingContext?
 }
 
@@ -149,6 +150,7 @@ final class RecommendationRepository {
             async let continueBrowsing = ListingFeedParseSupport.parseItemsArray(payload["continue_browsing"] as? [[String: Any]] ?? [])
             async let similarToSaved = ListingFeedParseSupport.parseItemsArray(payload["similar_to_saved"] as? [[String: Any]] ?? [])
             async let seasonalNearYou = ListingFeedParseSupport.parseItemsArray(payload["seasonal_near_you"] as? [[String: Any]] ?? [])
+            let dailyOutfitDrop = OutfitStylistParse.parseSets(payload["daily_outfit_drop"])
             return .success(HomeRecommendationSections(
                 huntToday: await huntToday,
                 forYou: await forYou,
@@ -156,6 +158,7 @@ final class RecommendationRepository {
                 continueBrowsing: await continueBrowsing,
                 similarToSaved: await similarToSaved,
                 seasonalNearYou: await seasonalNearYou,
+                dailyOutfitDrop: dailyOutfitDrop,
                 shoppingContext: ShoppingContext.fromDict(payload["shopping_context"] as? [String: Any])
             ))
         } catch {
@@ -202,6 +205,27 @@ final class RecommendationRepository {
                 )
             }
             return .success(())
+        } catch {
+            return .failure(error)
+        }
+    }
+
+    func completeTheLook(listingId: String) async -> Result<OutfitSetCard?, Error> {
+        let enc = { (s: String) -> String in
+            s.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? s
+        }
+        let query = "listing_id=\(enc(listingId.trimmingCharacters(in: .whitespacesAndNewlines)))"
+        do {
+            let data = try await RepositoryHttp.executeCoreGet(
+                relativePath: "api/v1/recommendations/outfit-complete?\(query)",
+                client: client
+            )
+            let root = try RepositoryHttp.jsonObject(data)
+            let payload = (root["data"] as? [String: Any]) ?? root
+            guard let setDict = payload["set"] as? [String: Any] else {
+                return .success(nil)
+            }
+            return .success(OutfitStylistParse.parseSet(setDict))
         } catch {
             return .failure(error)
         }

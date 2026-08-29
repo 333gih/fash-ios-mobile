@@ -1163,6 +1163,11 @@ enum L10n {
     static var homeSectionRecommendedSellersTitle: String { t("home_section_recommended_sellers_title") }
     static var homeSectionSimilarToSavedSubtitle: String { t("home_section_similar_to_saved_subtitle") }
     static var homeSectionSimilarToSavedTitle: String { t("home_section_similar_to_saved_title") }
+    static var homeSectionDailyOutfitDropTitle: String { t("home_section_daily_outfit_drop_title") }
+    static var homeSectionDailyOutfitDropSubtitle: String { t("home_section_daily_outfit_drop_subtitle") }
+    static var productCompleteTheLookTitle: String { t("product_complete_the_look_title") }
+    static var productCompleteTheLookSubtitle: String { t("product_complete_the_look_subtitle") }
+    static var productCompleteTheLookQuota: String { t("product_complete_the_look_quota") }
     static var homeSectionTrendingStylesSubtitle: String { t("home_section_trending_styles_subtitle") }
     static var homeSectionTrendingStylesTitle: String { t("home_section_trending_styles_title") }
     static var homeSectionTrendingSubtitle: String { t("home_section_trending_subtitle") }

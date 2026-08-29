@@ -124,3 +124,59 @@ struct HomeRecommendedSellersSkeleton: View {
         }
     }
 }
+
+struct HomeDailyOutfitDropSection: View {
+    @Environment(\.fashSpacing) private var spacing
+    let sets: [OutfitSetCard]
+    var onListingClick: (String) -> Void
+    var includeHorizontalEdgePadding: Bool = true
+
+    var body: some View {
+        if sets.isEmpty { EmptyView() } else {
+            let edgeStart = includeHorizontalEdgePadding ? spacing.editorialStart : 0
+            let edgeEnd = includeHorizontalEdgePadding ? spacing.editorialEnd : 0
+            VStack(alignment: .leading, spacing: spacing.spacing1) {
+                Text(L10n.homeSectionDailyOutfitDropTitle)
+                    .font(FashTypography.titleSmall.weight(.semibold))
+                Text(L10n.homeSectionDailyOutfitDropSubtitle)
+                    .font(FashTypography.bodySmall)
+                    .foregroundStyle(FashColors.textSecondary)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 10) {
+                        ForEach(sets) { set in
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(set.title)
+                                    .font(FashTypography.labelLarge.weight(.semibold))
+                                    .lineLimit(2)
+                                if !set.reasonLabel.isEmpty {
+                                    Text(set.reasonLabel)
+                                        .font(FashTypography.labelSmall)
+                                        .foregroundStyle(FashColors.textSecondary)
+                                }
+                                HStack(spacing: 4) {
+                                    ForEach(set.items.prefix(4)) { item in
+                                        FashAsyncImage(url: item.coverImageUrl, contentMode: .fill)
+                                            .frame(width: 48, height: 64)
+                                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                                    }
+                                }
+                            }
+                            .padding(10)
+                            .frame(width: 220, alignment: .leading)
+                            .background(FashColors.surfaceContainerLow)
+                            .clipShape(RoundedRectangle(cornerRadius: spacing.radiusSoftMin))
+                            .onTapGesture {
+                                if let id = set.items.first?.listingId {
+                                    onListingClick(id)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(.leading, edgeStart)
+            .padding(.trailing, edgeEnd)
+            .padding(.bottom, spacing.spacing2)
+        }
+    }
+}

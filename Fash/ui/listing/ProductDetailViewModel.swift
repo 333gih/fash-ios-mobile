@@ -35,6 +35,8 @@ final class ProductDetailViewModel {
     var discoveryFeed: [ProductDiscoveryFeedEntry] = []
     /// True while seller/category/brand/style rails load after main detail is shown.
     var isDiscoveryLoading = false
+    var completeTheLook: OutfitSetCard?
+    var completeTheLookQuotaHit = false
     var isLoading = false
     var loadError: String?
     var isFollowing = false
@@ -75,6 +77,8 @@ final class ProductDetailViewModel {
         relatedByBrand = []
         relatedByStyle = []
         discoveryFeed = []
+        completeTheLook = nil
+        completeTheLookQuotaHit = false
         isDiscoveryLoading = false
         bottomBarMode = .normal
         buyerActiveOrder = nil
@@ -408,6 +412,17 @@ final class ProductDetailViewModel {
         relatedByCategory = await categoryRail
         relatedByBrand = await brandRail
         relatedByStyle = await styleRail
+        if !publicBrowse {
+            switch await deps.recommendationRepository.completeTheLook(listingId: excludeListingId) {
+            case .success(let set):
+                completeTheLook = (set?.items.count ?? 0) >= 2 ? set : nil
+                completeTheLookQuotaHit = false
+            case .failure(let error):
+                completeTheLook = nil
+                let msg = FashErrorPresentation.userMessage(for: error).lowercased()
+                completeTheLookQuotaHit = msg.contains("quota") || msg.contains("429")
+            }
+        }
         let sellerBadge = detail.sellerUsername?.nilIfEmpty.map { "@\($0)" }
             ?? detail.sellerDisplayName?.nilIfEmpty
             ?? L10n.productRelationBadgeSeller

@@ -132,6 +132,12 @@ struct ProductDetailScreen: View {
                         onNavigateToExplore(nil, nil, tag.id, tag.label, nil, nil)
                     }
                     .padding(.horizontal, spacing.editorialStart)
+                    ProductDetailComponents.completeTheLookSection(
+                        set: viewModel.completeTheLook,
+                        quotaHit: viewModel.completeTheLookQuotaHit,
+                        onListingTap: onListingClick
+                    )
+                    .padding(.horizontal, spacing.editorialStart)
                     ProductDetailDiscoveryHub(
                         current: detail,
                         entries: viewModel.discoveryFeed,

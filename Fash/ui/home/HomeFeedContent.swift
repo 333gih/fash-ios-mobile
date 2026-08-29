@@ -247,6 +247,13 @@ struct HomeFeedContent: View {
                 HomeRecommendedSellersSkeleton()
             }
 
+            if !viewModel.dailyOutfitDrop.isEmpty {
+                HomeDailyOutfitDropSection(
+                    sets: viewModel.dailyOutfitDrop,
+                    onListingClick: { listingId in onListingClick(listingId, nil) }
+                )
+            }
+
             if let exploreShortcut {
                 HomeExploreShortcutBanner(
                     shortcut: exploreShortcut,

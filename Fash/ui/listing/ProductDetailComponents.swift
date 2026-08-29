@@ -567,6 +567,49 @@ private struct HeroEngagementPressStyle: ButtonStyle {
     }
 }
 
+extension ProductDetailComponents {
+    @ViewBuilder
+    static func completeTheLookSection(
+        set: OutfitSetCard?,
+        quotaHit: Bool,
+        onListingTap: @escaping (String, String?) -> Void
+    ) -> some View {
+        if set == nil && !quotaHit {
+            EmptyView()
+        } else {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(L10n.productCompleteTheLookTitle)
+                    .font(FashTypography.titleSmall.weight(.semibold))
+                if quotaHit {
+                    Text(L10n.productCompleteTheLookQuota)
+                        .font(FashTypography.bodySmall)
+                        .foregroundStyle(FashColors.textSecondary)
+                } else if let set {
+                    Text(set.reasonLabel.isEmpty ? L10n.productCompleteTheLookSubtitle : set.reasonLabel)
+                        .font(FashTypography.bodySmall)
+                        .foregroundStyle(FashColors.textSecondary)
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(set.items) { item in
+                                VStack(alignment: .leading, spacing: 4) {
+                                    FashAsyncImage(url: item.coverImageUrl, contentMode: .fill)
+                                        .frame(width: 88, height: 110)
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                    Text(item.title)
+                                        .font(FashTypography.labelSmall)
+                                        .lineLimit(2)
+                                }
+                                .onTapGesture { onListingTap(item.listingId, nil) }
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(.vertical, 8)
+        }
+    }
+}
+
 private extension String {
     var nilIfEmpty: String? {
         let t = trimmingCharacters(in: .whitespacesAndNewlines)

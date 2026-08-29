@@ -997,6 +997,11 @@
 "home_section_recommended_sellers_title" = "Shop nên ghé";
 "home_section_similar_to_saved_subtitle" = "Vì bạn đã lưu đồ phong cách này";
 "home_section_similar_to_saved_title" = "Tương tự món đã lưu";
+"home_section_daily_outfit_drop_title" = "Bộ ghép hôm nay";
+"home_section_daily_outfit_drop_subtitle" = "Outfit được ghép theo size và gu của bạn";
+"product_complete_the_look_title" = "Ghép với món này";
+"product_complete_the_look_subtitle" = "Gợi ý phụ kiện và món bổ sung";
+"product_complete_the_look_quota" = "Bạn đã dùng hết lượt ghép hôm nay. Thử lại vào ngày mai.";
 "home_section_trending_styles_subtitle" = "Chọn để lọc trên Khám phá ngay";
 "home_section_trending_styles_title" = "Style đang hot";
 "home_section_trending_subtitle" = "Chọn danh mục để lướt nhanh trên Khám phá.";

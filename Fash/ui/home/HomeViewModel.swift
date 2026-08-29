@@ -41,6 +41,8 @@ final class HomeViewModel {
     var homeFeedTrimToken = 0
     private(set) var homeFeedTrimSignedDeltaY: CGFloat = 0
 
+    var dailyOutfitDrop: [OutfitSetCard] { sections.dailyOutfitDrop }
+
     private var sections = HomeRecommendationSections()
     private var followingWindow = FeedSlidingWindow()
     private var followingItemIds = Set<String>()
@@ -1025,6 +1027,7 @@ final class HomeViewModel {
         sections.stylePicks = loaded.stylePicks
         sections.similarToSaved = loaded.similarToSaved
         sections.seasonalNearYou = loaded.seasonalNearYou
+        sections.dailyOutfitDrop = loaded.dailyOutfitDrop
         sections.shoppingContext = loaded.shoppingContext ?? sections.shoppingContext
         recommendationSectionsFetched = true
         if !loaded.huntToday.isEmpty {
