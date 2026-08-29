@@ -1771,6 +1771,14 @@
 "post_wear_macro_regions" = "Regions";
 "post_wear_season_keys" = "Suitable seasons";
 "post_wear_year_round" = "Year-round wear";
+"pre_login_guest_sign_in_body" = "Open Profile or any sign-in button to save favorites, chat with sellers, and track orders.";
+"pre_login_guest_sign_in_title" = "Ready to sign in?";
+"pre_login_login_email_body" = "Enter your email for a one-time code, or switch to password login if you set one up.";
+"pre_login_login_email_title" = "Sign in with email";
+"pre_login_login_guest_body" = "Scroll listings and Explore first — sign in when you want to save, chat, or buy.";
+"pre_login_login_guest_title" = "Browse without an account";
+"pre_login_login_social_body" = "Quick sign-in with Google or Apple — no OTP needed.";
+"pre_login_login_social_title" = "Google & Apple";
 "product_action_follow_seller" = "Follow";
 "product_action_following_seller" = "Following";
 "product_action_like" = "Like";

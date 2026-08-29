@@ -130,7 +130,13 @@ final class HomeViewModel {
         }
     }
 
-    func onGuestBrowseEntered(deps: AppDependencies) {
+    func onGuestBrowseEntered(deps: AppDependencies, forceReset: Bool = true) {
+        if !forceReset,
+           loadedTabs.contains(HomeFeedTabKeys.huntToday),
+           !sections.huntToday.isEmpty {
+            normalizeSelectedFeedTab(isGuestMode: true, deps: deps)
+            return
+        }
         deps.uxTabTracker.closeActiveTab()
         deps.feedEventReporter.flush()
         deps.feedEventReporter.clearPending()

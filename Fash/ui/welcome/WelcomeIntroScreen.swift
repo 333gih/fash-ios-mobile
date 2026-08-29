@@ -103,9 +103,10 @@ struct WelcomeIntroScreen: View {
                     Circle()
                         .fill(FashColors.brandPrimary.opacity(0.12))
                         .frame(width: 88, height: 88)
-                    Image(systemName: slide.systemImage)
-                        .font(.system(size: 36, weight: .semibold))
-                        .foregroundStyle(FashColors.brandPrimary)
+                    FashMascotGuideImage(
+                        name: slide.id == 0 ? "FashMascotPointUp" : (slide.id == slides.count - 1 ? "FashMascotPointDown" : "FashMascotPointLeft"),
+                        size: 72
+                    )
                 }
                 .padding(.top, 28)
                 VStack(spacing: 8) {

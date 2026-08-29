@@ -548,6 +548,7 @@ struct RootView: View {
                 router.isGuestMode = true
                 deps.isGuestBrowseActive = true
                 needsOnboarding = false
+                router.isLaunchWarmupInProgress = true
                 Task { await prepareMainShellEntry() }
             } : nil
         )
@@ -561,11 +562,14 @@ struct RootView: View {
             LoginScreen(
                 viewModel: loginVM,
                 onOtpSent: { router.loginStep = .otp },
-                onGuestBrowse: {
+                onGuestBrowse: PublicBrowseHttp.isConfigured ? {
                     deps.isGuestBrowseActive = true
                     router.isGuestMode = true
                     router.loginStep = nil
-                },
+                    needsOnboarding = false
+                    router.isLaunchWarmupInProgress = true
+                    Task { await prepareMainShellEntry() }
+                } : {},
                 onSocialLoginVerified: {
                     router.loginStep = nil
                     Task { await handleAuthenticatedLogin() }

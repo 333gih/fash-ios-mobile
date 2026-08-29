@@ -39,32 +39,39 @@ final class AuthSessionStore {
 }
 
 enum KeychainHelper {
+    private static let service = Bundle.main.bundleIdentifier ?? "com.pc.fash"
+
     static func save(_ data: Data, key: String) {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
             kSecAttrAccount as String: key,
+            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+            kSecAttrSynchronizable as String: false,
             kSecValueData as String: data,
         ]
-        SecItemDelete(query as CFDictionary)
+        SecItemDelete(baseQuery(key: key) as CFDictionary)
         SecItemAdd(query as CFDictionary, nil)
     }
 
     static func load(key: String) -> Data? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: key,
-            kSecReturnData as String: true,
-        ]
+        var query = baseQuery(key: key)
+        query[kSecReturnData as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
         var item: CFTypeRef?
         guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess else { return nil }
         return item as? Data
     }
 
     static func delete(key: String) {
-        let query: [String: Any] = [
+        SecItemDelete(baseQuery(key: key) as CFDictionary)
+    }
+
+    private static func baseQuery(key: String) -> [String: Any] {
+        [
             kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
             kSecAttrAccount as String: key,
         ]
-        SecItemDelete(query as CFDictionary)
     }
 }

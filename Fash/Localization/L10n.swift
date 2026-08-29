@@ -2053,6 +2053,14 @@ enum L10n {
     static var postWearMacroRegions: String { t("post_wear_macro_regions") }
     static var postWearSeasonKeys: String { t("post_wear_season_keys") }
     static var postWearYearRound: String { t("post_wear_year_round") }
+    static var preLoginGuestSignInBody: String { t("pre_login_guest_sign_in_body") }
+    static var preLoginGuestSignInTitle: String { t("pre_login_guest_sign_in_title") }
+    static var preLoginLoginEmailBody: String { t("pre_login_login_email_body") }
+    static var preLoginLoginEmailTitle: String { t("pre_login_login_email_title") }
+    static var preLoginLoginGuestBody: String { t("pre_login_login_guest_body") }
+    static var preLoginLoginGuestTitle: String { t("pre_login_login_guest_title") }
+    static var preLoginLoginSocialBody: String { t("pre_login_login_social_body") }
+    static var preLoginLoginSocialTitle: String { t("pre_login_login_social_title") }
     static var productActionFollowSeller: String { t("product_action_follow_seller") }
     static var productActionFollowingSeller: String { t("product_action_following_seller") }
     static var productActionLike: String { t("product_action_like") }

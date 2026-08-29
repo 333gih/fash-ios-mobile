@@ -106,6 +106,15 @@
     <string name="welcome_intro_slide3_body">Outfit được ghép theo tủ đồ thật — xem từng món, lưu yêu thích rồi mua khi sẵn sàng.</string>
     <string name="welcome_intro_slide4_title">Mua bán an toàn</string>
     <string name="welcome_intro_slide4_body">Chat trực tiếp, theo dõi đơn hàng và thanh toán tin cậy — đăng nhập khi bạn muốn.</string>
+    <!-- Pre-login mascot guide (independent from welcome intro + post-login tour) -->
+    <string name="pre_login_login_email_title">Đăng nhập bằng email</string>
+    <string name="pre_login_login_email_body">Nhập email để nhận mã OTP hoặc bật đăng nhập bằng mật khẩu nếu bạn đã thiết lập.</string>
+    <string name="pre_login_login_social_title">Google &amp; Apple</string>
+    <string name="pre_login_login_social_body">Đăng nhập nhanh bằng tài khoản Google hoặc Apple — không cần nhập mã OTP.</string>
+    <string name="pre_login_login_guest_title">Xem trước không cần tài khoản</string>
+    <string name="pre_login_login_guest_body">Bạn có thể lướt tin đăng và Khám phá trước — đăng nhập khi muốn lưu, chat hoặc mua.</string>
+    <string name="pre_login_guest_sign_in_title">Sẵn sàng đăng nhập?</string>
+    <string name="pre_login_guest_sign_in_body">Chạm Hồ sơ hoặc nút đăng nhập bất cứ lúc nào để lưu yêu thích, chat người bán và theo dõi đơn hàng.</string>
     <string name="dialog_title_success">Thành công</string>
     <string name="dialog_title_error">Lỗi</string>
     <string name="dialog_title_info">Thông tin</string>

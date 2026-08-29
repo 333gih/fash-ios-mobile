@@ -1771,6 +1771,14 @@
 "post_wear_macro_regions" = "Vùng miền";
 "post_wear_season_keys" = "Mùa phù hợp";
 "post_wear_year_round" = "Mặc quanh năm";
+"pre_login_guest_sign_in_body" = "Chạm Hồ sơ hoặc nút đăng nhập bất cứ lúc nào để lưu yêu thích, chat người bán và theo dõi đơn hàng.";
+"pre_login_guest_sign_in_title" = "Sẵn sàng đăng nhập?";
+"pre_login_login_email_body" = "Nhập email để nhận mã OTP hoặc bật đăng nhập bằng mật khẩu nếu bạn đã thiết lập.";
+"pre_login_login_email_title" = "Đăng nhập bằng email";
+"pre_login_login_guest_body" = "Bạn có thể lướt tin đăng và Khám phá trước — đăng nhập khi muốn lưu, chat hoặc mua.";
+"pre_login_login_guest_title" = "Xem trước không cần tài khoản";
+"pre_login_login_social_body" = "Đăng nhập nhanh bằng tài khoản Google hoặc Apple — không cần nhập mã OTP.";
+"pre_login_login_social_title" = "Google & Apple";
 "product_action_follow_seller" = "Theo dõi";
 "product_action_following_seller" = "Đang theo dõi";
 "product_action_like" = "Thích";

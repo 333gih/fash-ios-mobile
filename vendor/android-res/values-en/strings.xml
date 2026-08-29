@@ -105,6 +105,15 @@
     <string name="welcome_intro_slide3_body">Curated sets from real listings — review each piece, save favorites, and buy when you are ready.</string>
     <string name="welcome_intro_slide4_title">Buy &amp; sell with confidence</string>
     <string name="welcome_intro_slide4_body">Chat directly, track orders, and pay securely — sign in whenever you are ready.</string>
+    <!-- Pre-login mascot guide (independent from welcome intro + post-login tour) -->
+    <string name="pre_login_login_email_title">Sign in with email</string>
+    <string name="pre_login_login_email_body">Enter your email for a one-time code, or switch to password login if you set one up.</string>
+    <string name="pre_login_login_social_title">Google &amp; Apple</string>
+    <string name="pre_login_login_social_body">Quick sign-in with Google or Apple — no OTP needed.</string>
+    <string name="pre_login_login_guest_title">Browse without an account</string>
+    <string name="pre_login_login_guest_body">Scroll listings and Explore first — sign in when you want to save, chat, or buy.</string>
+    <string name="pre_login_guest_sign_in_title">Ready to sign in?</string>
+    <string name="pre_login_guest_sign_in_body">Open Profile or any sign-in button to save favorites, chat with sellers, and track orders.</string>
     <string name="dialog_title_success">Success</string>
     <string name="dialog_title_error">Error</string>
     <string name="dialog_title_info">Information</string>

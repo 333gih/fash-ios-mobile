@@ -272,7 +272,7 @@ struct MainNavScreen: View {
                 startRealtimeServices()
             } else {
                 stopRealtimeServices()
-                homeVM.onGuestBrowseEntered(deps: deps)
+                homeVM.onGuestBrowseEntered(deps: deps, forceReset: false)
             }
         }
         .task(id: "chat-unread-hub-\(isGuestMode)") {
@@ -286,7 +286,7 @@ struct MainNavScreen: View {
             if guest {
                 activePromoCampaign = nil
                 stopRealtimeServices()
-                homeVM.onGuestBrowseEntered(deps: deps)
+                homeVM.onGuestBrowseEntered(deps: deps, forceReset: false)
                 router.selectedTab = .home
             } else {
                 Task {

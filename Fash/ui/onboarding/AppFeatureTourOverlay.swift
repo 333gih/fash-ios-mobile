@@ -126,6 +126,10 @@ struct AppFeatureTourOverlay: View {
             }
             ProgressView(value: progress)
                 .tint(FashColors.brandPrimary)
+            FashMascotGuideImage(
+                name: currentStep == .intro ? "FashMascotPointUp" : "FashMascotPointLeft",
+                size: 56
+            )
             Text(currentStep.title)
                 .font(FashTypography.titleMedium.weight(.bold))
                 .foregroundStyle(FashColors.textPrimary)

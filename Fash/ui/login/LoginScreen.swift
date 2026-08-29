@@ -6,6 +6,7 @@ struct LoginScreen: View {
     @Bindable var viewModel: LoginViewModel
     @Bindable private var localeController = AppLocaleController.shared
     @State private var loginHeroVM = LoginHeroSlidesViewModel()
+    @State private var showPreLoginGuide = !PreLoginMascotGuideStore.hasCompleted
     @State private var brandProgress: CGFloat = 0
     @State private var heroProgress: CGFloat = 0
     @State private var formProgress: CGFloat = 0
@@ -127,16 +128,18 @@ struct LoginScreen: View {
                             )
                             .padding(.top, isAppleLoginEnabled ? 8 : 10)
 
-                            Button(action: onGuestBrowse) {
-                                Text(L10n.loginContinueWithoutAccount)
-                                    .font(FashTypography.labelLarge)
-                                    .foregroundStyle(FashColors.brandPrimary)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 8)
+                            if PublicBrowseHttp.isConfigured {
+                                Button(action: onGuestBrowse) {
+                                    Text(L10n.loginContinueWithoutAccount)
+                                        .font(FashTypography.labelLarge)
+                                        .foregroundStyle(FashColors.brandPrimary)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 8)
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(formLockedForSocial || viewModel.isOtpLoading)
+                                .padding(.top, 4)
                             }
-                            .buttonStyle(.plain)
-                            .disabled(formLockedForSocial || viewModel.isOtpLoading)
-                            .padding(.top, 4)
 
                             LoginLegalFooter()
                                 .padding(.top, 8)
@@ -164,6 +167,14 @@ struct LoginScreen: View {
             }
         }
         .background(FashColors.screen)
+        .overlay {
+            if showPreLoginGuide, AppWelcomeIntroStore.hasCompleted {
+                PreLoginMascotGuideOverlay(context: .loginScreen) {
+                    showPreLoginGuide = false
+                }
+                .environment(\.locale, AppLocale.locale)
+            }
+        }
         .task { await loginHeroVM.refresh() }
         .onAppear {
             GoogleSignInClients.configureIfNeeded()
