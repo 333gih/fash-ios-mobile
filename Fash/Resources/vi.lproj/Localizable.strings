@@ -2045,6 +2045,16 @@
 "seller_packages_tools_success_verify" = "Đã gửi yêu cầu xác minh Real/Fake.";
 "seller_packages_tools_title" = "Công cụ gói tiện ích";
 "seller_packages_tools_verify" = "Gửi xác minh Real/Fake";
+"seller_packages_tools_search_listings" = "Tìm tin đăng";
+"seller_packages_tools_tap_pick_listing" = "Chạm để chọn tin đăng";
+"seller_packages_tools_change_listing" = "Đổi";
+"seller_packages_tools_advanced_listing_id" = "Nâng cao: nhập mã tin";
+"seller_packages_tools_status_pending" = "Đang chờ xử lý";
+"seller_packages_tools_result_confidence" = "Kết quả: %1$d%% — %2$@";
+"seller_packages_tools_badge_granted" = "Đã cấp nhãn Real trên tin đăng";
+"seller_packages_feature_real_badge" = "Nhãn Real trên tin";
+"seller_packages_upgrade_highlight" = "Bạn cần %1$@ — gói %2$@ trở lên có tính năng này.";
+"seller_packages_tools_success_boost_affinity" = "Đã kích hoạt 7 ngày — ưu tiên theo sở thích người xem.";
 "session_expired_message" = "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.";
 "settings_about_env_line" = "Môi trường: %1$@ · %2$@";
 "settings_about_version_label" = "Phiên bản";

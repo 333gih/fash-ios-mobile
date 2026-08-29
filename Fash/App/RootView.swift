@@ -419,7 +419,11 @@ struct RootView: View {
             HomeDeliveringScreen(onDismiss: { router.showHomeDeliveringScreen = false })
         case .sellerPackages:
             SellerProductPackagesScreen(
-                onDismiss: { router.showSellerPackagesScreen = false },
+                highlightFeatureKey: router.sellerPackagesHighlightFeature,
+                onDismiss: {
+                    router.sellerPackagesHighlightFeature = nil
+                    router.showSellerPackagesScreen = false
+                },
                 onBuyPackage: { pkg in router.sellerPackageCheckout = pkg }
             )
         case .followConnections:
@@ -481,8 +485,9 @@ struct RootView: View {
         case .sellerPackageTools:
             SellerPackageToolsScreen(
                 onDismiss: { router.showSellerPackageTools = false },
-                onUpgrade: {
+                onUpgrade: { featureKey in
                     router.showSellerPackageTools = false
+                    router.sellerPackagesHighlightFeature = featureKey
                     router.showSellerPackagesScreen = true
                 }
             )

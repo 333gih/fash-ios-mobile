@@ -2045,6 +2045,16 @@
 "seller_packages_tools_success_verify" = "Real/Fake verification request sent.";
 "seller_packages_tools_title" = "Utility package tools";
 "seller_packages_tools_verify" = "Submit Real/Fake verification";
+"seller_packages_tools_search_listings" = "Search listings";
+"seller_packages_tools_tap_pick_listing" = "Tap to choose a listing";
+"seller_packages_tools_change_listing" = "Change";
+"seller_packages_tools_advanced_listing_id" = "Advanced: enter listing ID";
+"seller_packages_tools_status_pending" = "Pending review";
+"seller_packages_tools_result_confidence" = "Result: %1$d%% — %2$@";
+"seller_packages_tools_badge_granted" = "Verified Real badge granted on listing";
+"seller_packages_feature_real_badge" = "Verified Real badge";
+"seller_packages_upgrade_highlight" = "You need %1$@ — available from %2$@ and above.";
+"seller_packages_tools_success_boost_affinity" = "Active for 7 days — prioritized for similar viewers.";
 "session_expired_message" = "Session expired. Please sign in again.";
 "settings_about_env_line" = "Environment: %1$@ · %2$@";
 "settings_about_version_label" = "Version";

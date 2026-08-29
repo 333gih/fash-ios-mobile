@@ -14,6 +14,13 @@ struct FeatureUsageSummary: Equatable {
     var name: String = ""
     var description: String = ""
     var requiresListing: Bool = false
+    var fulfillmentMode: String = ""
+    var verificationKind: String = ""
+    var disclaimerText: String = ""
+    var latestRequestStatus: String = ""
+    var latestResultVerdict: String = ""
+    var latestConfidencePct: Int?
+    var boostAffinityHint: String = ""
     var used: Int64 = 0
     var remaining: Int64?
     var unlimited: Bool = false

@@ -8,6 +8,7 @@ enum SellerPackageFeatureLabels {
         case "explore_boost": return L10n.sellerPackagesFeatureExploreBoost
         case "fanpage_spotlight": return L10n.sellerPackagesFeatureFanpage
         case "social_tiktok_instagram": return L10n.sellerPackagesFeatureSocial
+        case "seller_real_badge": return L10n.sellerPackagesFeatureRealBadge
         default: return featureId
         }
     }
@@ -16,6 +17,7 @@ enum SellerPackageFeatureLabels {
 struct SellerPackageFeaturesList: View {
     var features: [SellerPackageFeature]
     var sectionTitle: String?
+    var highlightFeatureKey: String?
 
     var body: some View {
         if features.isEmpty { EmptyView() } else {
@@ -33,7 +35,10 @@ struct SellerPackageFeaturesList: View {
     }
 
     private func featureRow(_ feature: SellerPackageFeature) -> some View {
-        HStack(alignment: .top, spacing: 10) {
+        let highlighted = highlightFeatureKey != nil
+            && feature.id == highlightFeatureKey
+            && feature.included
+        return HStack(alignment: .top, spacing: 10) {
             Image(systemName: feature.included ? "checkmark" : "xmark")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(feature.included ? FashColors.brandPrimary : FashColors.outlineMuted)
@@ -49,6 +54,13 @@ struct SellerPackageFeaturesList: View {
                 }
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, highlighted ? 6 : 4)
+        .padding(.horizontal, highlighted ? 6 : 0)
+        .background(
+            highlighted
+                ? FashColors.brandPrimary.opacity(0.12)
+                : Color.clear
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }

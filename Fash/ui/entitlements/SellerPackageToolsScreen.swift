@@ -10,14 +10,15 @@ struct SellerPackageToolsScreen: View {
     @Environment(AppDependencies.self) private var deps
     @Environment(\.fashSpacing) private var spacing
     var onDismiss: () -> Void
-    var onUpgrade: () -> Void = {}
+    var onUpgrade: (String?) -> Void = { _ in }
 
     @State private var summary: UserEntitlementSummary?
-    @State private var listings: [ListingFeedItem] = []
     @State private var listingId = ""
+    @State private var selectedListingTitle = ""
+    @State private var showListingPicker = false
+    @State private var showAdvancedListingId = false
     @State private var caption = ""
     @State private var loading = true
-    @State private var listingsLoading = true
     @State private var submittingFeatureKey: String?
 
     private let groupOrder = ["verification", "visibility", "social_promo"]
@@ -34,6 +35,18 @@ struct SellerPackageToolsScreen: View {
         }
     }
 
+    private var selectedId: String {
+        listingId.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var hasListing: Bool {
+        !selectedId.isEmpty
+    }
+
+    private var anyNeedsListing: Bool {
+        summary?.features.values.contains(where: \.requiresListing) == true
+    }
+
     var body: some View {
         FashScreenScaffold(title: L10n.sellerPackagesToolsTitle, showBack: true, onBack: onDismiss) {
             ScrollView {
@@ -42,7 +55,9 @@ struct SellerPackageToolsScreen: View {
                         .font(FashTypography.bodyMedium)
                         .foregroundStyle(FashColors.textSecondary)
                     packageStatusCard
-                    listingPicker
+                    if anyNeedsListing {
+                        listingPickerSection
+                    }
                     ForEach(groupedFeatures, id: \.0) { group, entries in
                         Text(groupLabel(group))
                             .font(FashTypography.titleSmall.weight(.semibold))
@@ -59,6 +74,16 @@ struct SellerPackageToolsScreen: View {
             }
             .background(FashColors.screen)
             .scrollDismissesKeyboard(.interactively)
+        }
+        .sheet(isPresented: $showListingPicker) {
+            SellerListingPickerSheet(
+                selectedId: selectedId,
+                onDismiss: { showListingPicker = false },
+                onSelect: { item in
+                    listingId = item.id
+                    selectedListingTitle = item.title
+                }
+            )
         }
         .task { await bootstrap() }
     }
@@ -91,7 +116,7 @@ struct SellerPackageToolsScreen: View {
                 Spacer(minLength: 0)
             }
             if name.isEmpty && !loading {
-                Button(L10n.sellerPackagesEntitlementUpgrade, action: onUpgrade)
+                Button(L10n.sellerPackagesEntitlementUpgrade) { onUpgrade(nil) }
                     .buttonStyle(FashOutlinedBrandButtonStyle())
             }
         }
@@ -105,74 +130,56 @@ struct SellerPackageToolsScreen: View {
         .clipShape(RoundedRectangle(cornerRadius: spacing.radiusCard, style: .continuous))
     }
 
-    private var listingPicker: some View {
+    private var listingPickerSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(L10n.sellerPackagesToolsPickListing)
                 .font(FashTypography.titleSmall.weight(.semibold))
-            if listingsLoading {
-                ProgressView()
-                    .tint(FashColors.brandPrimary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 24)
-            } else if listings.isEmpty {
-                Text(L10n.sellerPackagesToolsNoListings)
-                    .font(FashTypography.bodySmall)
-                    .foregroundStyle(FashColors.textSecondary)
-            } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 10) {
-                        ForEach(listings) { item in
-                            listingTile(item)
-                        }
-                    }
+            Button { showListingPicker = true } label: {
+                HStack {
+                    Text(hasListing ? selectedListingTitle : L10n.sellerPackagesToolsTapPickListing)
+                        .font(FashTypography.bodyMedium.weight(hasListing ? .semibold : .regular))
+                        .foregroundStyle(hasListing ? FashColors.textPrimary : FashColors.textSecondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Text(L10n.sellerPackagesToolsChangeListing)
+                        .font(FashTypography.labelMedium)
+                        .foregroundStyle(FashColors.brandPrimary)
                 }
+                .padding(14)
+                .background(FashColors.surface)
+                .overlay(
+                    RoundedRectangle(cornerRadius: spacing.radiusCard, style: .continuous)
+                        .stroke(FashColors.outlineMuted.opacity(0.5), lineWidth: 1)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: spacing.radiusCard, style: .continuous))
             }
-            SellerPackageFilledField(label: L10n.sellerPackagesToolsListingId, text: $listingId)
-            Text(L10n.sellerPackagesToolsListingHelper)
-                .font(FashTypography.bodySmall)
-                .foregroundStyle(FashColors.textSecondary)
-        }
-    }
-
-    private func listingTile(_ item: ListingFeedItem) -> some View {
-        let selected = item.id == listingId.trimmingCharacters(in: .whitespacesAndNewlines)
-        return Button {
-            listingId = item.id
-        } label: {
-            VStack(alignment: .leading, spacing: 6) {
-                Color.clear
-                    .frame(width: 100, height: 84)
-                    .overlay {
-                        FashAsyncImage(url: item.coverImageUrl, contentMode: .fill)
-                    }
-                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                Text(item.title.isEmpty ? item.id : item.title)
-                    .font(FashTypography.labelSmall.weight(.medium))
-                    .foregroundStyle(FashColors.textPrimary)
-                    .lineLimit(2)
-                    .frame(width: 100, alignment: .leading)
+            .buttonStyle(.plain)
+            Button { showAdvancedListingId.toggle() } label: {
+                Text(L10n.sellerPackagesToolsAdvancedListingId)
+                    .font(FashTypography.labelMedium.weight(.medium))
+                    .foregroundStyle(FashColors.brandPrimary)
             }
-            .padding(6)
-            .background(FashColors.surface)
-            .overlay(
-                RoundedRectangle(cornerRadius: spacing.radiusSoftMin, style: .continuous)
-                    .stroke(
-                        selected ? FashColors.brandPrimary : FashColors.outlineMuted.opacity(0.5),
-                        lineWidth: selected ? 2 : 1
-                    )
-            )
-            .clipShape(RoundedRectangle(cornerRadius: spacing.radiusSoftMin, style: .continuous))
+            .buttonStyle(.plain)
+            if showAdvancedListingId {
+                SellerPackageFilledField(label: L10n.sellerPackagesToolsListingId, text: $listingId)
+            }
         }
-        .buttonStyle(.plain)
     }
 
     @ViewBuilder
     private func toolCard(entry: ToolFeatureEntry) -> some View {
         let feature = entry.feature
         let kind = feature.executionKind.isEmpty ? "request" : feature.executionKind
-        let showsCaption = kind != "boost"
+        let showsCaption = kind != "boost" && entry.key != "seller_real_badge"
+        let needsListing = feature.requiresListing
         let canUse = SellerPackageQuota.canUse(feature)
         let locked = !feature.enabled
+        let disclaimer = feature.disclaimerText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let boostHint = entry.key == "explore_boost"
+            ? feature.boostAffinityHint.trimmingCharacters(in: .whitespacesAndNewlines)
+            : ""
+        let showResearchResult = entry.key == "authenticity_verify"
+            && feature.latestRequestStatus == "fulfilled"
+            && feature.latestConfidencePct != nil
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top, spacing: 12) {
                 SellerPackageIconBadge(systemImage: featureIcon(entry.key, kind: kind))
@@ -187,6 +194,38 @@ struct SellerPackageToolsScreen: View {
                 Spacer(minLength: 4)
                 SellerPackageQuotaChip(feature: feature)
             }
+            if !disclaimer.isEmpty {
+                Text(disclaimer)
+                    .font(FashTypography.bodySmall)
+                    .foregroundStyle(FashColors.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(10)
+                    .background(FashColors.surfaceContainerHigh)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            }
+            if !boostHint.isEmpty {
+                Text(boostHint)
+                    .font(FashTypography.bodySmall)
+                    .foregroundStyle(FashColors.brandPrimary)
+            }
+            if feature.latestRequestStatus == "pending" {
+                Text(L10n.sellerPackagesToolsStatusPending)
+                    .font(FashTypography.labelMedium)
+                    .foregroundStyle(FashColors.textSecondary)
+            }
+            if showResearchResult, let pct = feature.latestConfidencePct {
+                Text(L10n.sellerPackagesToolsResultConfidence(
+                    pct,
+                    feature.latestResultVerdict.isEmpty ? "—" : feature.latestResultVerdict
+                ))
+                .font(FashTypography.bodySmall.weight(.semibold))
+                .foregroundStyle(FashColors.brandPrimary)
+            }
+            if entry.key == "seller_real_badge", feature.latestRequestStatus == "fulfilled" {
+                Text(L10n.sellerPackagesToolsBadgeGranted)
+                    .font(FashTypography.bodySmall.weight(.semibold))
+                    .foregroundStyle(FashColors.brandPrimary)
+            }
             if showsCaption && canUse {
                 SellerPackageFilledField(label: L10n.sellerPackagesToolsCaption, text: $caption, axis: true)
                 Text(L10n.sellerPackagesToolsCaptionHelper)
@@ -197,7 +236,7 @@ struct SellerPackageToolsScreen: View {
                 Text(L10n.sellerPackagesToolsLockedHint)
                     .font(FashTypography.bodySmall)
                     .foregroundStyle(FashColors.textSecondary)
-                Button(L10n.sellerPackagesEntitlementUpgrade, action: onUpgrade)
+                Button(L10n.sellerPackagesEntitlementUpgrade) { onUpgrade(entry.key) }
                     .buttonStyle(FashOutlinedBrandButtonStyle())
                     .disabled(submittingFeatureKey != nil)
             } else {
@@ -205,7 +244,7 @@ struct SellerPackageToolsScreen: View {
                     title: featureCta(kind: kind),
                     isLoading: submittingFeatureKey == entry.key,
                     enabled: canUse && (submittingFeatureKey == nil || submittingFeatureKey == entry.key),
-                    action: { submit(entry: entry, kind: kind, showsCaption: showsCaption) }
+                    action: { submit(entry: entry, kind: kind, needsListing: needsListing, showsCaption: showsCaption) }
                 )
             }
         }
@@ -232,7 +271,9 @@ struct SellerPackageToolsScreen: View {
         if kind == "boost" || key == "explore_boost" { return "sparkles" }
         if key.contains("social") { return "square.and.arrow.up" }
         if key.contains("fanpage") { return "megaphone" }
-        if key.contains("authenticity") || key.contains("verify") { return "checkmark.seal.fill" }
+        if key.contains("authenticity") || key.contains("verify") || key == "seller_real_badge" {
+            return "checkmark.seal.fill"
+        }
         return "star.fill"
     }
 
@@ -243,6 +284,7 @@ struct SellerPackageToolsScreen: View {
         case "explore_boost": return L10n.sellerPackagesFeatureExploreBoost
         case "fanpage_spotlight": return L10n.sellerPackagesFeatureFanpage
         case "social_tiktok_instagram": return L10n.sellerPackagesFeatureSocial
+        case "seller_real_badge": return L10n.sellerPackagesFeatureRealBadge
         default: return key.replacingOccurrences(of: "_", with: " ").capitalized
         }
     }
@@ -259,34 +301,40 @@ struct SellerPackageToolsScreen: View {
     }
 
     private func featureCta(kind: String) -> String {
-        kind == "boost" ? L10n.sellerPackagesToolsBoost : L10n.sellerPackagesToolsVerify
+        kind == "boost" ? L10n.sellerPackagesToolsBoost : L10n.sellerPackagesToolsSubmit
     }
 
     private func bootstrap() async {
-        async let entitlements = deps.userEntitlementRepository.fetchEntitlements()
-        async let activeListings = deps.listingRepository.getMyListings(status: "active", limit: 40, offset: 0)
-        let ent = await entitlements
-        if case .success(let s) = ent { summary = s }
+        if case .success(let s) = await deps.userEntitlementRepository.fetchEntitlements() {
+            summary = s
+        }
         loading = false
-        let first = await activeListings
-        switch first {
-        case .success(let items) where !items.isEmpty:
-            listings = items
+        let active = await deps.listingRepository.getMyListings(status: "active", limit: 40, offset: 0)
+        let items: [ListingFeedItem]
+        switch active {
+        case .success(let page) where !page.isEmpty:
+            items = page
         default:
             if case .success(let all) = await deps.listingRepository.getMyListings(status: nil, limit: 40, offset: 0) {
-                listings = all
+                items = all
+            } else {
+                items = []
             }
         }
-        listingsLoading = false
-        if listingId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, let firstId = listings.first?.id {
-            listingId = firstId
+        if selectedId.isEmpty, let first = items.first {
+            listingId = first.id
+            selectedListingTitle = first.title
         }
     }
 
-    private func submit(entry: ToolFeatureEntry, kind: String, showsCaption: Bool) {
-        let id = listingId.trimmingCharacters(in: .whitespacesAndNewlines)
+    private func submit(
+        entry: ToolFeatureEntry,
+        kind: String,
+        needsListing: Bool,
+        showsCaption: Bool
+    ) {
         guard submittingFeatureKey == nil else { return }
-        guard !id.isEmpty else {
+        if needsListing && !hasListing {
             deps.showSnackbar(L10n.sellerPackagesToolsNeedListing)
             return
         }
@@ -295,10 +343,11 @@ struct SellerPackageToolsScreen: View {
             return
         }
         submittingFeatureKey = entry.key
+        let listingArg = needsListing ? selectedId : ""
         Task {
             let result = await deps.userEntitlementRepository.invokeFeature(
                 featureKey: entry.key,
-                listingId: id,
+                listingId: listingArg,
                 caption: caption
             )
             await MainActor.run {
@@ -321,11 +370,14 @@ struct SellerPackageToolsScreen: View {
     }
 
     private func successMessage(kind: String) -> String {
-        kind == "boost" ? L10n.sellerPackagesToolsSuccessBoost : L10n.sellerPackagesToolsSuccessVerify
+        if kind == "boost" {
+            return L10n.sellerPackagesToolsSuccessBoostAffinity
+        }
+        return L10n.sellerPackagesToolsSuccessRequest
     }
 }
 
-private struct SellerPackageFilledField: View {
+struct SellerPackageFilledField: View {
     let label: String
     @Binding var text: String
     var axis: Bool = false

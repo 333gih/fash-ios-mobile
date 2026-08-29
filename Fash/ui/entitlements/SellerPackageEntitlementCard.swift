@@ -8,6 +8,8 @@ struct SellerPackageEntitlementCard: View {
     var onUpgrade: () -> Void
     var onOpenTools: () -> Void
 
+    private let groupOrder = ["verification", "visibility", "social_promo"]
+
     var body: some View {
         let name = summary.map { $0.packageName.isEmpty ? $0.packageCode : $0.packageName } ?? ""
         VStack(alignment: .leading, spacing: 12) {
@@ -43,26 +45,13 @@ struct SellerPackageEntitlementCard: View {
                 .accessibilityLabel(L10n.sellerPackagesEntitlementRefresh)
             }
             if let summary {
-                featureRow(
-                    "checkmark.seal.fill",
-                    L10n.sellerPackagesFeatureAuthenticity,
-                    summary.features["authenticity_verify"]
-                )
-                featureRow(
-                    "sparkles",
-                    L10n.sellerPackagesFeatureExplore,
-                    summary.features["explore_boost"]
-                )
-                featureRow(
-                    "megaphone",
-                    L10n.sellerPackagesFeatureFanpage,
-                    summary.features["fanpage_spotlight"]
-                )
-                featureRow(
-                    "square.and.arrow.up",
-                    L10n.sellerPackagesFeatureSocial,
-                    summary.features["social_tiktok_instagram"]
-                )
+                ForEach(profileFeatureRows(summary), id: \.key) { row in
+                    featureRow(
+                        profileFeatureIcon(key: row.key, kind: row.feature.executionKind),
+                        profileFeatureLabel(key: row.key, feature: row.feature),
+                        row.feature
+                    )
+                }
             }
             FashPrimaryButton(title: L10n.sellerPackagesToolsOpen, action: onOpenTools)
             Button(L10n.sellerPackagesEntitlementUpgrade, action: onUpgrade)
@@ -76,6 +65,52 @@ struct SellerPackageEntitlementCard: View {
                 .stroke(FashColors.outlineMuted.opacity(0.5), lineWidth: 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: spacing.radiusCard, style: .continuous))
+    }
+
+    private struct ProfileFeatureRow {
+        let key: String
+        let feature: FeatureUsageSummary
+    }
+
+    private func profileFeatureRows(_ summary: UserEntitlementSummary) -> [ProfileFeatureRow] {
+        let grouped = Dictionary(grouping: summary.features.filter {
+            !$0.value.featureGroup.isEmpty || !$0.value.name.isEmpty
+        }) {
+            $0.value.featureGroup.isEmpty ? "other" : $0.value.featureGroup
+        }
+        let order = groupOrder.filter { grouped[$0] != nil }
+            + grouped.keys.filter { !groupOrder.contains($0) }.sorted()
+        return order.flatMap { group in
+            grouped[group]?
+                .sorted { lhs, rhs in
+                    let ln = lhs.value.name.isEmpty ? lhs.key : lhs.value.name
+                    let rn = rhs.value.name.isEmpty ? rhs.key : rhs.value.name
+                    return ln.localizedCaseInsensitiveCompare(rn) == .orderedAscending
+                }
+                .map { ProfileFeatureRow(key: $0.key, feature: $0.value) } ?? []
+        }
+    }
+
+    private func profileFeatureIcon(key: String, kind: String) -> String {
+        if kind == "boost" || key == "explore_boost" { return "sparkles" }
+        if key.contains("social") { return "square.and.arrow.up" }
+        if key.contains("fanpage") { return "megaphone" }
+        if key.contains("authenticity") || key.contains("verify") || key == "seller_real_badge" {
+            return "checkmark.seal.fill"
+        }
+        return "star.fill"
+    }
+
+    private func profileFeatureLabel(key: String, feature: FeatureUsageSummary) -> String {
+        if !feature.name.isEmpty { return feature.name }
+        switch key {
+        case "authenticity_verify": return L10n.sellerPackagesFeatureAuthenticity
+        case "explore_boost": return L10n.sellerPackagesFeatureExploreBoost
+        case "fanpage_spotlight": return L10n.sellerPackagesFeatureFanpage
+        case "social_tiktok_instagram": return L10n.sellerPackagesFeatureSocial
+        case "seller_real_badge": return L10n.sellerPackagesFeatureRealBadge
+        default: return key.replacingOccurrences(of: "_", with: " ").capitalized
+        }
     }
 
     private func featureRow(_ icon: String, _ label: String, _ feature: FeatureUsageSummary?) -> some View {

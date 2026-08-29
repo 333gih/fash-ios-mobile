@@ -132,6 +132,8 @@ final class AppRouter {
     var showHomeDeliveringScreen = false
     var showSellerPackagesScreen = false
     var showSellerPackageTools = false
+    /// Feature key to scroll/highlight on packages screen — Android `sellerPackagesHighlightFeature`.
+    var sellerPackagesHighlightFeature: String?
     var showFollowConnections = false
     var followConnectionsInitialTab = 0
     var showFeaturedSellersAll = false
@@ -173,6 +175,8 @@ final class AppRouter {
         homeEditorialSlug = nil
         showHomeDeliveringScreen = false
         showSellerPackagesScreen = false
+        showSellerPackageTools = false
+        sellerPackagesHighlightFeature = nil
         showFollowConnections = false
         showFeaturedSellersAll = false
         showInviteFriendsScreen = false
@@ -220,7 +224,11 @@ final class AppRouter {
         if showInviteFriendsScreen { showInviteFriendsScreen = false; return }
         if showFeaturedSellersAll { showFeaturedSellersAll = false; return }
         if showFollowConnections { showFollowConnections = false; return }
-        if showSellerPackagesScreen { showSellerPackagesScreen = false; return }
+        if showSellerPackagesScreen {
+            sellerPackagesHighlightFeature = nil
+            showSellerPackagesScreen = false
+            return
+        }
         if showHomeDeliveringScreen { showHomeDeliveringScreen = false; return }
         if homeEditorialSlug != nil { homeEditorialSlug = nil; return }
         if selectedCheckoutListingId != nil { selectedCheckoutListingId = nil; return }
