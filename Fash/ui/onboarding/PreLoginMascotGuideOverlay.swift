@@ -78,7 +78,7 @@ struct PreLoginMascotGuideOverlay: View {
 
                 FashPrimaryButton(
                     title: isLast ? L10n.appTourDone : L10n.welcomeIntroNext,
-                    showsArrow: !isLast,
+                    showsArrow: !isLast
                 ) {
                     if isLast {
                         PreLoginMascotGuideStore.markCompleted()
