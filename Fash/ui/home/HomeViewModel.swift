@@ -135,7 +135,16 @@ final class HomeViewModel {
            loadedTabs.contains(HomeFeedTabKeys.huntToday),
            !sections.huntToday.isEmpty {
             normalizeSelectedFeedTab(isGuestMode: true, deps: deps)
+            syncItemsForSelectedTab()
+            tabsLoadError.remove(HomeFeedTabKeys.huntToday)
+            tabsLoadStalled.remove(HomeFeedTabKeys.huntToday)
+            if items.isEmpty {
+                ensureTabLoaded(.huntToday, deps: deps, isGuestMode: true, force: false)
+            }
             return
+        }
+        if featuredSellers.isEmpty {
+            featuredSellersLoading = true
         }
         deps.uxTabTracker.closeActiveTab()
         deps.feedEventReporter.flush()
@@ -147,7 +156,6 @@ final class HomeViewModel {
         items = []
         errorMessage = nil
         featuredSellers = []
-        featuredSellersLoading = false
         followingWindow.reset(with: [])
         followingItemIds = []
         followingNextCursor = nil
@@ -155,6 +163,7 @@ final class HomeViewModel {
         followingDuplicatePageCount = 0
         buyerStats = BuyerHomeStats()
         showSizingBanner = false
+        ensureTabLoaded(.huntToday, deps: deps, isGuestMode: true, force: true)
     }
 
     func clearCachesForSignedOutUser(deps: AppDependencies) {
@@ -338,10 +347,15 @@ final class HomeViewModel {
         if isGuestMode && tab.requiresAuth { return }
         beginTabLoad(tab)
         tabLoadTasks[tab.rawValue]?.cancel()
-        setTabError(tab, false)
-        let ok = await loadTab(tab, deps: deps, isGuestMode: isGuestMode, force: force)
-        finishTabLoad(tab, succeeded: ok)
         tabLoadTasks[tab.rawValue] = nil
+        setTabError(tab, false)
+        var succeeded = false
+        defer {
+            finishTabLoad(tab, succeeded: succeeded)
+            tabLoadTasks[tab.rawValue] = nil
+        }
+        guard !Task.isCancelled else { return }
+        succeeded = await loadTab(tab, deps: deps, isGuestMode: isGuestMode, force: force)
     }
 
     /// End of maintenance — drop hung in-flight flags and fetch a fresh Home.
@@ -606,7 +620,7 @@ final class HomeViewModel {
     private var isLaunchShellFresh: Bool {
         guard let lastSuccessfulRefreshAt else { return false }
         guard Date().timeIntervalSince(lastSuccessfulRefreshAt) < 120 else { return false }
-        return !items.isEmpty || recommendationSectionsFetched
+        return !items.isEmpty || recommendationSectionsFetched || !sections.huntToday.isEmpty
     }
 
     private func invalidateAllTabFeeds() {
@@ -659,7 +673,10 @@ final class HomeViewModel {
             }
             return
         }
-        if tabLoadTasks[tab.rawValue] != nil { return }
+        if let existing = tabLoadTasks[tab.rawValue] {
+            if !existing.isCancelled { return }
+            tabLoadTasks[tab.rawValue] = nil
+        }
         if !force && tab == .huntToday && recommendationSectionsFetched && !sections.huntToday.isEmpty {
             loadedTabs.insert(tab.rawValue)
             syncItemsForSelectedTab()
