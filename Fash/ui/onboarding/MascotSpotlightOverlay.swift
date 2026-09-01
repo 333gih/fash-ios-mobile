@@ -14,11 +14,20 @@ enum MascotPointDirection {
     }
 }
 
+private enum CoachStackLayout {
+    case verticalMascotFirst
+    case verticalCaptionFirst
+    case horizontalMascotFirst
+}
+
 private struct MascotCoachPlacement {
-    let mascotCenter: CGPoint
+    let stackCenter: CGPoint
+    let stackHalfWidth: CGFloat
+    let stackHalfHeight: CGFloat
     let direction: MascotPointDirection
     let flipHorizontal: Bool
-    let captionCenter: CGPoint
+    let layout: CoachStackLayout
+    let captionMaxWidth: CGFloat
 }
 
 /// Dimmed scrim + spotlight hole + mascot pointing at the target + compact caption (no dialog card).
@@ -41,6 +50,10 @@ struct MascotSpotlightOverlay: View {
     private let holeCorner: CGFloat = 18
     private let mascotSize: CGFloat = 72
     private let mascotGap: CGFloat = 14
+    private let controlsReserve: CGFloat = 132
+    private let topSafe: CGFloat = 56
+    private let stackSpacing: CGFloat = 8
+    private let captionHeightEstimate: CGFloat = 104
 
     var body: some View {
         GeometryReader { overlayProxy in
@@ -51,13 +64,22 @@ struct MascotSpotlightOverlay: View {
                 global.insetForSpotlight(padding: holePadding)
                     .offsetBy(dx: -overlayGlobal.minX, dy: -overlayGlobal.minY)
             }
-            let placement = coachPlacement(hole: localHole, overlaySize: overlaySize)
+            let captionMaxWidth = min(overlaySize.width - 40, 300)
+            let verticalStackHeight = mascotSize + stackSpacing + captionHeightEstimate
+            let horizontalStackWidth = mascotSize + stackSpacing + captionMaxWidth
+            let placement = coachPlacement(
+                hole: localHole,
+                overlaySize: overlaySize,
+                captionMaxWidth: captionMaxWidth,
+                verticalStackHeight: verticalStackHeight,
+                horizontalStackWidth: horizontalStackWidth
+            )
 
             ZStack {
                 spotlightLayer(hole: holeReady ? localHole : nil)
 
                 if let placement {
-                    mascotCoachLayer(placement: placement, overlaySize: overlaySize)
+                    coachStackLayer(placement: placement)
                 } else {
                     introCoachLayer(overlaySize: overlaySize)
                 }
@@ -111,22 +133,64 @@ struct MascotSpotlightOverlay: View {
     }
 
     @ViewBuilder
-    private func mascotCoachLayer(placement: MascotCoachPlacement, overlaySize: CGSize) -> some View {
-        FashMascotGuideImage(
-            name: placement.direction.assetName,
-            size: mascotSize,
-            flipHorizontal: placement.flipHorizontal
-        )
-        .position(placement.mascotCenter)
+    private func coachStackLayer(placement: MascotCoachPlacement) -> some View {
+        let originX = max(placement.stackCenter.x - placement.stackHalfWidth, 8)
+        let originY = max(placement.stackCenter.y - placement.stackHalfHeight, topSafe)
 
-        captionBubble(maxWidth: min(overlaySize.width - 40, 300))
-            .position(placement.captionCenter)
+        coachStack(
+            direction: placement.direction,
+            flipHorizontal: placement.flipHorizontal,
+            layout: placement.layout,
+            captionMaxWidth: placement.captionMaxWidth
+        )
+        .position(
+            x: originX + placement.stackHalfWidth,
+            y: originY + placement.stackHalfHeight
+        )
+    }
+
+    @ViewBuilder
+    private func coachStack(
+        direction: MascotPointDirection,
+        flipHorizontal: Bool,
+        layout: CoachStackLayout,
+        captionMaxWidth: CGFloat
+    ) -> some View {
+        switch layout {
+        case .verticalMascotFirst:
+            VStack(spacing: stackSpacing) {
+                FashMascotGuideImage(
+                    name: direction.assetName,
+                    size: mascotSize,
+                    flipHorizontal: flipHorizontal
+                )
+                captionBubble(maxWidth: captionMaxWidth)
+            }
+        case .verticalCaptionFirst:
+            VStack(spacing: stackSpacing) {
+                captionBubble(maxWidth: captionMaxWidth)
+                FashMascotGuideImage(
+                    name: direction.assetName,
+                    size: mascotSize,
+                    flipHorizontal: flipHorizontal
+                )
+            }
+        case .horizontalMascotFirst:
+            HStack(spacing: stackSpacing) {
+                FashMascotGuideImage(
+                    name: direction.assetName,
+                    size: mascotSize,
+                    flipHorizontal: flipHorizontal
+                )
+                captionBubble(maxWidth: captionMaxWidth)
+            }
+        }
     }
 
     @ViewBuilder
     private func introCoachLayer(overlaySize: CGSize) -> some View {
-        let centerY = overlaySize.height * 0.38
-        VStack(spacing: 16) {
+        let centerY = overlaySize.height * 0.30
+        VStack(spacing: 12) {
             FashMascotGuideImage(name: MascotPointDirection.up.assetName, size: 88)
             captionBubble(maxWidth: min(overlaySize.width - 48, 320))
         }
@@ -201,55 +265,106 @@ struct MascotSpotlightOverlay: View {
         }
     }
 
-    private func coachPlacement(hole: CGRect?, overlaySize: CGSize) -> MascotCoachPlacement? {
+    private func coachPlacement(
+        hole: CGRect?,
+        overlaySize: CGSize,
+        captionMaxWidth: CGFloat,
+        verticalStackHeight: CGFloat,
+        horizontalStackWidth: CGFloat
+    ) -> MascotCoachPlacement? {
         guard let hole else { return nil }
 
-        let spaceAbove = hole.minY
-        let spaceBelow = overlaySize.height - hole.maxY
+        let contentBottom = overlaySize.height - controlsReserve
+        let spaceAbove = hole.minY - topSafe
+        let spaceBelow = contentBottom - hole.maxY
         let spaceLeft = hole.minX
         let spaceRight = overlaySize.width - hole.maxX
 
-        let captionHeight: CGFloat = 96
-        let halfMascot = mascotSize / 2
+        let halfVertical = verticalStackHeight / 2
+        let halfHorizontal = horizontalStackWidth / 2
+        let verticalHalfWidth = max(captionMaxWidth / 2, mascotSize / 2)
 
-        if spaceBelow >= mascotSize + mascotGap + 40, spaceBelow >= spaceAbove {
-            let mascotY = hole.maxY + mascotGap + halfMascot
-            let captionY = min(mascotY + halfMascot + captionHeight / 2 + 8, overlaySize.height - 120)
+        let canPlaceBelow = spaceBelow >= verticalStackHeight + mascotGap
+        let canPlaceAbove = spaceAbove >= verticalStackHeight + mascotGap
+
+        if canPlaceBelow, spaceBelow >= spaceAbove {
+            let stackCenterY = min(hole.maxY + mascotGap + halfVertical, contentBottom - halfVertical)
+            let stackCenterX = hole.midX.clamped(
+                verticalHalfWidth + 12,
+                overlaySize.width - verticalHalfWidth - 12
+            )
             return MascotCoachPlacement(
-                mascotCenter: CGPoint(x: hole.midX, y: mascotY),
+                stackCenter: CGPoint(x: stackCenterX, y: stackCenterY),
+                stackHalfWidth: verticalHalfWidth,
+                stackHalfHeight: halfVertical,
                 direction: .up,
                 flipHorizontal: false,
-                captionCenter: CGPoint(x: hole.midX, y: captionY)
+                layout: .verticalMascotFirst,
+                captionMaxWidth: captionMaxWidth
             )
         }
 
-        if spaceAbove >= mascotSize + mascotGap + 40 {
-            let mascotY = hole.minY - mascotGap - halfMascot
-            let captionY = max(mascotY - halfMascot - captionHeight / 2 - 8, 80)
+        if canPlaceAbove {
+            let stackCenterY = max(hole.minY - mascotGap - halfVertical, topSafe + halfVertical)
+            let stackCenterX = hole.midX.clamped(
+                verticalHalfWidth + 12,
+                overlaySize.width - verticalHalfWidth - 12
+            )
             return MascotCoachPlacement(
-                mascotCenter: CGPoint(x: hole.midX, y: mascotY),
+                stackCenter: CGPoint(x: stackCenterX, y: stackCenterY),
+                stackHalfWidth: verticalHalfWidth,
+                stackHalfHeight: halfVertical,
                 direction: .down,
                 flipHorizontal: false,
-                captionCenter: CGPoint(x: hole.midX, y: captionY)
+                layout: .verticalCaptionFirst,
+                captionMaxWidth: captionMaxWidth
             )
         }
 
-        if spaceRight >= mascotSize + mascotGap + 40, spaceRight >= spaceLeft {
-            let mascotX = hole.maxX + mascotGap + halfMascot
+        let canPlaceRight = spaceRight >= horizontalStackWidth + mascotGap
+        let canPlaceLeft = spaceLeft >= horizontalStackWidth + mascotGap
+
+        if canPlaceRight, spaceRight >= spaceLeft {
+            let stackCenterX = min(hole.maxX + mascotGap + halfHorizontal, overlaySize.width - halfHorizontal - 12)
+            let stackCenterY = hole.midY.clamped(halfVertical + topSafe, contentBottom - halfVertical)
             return MascotCoachPlacement(
-                mascotCenter: CGPoint(x: mascotX, y: hole.midY),
+                stackCenter: CGPoint(x: stackCenterX, y: stackCenterY),
+                stackHalfWidth: halfHorizontal,
+                stackHalfHeight: mascotSize / 2,
                 direction: .left,
                 flipHorizontal: true,
-                captionCenter: CGPoint(x: min(mascotX + halfMascot + 130, overlaySize.width - 20), y: hole.midY)
+                layout: .horizontalMascotFirst,
+                captionMaxWidth: captionMaxWidth
             )
         }
 
-        let mascotX = hole.minX - mascotGap - halfMascot
+        if canPlaceLeft {
+            let stackCenterX = max(hole.minX - mascotGap - halfHorizontal, halfHorizontal + 12)
+            let stackCenterY = hole.midY.clamped(halfVertical + topSafe, contentBottom - halfVertical)
+            return MascotCoachPlacement(
+                stackCenter: CGPoint(x: stackCenterX, y: stackCenterY),
+                stackHalfWidth: halfHorizontal,
+                stackHalfHeight: mascotSize / 2,
+                direction: .left,
+                flipHorizontal: false,
+                layout: .horizontalMascotFirst,
+                captionMaxWidth: captionMaxWidth
+            )
+        }
+
+        let fallbackY = max(topSafe + halfVertical, contentBottom - halfVertical)
+        let fallbackX = hole.midX.clamped(
+            verticalHalfWidth + 12,
+            overlaySize.width - verticalHalfWidth - 12
+        )
         return MascotCoachPlacement(
-            mascotCenter: CGPoint(x: max(halfMascot + 12, mascotX), y: hole.midY),
-            direction: .left,
+            stackCenter: CGPoint(x: fallbackX, y: fallbackY),
+            stackHalfWidth: verticalHalfWidth,
+            stackHalfHeight: halfVertical,
+            direction: .up,
             flipHorizontal: false,
-            captionCenter: CGPoint(x: max(130, mascotX - halfMascot - 10), y: hole.midY)
+            layout: .verticalMascotFirst,
+            captionMaxWidth: captionMaxWidth
         )
     }
 }
@@ -257,5 +372,11 @@ struct MascotSpotlightOverlay: View {
 private extension CGRect {
     func insetForSpotlight(padding: CGFloat) -> CGRect {
         insetBy(dx: -padding, dy: -padding)
+    }
+}
+
+private extension CGFloat {
+    func clamped(_ lower: CGFloat, _ upper: CGFloat) -> CGFloat {
+        min(max(self, lower), upper)
     }
 }
