@@ -377,6 +377,6 @@ private extension CGRect {
 
 private extension CGFloat {
     func clamped(_ lower: CGFloat, _ upper: CGFloat) -> CGFloat {
-        min(max(self, lower), upper)
+        Swift.min(Swift.max(self, lower), upper)
     }
 }
