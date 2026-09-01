@@ -728,13 +728,14 @@ final class HomeViewModel {
             setTabError(tab, false)
             var ok = false
             defer {
-                guard tabLoadGeneration[tab.rawValue] == generation else { return }
-                if Task.isCancelled {
-                    clearTabLoadingWithoutMarkingLoaded(tab)
-                } else {
-                    finishTabLoad(tab, succeeded: ok)
+                if tabLoadGeneration[tab.rawValue] == generation {
+                    if Task.isCancelled {
+                        clearTabLoadingWithoutMarkingLoaded(tab)
+                    } else {
+                        finishTabLoad(tab, succeeded: ok)
+                    }
+                    tabLoadTasks[tab.rawValue] = nil
                 }
-                tabLoadTasks[tab.rawValue] = nil
             }
             ok = await loadTab(tab, deps: deps, isGuestMode: isGuestMode, force: force)
         }
