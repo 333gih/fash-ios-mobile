@@ -185,6 +185,8 @@ struct HomeFeedContent: View {
         }
         .task {
             viewModel.normalizeSelectedFeedTab(isGuestMode: isGuestMode, deps: deps)
+            // Guest shell load is owned by launch warmup + onGuestBrowseEntered (Android parity).
+            guard !isGuestMode else { return }
             await viewModel.loadShell(deps: deps, isGuestMode: isGuestMode, skipIfFresh: true)
         }
         .task(id: viewModel.selectedFeedTabKey) {

@@ -34,6 +34,8 @@ enum AppLaunchWarmup {
             _ = await group.next()
             group.cancelAll()
         }
+        // Android continueLaunchLoadIfNeeded — restart if gate cancelled an in-flight tab load.
+        homeVM.continueLaunchLoadIfNeeded(deps: deps, isGuestMode: isGuestMode)
         progress.complete()
 
         scheduleDeferredWarmup(

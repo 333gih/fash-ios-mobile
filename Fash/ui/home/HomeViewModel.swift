@@ -50,6 +50,7 @@ final class HomeViewModel {
     private var loadedTabs: Set<String> = []
     private var recommendationSectionsFetched = false
     private var tabLoadTasks: [String: Task<Void, Never>] = [:]
+    private var tabLoadGeneration: [String: UInt] = [:]
     private let tabStallWatch = FeedLoadStallWatch()
     private var homeUxApplied = false
     private var lastSuccessfulRefreshAt: Date?
@@ -141,6 +142,19 @@ final class HomeViewModel {
             if items.isEmpty {
                 ensureTabLoaded(.huntToday, deps: deps, isGuestMode: true, force: false)
             }
+            return
+        }
+        if !forceReset,
+           tabsLoading.contains(HomeFeedTabKeys.huntToday),
+           sections.huntToday.isEmpty,
+           !tabsLoadError.contains(HomeFeedTabKeys.huntToday) {
+            normalizeSelectedFeedTab(isGuestMode: true, deps: deps)
+            return
+        }
+        let needsErrorRecovery = !forceReset
+            && sections.huntToday.isEmpty
+            && (tabsLoadError.contains(HomeFeedTabKeys.huntToday) || tabsLoadStalled.contains(HomeFeedTabKeys.huntToday))
+        if !forceReset && !needsErrorRecovery {
             return
         }
         if featuredSellers.isEmpty {
@@ -351,11 +365,23 @@ final class HomeViewModel {
         setTabError(tab, false)
         var succeeded = false
         defer {
-            finishTabLoad(tab, succeeded: succeeded)
+            if Task.isCancelled {
+                clearTabLoadingWithoutMarkingLoaded(tab)
+            } else {
+                finishTabLoad(tab, succeeded: succeeded)
+            }
             tabLoadTasks[tab.rawValue] = nil
         }
-        guard !Task.isCancelled else { return }
         succeeded = await loadTab(tab, deps: deps, isGuestMode: isGuestMode, force: force)
+    }
+
+    /// After the splash home-gate times out, keep loading the visible tab in the background.
+    func continueLaunchLoadIfNeeded(deps: AppDependencies, isGuestMode: Bool) {
+        let tab = selectedFeedTab
+        if isGuestMode && tab.requiresAuth { return }
+        if loadedTabs.contains(tab.rawValue), !itemsForTab(tab).isEmpty { return }
+        isShellLoading = false
+        ensureTabLoaded(tab, deps: deps, isGuestMode: isGuestMode, force: true)
     }
 
     /// End of maintenance — drop hung in-flight flags and fetch a fresh Home.
@@ -626,6 +652,7 @@ final class HomeViewModel {
     private func invalidateAllTabFeeds() {
         tabLoadTasks.values.forEach { $0.cancel() }
         tabLoadTasks.removeAll()
+        tabLoadGeneration.removeAll()
         loadedTabs.removeAll()
         recommendationSectionsFetched = false
         sections = HomeRecommendationSections()
@@ -696,11 +723,20 @@ final class HomeViewModel {
         if tab == selectedFeedTab {
             syncItemsForSelectedTab()
         }
+        let generation = nextTabLoadGeneration(for: tab)
         tabLoadTasks[tab.rawValue] = Task {
             setTabError(tab, false)
-            let ok = await loadTab(tab, deps: deps, isGuestMode: isGuestMode, force: force)
-            finishTabLoad(tab, succeeded: ok)
-            tabLoadTasks[tab.rawValue] = nil
+            var ok = false
+            defer {
+                guard tabLoadGeneration[tab.rawValue] == generation else { return }
+                if Task.isCancelled {
+                    clearTabLoadingWithoutMarkingLoaded(tab)
+                } else {
+                    finishTabLoad(tab, succeeded: ok)
+                }
+                tabLoadTasks[tab.rawValue] = nil
+            }
+            ok = await loadTab(tab, deps: deps, isGuestMode: isGuestMode, force: force)
         }
     }
 
@@ -794,17 +830,30 @@ final class HomeViewModel {
         setTabLoading(tab, false)
     }
 
+    private func clearTabLoadingWithoutMarkingLoaded(_ tab: HomeFeedTab) {
+        tabStallWatch.cancel(key: tab.rawValue)
+        tabsLoadStalled.remove(tab.rawValue)
+        setTabLoading(tab, false)
+    }
+
+    private func nextTabLoadGeneration(for tab: HomeFeedTab) -> UInt {
+        let next = (tabLoadGeneration[tab.rawValue] ?? 0) + 1
+        tabLoadGeneration[tab.rawValue] = next
+        return next
+    }
+
     private func scheduleTabStallWatch(for tab: HomeFeedTab) {
         let key = tab.rawValue
         tabStallWatch.schedule(key: key) { [weak self] in
             guard let self else { return false }
             guard self.selectedFeedTab == tab else { return false }
             guard !self.loadedTabs.contains(key) else { return false }
-            guard !self.tabsLoading.contains(key) else { return false }
-            guard self.items.isEmpty else { return false }
+            guard self.itemsForTab(tab).isEmpty else { return false }
             return true
         } onStalled: { [weak self] in
-            self?.tabsLoadStalled.insert(key)
+            guard let self else { return }
+            self.setTabLoading(tab, false)
+            self.tabsLoadStalled.insert(key)
         }
     }
 
@@ -812,8 +861,9 @@ final class HomeViewModel {
         homeUxPersonalization.sectionLimits[UxPersonalizationMapping.uxTabKey(for: tab)] ?? fallback
     }
 
-    private func huntTodaySizingMode() -> String? {
-        ExploreSizingPreference.activeSizingModeForRecommendations()
+    private func huntTodaySizingMode(isGuestMode: Bool) -> String? {
+        guard !isGuestMode else { return nil }
+        return ExploreSizingPreference.activeSizingModeForRecommendations()
     }
 
     private func prefetchRecommendationSections(deps: AppDependencies, isGuestMode: Bool) async -> Bool {
@@ -852,13 +902,23 @@ final class HomeViewModel {
             if selectedFeedTab == .huntToday { syncItemsForSelectedTab() }
             return true
         }
-        let result = await deps.recommendationRepository.exploreListings(
+        var result = await deps.recommendationRepository.exploreListings(
             publicBrowse: isGuestMode,
             limit: sectionLimit(for: .huntToday, fallback: HomeFeedConstants.huntTodayLimit),
             offset: 0,
-            sizingMode: huntTodaySizingMode(),
+            sizingMode: huntTodaySizingMode(isGuestMode: isGuestMode),
             surface: HomeFeedTab.huntToday.analyticsSurface
         )
+        if case .failure = result, isGuestMode {
+            try? await Task.sleep(for: .milliseconds(400))
+            result = await deps.recommendationRepository.exploreListings(
+                publicBrowse: true,
+                limit: sectionLimit(for: .huntToday, fallback: HomeFeedConstants.huntTodayLimit),
+                offset: 0,
+                sizingMode: nil,
+                surface: HomeFeedTab.huntToday.analyticsSurface
+            )
+        }
         guard case .success(let loaded) = result else { return false }
         sections.huntToday = loaded
         let limit = sectionLimit(for: .huntToday, fallback: HomeFeedConstants.huntTodayLimit)
@@ -891,7 +951,7 @@ final class HomeViewModel {
                 publicBrowse: isGuestMode,
                 limit: HomeFeedConstants.tabLoadMorePageSize,
                 offset: offset,
-                sizingMode: huntTodaySizingMode(),
+                sizingMode: huntTodaySizingMode(isGuestMode: isGuestMode),
                 surface: tab.analyticsSurface
             )
             guard selectedFeedTab == tab else { return }
@@ -1039,7 +1099,7 @@ final class HomeViewModel {
             huntTodayLimit: huntLimit,
             forYouLimit: forYouLimit,
             sectionLimit: max(styleLimit, similarLimit),
-            sizingMode: huntTodaySizingMode()
+            sizingMode: huntTodaySizingMode(isGuestMode: isGuestMode)
         )
         guard case .success(let loaded) = result else { return false }
         if !loaded.huntToday.isEmpty {
