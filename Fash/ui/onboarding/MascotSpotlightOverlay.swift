@@ -289,9 +289,10 @@ struct MascotSpotlightOverlay: View {
 
         if canPlaceBelow, spaceBelow >= spaceAbove {
             let stackCenterY = min(hole.maxY + mascotGap + halfVertical, contentBottom - halfVertical)
-            let stackCenterX = hole.midX.clamped(
-                verticalHalfWidth + 12,
-                overlaySize.width - verticalHalfWidth - 12
+            let stackCenterX = clampedCGFloat(
+                hole.midX,
+                min: verticalHalfWidth + 12,
+                max: overlaySize.width - verticalHalfWidth - 12
             )
             return MascotCoachPlacement(
                 stackCenter: CGPoint(x: stackCenterX, y: stackCenterY),
@@ -306,9 +307,10 @@ struct MascotSpotlightOverlay: View {
 
         if canPlaceAbove {
             let stackCenterY = max(hole.minY - mascotGap - halfVertical, topSafe + halfVertical)
-            let stackCenterX = hole.midX.clamped(
-                verticalHalfWidth + 12,
-                overlaySize.width - verticalHalfWidth - 12
+            let stackCenterX = clampedCGFloat(
+                hole.midX,
+                min: verticalHalfWidth + 12,
+                max: overlaySize.width - verticalHalfWidth - 12
             )
             return MascotCoachPlacement(
                 stackCenter: CGPoint(x: stackCenterX, y: stackCenterY),
@@ -326,7 +328,7 @@ struct MascotSpotlightOverlay: View {
 
         if canPlaceRight, spaceRight >= spaceLeft {
             let stackCenterX = min(hole.maxX + mascotGap + halfHorizontal, overlaySize.width - halfHorizontal - 12)
-            let stackCenterY = hole.midY.clamped(halfVertical + topSafe, contentBottom - halfVertical)
+            let stackCenterY = clampedCGFloat(hole.midY, min: halfVertical + topSafe, max: contentBottom - halfVertical)
             return MascotCoachPlacement(
                 stackCenter: CGPoint(x: stackCenterX, y: stackCenterY),
                 stackHalfWidth: halfHorizontal,
@@ -340,7 +342,7 @@ struct MascotSpotlightOverlay: View {
 
         if canPlaceLeft {
             let stackCenterX = max(hole.minX - mascotGap - halfHorizontal, halfHorizontal + 12)
-            let stackCenterY = hole.midY.clamped(halfVertical + topSafe, contentBottom - halfVertical)
+            let stackCenterY = clampedCGFloat(hole.midY, min: halfVertical + topSafe, max: contentBottom - halfVertical)
             return MascotCoachPlacement(
                 stackCenter: CGPoint(x: stackCenterX, y: stackCenterY),
                 stackHalfWidth: halfHorizontal,
@@ -353,9 +355,10 @@ struct MascotSpotlightOverlay: View {
         }
 
         let fallbackY = max(topSafe + halfVertical, contentBottom - halfVertical)
-        let fallbackX = hole.midX.clamped(
-            verticalHalfWidth + 12,
-            overlaySize.width - verticalHalfWidth - 12
+        let fallbackX = clampedCGFloat(
+            hole.midX,
+            min: verticalHalfWidth + 12,
+            max: overlaySize.width - verticalHalfWidth - 12
         )
         return MascotCoachPlacement(
             stackCenter: CGPoint(x: fallbackX, y: fallbackY),
@@ -375,8 +378,8 @@ private extension CGRect {
     }
 }
 
-private extension CGFloat {
-    func clamped(_ lower: CGFloat, _ upper: CGFloat) -> CGFloat {
-        Swift.min(Swift.max(self, lower), upper)
-    }
+private func clampedCGFloat(_ value: CGFloat, min lower: CGFloat, max upper: CGFloat) -> CGFloat {
+    if value < lower { return lower }
+    if value > upper { return upper }
+    return value
 }
