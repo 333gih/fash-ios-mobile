@@ -778,7 +778,7 @@ final class HomeViewModel {
             }
             ok = await loadTab(tab, deps: deps, isGuestMode: isGuestMode, force: force)
         }
-    }sd.
+    }
 
     private func prefetchAdjacentTabs(around tab: HomeFeedTab, deps: AppDependencies, isGuestMode: Bool) {
         let ux = homeUxPersonalization
