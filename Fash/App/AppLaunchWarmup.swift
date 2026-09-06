@@ -20,21 +20,25 @@ enum AppLaunchWarmup {
     ) async {
         progress.beginWarmup(homeSteps: 4, exploreSteps: 0, shellSteps: 0)
 
+        // Keep the Home load alive after the splash gate — cancelling it marked empty tabs as
+        // failed and raced with continueLaunchLoadIfNeeded (guest "Không tải được nội dung").
+        let loadTask = Task { @MainActor in
+            await homeVM.awaitLaunchReady(
+                deps: deps,
+                isGuestMode: isGuestMode,
+                launchProgress: progress
+            )
+        }
         await withTaskGroup(of: Void.self) { group in
-            group.addTask { @MainActor in
-                await homeVM.awaitLaunchReady(
-                    deps: deps,
-                    isGuestMode: isGuestMode,
-                    launchProgress: progress
-                )
-            }
+            group.addTask { _ = await loadTask.result }
             group.addTask {
                 try? await Task.sleep(for: .seconds(homeGateMaxSeconds))
             }
             _ = await group.next()
+            // Cancel only the waiter/sleep children — not `loadTask` itself.
             group.cancelAll()
         }
-        // Android continueLaunchLoadIfNeeded — restart if gate cancelled an in-flight tab load.
+        // Safety net when the gate opened before the first page finished (or cleared mid-flight).
         homeVM.continueLaunchLoadIfNeeded(deps: deps, isGuestMode: isGuestMode)
         progress.complete()
 

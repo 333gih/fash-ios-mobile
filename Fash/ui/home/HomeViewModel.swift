@@ -29,6 +29,8 @@ final class HomeViewModel {
     var tabsLoading: Set<String> = []
     var tabsLoadError: Set<String> = []
     var tabsLoadStalled: Set<String> = []
+    /// Per-tab failure detail for empty-state subtitle (network / HTTP / parse).
+    private var tabLoadErrorDetails: [String: String] = [:]
     var followingHasMore = false
     var isLoadingMoreFollowing = false
     var buyerStats = BuyerHomeStats()
@@ -88,6 +90,11 @@ final class HomeViewModel {
 
     func isTabLoadStalled(_ tab: HomeFeedTab) -> Bool {
         tabsLoadStalled.contains(tab.rawValue)
+    }
+
+    func tabLoadErrorDetail(for tab: HomeFeedTab) -> String? {
+        let detail = tabLoadErrorDetails[tab.rawValue]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return detail.isEmpty ? nil : detail
     }
 
     func hasMore(for tab: HomeFeedTab) -> Bool {
@@ -155,6 +162,13 @@ final class HomeViewModel {
             && sections.huntToday.isEmpty
             && (tabsLoadError.contains(HomeFeedTabKeys.huntToday) || tabsLoadStalled.contains(HomeFeedTabKeys.huntToday))
         if !forceReset && !needsErrorRecovery {
+            // Orphan empty state after a cancelled gate — kick a load without wiping shell chrome.
+            if sections.huntToday.isEmpty,
+               !tabsLoading.contains(HomeFeedTabKeys.huntToday),
+               !loadedTabs.contains(HomeFeedTabKeys.huntToday) {
+                normalizeSelectedFeedTab(isGuestMode: true, deps: deps)
+                ensureTabLoaded(.huntToday, deps: deps, isGuestMode: true, force: false)
+            }
             return
         }
         if featuredSellers.isEmpty {
@@ -359,14 +373,22 @@ final class HomeViewModel {
     ) async {
         let tab = selectedFeedTab
         if isGuestMode && tab.requiresAuth { return }
-        beginTabLoad(tab)
         tabLoadTasks[tab.rawValue]?.cancel()
         tabLoadTasks[tab.rawValue] = nil
+        beginTabLoad(tab)
         setTabError(tab, false)
+        let generation = nextTabLoadGeneration(for: tab)
         var succeeded = false
         defer {
+            // Ignore stale completions after ensureTabLoaded / continueLaunch advanced the generation.
+            guard tabLoadGeneration[tab.rawValue] == generation else { return }
             if Task.isCancelled {
-                clearTabLoadingWithoutMarkingLoaded(tab)
+                // Response may have landed before cancel was observed — keep successful data.
+                if succeeded || !itemsForTab(tab).isEmpty {
+                    finishTabLoad(tab, succeeded: true)
+                } else {
+                    clearTabLoadingWithoutMarkingLoaded(tab)
+                }
             } else {
                 finishTabLoad(tab, succeeded: succeeded)
             }
@@ -379,7 +401,19 @@ final class HomeViewModel {
     func continueLaunchLoadIfNeeded(deps: AppDependencies, isGuestMode: Bool) {
         let tab = selectedFeedTab
         if isGuestMode && tab.requiresAuth { return }
-        if loadedTabs.contains(tab.rawValue), !itemsForTab(tab).isEmpty { return }
+        // Load finished (or cancelled after data arrived) — just bind UI.
+        if !itemsForTab(tab).isEmpty {
+            loadedTabs.insert(tab.rawValue)
+            tabsLoadError.remove(tab.rawValue)
+            tabsLoadStalled.remove(tab.rawValue)
+            setTabLoading(tab, false)
+            syncItemsForSelectedTab()
+            return
+        }
+        if loadedTabs.contains(tab.rawValue) { return }
+        // In-flight awaitLaunchReady / ensureTabLoaded — do not force-cancel and restart.
+        if tabsLoading.contains(tab.rawValue) { return }
+        if let existing = tabLoadTasks[tab.rawValue], !existing.isCancelled { return }
         isShellLoading = false
         ensureTabLoaded(tab, deps: deps, isGuestMode: isGuestMode, force: true)
     }
@@ -667,6 +701,7 @@ final class HomeViewModel {
         tabsLoading = []
         tabsLoadError = []
         tabsLoadStalled = []
+        tabLoadErrorDetails = [:]
         tabStallWatch.cancelAll()
         syncItemsForSelectedTab()
     }
@@ -730,7 +765,11 @@ final class HomeViewModel {
             defer {
                 if tabLoadGeneration[tab.rawValue] == generation {
                     if Task.isCancelled {
-                        clearTabLoadingWithoutMarkingLoaded(tab)
+                        if ok || !itemsForTab(tab).isEmpty {
+                            finishTabLoad(tab, succeeded: true)
+                        } else {
+                            clearTabLoadingWithoutMarkingLoaded(tab)
+                        }
                     } else {
                         finishTabLoad(tab, succeeded: ok)
                     }
@@ -739,7 +778,7 @@ final class HomeViewModel {
             }
             ok = await loadTab(tab, deps: deps, isGuestMode: isGuestMode, force: force)
         }
-    }
+    }sd.
 
     private func prefetchAdjacentTabs(around tab: HomeFeedTab, deps: AppDependencies, isGuestMode: Bool) {
         let ux = homeUxPersonalization
@@ -911,7 +950,13 @@ final class HomeViewModel {
             surface: HomeFeedTab.huntToday.analyticsSurface
         )
         if case .failure = result, isGuestMode {
-            try? await Task.sleep(for: .milliseconds(400))
+            guard !Task.isCancelled else { return false }
+            do {
+                try await Task.sleep(for: .milliseconds(400))
+            } catch {
+                return false
+            }
+            guard !Task.isCancelled else { return false }
             result = await deps.recommendationRepository.exploreListings(
                 publicBrowse: true,
                 limit: sectionLimit(for: .huntToday, fallback: HomeFeedConstants.huntTodayLimit),
@@ -920,7 +965,13 @@ final class HomeViewModel {
                 surface: HomeFeedTab.huntToday.analyticsSurface
             )
         }
-        guard case .success(let loaded) = result else { return false }
+        guard !Task.isCancelled else { return false }
+        guard case .success(let loaded) = result else {
+            if case .failure(let error) = result {
+                tabLoadErrorDetails[HomeFeedTabKeys.huntToday] = FashErrorPresentation.userMessage(for: error)
+            }
+            return false
+        }
         sections.huntToday = loaded
         let limit = sectionLimit(for: .huntToday, fallback: HomeFeedConstants.huntTodayLimit)
         setTabHasMore(.huntToday, loaded.count == limit)
@@ -1022,7 +1073,12 @@ final class HomeViewModel {
         let result = await FeedPerformance.measure("Home following first page") {
             await fetchHomeFeedPageWithRetry(deps: deps, cursor: nil)
         }
-        guard case .success(let page) = result else { return false }
+        guard case .success(let page) = result else {
+            if case .failure(let error) = result {
+                tabLoadErrorDetails[HomeFeedTabKeys.following] = FashErrorPresentation.userMessage(for: error)
+            }
+            return false
+        }
         followingWindow.reset(with: page.items)
         followingItemIds = Set(page.items.map(\.id))
         followingNextCursor = page.nextCursor
@@ -1102,7 +1158,15 @@ final class HomeViewModel {
             sectionLimit: max(styleLimit, similarLimit),
             sizingMode: huntTodaySizingMode(isGuestMode: isGuestMode)
         )
-        guard case .success(let loaded) = result else { return false }
+        guard case .success(let loaded) = result else {
+            if case .failure(let error) = result {
+                let message = FashErrorPresentation.userMessage(for: error)
+                for t in HomeFeedTab.recommendationSectionTabs {
+                    tabLoadErrorDetails[t.rawValue] = message
+                }
+            }
+            return false
+        }
         if !loaded.huntToday.isEmpty {
             sections.huntToday = loaded.huntToday
             loadedTabs.insert(HomeFeedTabKeys.huntToday)
@@ -1189,11 +1253,16 @@ final class HomeViewModel {
         }
     }
 
-    private func setTabError(_ tab: HomeFeedTab, _ error: Bool) {
+    private func setTabError(_ tab: HomeFeedTab, _ error: Bool, detail: String? = nil) {
         if error {
             tabsLoadError.insert(tab.rawValue)
+            let trimmed = detail?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            if !trimmed.isEmpty {
+                tabLoadErrorDetails[tab.rawValue] = trimmed
+            }
         } else {
             tabsLoadError.remove(tab.rawValue)
+            tabLoadErrorDetails.removeValue(forKey: tab.rawValue)
         }
     }
 

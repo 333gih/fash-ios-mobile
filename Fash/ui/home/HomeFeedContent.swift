@@ -299,6 +299,7 @@ struct HomeFeedContent: View {
         } else if viewModel.isTabLoadError(viewModel.selectedFeedTab), viewModel.items.isEmpty {
             FashEmptyStateView(
                 title: L10n.feedLoadError,
+                subtitle: viewModel.tabLoadErrorDetail(for: viewModel.selectedFeedTab),
                 actionTitle: L10n.feedRetry
             ) {
                 viewModel.retryTab(viewModel.selectedFeedTab, deps: deps, isGuestMode: isGuestMode)
