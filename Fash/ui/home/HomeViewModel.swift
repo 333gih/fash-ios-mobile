@@ -381,18 +381,20 @@ final class HomeViewModel {
         var succeeded = false
         defer {
             // Ignore stale completions after ensureTabLoaded / continueLaunch advanced the generation.
-            guard tabLoadGeneration[tab.rawValue] == generation else { return }
-            if Task.isCancelled {
-                // Response may have landed before cancel was observed — keep successful data.
-                if succeeded || !itemsForTab(tab).isEmpty {
-                    finishTabLoad(tab, succeeded: true)
+            // Use if (not guard-return) — Swift forbids transferring control out of defer.
+            if tabLoadGeneration[tab.rawValue] == generation {
+                if Task.isCancelled {
+                    // Response may have landed before cancel was observed — keep successful data.
+                    if succeeded || !itemsForTab(tab).isEmpty {
+                        finishTabLoad(tab, succeeded: true)
+                    } else {
+                        clearTabLoadingWithoutMarkingLoaded(tab)
+                    }
                 } else {
-                    clearTabLoadingWithoutMarkingLoaded(tab)
+                    finishTabLoad(tab, succeeded: succeeded)
                 }
-            } else {
-                finishTabLoad(tab, succeeded: succeeded)
+                tabLoadTasks[tab.rawValue] = nil
             }
-            tabLoadTasks[tab.rawValue] = nil
         }
         succeeded = await loadTab(tab, deps: deps, isGuestMode: isGuestMode, force: force)
     }
