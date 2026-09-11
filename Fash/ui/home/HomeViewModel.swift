@@ -149,6 +149,8 @@ final class HomeViewModel {
             if items.isEmpty {
                 ensureTabLoaded(.huntToday, deps: deps, isGuestMode: true, force: false)
             }
+            // Hunt Today may already be warm from launch — still ensure the featured rail.
+            ensureFeaturedSellersLoaded(deps: deps, isGuestMode: true)
             return
         }
         if !forceReset,
@@ -156,6 +158,7 @@ final class HomeViewModel {
            sections.huntToday.isEmpty,
            !tabsLoadError.contains(HomeFeedTabKeys.huntToday) {
             normalizeSelectedFeedTab(isGuestMode: true, deps: deps)
+            ensureFeaturedSellersLoaded(deps: deps, isGuestMode: true)
             return
         }
         let needsErrorRecovery = !forceReset
@@ -169,8 +172,10 @@ final class HomeViewModel {
                 normalizeSelectedFeedTab(isGuestMode: true, deps: deps)
                 ensureTabLoaded(.huntToday, deps: deps, isGuestMode: true, force: false)
             }
+            ensureFeaturedSellersLoaded(deps: deps, isGuestMode: true)
             return
         }
+        // Stale-while-revalidate — keep any warm featured rail visible (Android onGuestBrowseEntered).
         if featuredSellers.isEmpty {
             featuredSellersLoading = true
         }
@@ -183,7 +188,6 @@ final class HomeViewModel {
         selectedFeedTabKey = HomeFeedTabKeys.huntToday
         items = []
         errorMessage = nil
-        featuredSellers = []
         followingWindow.reset(with: [])
         followingItemIds = []
         followingNextCursor = nil
@@ -192,6 +196,14 @@ final class HomeViewModel {
         buyerStats = BuyerHomeStats()
         showSizingBanner = false
         ensureTabLoaded(.huntToday, deps: deps, isGuestMode: true, force: true)
+        Task { await loadFeaturedSellers(deps: deps, isGuestMode: true) }
+    }
+
+    /// Kick public/auth featured-sellers fetch when the rail is empty and not already loading.
+    func ensureFeaturedSellersLoaded(deps: AppDependencies, isGuestMode: Bool) {
+        guard featuredSellers.isEmpty, !featuredSellersLoading else { return }
+        featuredSellersLoading = true
+        Task { await loadFeaturedSellers(deps: deps, isGuestMode: isGuestMode) }
     }
 
     func clearCachesForSignedOutUser(deps: AppDependencies) {
@@ -345,7 +357,9 @@ final class HomeViewModel {
         }
         switch await fetchFeaturedSellersWithRetry(deps: deps, isGuestMode: isGuestMode) {
         case .success(let sellers):
-            featuredSellers = FeaturedSellerItem.shopReady(sellers)
+            let ready = FeaturedSellerItem.shopReady(sellers)
+            // Prefer shop-ready rows; if the API returned only sparse profiles, still show the rail.
+            featuredSellers = ready.isEmpty ? sellers : ready
         case .failure:
             break
         }
@@ -410,14 +424,25 @@ final class HomeViewModel {
             tabsLoadStalled.remove(tab.rawValue)
             setTabLoading(tab, false)
             syncItemsForSelectedTab()
+            ensureFeaturedSellersLoaded(deps: deps, isGuestMode: isGuestMode)
             return
         }
-        if loadedTabs.contains(tab.rawValue) { return }
+        if loadedTabs.contains(tab.rawValue) {
+            ensureFeaturedSellersLoaded(deps: deps, isGuestMode: isGuestMode)
+            return
+        }
         // In-flight awaitLaunchReady / ensureTabLoaded — do not force-cancel and restart.
-        if tabsLoading.contains(tab.rawValue) { return }
-        if let existing = tabLoadTasks[tab.rawValue], !existing.isCancelled { return }
+        if tabsLoading.contains(tab.rawValue) {
+            ensureFeaturedSellersLoaded(deps: deps, isGuestMode: isGuestMode)
+            return
+        }
+        if let existing = tabLoadTasks[tab.rawValue], !existing.isCancelled {
+            ensureFeaturedSellersLoaded(deps: deps, isGuestMode: isGuestMode)
+            return
+        }
         isShellLoading = false
         ensureTabLoaded(tab, deps: deps, isGuestMode: isGuestMode, force: true)
+        ensureFeaturedSellersLoaded(deps: deps, isGuestMode: isGuestMode)
     }
 
     /// End of maintenance — drop hung in-flight flags and fetch a fresh Home.

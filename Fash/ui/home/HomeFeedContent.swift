@@ -186,7 +186,10 @@ struct HomeFeedContent: View {
         .task {
             viewModel.normalizeSelectedFeedTab(isGuestMode: isGuestMode, deps: deps)
             // Guest shell load is owned by launch warmup + onGuestBrowseEntered (Android parity).
-            guard !isGuestMode else { return }
+            if isGuestMode {
+                viewModel.ensureFeaturedSellersLoaded(deps: deps, isGuestMode: true)
+                return
+            }
             await viewModel.loadShell(deps: deps, isGuestMode: isGuestMode, skipIfFresh: true)
         }
         .task(id: viewModel.selectedFeedTabKey) {
@@ -245,7 +248,9 @@ struct HomeFeedContent: View {
                     onSellerClick: onFeaturedSellerClick,
                     onSeeAllClick: onOpenFeaturedSellersAll
                 )
-            } else if viewModel.featuredSellersLoading {
+            } else if viewModel.featuredSellersLoading
+                || (isGuestMode && viewModel.isShellLoading && viewModel.featuredSellers.isEmpty) {
+                // Guest: reserve rail while shell warms so tabs are never the first row (Android parity).
                 HomeRecommendedSellersSkeleton()
             }
 
