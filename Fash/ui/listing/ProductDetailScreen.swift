@@ -234,6 +234,7 @@ struct ProductDetailScreen: View {
         }
     }
 
+    @ViewBuilder
     private func messageButton(outlined: Bool) -> some View {
         let resolvedListingId = viewModel.detail?.id ?? listingId
         let hasExisting = deps.conversationIdForListing(resolvedListingId) != nil
@@ -272,6 +273,7 @@ struct ProductDetailScreen: View {
         .disabled(viewModel.isOpeningChat)
     }
 
+    @ViewBuilder
     private var saveNudge: some View {
         let resolvedListingId = viewModel.detail?.id ?? listingId
         let hasExisting = deps.conversationIdForListing(resolvedListingId) != nil
