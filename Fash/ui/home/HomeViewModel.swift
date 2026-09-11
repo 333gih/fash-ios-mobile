@@ -31,6 +31,8 @@ final class HomeViewModel {
     var tabsLoadStalled: Set<String> = []
     /// Per-tab failure detail for empty-state subtitle (network / HTTP / parse).
     private var tabLoadErrorDetails: [String: String] = [:]
+    /// Sticky flag — once guest browse is entered, keep using public APIs even if a caller passes isGuestMode=false.
+    private(set) var preferPublicBrowse = false
     var followingHasMore = false
     var isLoadingMoreFollowing = false
     var buyerStats = BuyerHomeStats()
@@ -139,6 +141,8 @@ final class HomeViewModel {
     }
 
     func onGuestBrowseEntered(deps: AppDependencies, forceReset: Bool = true) {
+        preferPublicBrowse = true
+        deps.isGuestBrowseActive = true
         if !forceReset,
            loadedTabs.contains(HomeFeedTabKeys.huntToday),
            !sections.huntToday.isEmpty {
@@ -207,6 +211,8 @@ final class HomeViewModel {
     }
 
     func clearCachesForSignedOutUser(deps: AppDependencies) {
+        preferPublicBrowse = true
+        deps.isGuestBrowseActive = true
         deps.uxTabTracker.closeActiveTab()
         deps.uxTabTracker.flush()
         deps.feedEventReporter.flush()
@@ -219,6 +225,17 @@ final class HomeViewModel {
         showSizingBanner = false
         HomeSizingBannerPreference.reset()
         lastSuccessfulRefreshAt = nil
+    }
+
+    /// Call after a successful login so Home stops using public browse attestation.
+    func clearGuestBrowsePreference() {
+        preferPublicBrowse = false
+    }
+
+    /// Prefer public browse for guest UI, sticky guest flag, or missing auth session (avoids 401 "Cần đăng nhập").
+    private func resolvePublicBrowse(_ isGuestMode: Bool, deps: AppDependencies) -> Bool {
+        if isGuestMode || preferPublicBrowse || deps.isGuestBrowseActive { return true }
+        return deps.authSessionStore.read() == nil
     }
 
     func selectFeedTab(_ tab: HomeFeedTab, deps: AppDependencies, isGuestMode: Bool) {
@@ -275,6 +292,10 @@ final class HomeViewModel {
         isGuestMode: Bool,
         launchProgress: LaunchWaitingProgress? = nil
     ) async {
+        if isGuestMode {
+            preferPublicBrowse = true
+            deps.isGuestBrowseActive = true
+        }
         normalizeSelectedFeedTab(isGuestMode: isGuestMode, deps: deps)
         await awaitSelectedFeedTab(deps: deps, isGuestMode: isGuestMode, force: true)
         launchProgress?.completeHomeStep()
@@ -370,7 +391,10 @@ final class HomeViewModel {
         isGuestMode: Bool
     ) async -> Result<[FeaturedSellerItem], Error> {
         func fetchOnce() async -> Result<[FeaturedSellerItem], Error> {
-            await deps.searchRepository.getFeaturedSellers(limit: 12, publicBrowse: isGuestMode)
+            await deps.searchRepository.getFeaturedSellers(
+                limit: 12,
+                publicBrowse: resolvePublicBrowse(isGuestMode, deps: deps)
+            )
         }
         var result = await fetchOnce()
         if case .failure = result {
@@ -965,18 +989,19 @@ final class HomeViewModel {
 
     private func loadHuntTodayTab(deps: AppDependencies, isGuestMode: Bool, force: Bool) async -> Bool {
         if !force && loadedTabs.contains(HomeFeedTabKeys.huntToday) { return true }
-        if !isGuestMode && recommendationSectionsFetched && !sections.huntToday.isEmpty {
+        if !isGuestMode && !preferPublicBrowse && recommendationSectionsFetched && !sections.huntToday.isEmpty {
             if selectedFeedTab == .huntToday { syncItemsForSelectedTab() }
             return true
         }
+        let publicBrowse = resolvePublicBrowse(isGuestMode, deps: deps)
         var result = await deps.recommendationRepository.exploreListings(
-            publicBrowse: isGuestMode,
+            publicBrowse: publicBrowse,
             limit: sectionLimit(for: .huntToday, fallback: HomeFeedConstants.huntTodayLimit),
             offset: 0,
-            sizingMode: huntTodaySizingMode(isGuestMode: isGuestMode),
+            sizingMode: huntTodaySizingMode(isGuestMode: publicBrowse),
             surface: HomeFeedTab.huntToday.analyticsSurface
         )
-        if case .failure = result, isGuestMode {
+        if case .failure = result, publicBrowse || PublicBrowseHttp.isConfigured {
             guard !Task.isCancelled else { return false }
             do {
                 try await Task.sleep(for: .milliseconds(400))
@@ -1026,11 +1051,12 @@ final class HomeViewModel {
                 sectionLoadMoreTasks[tab.rawValue] = nil
                 setTabLoadingMore(tab, false)
             }
+            let publicBrowse = resolvePublicBrowse(isGuestMode, deps: deps)
             let result = await deps.recommendationRepository.exploreListings(
-                publicBrowse: isGuestMode,
+                publicBrowse: publicBrowse,
                 limit: HomeFeedConstants.tabLoadMorePageSize,
                 offset: offset,
-                sizingMode: huntTodaySizingMode(isGuestMode: isGuestMode),
+                sizingMode: huntTodaySizingMode(isGuestMode: publicBrowse),
                 surface: tab.analyticsSurface
             )
             guard selectedFeedTab == tab else { return }
@@ -1178,12 +1204,13 @@ final class HomeViewModel {
         let forYouLimit = sectionLimit(for: .forYou, fallback: 16)
         let seasonalLimit = sectionLimit(for: .seasonalNearYou, fallback: 12)
         let huntLimit = sectionLimit(for: .huntToday, fallback: HomeFeedConstants.huntTodayLimit)
+        let publicBrowse = resolvePublicBrowse(isGuestMode, deps: deps)
         let result = await deps.recommendationRepository.homeSections(
-            publicBrowse: isGuestMode,
+            publicBrowse: publicBrowse,
             huntTodayLimit: huntLimit,
             forYouLimit: forYouLimit,
             sectionLimit: max(styleLimit, similarLimit),
-            sizingMode: huntTodaySizingMode(isGuestMode: isGuestMode)
+            sizingMode: huntTodaySizingMode(isGuestMode: publicBrowse)
         )
         guard case .success(let loaded) = result else {
             if case .failure(let error) = result {

@@ -212,6 +212,7 @@ struct RootView: View {
                 GuestLocalReengagementScheduler.shared.clearGuestState()
                 router.isGuestMode = false
                 deps.isGuestBrowseActive = false
+                homeVM.clearGuestBrowsePreference()
             }
         }
         .onChange(of: scenePhase) { _, phase in
@@ -715,6 +716,7 @@ struct RootView: View {
         }
         router.isGuestMode = false
         deps.isGuestBrowseActive = false
+        homeVM.clearGuestBrowsePreference()
         var accessStatus: UserAccessStatus?
         for attempt in 0..<4 {
             if case .success(let status) = await deps.userRepository.getUserAccessStatus() {

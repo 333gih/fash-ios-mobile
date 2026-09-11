@@ -18,6 +18,9 @@ enum SignedInShellCacheReset {
         guard accountChanged || freshLogin else { return }
 
         homeVM.clearCachesForSignedOutUser(deps: deps)
+        // clearCachesForSignedOutUser arms guest browse; undo for authenticated session.
+        homeVM.clearGuestBrowsePreference()
+        deps.isGuestBrowseActive = false
         profileVM.clearCachedProfile(deps: deps)
         chatVM.clearCachesForSignedOutUser()
         exploreVM.resetSessionOnOverlayClose()

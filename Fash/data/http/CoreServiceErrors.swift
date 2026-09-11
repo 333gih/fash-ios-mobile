@@ -41,6 +41,15 @@ enum CoreServiceErrors {
                     retryAfterSeconds: retryAfter
                 )
             }
+            // core-service PublicBrowseClientGuard / FastAPI-style errors
+            if let detail = json["detail"] as? String, !detail.isEmpty {
+                return ServiceError(
+                    httpCode: statusCode,
+                    code: normalizedCode(code, httpCode: statusCode),
+                    message: detail,
+                    retryAfterSeconds: retryAfter
+                )
+            }
         }
         let fallback = fallbackMessage(statusCode)
         return ServiceError(
