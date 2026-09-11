@@ -253,8 +253,12 @@ final class ProductDetailViewModel {
         }
     }
 
-    func openChat(deps: AppDependencies) async -> String? {
+    func openChat(deps: AppDependencies, existingConversationId: String? = nil) async -> String? {
         guard let item = detail else { return nil }
+        if let existing = existingConversationId?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !existing.isEmpty {
+            return existing
+        }
         isOpeningChat = true
         defer { isOpeningChat = false }
         reportChatInitiate(deps: deps)

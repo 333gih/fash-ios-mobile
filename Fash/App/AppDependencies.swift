@@ -58,6 +58,56 @@ final class AppDependencies {
         set { browseSessionStore.isGuestBrowseActive = newValue }
     }
 
+    /// listingId (lowercased) → conversationId from last chat inbox fetch.
+    private(set) var chatListingConversationIds: [String: String] = [:]
+
+    func updateChatListingConversationIndex(
+        flat: [ConversationItem] = [],
+        groups: [ConversationListingGroup] = []
+    ) {
+        var map: [String: String] = [:]
+        for item in flat {
+            let pid = item.productId.trimmingCharacters(in: .whitespacesAndNewlines)
+            let cid = item.conversationId.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !pid.isEmpty, !cid.isEmpty else { continue }
+            map[pid.lowercased()] = cid
+        }
+        for group in groups {
+            let lid = group.listingId.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !lid.isEmpty, let first = group.conversations.first {
+                let cid = first.conversationId.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !cid.isEmpty { map[lid.lowercased()] = cid }
+            }
+            for item in group.conversations {
+                let pid = item.productId.trimmingCharacters(in: .whitespacesAndNewlines)
+                let cid = item.conversationId.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !pid.isEmpty, !cid.isEmpty else { continue }
+                map[pid.lowercased()] = cid
+            }
+        }
+        chatListingConversationIds = map
+    }
+
+    func conversationIdForListing(_ listingId: String) -> String? {
+        let key = listingId.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !key.isEmpty else { return nil }
+        return chatListingConversationIds[key]
+    }
+
+    /// Remember a listing↔conversation mapping immediately after startConversation (before inbox refresh).
+    func rememberChatListingConversation(listingId: String, conversationId: String) {
+        let lid = listingId.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cid = conversationId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !lid.isEmpty, !cid.isEmpty else { return }
+        var next = chatListingConversationIds
+        next[lid.lowercased()] = cid
+        chatListingConversationIds = next
+    }
+
+    func clearChatListingConversationIndex() {
+        chatListingConversationIds = [:]
+    }
+
     // Pending deep links / signals (Android MutableStateFlow equivalents)
     var pendingDeepLinkListingId: String?
     var pendingDeepLinkSellerUsername: String?

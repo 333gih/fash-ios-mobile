@@ -6,6 +6,8 @@ struct ExploreListingPreviewSheet: View {
     let detail: ListingPreviewDetail?
     let isDetailLoading: Bool
     let isGuestMode: Bool
+    /// When true, show "Mở chat" instead of first-contact Message copy.
+    var hasExistingConversation: Bool = false
     var onViewDetail: () -> Void
     var onLike: () -> Void
     var onSave: () -> Void
@@ -489,7 +491,10 @@ struct ExploreListingPreviewSheet: View {
     }
 
     private var messageButtonTitle: String {
-        buyNowEnabled ? L10n.explorePreviewMessageSeller : L10n.productChat
+        if hasExistingConversation {
+            return L10n.notificationActionOpenChat
+        }
+        return buyNowEnabled ? L10n.explorePreviewMessageSeller : L10n.productChat
     }
 
     private var sellerUsername: String {

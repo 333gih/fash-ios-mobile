@@ -91,6 +91,11 @@ final class ChatViewModel {
 
         if fetchSucceeded {
             lastSuccessfulInboxFetchMs = DispatchTime.now().uptimeNanoseconds / 1_000_000
+            if isGroupedInbox() {
+                deps.updateChatListingConversationIndex(groups: conversationGroups)
+            } else {
+                deps.updateChatListingConversationIndex(flat: allConversations)
+            }
         }
         await refreshUnreadCount(deps: deps)
     }
@@ -129,13 +134,17 @@ final class ChatViewModel {
                 }
                 syncConversationRoomSubscriptions(deps: deps, from: groups.flatMap(\.conversations))
                 applyCurrentViewFilter()
+                deps.updateChatListingConversationIndex(groups: groups)
                 loadError = false
+                lastSuccessfulInboxFetchMs = DispatchTime.now().uptimeNanoseconds / 1_000_000
             }
         } else if case .success(let list) = await deps.chatRepository.getConversations() {
             allConversations = list
             applyCurrentViewFilter()
             syncConversationRoomSubscriptions(deps: deps, from: list)
+            deps.updateChatListingConversationIndex(flat: list)
             loadError = false
+            lastSuccessfulInboxFetchMs = DispatchTime.now().uptimeNanoseconds / 1_000_000
         }
     }
 
@@ -222,6 +231,7 @@ final class ChatViewModel {
         sellerHasActiveListings = false
         sellerInboxGroupMode = .allConversations
         selectedFilter = .all
+        AppDependencies.shared.clearChatListingConversationIndex()
         AppDependencies.shared.updateChatUnreadSnapshot(total: 0, perConversation: [:])
     }
 
@@ -329,6 +339,33 @@ final class ChatViewModel {
             return peerLabel(for: item)
         }
         return nil
+    }
+
+    /// Existing thread for a listing (inbox cache). Nil until inbox has been loaded.
+    func conversationId(forListingId listingId: String) -> String? {
+        let lid = listingId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !lid.isEmpty else { return nil }
+        if let item = allConversations.first(where: {
+            $0.productId.compare(lid, options: .caseInsensitive) == .orderedSame
+        }) {
+            return item.conversationId
+        }
+        if let item = conversationGroups
+            .flatMap(\.conversations)
+            .first(where: { $0.productId.compare(lid, options: .caseInsensitive) == .orderedSame }) {
+            return item.conversationId
+        }
+        // Grouped inbox keys by listing id.
+        if let group = conversationGroups.first(where: {
+            $0.listingId.compare(lid, options: .caseInsensitive) == .orderedSame
+        }), let first = group.conversations.first {
+            return first.conversationId
+        }
+        return nil
+    }
+
+    func hasConversation(forListingId listingId: String) -> Bool {
+        conversationId(forListingId: listingId) != nil
     }
 
     private func peerLabel(for item: ConversationItem) -> String? {

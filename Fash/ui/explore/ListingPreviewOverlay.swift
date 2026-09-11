@@ -9,6 +9,8 @@ struct ListingPreviewOverlay: View {
     var onRequestLogin: (() -> Void)?
     var onFeedEngagementPatch: ((String, (ListingFeedItem) -> ListingFeedItem) -> Void)? = nil
 
+    @State private var isOpeningChat = false
+
     var body: some View {
         ZStack(alignment: .bottom) {
             if listingPreview.isOverlayVisible {
@@ -19,20 +21,22 @@ struct ListingPreviewOverlay: View {
 
                 if let preview = listingPreview.state {
                     let sheetHeight = max(screenHeight / 3, 240)
+                    let listingId = preview.feedItem.id
+                    let hasExisting = deps.conversationIdForListing(listingId) != nil
                     ExploreListingPreviewSheet(
                         feedItem: preview.feedItem,
                         detail: preview.detail,
                         isDetailLoading: preview.isDetailLoading,
                         isGuestMode: isGuestMode,
+                        hasExistingConversation: hasExisting,
                         onViewDetail: {
                             listingPreview.openDetail(deps: deps)
-                            deps.presentListingDetail(listingId: preview.feedItem.id, router: router)
+                            deps.presentListingDetail(listingId: listingId, router: router)
                         },
                         onLike: { Task { await toggleLike(preview) } },
                         onSave: { Task { await toggleSave(preview) } },
                         onMessageSeller: {
-                            listingPreview.openDetail(deps: deps)
-                            deps.presentListingDetail(listingId: preview.feedItem.id, router: router)
+                            Task { await openChat(listingId: listingId) }
                         },
                         onOpenSeller: {
                             let username = previewSellerUsername(preview)
@@ -53,6 +57,7 @@ struct ListingPreviewOverlay: View {
                     .shadow(color: .black.opacity(0.2), radius: 12, y: -4)
                     .padding(.bottom, 4)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .disabled(isOpeningChat)
                 }
             }
         }
@@ -65,6 +70,26 @@ struct ListingPreviewOverlay: View {
         UIApplication.shared.connectedScenes
             .compactMap { ($0 as? UIWindowScene)?.screen.bounds.height }
             .first ?? 800
+    }
+
+    private func openChat(listingId: String) async {
+        guard !isOpeningChat else { return }
+        isOpeningChat = true
+        defer { isOpeningChat = false }
+        if let existing = deps.conversationIdForListing(listingId) {
+            listingPreview.close(deps: deps, animated: true)
+            router.selectedConversationId = existing
+            return
+        }
+        switch await deps.chatRepository.startConversation(listingId: listingId) {
+        case .success(let convId):
+            listingPreview.close(deps: deps, animated: true)
+            deps.rememberChatListingConversation(listingId: listingId, conversationId: convId)
+            deps.chatInboxRefreshGeneration &+= 1
+            router.selectedConversationId = convId
+        case .failure(let error):
+            deps.showSnackbar(FashErrorPresentation.userMessage(for: error))
+        }
     }
 
     private func previewSellerUsername(_ preview: ExploreListingPreviewState) -> String {

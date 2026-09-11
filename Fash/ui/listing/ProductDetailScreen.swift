@@ -235,17 +235,26 @@ struct ProductDetailScreen: View {
     }
 
     private func messageButton(outlined: Bool) -> some View {
+        let resolvedListingId = viewModel.detail?.id ?? listingId
+        let hasExisting = deps.conversationIdForListing(resolvedListingId) != nil
         Button {
             guestGate(L10n.guestLoginReasonChat) {
                 Task {
-                    if let convId = await viewModel.openChat(deps: deps) { onChat(convId) }
+                    if let convId = await viewModel.openChat(
+                        deps: deps,
+                        existingConversationId: deps.conversationIdForListing(resolvedListingId)
+                    ) {
+                        deps.rememberChatListingConversation(listingId: resolvedListingId, conversationId: convId)
+                        deps.chatInboxRefreshGeneration &+= 1
+                        onChat(convId)
+                    }
                 }
             }
         } label: {
             HStack {
                 if viewModel.isOpeningChat { ProgressView().scaleEffect(0.8) }
                 Image(systemName: "message")
-                Text(L10n.productChat)
+                Text(hasExisting ? L10n.notificationActionOpenChat : L10n.productChat)
             }
             .font(FashTypography.labelLarge.weight(.semibold))
             .foregroundStyle(outlined ? FashColors.brandPrimary : FashColors.onBrandPrimary)
@@ -264,14 +273,25 @@ struct ProductDetailScreen: View {
     }
 
     private var saveNudge: some View {
+        let resolvedListingId = viewModel.detail?.id ?? listingId
+        let hasExisting = deps.conversationIdForListing(resolvedListingId) != nil
         HStack {
             Text(L10n.productSaveNudge)
                 .font(FashTypography.bodySmall)
             Spacer()
-            Button(L10n.productSaveNudgeCta) {
+            Button(hasExisting ? L10n.notificationActionOpenChat : L10n.productSaveNudgeCta) {
                 guestGate(L10n.guestLoginReasonChat) {
                     showSaveNudge = false
-                    Task { if let convId = await viewModel.openChat(deps: deps) { onChat(convId) } }
+                    Task {
+                        if let convId = await viewModel.openChat(
+                            deps: deps,
+                            existingConversationId: deps.conversationIdForListing(resolvedListingId)
+                        ) {
+                            deps.rememberChatListingConversation(listingId: resolvedListingId, conversationId: convId)
+                            deps.chatInboxRefreshGeneration &+= 1
+                            onChat(convId)
+                        }
+                    }
                 }
             }
             .font(FashTypography.labelMedium.weight(.semibold))
