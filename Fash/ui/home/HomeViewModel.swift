@@ -1001,7 +1001,7 @@ final class HomeViewModel {
             sizingMode: huntTodaySizingMode(isGuestMode: publicBrowse),
             surface: HomeFeedTab.huntToday.analyticsSurface
         )
-        if case .failure = result, publicBrowse || PublicBrowseHttp.isConfigured {
+        if case .failure = result, publicBrowse {
             guard !Task.isCancelled else { return false }
             do {
                 try await Task.sleep(for: .milliseconds(400))
