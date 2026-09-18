@@ -13,6 +13,7 @@ enum RealtimeEvent: Equatable {
         messageType: String,
         systemSubtype: String?
     )
+    case messageDeleted(conversationId: String, messageId: String, deletedById: String)
     case readReceipts(conversationId: String, readerId: String, notifyUserId: String)
     case typingStart(conversationId: String, userId: String)
     case typingStop(conversationId: String, userId: String)
@@ -63,6 +64,12 @@ enum RealtimeEvent: Equatable {
                 preview: field("preview", "Preview"),
                 messageType: msgTypeRaw.isEmpty ? "text" : msgTypeRaw,
                 systemSubtype: sys.isEmpty ? nil : sys
+            )
+        case "message.deleted":
+            return .messageDeleted(
+                conversationId: field("conversation_id", "ConversationID", "conversationId"),
+                messageId: field("message_id", "MessageID", "messageId"),
+                deletedById: field("deleted_by_id", "DeletedByID", "deletedById")
             )
         case "read.receipts", "read.ack":
             return .readReceipts(

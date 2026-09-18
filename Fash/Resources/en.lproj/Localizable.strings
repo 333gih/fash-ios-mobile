@@ -188,6 +188,7 @@
 "chat_deal_payment_deadline_warning_seller" = "The buyer should complete checkout in the app soon — expired holds may be cancelled.";
 "chat_deal_schedule_meetup_cta" = "Schedule meetup";
 "chat_deal_sos_unlocked_hint" = "Both parties checked in at the meetup — safety / SOS options may be available on the order screen if needed.";
+"chat_message_deleted" = "This message was deleted.";
 "chat_delete_message_body" = "This message will be deleted. You can only delete within 5 minutes.";
 "chat_delete_message_confirm" = "Delete";
 "chat_delete_message_title" = "Delete message";

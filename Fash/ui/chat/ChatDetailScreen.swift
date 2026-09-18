@@ -429,6 +429,9 @@ private struct ChatDetailScreenBody: View {
 
     @ViewBuilder
     private func messageRow(_ message: ChatMessage) -> some View {
+        if message.isDeleted {
+            deletedMessageBubble(message)
+        } else {
         let isBuyer = viewModel.detail?.isBuyer == true
         switch message.messageType {
         case "offer", "counter_offer":
@@ -506,6 +509,29 @@ private struct ChatDetailScreenBody: View {
                 textBubble(message)
             }
         }
+        } // end else (not deleted)
+    }
+
+    private func deletedMessageBubble(_ message: ChatMessage) -> some View {
+        HStack {
+            if message.isFromMe { Spacer(minLength: 48) }
+            Text(L10n.chatMessageDeleted)
+                .font(FashTypography.bodyMedium)
+                .italic()
+                .foregroundStyle(FashColors.textSecondary)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(FashColors.surfaceContainerLow)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .strokeBorder(FashColors.outline, lineWidth: 1)
+                        )
+                )
+            if !message.isFromMe { Spacer(minLength: 48) }
+        }
+        .padding(.horizontal, 16)
     }
 
     private func textBubble(_ message: ChatMessage) -> some View {

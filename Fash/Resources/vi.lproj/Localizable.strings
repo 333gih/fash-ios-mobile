@@ -188,6 +188,7 @@
 "chat_deal_payment_deadline_warning_seller" = "Người mua cần hoàn tất sớm trên ứng dụng — đơn quá hạn có thể bị hủy.";
 "chat_deal_schedule_meetup_cta" = "Đặt lịch gặp";
 "chat_deal_sos_unlocked_hint" = "Cả hai đã check-in tại điểm hẹn — có thể dùng tùy chọn an toàn / SOS trên màn hình đơn hàng nếu cần.";
+"chat_message_deleted" = "Tin nhắn này đã bị xóa.";
 "chat_delete_message_body" = "Tin nhắn sẽ bị xóa. Chỉ có thể xóa trong vòng 5 phút.";
 "chat_delete_message_confirm" = "Xóa";
 "chat_delete_message_title" = "Xóa tin nhắn";

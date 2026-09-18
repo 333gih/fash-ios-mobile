@@ -750,6 +750,9 @@ final class ChatDetailViewModel {
                 ) {
                     scheduleSilentRefresh(conversationId: conversationId, deps: deps)
                 }
+            case .messageDeleted(let cid, let messageId, _):
+                guard sameConversation(eventConvId: cid, openConvId: conversationId) else { return }
+                applyMessageDeletedFromRealtime(messageId: messageId)
             case .readReceipts(let cid, _, _):
                 guard sameConversation(eventConvId: cid, openConvId: conversationId) else { return }
                 scheduleSilentRefresh(conversationId: conversationId, deps: deps)
@@ -859,6 +862,26 @@ final class ChatDetailViewModel {
         let lid = detail?.product?.listingId.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let eventId = listingId.trimmingCharacters(in: .whitespacesAndNewlines)
         return !lid.isEmpty && lid.compare(eventId, options: .caseInsensitive) == .orderedSame
+    }
+
+    private func applyMessageDeletedFromRealtime(messageId: String) {
+        guard let idx = messages.firstIndex(where: { $0.messageId == messageId }) else { return }
+        messages[idx] = ChatMessage(
+            messageId: messages[idx].messageId,
+            text: messages[idx].text,
+            isFromMe: messages[idx].isFromMe,
+            timestamp: messages[idx].timestamp,
+            isRead: messages[idx].isRead,
+            senderId: messages[idx].senderId,
+            messageType: messages[idx].messageType,
+            offerAmountVnd: messages[idx].offerAmountVnd,
+            offerStatus: messages[idx].offerStatus,
+            outboundState: messages[idx].outboundState,
+            systemSubtype: messages[idx].systemSubtype,
+            meetingAppointment: messages[idx].meetingAppointment,
+            orderCancelled: messages[idx].orderCancelled,
+            isDeleted: true
+        )
     }
 
     private func applyConversationClosedFromRealtime(conversationId: String, deps: AppDependencies) {

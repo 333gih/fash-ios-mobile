@@ -210,6 +210,7 @@ enum L10n {
     static var chatDealPaymentDeadlineWarningSeller: String { t("chat_deal_payment_deadline_warning_seller") }
     static var chatDealScheduleMeetupCta: String { t("chat_deal_schedule_meetup_cta") }
     static var chatDealSosUnlockedHint: String { t("chat_deal_sos_unlocked_hint") }
+    static var chatMessageDeleted: String { t("chat_message_deleted") }
     static var chatDeleteMessageBody: String { t("chat_delete_message_body") }
     static var chatDeleteMessageConfirm: String { t("chat_delete_message_confirm") }
     static var chatDeleteMessageTitle: String { t("chat_delete_message_title") }

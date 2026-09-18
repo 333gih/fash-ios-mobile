@@ -95,6 +95,7 @@ struct ChatMessage: Identifiable, Equatable {
     let systemSubtype: String?
     let meetingAppointment: MeetingAppointmentPayload?
     let orderCancelled: OrderCancelledChatPayload?
+    var isDeleted: Bool = false
 
     var isOfferType: Bool {
         messageType == "offer" || messageType == "counter_offer"
