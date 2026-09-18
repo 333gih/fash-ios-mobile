@@ -14,46 +14,33 @@ enum FeedListingImagePrefetch {
     static func prefetch(items: [ListingFeedItem], columnWidthPoints: CGFloat? = nil) {
         let colW = columnWidthPoints ?? defaultColumnWidthPoints()
         let scale = UIScreen.main.scale
-        
-        let resources: [Kingfisher.ImageResource] = items.prefix(maxItems).compactMap { item -> Kingfisher.ImageResource? in
+
+        // Prefetch using per-item KingfisherManager calls (not ImagePrefetcher) so each
+        // request gets the correct per-item DownsamplingImageProcessor size.
+        // Cache key: Kingfisher defaults to url.absoluteString — this matches exactly what
+        // KFImage uses at display time (no custom cacheKey), so prefetched images are found.
+        for item in items.prefix(maxItems) {
             let raw = item.coverImageUrl.trimmingCharacters(in: .whitespaces)
             let path = raw.isEmpty ? (item.imageUrls.first ?? "") : raw
-            guard !path.isEmpty else { return nil }
+            guard !path.isEmpty else { continue }
             let ratio = ListingMasonryGrid.masonryAspectRatio(for: item)
             let feedUrl = FeedListingImageSizer.urlForFeedGrid(
                 path,
                 columnWidthPoints: colW,
                 aspectRatio: ratio
             )
-            guard !feedUrl.isEmpty, let url = URL(string: feedUrl) else { return nil }
-            
-            // Match the cache key used by FashAsyncImage display
-            let pixelSize = FeedListingImageSizer.pixelSize(
+            guard !feedUrl.isEmpty, let url = URL(string: feedUrl) else { continue }
+            let px = FeedListingImageSizer.pixelSize(
                 columnWidthPoints: colW,
                 aspectRatio: ratio,
                 scale: scale
             )
-            let cacheKey = "feed_\(item.id)_\(Int(colW))_\(Int(pixelSize.width))x\(Int(pixelSize.height))"
-            
-            return Kingfisher.ImageResource(downloadURL: url, cacheKey: cacheKey)
-        }
-        
-        guard !resources.isEmpty else { return }
-        
-        // Use the same processor and options as FashAsyncImage
-        let targetSize = FeedListingImageSizer.pixelSize(
-            columnWidthPoints: colW,
-            aspectRatio: 1.0, // Average aspect ratio for processor init
-            scale: scale
-        )
-        
-        ImagePrefetcher(
-            resources: resources,
-            options: [
-                .processor(DownsamplingImageProcessor(size: targetSize)),
+            let options: KingfisherOptionsInfo = [
+                .processor(DownsamplingImageProcessor(size: px)),
                 .scaleFactor(scale),
-                .cacheOriginalImage
+                .backgroundDecode
             ]
-        ).start()
+            KingfisherManager.shared.retrieveImage(with: url, options: options, completionHandler: nil)
+        }
     }
 }

@@ -11,9 +11,21 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
     @ViewBuilder let cell: (ListingFeedItem, Int) -> Cell
 
     @State private var layout: ListingMasonryColumnLayout = .empty
+    @State private var perChunkLayout: [String: ChunkColumns] = [:]
     @State private var layoutedItemCount = 0
     @State private var containerWidth: CGFloat = 0
     @State private var layoutRefreshTask: Task<Void, Never>?
+
+    private struct ChunkColumns {
+        let left: [(index: Int, item: ListingFeedItem)]
+        let right: [(index: Int, item: ListingFeedItem)]
+    }
+
+    // O(1) identity check — replaces O(n) items.map(\.id) on every state change.
+    private struct ItemsSignature: Equatable {
+        let count: Int
+        let firstId: String
+    }
 
     private var gap: CGFloat { spacing.spacing2 }
 
@@ -22,6 +34,10 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
             containerWidth: containerWidth > 1 ? containerWidth : UIScreen.main.bounds.width,
             spacing: spacing
         )
+    }
+
+    private var itemsSignature: ItemsSignature {
+        ItemsSignature(count: items.count, firstId: items.first?.id ?? "")
     }
 
     init(
@@ -48,34 +64,16 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
             footer()
         }
         .onAppear { refreshLayout(forceFull: true) }
-        .onChange(of: items.map(\.id)) { oldIds, newIds in
-            guard oldIds != newIds else { return }
-            if Self.isTrailingIdAppend(oldIds: oldIds, newIds: newIds) {
+        .onChange(of: itemsSignature) { old, new in
+            guard old != new else { return }
+            // Count grew and first item is unchanged → trailing pagination append.
+            if new.count > old.count && new.firstId == old.firstId {
                 refreshLayout(forceFull: false)
             } else {
                 refreshLayout(forceFull: true)
             }
         }
-        .onChange(of: engagementLayoutSignature) { _, _ in
-            guard !items.isEmpty else { return }
-            scheduleLayoutRefresh(forceFull: false)
-        }
         .onDisappear { layoutRefreshTask?.cancel() }
-    }
-
-    private var itemsById: [String: ListingFeedItem] {
-        Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0) })
-    }
-
-    /// Like/save toggles keep the same ids — include engagement in layout refresh.
-    private var engagementLayoutSignature: Int {
-        var hasher = Hasher()
-        for item in items {
-            hasher.combine(item.id)
-            hasher.combine(item.isLiked)
-            hasher.combine(item.isSaved)
-        }
-        return hasher.finalize()
     }
 
     private var feedChunks: [ListingMasonryFeedPages.FeedOrderChunk] {
@@ -102,17 +100,12 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
 
     @ViewBuilder
     private func feedChunkRow(_ chunk: ListingMasonryFeedPages.FeedOrderChunk) -> some View {
-        let chunkIds = Set(chunk.entries.map(\.item.id))
         let gap = spacing.spacing2
+        // O(1) dict lookup — perChunkLayout is pre-built in rebuildPerChunkLayout().
+        let cols = perChunkLayout[chunk.id]
         HStack(alignment: .top, spacing: gap) {
-            feedChunkColumn(
-                entries: layout.left.filter { chunkIds.contains($0.item.id) },
-                gap: gap
-            )
-            feedChunkColumn(
-                entries: layout.right.filter { chunkIds.contains($0.item.id) },
-                gap: gap
-            )
+            feedChunkColumn(entries: cols?.left ?? [], gap: gap)
+            feedChunkColumn(entries: cols?.right ?? [], gap: gap)
         }
         .padding(.leading, spacing.editorialStart)
         .padding(.trailing, spacing.editorialEnd)
@@ -125,7 +118,8 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: gap) {
             ForEach(entries, id: \.item.id) { entry in
-                let liveItem = itemsById[entry.item.id] ?? entry.item
+                // O(1) index-based lookup picks up latest like/save state without a dict rebuild.
+                let liveItem = entry.index < items.count ? items[entry.index] : entry.item
                 let tileHeight = ListingMasonryGrid.tileHeight(columnWidth: columnWidth, item: liveItem)
                 cell(liveItem, entry.index)
                     .id(liveItem.id)
@@ -146,15 +140,10 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
         }
     }
 
-    /// Load-more appends rows at the end; tab switches replace the whole id list.
-    private static func isTrailingIdAppend(oldIds: [String], newIds: [String]) -> Bool {
-        guard !oldIds.isEmpty, newIds.count >= oldIds.count else { return false }
-        return Array(newIds.prefix(oldIds.count)) == oldIds
-    }
-
     private func refreshLayout(forceFull: Bool) {
         guard !items.isEmpty else {
             layout = .empty
+            perChunkLayout = [:]
             layoutedItemCount = 0
             return
         }
@@ -176,6 +165,7 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
                 columnAssignments = assignments
             }
             layoutedItemCount = items.count
+            rebuildPerChunkLayout()
             return
         }
 
@@ -195,6 +185,42 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
             columnAssignments = assignments
         }
         layoutedItemCount = items.count
+        rebuildPerChunkLayout()
+    }
+
+    // O(n) single-pass split: assigns each layout entry to its chunk without per-chunk filtering.
+    private func rebuildPerChunkLayout() {
+        let chunks = ListingMasonryFeedPages.feedOrderChunks(items: items, pageSize: chunkSize)
+        // Build itemId → chunkId index in one pass over chunks.
+        var itemToChunk: [String: String] = [:]
+        itemToChunk.reserveCapacity(items.count)
+        for chunk in chunks {
+            for entry in chunk.entries {
+                itemToChunk[entry.item.id] = chunk.id
+            }
+        }
+        // Single pass over layout columns to bucket entries by chunk.
+        var leftByChunk: [String: [(index: Int, item: ListingFeedItem)]] = [:]
+        var rightByChunk: [String: [(index: Int, item: ListingFeedItem)]] = [:]
+        for entry in layout.left {
+            if let cid = itemToChunk[entry.item.id] {
+                leftByChunk[cid, default: []].append(entry)
+            }
+        }
+        for entry in layout.right {
+            if let cid = itemToChunk[entry.item.id] {
+                rightByChunk[cid, default: []].append(entry)
+            }
+        }
+        var result: [String: ChunkColumns] = [:]
+        result.reserveCapacity(chunks.count)
+        for chunk in chunks {
+            result[chunk.id] = ChunkColumns(
+                left: leftByChunk[chunk.id] ?? [],
+                right: rightByChunk[chunk.id] ?? []
+            )
+        }
+        perChunkLayout = result
     }
 
     private func layoutMatchesCurrentItems() -> Bool {

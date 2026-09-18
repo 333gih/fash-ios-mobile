@@ -108,6 +108,14 @@ struct FeedSlidingWindow {
         items = items.map(transform)
     }
 
+    /// O(1) in-place patch for a single item (like/save toggles) — avoids full O(n) map.
+    @discardableResult
+    mutating func patchItem(withId id: String, transform: (ListingFeedItem) -> ListingFeedItem) -> Bool {
+        guard let idx = items.firstIndex(where: { $0.id == id }) else { return false }
+        items[idx] = transform(items[idx])
+        return true
+    }
+
     /// Engagement / edit — drop rows without shifting [logicalStartIndex].
     mutating func removeItems(withIds ids: Set<String>, knownIds: inout Set<String>) {
         guard !ids.isEmpty else { return }

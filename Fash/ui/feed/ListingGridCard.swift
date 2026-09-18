@@ -392,13 +392,7 @@ struct ListingGridCard: View, Equatable {
     private var scarcityBadge: String? {
         guard !compactFooter else { return nil }
         if let createdAt = item.createdAt?.trimmingCharacters(in: .whitespaces), !createdAt.isEmpty {
-            let formatter = ISO8601DateFormatter()
-            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-            var date = formatter.date(from: createdAt)
-            if date == nil {
-                formatter.formatOptions = [.withInternetDateTime]
-                date = formatter.date(from: createdAt)
-            }
+            let date = Self.parseISO8601(createdAt)
             if let date {
                 let ageMs = Date().timeIntervalSince(date) * 1_000
                 if ageMs >= 0, ageMs < 2 * 60 * 60 * 1_000 {
@@ -410,6 +404,22 @@ struct ListingGridCard: View, Equatable {
             return L10n.listingBadgeSavedCount(item.saveCount)
         }
         return nil
+    }
+
+    private static let iso8601WithFractional: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+
+    private static let iso8601Plain: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime]
+        return f
+    }()
+
+    private static func parseISO8601(_ string: String) -> Date? {
+        iso8601WithFractional.date(from: string) ?? iso8601Plain.date(from: string)
     }
 
     private func conditionLabel(_ raw: String) -> String {

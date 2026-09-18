@@ -29,6 +29,7 @@ struct FashAsyncImage: View {
         if let targetPixelSize, targetPixelSize.width > 0, targetPixelSize.height > 0 {
             KFImage(imageURL)
                 .setProcessor(DownsamplingImageProcessor(size: targetPixelSize))
+                .backgroundDecode()
                 .fade(duration: 0.2)
                 .placeholder { FashAsyncImagePlaceholder() }
                 .cancelOnDisappear(true)
@@ -39,6 +40,7 @@ struct FashAsyncImage: View {
                 .background(FashAsyncImageError())
         } else {
             KFImage(imageURL)
+                .backgroundDecode()
                 .fade(duration: 0.2)
                 .placeholder { FashAsyncImagePlaceholder() }
                 .cancelOnDisappear(true)

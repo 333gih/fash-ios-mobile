@@ -42,6 +42,16 @@ struct ListingStaggeredMasonryView<Cell: View, Footer: View>: View {
         )
     }
 
+    // O(1) identity check — replaces O(n) items.map(\.id) on every state change.
+    private struct ItemsSignature: Equatable {
+        let count: Int
+        let firstId: String
+    }
+
+    private var itemsSignature: ItemsSignature {
+        ItemsSignature(count: items.count, firstId: items.first?.id ?? "")
+    }
+
     var body: some View {
         VStack(spacing: gap) {
             widthProbe
@@ -65,9 +75,10 @@ struct ListingStaggeredMasonryView<Cell: View, Footer: View>: View {
             refreshLayout()
         }
         .onAppear { refreshLayout() }
-        .onChange(of: itemIdsSignature) { oldIds, newIds in
-            guard oldIds != newIds else { return }
-            let isAppend = Self.isTrailingIdAppend(oldIds: oldIds, newIds: newIds)
+        .onChange(of: itemsSignature) { old, new in
+            guard old != new else { return }
+            // Count grew and first item unchanged → trailing pagination append.
+            let isAppend = new.count > old.count && new.firstId == old.firstId
             refreshLayout(forceFull: !isAppend)
         }
     }
@@ -83,19 +94,6 @@ struct ListingStaggeredMasonryView<Cell: View, Footer: View>: View {
                     )
                 }
             }
-    }
-
-    private var itemIdsSignature: [String] {
-        items.map(\.id)
-    }
-
-    private var itemsById: [String: ListingFeedItem] {
-        Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0) })
-    }
-
-    private static func isTrailingIdAppend(oldIds: [String], newIds: [String]) -> Bool {
-        guard !oldIds.isEmpty, newIds.count >= oldIds.count else { return false }
-        return Array(newIds.prefix(oldIds.count)) == oldIds
     }
 
     private func refreshLayout(forceFull: Bool = false) {
@@ -166,7 +164,8 @@ struct ListingStaggeredMasonryView<Cell: View, Footer: View>: View {
 
     @ViewBuilder
     private func masonryTile(_ entry: (index: Int, item: ListingFeedItem)) -> some View {
-        let liveItem = itemsById[entry.item.id] ?? entry.item
+        // O(1) index-based lookup picks up latest like/save state without a dict rebuild.
+        let liveItem = entry.index < items.count ? items[entry.index] : entry.item
         let tileHeight = ListingMasonryGrid.tileHeight(
             columnWidth: columnWidth,
             item: liveItem

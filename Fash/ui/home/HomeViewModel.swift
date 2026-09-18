@@ -1396,17 +1396,27 @@ final class HomeViewModel {
     }
 
     private func patchListingInFeeds(_ id: String, transform: (ListingFeedItem) -> ListingFeedItem) {
-        followingWindow.mapItems { $0.id == id ? transform($0) : $0 }
-        sections.huntToday = sections.huntToday.map { $0.id == id ? transform($0) : $0 }
-        sections.forYou = sections.forYou.map { $0.id == id ? transform($0) : $0 }
-        sections.stylePicks = sections.stylePicks.map { $0.id == id ? transform($0) : $0 }
-        sections.similarToSaved = sections.similarToSaved.map { $0.id == id ? transform($0) : $0 }
-        sections.seasonalNearYou = sections.seasonalNearYou.map { $0.id == id ? transform($0) : $0 }
-        if items.contains(where: { $0.id == id }) {
-            items = items.map { $0.id == id ? transform($0) : $0 }
-        } else {
+        // O(1) in-place patch — avoids 7 full O(n) array maps and their heap allocations.
+        followingWindow.patchItem(withId: id, transform: transform)
+        patchInPlace(&sections.huntToday, id: id, transform: transform)
+        patchInPlace(&sections.forYou, id: id, transform: transform)
+        patchInPlace(&sections.stylePicks, id: id, transform: transform)
+        patchInPlace(&sections.similarToSaved, id: id, transform: transform)
+        patchInPlace(&sections.seasonalNearYou, id: id, transform: transform)
+        if !patchInPlace(&items, id: id, transform: transform) {
             syncItemsForSelectedTab()
         }
+    }
+
+    @discardableResult
+    private func patchInPlace(
+        _ array: inout [ListingFeedItem],
+        id: String,
+        transform: (ListingFeedItem) -> ListingFeedItem
+    ) -> Bool {
+        guard let idx = array.firstIndex(where: { $0.id == id }) else { return false }
+        array[idx] = transform(array[idx])
+        return true
     }
 }
 
