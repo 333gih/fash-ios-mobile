@@ -526,7 +526,7 @@ private struct ChatDetailScreenBody: View {
                         .fill(FashColors.surfaceContainerLow)
                         .overlay(
                             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .strokeBorder(FashColors.outline, lineWidth: 1)
+                                .strokeBorder(FashColors.outlineMuted, lineWidth: 1)
                         )
                 )
             if !message.isFromMe { Spacer(minLength: 48) }
