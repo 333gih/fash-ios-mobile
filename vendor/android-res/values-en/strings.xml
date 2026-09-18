@@ -1554,6 +1554,9 @@
     <string name="chat_conversation_ended_readonly">This conversation has ended</string>
     <string name="chat_conversation_sold_readonly">This item has been sold</string>
     <string name="chat_inbox_by_product">By product</string>
+    <string name="chat_off_platform_notice_title">Off-app deals are not protected</string>
+    <string name="chat_off_platform_notice_body">Fash only covers transactions completed entirely within the app — messaging, agreeing on price, and scheduling meetups through Fash. If you move to another platform to communicate or pay, Fash cannot step in or help if something goes wrong.</string>
+    <string name="chat_off_platform_notice_dismiss">Got it</string>
     <string name="product_reserved_other">Someone else is checking out</string>
     <string name="product_reserved_buyer">Your order is being processed</string>
     <string name="product_listing_sold_bar">Sold</string>

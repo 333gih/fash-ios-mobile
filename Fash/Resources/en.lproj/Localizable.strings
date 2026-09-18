@@ -245,9 +245,6 @@
 "chat_inbox_ad_subtitle" = "Browse new listings across the marketplace.";
 "chat_inbox_ad_title" = "Discover more pre-loved fashion";
 "chat_inbox_by_product" = "By product";
-"chat_off_platform_notice_title" = "Off-app deals are not protected";
-"chat_off_platform_notice_body" = "Fash only covers transactions completed entirely within the app — messaging, agreeing on price, and scheduling meetups through Fash. If you move to another platform to communicate or pay, Fash cannot step in or help if something goes wrong.";
-"chat_off_platform_notice_dismiss" = "Got it";
 "chat_inbox_list_footer_hint" = "You're all caught up · Explore below";
 "chat_inbox_preview_offer_from_buyer" = "Buyer offered %1$@";
 "chat_inbox_preview_offer_from_seller" = "Seller · %1$@";
@@ -318,6 +315,9 @@
 "chat_message_order_cancelled_by_buyer" = "I cancelled this order.";
 "chat_mins_ago" = "%d min ago";
 "chat_new_messages_below" = "%1$d new messages";
+"chat_off_platform_notice_body" = "Fash only covers transactions completed entirely within the app — messaging, agreeing on price, and scheduling meetups through Fash. If you move to another platform to communicate or pay, Fash cannot step in or help if something goes wrong.";
+"chat_off_platform_notice_dismiss" = "Got it";
+"chat_off_platform_notice_title" = "Off-app deals are not protected";
 "chat_offer_accept" = "Accept";
 "chat_offer_accepted" = "Price proposal accepted — an escrow order was created in the app.";
 "chat_offer_accepted_in_chat" = "Price agreed in chat. Schedule a meetup or record the deal — no escrow order is created from this step.";

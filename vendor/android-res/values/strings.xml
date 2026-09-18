@@ -1620,6 +1620,9 @@
     <string name="chat_conversation_ended_readonly">Cuộc trò chuyện đã kết thúc</string>
     <string name="chat_conversation_sold_readonly">Sản phẩm đã được bán</string>
     <string name="chat_inbox_by_product">Theo sản phẩm</string>
+    <string name="chat_off_platform_notice_title">Giao dịch ngoài app không được bảo vệ</string>
+    <string name="chat_off_platform_notice_body">Fash chỉ đảm bảo các giao dịch được thực hiện hoàn toàn trên app — nhắn tin, chốt giá và đặt lịch hẹn qua Fash. Nếu bạn chuyển sang nền tảng khác để liên lạc hoặc thanh toán, Fash không thể can thiệp hay hỗ trợ nếu phát sinh vấn đề.</string>
+    <string name="chat_off_platform_notice_dismiss">Đã hiểu</string>
 
     <string name="product_reserved_other">Đã có người đặt mua</string>
     <string name="product_reserved_buyer">Đơn hàng của bạn đang được xử lý</string>

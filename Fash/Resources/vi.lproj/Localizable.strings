@@ -245,9 +245,6 @@
 "chat_inbox_ad_subtitle" = "Khám phá tin mới trên toàn sàn.";
 "chat_inbox_ad_title" = "Lướt thêm đồ second-hand";
 "chat_inbox_by_product" = "Theo sản phẩm";
-"chat_off_platform_notice_title" = "Giao dịch ngoài app không được bảo vệ";
-"chat_off_platform_notice_body" = "Fash chỉ đảm bảo các giao dịch được thực hiện hoàn toàn trên app — nhắn tin, chốt giá và đặt lịch hẹn qua Fash. Nếu bạn chuyển sang nền tảng khác để liên lạc hoặc thanh toán, Fash không thể can thiệp hay hỗ trợ nếu phát sinh vấn đề.";
-"chat_off_platform_notice_dismiss" = "Đã hiểu";
 "chat_inbox_list_footer_hint" = "Đã hiển thị hết · Khám phá thêm bên dưới";
 "chat_inbox_preview_offer_from_buyer" = "Người mua đề xuất %1$@";
 "chat_inbox_preview_offer_from_seller" = "Người bán · %1$@";
@@ -318,6 +315,9 @@
 "chat_message_order_cancelled_by_buyer" = "Tôi đã hủy đơn hàng này.";
 "chat_mins_ago" = "%d phút trước";
 "chat_new_messages_below" = "%1$d tin nhắn mới";
+"chat_off_platform_notice_body" = "Fash chỉ đảm bảo các giao dịch được thực hiện hoàn toàn trên app — nhắn tin, chốt giá và đặt lịch hẹn qua Fash. Nếu bạn chuyển sang nền tảng khác để liên lạc hoặc thanh toán, Fash không thể can thiệp hay hỗ trợ nếu phát sinh vấn đề.";
+"chat_off_platform_notice_dismiss" = "Đã hiểu";
+"chat_off_platform_notice_title" = "Giao dịch ngoài app không được bảo vệ";
 "chat_offer_accept" = "Chấp nhận";
 "chat_offer_accepted" = "Đã chấp nhận đề xuất giá — đơn hàng đã được tạo trên ứng dụng.";
 "chat_offer_accepted_in_chat" = "Đã đồng ý giá trong chat. Hãy hẹn gặp hoặc ghi nhận giao dịch — không tạo đơn ký quỹ từ bước này.";
