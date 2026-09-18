@@ -13,58 +13,116 @@ struct FashWaitingScreen: View {
     private let onSurfaceMuted = FashColorTokens.Dark.textSecondary
     private let outlineVariant = FashColorTokens.Dark.outlineMuted
 
+    // GPU-driven animation state — replaced TimelineView(30fps) with withAnimation → CAAnimation
+    @State private var watermarkDrift: CGFloat = -1
+    @State private var topCornerX: CGFloat = -5
+    @State private var topCornerY: CGFloat = 6
+    @State private var bottomCornerX: CGFloat = 6
+    @State private var bottomCornerY: CGFloat = -5
+    @State private var breathScale: CGFloat = 0.988
+    @State private var dotPulse: CGFloat = 0.96
+    // Staggered dot offsets — animated independently with phase offsets
+    @State private var dot0Y: CGFloat = -5
+    @State private var dot1Y: CGFloat = 0
+    @State private var dot2Y: CGFloat = 5
+    @State private var didStartAnimations = false
+
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
-            let motion = WaitingScreenMotion(time: timeline.date.timeIntervalSinceReferenceDate)
-            GeometryReader { geo in
-                let safeTop = geo.safeAreaInsets.top
-                let safeBottom = geo.safeAreaInsets.bottom
-                ZStack {
-                    background.ignoresSafeArea()
+        GeometryReader { geo in
+            let safeTop = geo.safeAreaInsets.top
+            let safeBottom = geo.safeAreaInsets.bottom
+            ZStack {
+                background.ignoresSafeArea()
 
-                    watermark(geo: geo, motion: motion)
+                watermark(geo: geo)
 
-                    splashCornerThumb(
-                        width: 96,
-                        height: 148,
-                        cropAlignment: .topLeading
-                    )
-                    .padding(.leading, 22)
-                    .padding(.top, 20 + safeTop)
-                    .offset(motion.topCornerOffset)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                splashCornerThumb(
+                    width: 96,
+                    height: 148,
+                    cropAlignment: .topLeading
+                )
+                .padding(.leading, 22)
+                .padding(.top, 20 + safeTop)
+                .offset(x: topCornerX, y: topCornerY)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
-                    splashCornerThumb(
-                        width: 152,
-                        height: 104,
-                        cropAlignment: .bottomTrailing
-                    )
-                    .padding(.trailing, 18)
-                    .padding(.bottom, 108 + safeBottom)
-                    .offset(motion.bottomCornerOffset)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                splashCornerThumb(
+                    width: 152,
+                    height: 104,
+                    cropAlignment: .bottomTrailing
+                )
+                .padding(.trailing, 18)
+                .padding(.bottom, 108 + safeBottom)
+                .offset(x: bottomCornerX, y: bottomCornerY)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
 
-                    WaitingScreenCenterEditorial()
-                        .scaleEffect(motion.centerBreathScale)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                WaitingScreenCenterEditorial()
+                    .scaleEffect(breathScale)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
 
-                    VStack(spacing: 0) {
-                        Spacer(minLength: 0)
-                        genZFooter
-                            .padding(.horizontal, 20)
-                        stepDots(motion: motion)
-                            .padding(.top, 20)
-                            .padding(.bottom, max(20, safeBottom))
-                    }
+                VStack(spacing: 0) {
+                    Spacer(minLength: 0)
+                    genZFooter
+                        .padding(.horizontal, 20)
+                    stepDots
+                        .padding(.top, 20)
+                        .padding(.bottom, max(20, safeBottom))
                 }
             }
         }
         .ignoresSafeArea()
+        .onAppear {
+            guard !didStartAnimations else { return }
+            didStartAnimations = true
+            startAnimations()
+        }
     }
 
-    private func watermark(geo: GeometryProxy, motion: WaitingScreenMotion) -> some View {
+    private func startAnimations() {
+        // Watermark slow drift — 12s period, autoReverse
+        withAnimation(.linear(duration: 12).repeatForever(autoreverses: true)) {
+            watermarkDrift = 1
+        }
+        // Corner float — approximate sin/cos lissajous with independent autoReverse axes
+        withAnimation(.easeInOut(duration: 7).repeatForever(autoreverses: true)) {
+            topCornerX = 5
+        }
+        withAnimation(.easeInOut(duration: 10.75).repeatForever(autoreverses: true)) {
+            topCornerY = -6
+        }
+        withAnimation(.easeInOut(duration: 6.4).repeatForever(autoreverses: true)) {
+            bottomCornerX = -6
+        }
+        withAnimation(.easeInOut(duration: 8.2).repeatForever(autoreverses: true)) {
+            bottomCornerY = 5
+        }
+        // Center breath
+        withAnimation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true)) {
+            breathScale = 1.012
+        }
+        // Active dot pulse
+        withAnimation(.linear(duration: 1.1).repeatForever(autoreverses: true)) {
+            dotPulse = 1.06
+        }
+        // Staggered dot wave — three independent animations with 1/3 period phase offset
+        withAnimation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true)) {
+            dot0Y = 5
+        }
+        Task {
+            try? await Task.sleep(for: .seconds(1.4 / 3))
+            withAnimation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true)) {
+                dot1Y = 5
+            }
+            try? await Task.sleep(for: .seconds(1.4 / 3))
+            withAnimation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true)) {
+                dot2Y = 5
+            }
+        }
+    }
+
+    private func watermark(geo: GeometryProxy) -> some View {
         let fontSize = min(geo.size.height * 0.16, 132)
-        let driftY = geo.size.height * 0.08 + geo.size.height * 0.05 * motion.watermarkDrift
+        let driftY = geo.size.height * 0.08 + geo.size.height * 0.05 * watermarkDrift
         return Text(L10n.splashWordmark)
             .font(.custom("BeVietnamPro-Bold", size: fontSize))
             .tracking(-2)
@@ -106,55 +164,20 @@ struct FashWaitingScreen: View {
         }
     }
 
-    private func stepDots(motion: WaitingScreenMotion) -> some View {
+    private var stepDots: some View {
         let active = min(max(activeDotIndex, 0), 2)
+        let dotYOffsets: [CGFloat] = [dot0Y, dot1Y, dot2Y]
         return HStack(spacing: 10) {
             ForEach(0..<3, id: \.self) { index in
                 let isActive = index == active
-                let waveAngle = motion.dotWavePhase * 2 * Double.pi
-                let stagger = Double(index) * 2 * Double.pi / 3
-                let yOffset = CGFloat(sin(waveAngle + stagger) * 5)
                 Circle()
                     .fill(isActive ? splashAccent : outlineVariant.opacity(0.45))
                     .frame(width: isActive ? 10 : 8, height: isActive ? 10 : 8)
-                    .scaleEffect(isActive ? motion.activeDotPulseScale : 1)
-                    .offset(y: yOffset)
+                    .scaleEffect(isActive ? dotPulse : 1)
+                    .offset(y: dotYOffsets[index])
             }
         }
         .accessibilityHidden(true)
-    }
-}
-
-// MARK: - Motion (Android infinite transitions)
-
-private struct WaitingScreenMotion {
-    let watermarkDrift: CGFloat
-    let topCornerOffset: CGSize
-    let bottomCornerOffset: CGSize
-    let dotWavePhase: CGFloat
-    let activeDotPulseScale: CGFloat
-    let centerBreathScale: CGFloat
-
-    init(time: TimeInterval) {
-        watermarkDrift = CGFloat(sin(time * 2 * .pi / 12))
-
-        let cornerPhase = time.truncatingRemainder(dividingBy: 14) / 14
-        let cornerAngle = cornerPhase * 2 * Double.pi
-        topCornerOffset = CGSize(
-            width: CGFloat(sin(cornerAngle) * 5),
-            height: CGFloat(cos(cornerAngle * 0.65) * 6)
-        )
-        bottomCornerOffset = CGSize(
-            width: CGFloat(cos(cornerAngle * 1.1) * 6),
-            height: CGFloat(sin(cornerAngle * 0.85) * 5)
-        )
-
-        dotWavePhase = CGFloat(time.truncatingRemainder(dividingBy: 1.4) / 1.4)
-
-        let pulsePhase = time.truncatingRemainder(dividingBy: 1.1) / 1.1
-        activeDotPulseScale = CGFloat(0.96 + 0.1 * sin(pulsePhase * 2 * .pi))
-
-        centerBreathScale = CGFloat(1 + 0.012 * sin(time * 2 * .pi / 2.6))
     }
 }
 

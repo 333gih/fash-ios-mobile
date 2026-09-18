@@ -277,6 +277,9 @@ enum L10n {
     static var chatInboxAdSubtitle: String { t("chat_inbox_ad_subtitle") }
     static var chatInboxAdTitle: String { t("chat_inbox_ad_title") }
     static var chatInboxByProduct: String { t("chat_inbox_by_product") }
+    static var chatOffPlatformNoticeTitle: String { t("chat_off_platform_notice_title") }
+    static var chatOffPlatformNoticeBody: String { t("chat_off_platform_notice_body") }
+    static var chatOffPlatformNoticeDismiss: String { t("chat_off_platform_notice_dismiss") }
     static var chatInboxListFooterHint: String { t("chat_inbox_list_footer_hint") }
     static func chatInboxPreviewOfferFromBuyer(_ a1: CVarArg) -> String {
         String(format: t("chat_inbox_preview_offer_from_buyer"), a1)

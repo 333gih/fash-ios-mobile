@@ -245,6 +245,9 @@
 "chat_inbox_ad_subtitle" = "Khám phá tin mới trên toàn sàn.";
 "chat_inbox_ad_title" = "Lướt thêm đồ second-hand";
 "chat_inbox_by_product" = "Theo sản phẩm";
+"chat_off_platform_notice_title" = "Giao dịch ngoài app không được bảo vệ";
+"chat_off_platform_notice_body" = "Fash chỉ đảm bảo các giao dịch được thực hiện hoàn toàn trên app — nhắn tin, chốt giá và đặt lịch hẹn qua Fash. Nếu bạn chuyển sang nền tảng khác để liên lạc hoặc thanh toán, Fash không thể can thiệp hay hỗ trợ nếu phát sinh vấn đề.";
+"chat_off_platform_notice_dismiss" = "Đã hiểu";
 "chat_inbox_list_footer_hint" = "Đã hiển thị hết · Khám phá thêm bên dưới";
 "chat_inbox_preview_offer_from_buyer" = "Người mua đề xuất %1$@";
 "chat_inbox_preview_offer_from_seller" = "Người bán · %1$@";

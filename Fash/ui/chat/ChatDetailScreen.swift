@@ -56,6 +56,7 @@ private struct ChatDetailScreenBody: View {
     @Binding var presentedOrderId: String?
     @Binding var showFulfillmentChoiceSheet: Bool
     @Binding var showMeetingSheet: Bool
+    @AppStorage("chat_off_platform_notice_dismissed") private var offPlatformNoticeDismissed = false
     var onDismiss: () -> Void
     var onProductClick: (String) -> Void
 
@@ -144,6 +145,16 @@ private struct ChatDetailScreenBody: View {
                     )
                     .padding(.horizontal, 16)
                     .padding(.vertical, 8)
+                }
+                if !offPlatformNoticeDismissed {
+                    ChatOffPlatformNoticeBanner {
+                        withAnimation(.easeOut(duration: 0.22)) {
+                            offPlatformNoticeDismissed = true
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
                 }
                 messagesList
                 if viewModel.isOtherTyping, let other = viewModel.detail?.otherUser {
@@ -572,5 +583,37 @@ private struct ChatDetailScreenBody: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .background(FashColors.surfaceContainerHighest)
+    }
+}
+
+// MARK: - Off-platform notice
+
+private struct ChatOffPlatformNoticeBanner: View {
+    var onDismiss: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "exclamationmark.shield.fill")
+                .font(.system(size: 16))
+                .foregroundStyle(FashColors.brandPrimary)
+                .padding(.top, 1)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(L10n.chatOffPlatformNoticeTitle)
+                    .font(FashTypography.labelMedium.weight(.semibold))
+                    .foregroundStyle(FashColors.textPrimary)
+                Text(L10n.chatOffPlatformNoticeBody)
+                    .font(FashTypography.bodySmall)
+                    .foregroundStyle(FashColors.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button(L10n.chatOffPlatformNoticeDismiss, action: onDismiss)
+                    .font(FashTypography.labelMedium.weight(.medium))
+                    .foregroundStyle(FashColors.brandPrimary)
+                    .padding(.top, 2)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(FashColors.surfaceContainer)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }
