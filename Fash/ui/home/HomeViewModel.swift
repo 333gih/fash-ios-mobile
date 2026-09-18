@@ -1462,9 +1462,9 @@ final class HomeViewModel {
         // O(1) in-place patch through each tab's window — avoids full O(n) array maps.
         followingWindow.patchItem(withId: id, transform: transform)
         for tab in HomeFeedTab.allCases where tab != .following {
-            if tabFeedState[tab.rawValue] != nil {
-                tabFeedState[tab.rawValue]?.patchItem(withId: id, transform: transform)
-            }
+            guard var state = tabFeedState[tab.rawValue] else { continue }
+            state.patchItem(withId: id, transform: transform)
+            tabFeedState[tab.rawValue] = state
         }
         if !patchInPlace(&items, id: id, transform: transform) {
             syncItemsForSelectedTab()
