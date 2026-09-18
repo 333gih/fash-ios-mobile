@@ -11,7 +11,7 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
     @ViewBuilder let cell: (ListingFeedItem, Int) -> Cell
 
     @State private var layout: ListingMasonryColumnLayout = .empty
-    @State private var perChunkLayout: [String: ChunkColumns] = [:]
+    @State private var perChunkLayout: [Int: ChunkColumns] = [:]
     @State private var layoutedItemCount = 0
     @State private var containerWidth: CGFloat = 0
     @State private var layoutRefreshTask: Task<Void, Never>?
@@ -143,7 +143,7 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
     private func refreshLayout(forceFull: Bool) {
         guard !items.isEmpty else {
             layout = .empty
-            perChunkLayout = [:]
+            perChunkLayout = [Int: ChunkColumns]()
             layoutedItemCount = 0
             return
         }
@@ -191,8 +191,8 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
     // O(n) single-pass split: assigns each layout entry to its chunk without per-chunk filtering.
     private func rebuildPerChunkLayout() {
         let chunks = ListingMasonryFeedPages.feedOrderChunks(items: items, pageSize: chunkSize)
-        // Build itemId → chunkId index in one pass over chunks.
-        var itemToChunk: [String: String] = [:]
+        // Build itemId → chunkId (Int) index in one pass over chunks.
+        var itemToChunk: [String: Int] = [:]
         itemToChunk.reserveCapacity(items.count)
         for chunk in chunks {
             for entry in chunk.entries {
@@ -200,8 +200,8 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
             }
         }
         // Single pass over layout columns to bucket entries by chunk.
-        var leftByChunk: [String: [(index: Int, item: ListingFeedItem)]] = [:]
-        var rightByChunk: [String: [(index: Int, item: ListingFeedItem)]] = [:]
+        var leftByChunk: [Int: [(index: Int, item: ListingFeedItem)]] = [:]
+        var rightByChunk: [Int: [(index: Int, item: ListingFeedItem)]] = [:]
         for entry in layout.left {
             if let cid = itemToChunk[entry.item.id] {
                 leftByChunk[cid, default: []].append(entry)
@@ -212,7 +212,7 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
                 rightByChunk[cid, default: []].append(entry)
             }
         }
-        var result: [String: ChunkColumns] = [:]
+        var result: [Int: ChunkColumns] = [:]
         result.reserveCapacity(chunks.count)
         for chunk in chunks {
             result[chunk.id] = ChunkColumns(
