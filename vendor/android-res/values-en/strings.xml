@@ -1303,6 +1303,7 @@
     <string name="chat_offer_dialog_hint">Enter price (VND)</string>
     <string name="chat_offer_dialog_submit">Propose</string>
     <string name="chat_offer_dialog_helper">Clear offers help both sides agree quickly.</string>
+    <string name="chat_message_deleted">This message was deleted.</string>
     <string name="chat_delete_message_title">Delete message</string>
     <string name="chat_delete_message_body">This message will be deleted. You can only delete within 5 minutes.</string>
     <string name="chat_delete_message_confirm">Delete</string>

@@ -1335,6 +1335,7 @@
     <string name="chat_offer_dialog_hint">Nhập giá bạn muốn đề</string>
     <string name="chat_offer_dialog_submit">Gửi đề xuất</string>
     <string name="chat_offer_dialog_helper">Đề xuất giá rõ ràng giúp hai bên thống nhất nhanh hơn.</string>
+    <string name="chat_message_deleted">Tin nhắn này đã bị xóa.</string>
     <string name="chat_delete_message_title">Xóa tin nhắn</string>
     <string name="chat_delete_message_body">Tin nhắn sẽ bị xóa. Chỉ có thể xóa trong vòng 5 phút.</string>
     <string name="chat_delete_message_confirm">Xóa</string>
