@@ -11,7 +11,39 @@ private enum HomeFeedConstants {
 private struct HomeTabFeedState {
     var hasMore = false
     var isLoadingMore = false
-    var knownIds: Set<String> = []
+    // Bounded sliding window — holds items and logical offset for this tab.
+    private(set) var window = FeedSlidingWindow()
+    private var knownIds: Set<String> = []
+
+    var items: [ListingFeedItem] { window.items }
+
+    /// Logical offset to pass as API `offset` — accounts for front-trimmed items.
+    var loadMoreOffset: Int { window.logicalStartIndex + window.items.count }
+
+    mutating func setFirstPage(_ loaded: [ListingFeedItem]) {
+        window.reset(with: loaded)
+        knownIds = Set(loaded.map(\.id))
+    }
+
+    @discardableResult
+    mutating func appendUniquePage(_ page: [ListingFeedItem]) -> Int {
+        return window.appendUnique(page, knownIds: &knownIds)
+    }
+
+    mutating func trimFront(visibleIndex: Int, columnWidth: CGFloat) -> FeedSlidingWindow.TrimResult? {
+        window.trimFrontIfNeeded(
+            visibleIndex: visibleIndex,
+            columnWidth: columnWidth,
+            policy: .homeSectionTab
+        )
+    }
+
+    @discardableResult
+    mutating func patchItem(withId id: String, transform: (ListingFeedItem) -> ListingFeedItem) -> Bool {
+        window.patchItem(withId: id, transform: transform)
+    }
+
+    var isEmpty: Bool { window.items.isEmpty }
 }
 
 @Observable
@@ -65,6 +97,7 @@ final class HomeViewModel {
     private var sectionTabRateLimitUntil: [String: Date] = [:]
     private var followingDuplicatePageCount = 0
     private var followingTrimTask: Task<Void, Never>?
+    private var sectionTabTrimTask: Task<Void, Never>?
     private var tabFeedState: [String: HomeTabFeedState] = [:]
     private var sectionLoadMoreTasks: [String: Task<Void, Never>] = [:]
 
@@ -126,6 +159,35 @@ final class HomeViewModel {
         scheduleFollowingWindowTrimDeferred(visibleIndex: visibleIndex, columnWidth: columnWidth)
     }
 
+    /// Section tabs (huntToday, forYou, etc.) — bounded sliding window trim.
+    func scheduleSectionTabTrim(visibleIndex: Int, columnWidth: CGFloat) {
+        let tab = selectedFeedTab
+        guard tab != .following else { return }
+        sectionTabTrimTask?.cancel()
+        sectionTabTrimTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(320))
+            guard !Task.isCancelled else { return }
+            guard selectedFeedTab == tab else { return }
+            guard let boundary = homeScrollBoundary, !boundary.isUserInteracting else { return }
+            var state = tabFeedState[tab.rawValue] ?? HomeTabFeedState()
+            guard let trim = state.trimFront(visibleIndex: visibleIndex, columnWidth: columnWidth) else { return }
+            tabFeedState[tab.rawValue] = state
+            syncItemsForSelectedTab()
+            homeFeedTrimSignedDeltaY = -trim.scrollDeltaY
+            homeFeedTrimToken += 1
+            FeedPerformance.log(
+                "Home \(tab) trim -\(trim.removedCount) window=\(state.items.count) offset=\(state.loadMoreOffset)"
+            )
+        }
+    }
+
+    /// Called when the OS issues a memory warning — flush non-visible image cache entries.
+    func handleMemoryWarning() {
+        let tab = selectedFeedTab
+        let visibleCount = tabFeedState[tab.rawValue]?.items.count ?? followingWindow.items.count
+        FeedPerformance.log("Home memory warning: visible tab=\(tab) items=\(visibleCount)")
+    }
+
     /// Main tab Home visible — reload default feed tab if UI is empty without an active load.
     func ensureSelectedFeedTabLoaded(deps: AppDependencies, isGuestMode: Bool) {
         normalizeSelectedFeedTab(isGuestMode: isGuestMode, deps: deps)
@@ -144,9 +206,10 @@ final class HomeViewModel {
     func onGuestBrowseEntered(deps: AppDependencies, forceReset: Bool = true) {
         preferPublicBrowse = true
         deps.isGuestBrowseActive = true
+        let huntTodayEmpty = tabFeedState[HomeFeedTabKeys.huntToday]?.isEmpty ?? true
         if !forceReset,
            loadedTabs.contains(HomeFeedTabKeys.huntToday),
-           !sections.huntToday.isEmpty {
+           !huntTodayEmpty {
             normalizeSelectedFeedTab(isGuestMode: true, deps: deps)
             syncItemsForSelectedTab()
             tabsLoadError.remove(HomeFeedTabKeys.huntToday)
@@ -160,18 +223,18 @@ final class HomeViewModel {
         }
         if !forceReset,
            tabsLoading.contains(HomeFeedTabKeys.huntToday),
-           sections.huntToday.isEmpty,
+           huntTodayEmpty,
            !tabsLoadError.contains(HomeFeedTabKeys.huntToday) {
             normalizeSelectedFeedTab(isGuestMode: true, deps: deps)
             ensureFeaturedSellersLoaded(deps: deps, isGuestMode: true)
             return
         }
         let needsErrorRecovery = !forceReset
-            && sections.huntToday.isEmpty
+            && huntTodayEmpty
             && (tabsLoadError.contains(HomeFeedTabKeys.huntToday) || tabsLoadStalled.contains(HomeFeedTabKeys.huntToday))
         if !forceReset && !needsErrorRecovery {
             // Orphan empty state after a cancelled gate — kick a load without wiping shell chrome.
-            if sections.huntToday.isEmpty,
+            if huntTodayEmpty,
                !tabsLoading.contains(HomeFeedTabKeys.huntToday),
                !loadedTabs.contains(HomeFeedTabKeys.huntToday) {
                 normalizeSelectedFeedTab(isGuestMode: true, deps: deps)
@@ -732,7 +795,7 @@ final class HomeViewModel {
     private var isLaunchShellFresh: Bool {
         guard let lastSuccessfulRefreshAt else { return false }
         guard Date().timeIntervalSince(lastSuccessfulRefreshAt) < 120 else { return false }
-        return !items.isEmpty || recommendationSectionsFetched || !sections.huntToday.isEmpty
+        return !items.isEmpty || recommendationSectionsFetched || !(tabFeedState[HomeFeedTabKeys.huntToday]?.isEmpty ?? true)
     }
 
     private func invalidateAllTabFeeds() {
@@ -747,6 +810,10 @@ final class HomeViewModel {
         followingNextCursor = nil
         followingHasMore = false
         followingDuplicatePageCount = 0
+        followingTrimTask?.cancel()
+        followingTrimTask = nil
+        sectionTabTrimTask?.cancel()
+        sectionTabTrimTask = nil
         tabFeedState = [:]
         sectionLoadMoreTasks.values.forEach { $0.cancel() }
         sectionLoadMoreTasks = [:]
@@ -791,7 +858,7 @@ final class HomeViewModel {
             if !existing.isCancelled { return }
             tabLoadTasks[tab.rawValue] = nil
         }
-        if !force && tab == .huntToday && recommendationSectionsFetched && !sections.huntToday.isEmpty {
+        if !force && tab == .huntToday && recommendationSectionsFetched && !(tabFeedState[HomeFeedTabKeys.huntToday]?.isEmpty ?? true) {
             loadedTabs.insert(tab.rawValue)
             syncItemsForSelectedTab()
             return
@@ -990,7 +1057,7 @@ final class HomeViewModel {
 
     private func loadHuntTodayTab(deps: AppDependencies, isGuestMode: Bool, force: Bool) async -> Bool {
         if !force && loadedTabs.contains(HomeFeedTabKeys.huntToday) { return true }
-        if !isGuestMode && !preferPublicBrowse && recommendationSectionsFetched && !sections.huntToday.isEmpty {
+        if !isGuestMode && !preferPublicBrowse && recommendationSectionsFetched && !(tabFeedState[HomeFeedTabKeys.huntToday]?.isEmpty ?? true) {
             if selectedFeedTab == .huntToday { syncItemsForSelectedTab() }
             return true
         }
@@ -1025,8 +1092,7 @@ final class HomeViewModel {
             }
             return false
         }
-        sections.huntToday = loaded
-        seedTabKnownIds(.huntToday, from: loaded)
+        applyFirstPageToTab(.huntToday, items: loaded)
         let limit = sectionLimit(for: .huntToday, fallback: HomeFeedConstants.huntTodayLimit)
         setTabHasMore(.huntToday, loaded.count == limit)
         if selectedFeedTab == .huntToday { syncItemsForSelectedTab() }
@@ -1047,7 +1113,8 @@ final class HomeViewModel {
         sectionTabLoadMoreAt[tab.rawValue] = Date()
 
         setTabLoadingMore(tab, true)
-        let offset = itemsForTab(tab).count
+        // Use logical offset (trimmed items + current window size) so front-trim doesn't repeat pages.
+        let offset = tabFeedState[tab.rawValue]?.loadMoreOffset ?? itemsForTab(tab).count
         sectionLoadMoreTasks[tab.rawValue] = Task {
             defer {
                 sectionLoadMoreTasks[tab.rawValue] = nil
@@ -1106,27 +1173,20 @@ final class HomeViewModel {
         tabFeedState[tab.rawValue] = state
     }
 
-    private func seedTabKnownIds(_ tab: HomeFeedTab, from items: [ListingFeedItem]) {
+    private func applyFirstPageToTab(_ tab: HomeFeedTab, items: [ListingFeedItem]) {
+        guard tab != .following else { return }
         var state = tabFeedState[tab.rawValue] ?? HomeTabFeedState()
-        state.knownIds = Set(items.map(\.id))
+        state.setFirstPage(items)
         tabFeedState[tab.rawValue] = state
     }
 
     @discardableResult
     private func appendUniqueItems(_ page: [ListingFeedItem], to tab: HomeFeedTab) -> Int {
+        guard tab != .following else { return 0 }
         var state = tabFeedState[tab.rawValue] ?? HomeTabFeedState()
-        let fresh = page.filter { state.knownIds.insert($0.id).inserted }
-        guard !fresh.isEmpty else { return 0 }
-        tabFeedState[tab.rawValue] = state
-        switch tab {
-        case .huntToday: sections.huntToday.append(contentsOf: fresh)
-        case .forYou: sections.forYou.append(contentsOf: fresh)
-        case .stylePicks: sections.stylePicks.append(contentsOf: fresh)
-        case .similarSaved: sections.similarToSaved.append(contentsOf: fresh)
-        case .seasonalNearYou: sections.seasonalNearYou.append(contentsOf: fresh)
-        case .following: return 0
-        }
-        return fresh.count
+        let added = state.appendUniquePage(page)
+        if added > 0 { tabFeedState[tab.rawValue] = state }
+        return added
     }
 
     private func loadFollowingTab(deps: AppDependencies, isGuestMode: Bool, force: Bool) async -> Bool {
@@ -1231,18 +1291,13 @@ final class HomeViewModel {
             return false
         }
         if !loaded.huntToday.isEmpty {
-            sections.huntToday = loaded.huntToday
-            seedTabKnownIds(.huntToday, from: loaded.huntToday)
+            applyFirstPageToTab(.huntToday, items: loaded.huntToday)
             loadedTabs.insert(HomeFeedTabKeys.huntToday)
         }
-        sections.forYou = loaded.forYou
-        sections.stylePicks = loaded.stylePicks
-        sections.similarToSaved = loaded.similarToSaved
-        sections.seasonalNearYou = loaded.seasonalNearYou
-        seedTabKnownIds(.forYou, from: loaded.forYou)
-        seedTabKnownIds(.stylePicks, from: loaded.stylePicks)
-        seedTabKnownIds(.similarSaved, from: loaded.similarToSaved)
-        seedTabKnownIds(.seasonalNearYou, from: loaded.seasonalNearYou)
+        applyFirstPageToTab(.forYou, items: loaded.forYou)
+        applyFirstPageToTab(.stylePicks, items: loaded.stylePicks)
+        applyFirstPageToTab(.similarSaved, items: loaded.similarToSaved)
+        applyFirstPageToTab(.seasonalNearYou, items: loaded.seasonalNearYou)
         sections.dailyOutfitDrop = loaded.dailyOutfitDrop
         sections.shoppingContext = loaded.shoppingContext ?? sections.shoppingContext
         recommendationSectionsFetched = true
@@ -1299,14 +1354,8 @@ final class HomeViewModel {
     }
 
     private func itemsForTab(_ tab: HomeFeedTab) -> [ListingFeedItem] {
-        switch tab {
-        case .forYou: return sections.forYou
-        case .stylePicks: return sections.stylePicks
-        case .similarSaved: return sections.similarToSaved
-        case .seasonalNearYou: return sections.seasonalNearYou
-        case .following: return followingWindow.items
-        case .huntToday: return sections.huntToday
-        }
+        if tab == .following { return followingWindow.items }
+        return tabFeedState[tab.rawValue]?.items ?? []
     }
 
     var shoppingContextChip: String? {
@@ -1410,13 +1459,13 @@ final class HomeViewModel {
     }
 
     private func patchListingInFeeds(_ id: String, transform: (ListingFeedItem) -> ListingFeedItem) {
-        // O(1) in-place patch — avoids 7 full O(n) array maps and their heap allocations.
+        // O(1) in-place patch through each tab's window — avoids full O(n) array maps.
         followingWindow.patchItem(withId: id, transform: transform)
-        patchInPlace(&sections.huntToday, id: id, transform: transform)
-        patchInPlace(&sections.forYou, id: id, transform: transform)
-        patchInPlace(&sections.stylePicks, id: id, transform: transform)
-        patchInPlace(&sections.similarToSaved, id: id, transform: transform)
-        patchInPlace(&sections.seasonalNearYou, id: id, transform: transform)
+        for tab in HomeFeedTab.allCases where tab != .following {
+            if tabFeedState[tab.rawValue] != nil {
+                tabFeedState[tab.rawValue]?.patchItem(withId: id, transform: transform)
+            }
+        }
         if !patchInPlace(&items, id: id, transform: transform) {
             syncItemsForSelectedTab()
         }

@@ -51,4 +51,12 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
             completionHandler(.newData)
         }
     }
+
+    func applicationDidReceiveMemoryWarning(_ application: UIApplication) {
+        // Kingfisher auto-clears its memory cache on this notification internally.
+        // Cancel any in-flight prefetch requests to reduce peak pressure.
+        KingfisherManager.shared.downloader.cancelAll()
+        // Clear memory-only cache entries (disk cache is preserved for rapid reload).
+        ImageCache.default.clearMemoryCache()
+    }
 }

@@ -357,14 +357,17 @@ struct HomeFeedContent: View {
                         imageAspectRatio: ListingMasonryGrid.masonryAspectRatio(for: item),
                         onPrefetchLoadMore: {
                             let tab = viewModel.selectedFeedTab
-                            // Following tab: window trim
                             if tab == .following {
                                 viewModel.scheduleFollowingWindowTrim(
                                     visibleIndex: index,
                                     columnWidth: masonryColumnWidth
                                 )
+                            } else {
+                                viewModel.scheduleSectionTabTrim(
+                                    visibleIndex: index,
+                                    columnWidth: masonryColumnWidth
+                                )
                             }
-                            // All tabs: prefetch next page when near end
                             if FeedPaginationPolicy.shouldPrefetchNextPage(
                                 appearedIndex: index,
                                 totalCount: viewModel.items.count
