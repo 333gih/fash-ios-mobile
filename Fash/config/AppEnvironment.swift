@@ -38,6 +38,10 @@ enum AppEnvironment {
     static var shippingEnabled: Bool { BuildConfig.shippingEnabled }
     static var userAccessStatusPath: String { BuildConfig.userAccessStatusPath }
 
+    /// imgproxy base URL for feed-tile thumbnail resizing (no trailing slash).
+    /// Empty string when imgproxy is not deployed — FeedListingImageSizer falls back to full-res.
+    static var imageResizeBaseURL: String { BuildConfig.imageResizeBaseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/")) }
+
     static var authOtpRequestPath: String { BuildConfig.authOtpRequestPath }
     static var authOtpVerifyPath: String { BuildConfig.authOtpVerifyPath }
     static var authLoginPath: String { BuildConfig.authLoginPath }

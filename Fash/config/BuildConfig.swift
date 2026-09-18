@@ -31,6 +31,7 @@ enum BuildConfig {
     static var legalPortalBaseURL: String { C.legalPortalBaseURL }
     static var paymentRedirectURL: String { C.paymentRedirectURL }
     static var identityReverifyURL: String { C.identityReverifyURL }
+    static var imageResizeBaseURL: String { C.imageResizeBaseURL }
     static var publicBrowseClientId: String { C.publicBrowseClientId }
     static var publicBrowseClientToken: String { C.publicBrowseClientToken }
     static var internalSecret: String { C.internalSecret }

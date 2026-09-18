@@ -24,6 +24,7 @@ FASH_LISTING_SHARE_BASE_URL = https://fashandcurious.com/p/l
 FASH_LEGAL_PORTAL_BASE_URL = https://fashandcurious.com
 FASH_PAYMENT_REDIRECT_URL = https://api-payment.fashandcurious.com/payment/callback
 FASH_IDENTITY_REVERIFY_URL = 
+FASH_IMAGE_RESIZE_BASE_URL = https://img.fashandcurious.com
 FASH_PUBLIC_BROWSE_CLIENT_ID = fash-android
 FASH_PUBLIC_BROWSE_CLIENT_TOKEN = 4bNy8z9TaA1qVb4rmUDqPFyKs6Gp7x3JXwZmFyAPQkY2RCesuKcTmN5Btb
 FASH_SKIP_SIZING_REFERENCE = NO

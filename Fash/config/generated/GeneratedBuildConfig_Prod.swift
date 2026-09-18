@@ -21,6 +21,7 @@ enum GeneratedBuildConfig_Prod {
     static let legalPortalBaseURL: String = "https://fashandcurious.com"
     static let paymentRedirectURL: String = "https://api-payment.fashandcurious.com/payment/callback"
     static let identityReverifyURL: String = ""
+    static let imageResizeBaseURL: String = "https://img.fashandcurious.com"
     static let publicBrowseClientId: String = "fash-android"
     static let publicBrowseClientToken: String = "4bNy8z9TaA1qVb4rmUDqPFyKs6Gp7x3JXwZmFyAPQkY2RCesuKcTmN5Btb"
     static let internalSecret: String = "8b4d4f3b6c3d45c5e21c2e1a8f1f5b8a4c1d9e7a2f8c6d4b"

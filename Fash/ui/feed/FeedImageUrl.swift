@@ -43,18 +43,36 @@ enum FeedListingImageSizer {
         let resolved = FeedImageUrl.resolveListingImageUrl(path)
         guard !resolved.isEmpty else { return "" }
         let targetW = min(maxFeedWidthPx, max(minFeedWidthPx, Int(columnWidthPoints * UIScreen.main.nativeScale)))
-        return applyShopifyWidthQuery(resolved, widthPx: targetW)
+
+        guard let components = URLComponents(string: resolved),
+              let host = components.host?.lowercased() else { return resolved }
+
+        // Shopify CDN: use native ?width= resize param
+        if host.contains("shopify") {
+            return applyShopifyWidthQuery(resolved, components: components, widthPx: targetW)
+        }
+
+        // Self-hosted SeaweedFS: route through imgproxy for on-the-fly WebP thumbnail.
+        // Path always starts with /fash-uploads/ (bucket name embedded in URL path).
+        let resizeBase = AppEnvironment.imageResizeBaseURL
+        if !resizeBase.isEmpty, components.path.hasPrefix("/fash-uploads/") {
+            // /fash-uploads/listings/... → s3://fash-uploads/listings/...
+            let s3Source = "s3:" + components.path
+            guard let encoded = s3Source.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
+                return resolved
+            }
+            return "\(resizeBase)/unsafe/rs:fit:\(targetW):0:0/plain/\(encoded)"
+        }
+
+        return resolved
     }
 
-    private static func applyShopifyWidthQuery(_ url: String, widthPx: Int) -> String {
-        guard let host = URL(string: url)?.host?.lowercased(),
-              host.contains("shopify") || host.contains("cdn.shopify")
-        else { return url }
-        guard var components = URLComponents(string: url) else { return url }
-        var items = components.queryItems ?? []
+    private static func applyShopifyWidthQuery(_ url: String, components: URLComponents, widthPx: Int) -> String {
+        var comp = components
+        var items = comp.queryItems ?? []
         items.removeAll { $0.name.lowercased() == "width" }
         items.append(URLQueryItem(name: "width", value: String(widthPx)))
-        components.queryItems = items
-        return components.string ?? url
+        comp.queryItems = items
+        return comp.string ?? url
     }
 }
