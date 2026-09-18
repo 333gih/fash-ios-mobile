@@ -11,6 +11,7 @@ private enum HomeFeedConstants {
 private struct HomeTabFeedState {
     var hasMore = false
     var isLoadingMore = false
+    var knownIds: Set<String> = []
 }
 
 @Observable
@@ -1025,6 +1026,7 @@ final class HomeViewModel {
             return false
         }
         sections.huntToday = loaded
+        seedTabKnownIds(.huntToday, from: loaded)
         let limit = sectionLimit(for: .huntToday, fallback: HomeFeedConstants.huntTodayLimit)
         setTabHasMore(.huntToday, loaded.count == limit)
         if selectedFeedTab == .huntToday { syncItemsForSelectedTab() }
@@ -1104,11 +1106,18 @@ final class HomeViewModel {
         tabFeedState[tab.rawValue] = state
     }
 
+    private func seedTabKnownIds(_ tab: HomeFeedTab, from items: [ListingFeedItem]) {
+        var state = tabFeedState[tab.rawValue] ?? HomeTabFeedState()
+        state.knownIds = Set(items.map(\.id))
+        tabFeedState[tab.rawValue] = state
+    }
+
     @discardableResult
     private func appendUniqueItems(_ page: [ListingFeedItem], to tab: HomeFeedTab) -> Int {
-        var known = Set(itemsForTab(tab).map(\.id))
-        let fresh = page.filter { known.insert($0.id).inserted }
+        var state = tabFeedState[tab.rawValue] ?? HomeTabFeedState()
+        let fresh = page.filter { state.knownIds.insert($0.id).inserted }
         guard !fresh.isEmpty else { return 0 }
+        tabFeedState[tab.rawValue] = state
         switch tab {
         case .huntToday: sections.huntToday.append(contentsOf: fresh)
         case .forYou: sections.forYou.append(contentsOf: fresh)
@@ -1223,12 +1232,17 @@ final class HomeViewModel {
         }
         if !loaded.huntToday.isEmpty {
             sections.huntToday = loaded.huntToday
+            seedTabKnownIds(.huntToday, from: loaded.huntToday)
             loadedTabs.insert(HomeFeedTabKeys.huntToday)
         }
         sections.forYou = loaded.forYou
         sections.stylePicks = loaded.stylePicks
         sections.similarToSaved = loaded.similarToSaved
         sections.seasonalNearYou = loaded.seasonalNearYou
+        seedTabKnownIds(.forYou, from: loaded.forYou)
+        seedTabKnownIds(.stylePicks, from: loaded.stylePicks)
+        seedTabKnownIds(.similarSaved, from: loaded.similarToSaved)
+        seedTabKnownIds(.seasonalNearYou, from: loaded.seasonalNearYou)
         sections.dailyOutfitDrop = loaded.dailyOutfitDrop
         sections.shoppingContext = loaded.shoppingContext ?? sections.shoppingContext
         recommendationSectionsFetched = true

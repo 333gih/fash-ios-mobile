@@ -8,7 +8,11 @@ enum FeedListingImagePrefetch {
 
     static func defaultColumnWidthPoints() -> CGFloat {
         let screen = UIScreen.main.bounds.width
-        return max(120, (screen - 24) / 2)
+        // Mirrors feedGridColumnWidth: symmetricInset = max(editorialStart=24, editorialEnd=16) = 24,
+        // columnGap = spacing2 = 8 → (screen - 24 - 24 - 8) / 2 = (screen - 56) / 2.
+        // Using (screen - 24) / 2 produced a different URL width param than the displayed tile,
+        // causing Kingfisher cache misses on every prefetched image.
+        return max(120, (screen - 56) / 2)
     }
 
     static func prefetch(items: [ListingFeedItem], columnWidthPoints: CGFloat? = nil) {

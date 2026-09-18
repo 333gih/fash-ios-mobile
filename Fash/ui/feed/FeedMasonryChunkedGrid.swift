@@ -102,13 +102,24 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
     private func feedChunkRow(_ chunk: ListingMasonryFeedPages.FeedOrderChunk) -> some View {
         let gap = spacing.spacing2
         // O(1) dict lookup — perChunkLayout is pre-built in rebuildPerChunkLayout().
-        let cols = perChunkLayout[chunk.id]
+        // Falls back to alternating assignment so the first render shows tiles immediately
+        // (before onAppear fires the full layout pass) instead of blank empty rows.
+        let cols = perChunkLayout[chunk.id] ?? chunkFallbackColumns(chunk)
         HStack(alignment: .top, spacing: gap) {
-            feedChunkColumn(entries: cols?.left ?? [], gap: gap)
-            feedChunkColumn(entries: cols?.right ?? [], gap: gap)
+            feedChunkColumn(entries: cols.left, gap: gap)
+            feedChunkColumn(entries: cols.right, gap: gap)
         }
         .padding(.leading, spacing.editorialStart)
         .padding(.trailing, spacing.editorialEnd)
+    }
+
+    private func chunkFallbackColumns(_ chunk: ListingMasonryFeedPages.FeedOrderChunk) -> ChunkColumns {
+        var left = [(index: Int, item: ListingFeedItem)]()
+        var right = [(index: Int, item: ListingFeedItem)]()
+        for (i, entry) in chunk.entries.enumerated() {
+            if i.isMultiple(of: 2) { left.append(entry) } else { right.append(entry) }
+        }
+        return ChunkColumns(left: left, right: right)
     }
 
     @ViewBuilder
@@ -118,8 +129,13 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: gap) {
             ForEach(entries, id: \.item.id) { entry in
-                // O(1) index-based lookup picks up latest like/save state without a dict rebuild.
-                let liveItem = entry.index < items.count ? items[entry.index] : entry.item
+                // O(1) index-based lookup picks up latest like/save state (e.g. after a like tap).
+                // ID guard prevents showing wrong items during the 48ms layout-refresh delay window.
+                let liveItem: ListingFeedItem = {
+                    guard entry.index < items.count,
+                          items[entry.index].id == entry.item.id else { return entry.item }
+                    return items[entry.index]
+                }()
                 let tileHeight = ListingMasonryGrid.tileHeight(columnWidth: columnWidth, item: liveItem)
                 cell(liveItem, entry.index)
                     .id(liveItem.id)
