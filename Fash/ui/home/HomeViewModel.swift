@@ -228,10 +228,13 @@ final class HomeViewModel {
                     columnAssignments: assignments
                 ) {
                     // Bidirectional window: trim same count from tail as prepended at head.
-                    // Tail is behind the viewport — no scroll compensation needed.
                     state.trimBack(count: restore.addedCount)
                     tabFeedState[tab.rawValue] = state
                     syncItemsForSelectedTab()
+                    // Compensate scroll: prepending content above shifts the viewport.
+                    // The safety guard in applyCompensationNow skips this when already at/near top.
+                    homeFeedTrimSignedDeltaY = restore.scrollDeltaY
+                    homeFeedTrimToken += 1
                     FeedPerformance.log(
                         "Home \(tab) restore +\(restore.addedCount) trim-back window=\(state.items.count) start=\(state.window.logicalStartIndex)"
                     )

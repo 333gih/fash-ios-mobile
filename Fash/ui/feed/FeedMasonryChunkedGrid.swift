@@ -59,17 +59,21 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
 
     var body: some View {
         LazyVStack(spacing: gap) {
-            if isLoadingTop {
-                ProgressView()
-                    .progressViewStyle(.circular)
-                    .frame(maxWidth: .infinity, minHeight: 52)
-            }
             widthProbe
             ForEach(feedChunks) { chunk in
                 feedChunkRow(chunk)
                     .id("masonry_chunk_\(chunk.id)")
             }
             footer()
+        }
+        // Overlay keeps the spinner off the layout flow — no 52pt height jump when it appears/disappears.
+        .overlay(alignment: .top) {
+            if isLoadingTop {
+                ProgressView()
+                    .progressViewStyle(.circular)
+                    .frame(maxWidth: .infinity, minHeight: 52)
+                    .background(.ultraThinMaterial)
+            }
         }
         .onAppear { refreshLayout(forceFull: true) }
         .onChange(of: itemsSignature) { old, new in
