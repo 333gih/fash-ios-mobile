@@ -82,21 +82,38 @@ struct FeedSlidingWindow {
     mutating func prependUnique(
         _ newItems: [ListingFeedItem],
         knownIds: inout Set<String>,
-        columnWidth: CGFloat
+        columnWidth: CGFloat,
+        columnAssignments: [String: Bool] = [:]
     ) -> PrependResult? {
         let fresh = newItems.filter { knownIds.insert($0.id).inserted }
         guard !fresh.isEmpty else { return nil }
         items.insert(contentsOf: fresh, at: 0)
         logicalStartIndex = max(0, logicalStartIndex - fresh.count)
-        let deltaY = Self.estimateMasonryHeight(items: fresh, columnWidth: columnWidth)
+        let deltaY = columnAssignments.isEmpty
+            ? Self.estimateMasonryHeight(items: fresh, columnWidth: columnWidth)
+            : Self.exactMasonryHeight(items: fresh, columnWidth: columnWidth, columnAssignments: columnAssignments)
         return PrependResult(addedCount: fresh.count, scrollDeltaY: deltaY)
     }
 
-    /// Drop rows far above the viewport; returns estimated scroll adjustment for UIKit.
+    /// Restore previously-trimmed items from the global store, bypassing knownIds check.
+    /// Caller guarantees `restoredItems` are already in `knownIds` and ordered oldest-first.
+    mutating func restoreFront(_ restoredItems: [ListingFeedItem]) {
+        guard !restoredItems.isEmpty else { return }
+        items.insert(contentsOf: restoredItems, at: 0)
+        logicalStartIndex = max(0, logicalStartIndex - restoredItems.count)
+    }
+
+    /// Append items that are guaranteed deduplicated by the caller (via FeedGlobalItemStore).
+    mutating func appendKnownFresh(_ newItems: [ListingFeedItem]) {
+        items.append(contentsOf: newItems)
+    }
+
+    /// Drop rows far above the viewport; returns scroll compensation for UIKit.
     mutating func trimFrontIfNeeded(
         visibleIndex: Int,
         columnWidth: CGFloat,
-        policy: FeedSlidingWindowPolicy = .homeFollowing
+        policy: FeedSlidingWindowPolicy = .homeFollowing,
+        columnAssignments: [String: Bool] = [:]
     ) -> TrimResult? {
         guard items.count > policy.maxItems else { return nil }
         guard visibleIndex >= policy.bufferBefore + 6 else { return nil }
@@ -106,7 +123,9 @@ struct FeedSlidingWindow {
         guard removeCount > 0 else { return nil }
 
         let removed = Array(items.prefix(removeCount))
-        let deltaY = Self.estimateMasonryHeight(items: removed, columnWidth: columnWidth)
+        let deltaY = columnAssignments.isEmpty
+            ? Self.estimateMasonryHeight(items: removed, columnWidth: columnWidth)
+            : Self.exactMasonryHeight(items: removed, columnWidth: columnWidth, columnAssignments: columnAssignments)
         items.removeFirst(removeCount)
         logicalStartIndex += removeCount
         return TrimResult(removedCount: removeCount, scrollDeltaY: deltaY)
@@ -152,6 +171,25 @@ struct FeedSlidingWindow {
             } else {
                 right += h + gap
             }
+        }
+        return max(left, right)
+    }
+
+    /// Compute height using stored column assignments for precision.
+    /// For items without a stored assignment, falls back to shortest-column simulation.
+    static func exactMasonryHeight(
+        items: [ListingFeedItem],
+        columnWidth: CGFloat,
+        columnAssignments: [String: Bool]
+    ) -> CGFloat {
+        guard !items.isEmpty, columnWidth > 1 else { return 0 }
+        let gap: CGFloat = 8
+        var left: CGFloat = 0
+        var right: CGFloat = 0
+        for item in items {
+            let h = ListingMasonryGrid.tileHeight(columnWidth: columnWidth, item: item)
+            let isRight = columnAssignments[item.id] ?? (left > right)
+            if isRight { right += h + gap } else { left += h + gap }
         }
         return max(left, right)
     }

@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import UIKit
 
 private enum HomeFeedConstants {
     static let followPageSize = 20
@@ -11,31 +12,58 @@ private enum HomeFeedConstants {
 private struct HomeTabFeedState {
     var hasMore = false
     var isLoadingMore = false
-    // Bounded sliding window — holds items and logical offset for this tab.
     private(set) var window = FeedSlidingWindow()
+    private(set) var globalStore = FeedGlobalItemStore()
     private var knownIds: Set<String> = []
 
     var items: [ListingFeedItem] { window.items }
 
-    /// Logical offset to pass as API `offset` — accounts for front-trimmed items.
-    var loadMoreOffset: Int { window.logicalStartIndex + window.items.count }
+    /// Logical offset for API pagination — always equals total items ever loaded for this tab.
+    var loadMoreOffset: Int { globalStore.isEmpty ? window.logicalStartIndex + window.items.count : globalStore.count }
 
     mutating func setFirstPage(_ loaded: [ListingFeedItem]) {
+        knownIds = globalStore.reset(with: loaded)
         window.reset(with: loaded)
-        knownIds = Set(loaded.map(\.id))
     }
 
     @discardableResult
     mutating func appendUniquePage(_ page: [ListingFeedItem]) -> Int {
-        return window.appendUnique(page, knownIds: &knownIds)
+        let before = globalStore.count
+        globalStore.appendNew(page, knownIds: &knownIds)
+        let freshItems = globalStore.items(from: before, to: globalStore.count)
+        if !freshItems.isEmpty { window.appendKnownFresh(freshItems) }
+        return freshItems.count
     }
 
-    mutating func trimFront(visibleIndex: Int, columnWidth: CGFloat) -> FeedSlidingWindow.TrimResult? {
+    mutating func trimFront(
+        visibleIndex: Int,
+        columnWidth: CGFloat,
+        columnAssignments: [String: Bool],
+        policy: FeedSlidingWindowPolicy
+    ) -> FeedSlidingWindow.TrimResult? {
         window.trimFrontIfNeeded(
             visibleIndex: visibleIndex,
             columnWidth: columnWidth,
-            policy: .homeSectionTab
+            policy: policy,
+            columnAssignments: columnAssignments
         )
+    }
+
+    /// Restore evicted items from the global store when the user scrolls back up.
+    mutating func restoreFromGlobal(
+        targetGlobalStart: Int,
+        columnWidth: CGFloat,
+        columnAssignments: [String: Bool]
+    ) -> FeedSlidingWindow.PrependResult? {
+        let currentStart = window.logicalStartIndex
+        guard currentStart > 0, targetGlobalStart < currentStart else { return nil }
+        let toRestore = globalStore.items(from: max(0, targetGlobalStart), to: currentStart)
+        guard !toRestore.isEmpty else { return nil }
+        let deltaY = FeedSlidingWindow.exactMasonryHeight(
+            items: toRestore, columnWidth: columnWidth, columnAssignments: columnAssignments
+        )
+        window.restoreFront(toRestore)
+        return FeedSlidingWindow.PrependResult(addedCount: toRestore.count, scrollDeltaY: deltaY)
     }
 
     @discardableResult
@@ -77,6 +105,8 @@ final class HomeViewModel {
     private(set) var homeTabBarScrollToken = 0
     var homeFeedTrimToken = 0
     private(set) var homeFeedTrimSignedDeltaY: CGFloat = 0
+    /// Per-tab masonry column assignments — moved from view @State so ViewModel can use them for exact scroll compensation.
+    var columnAssignmentsByTab: [String: [String: Bool]] = [:]
 
     var dailyOutfitDrop: [OutfitSetCard] { sections.dailyOutfitDrop }
 
@@ -159,7 +189,7 @@ final class HomeViewModel {
         scheduleFollowingWindowTrimDeferred(visibleIndex: visibleIndex, columnWidth: columnWidth)
     }
 
-    /// Section tabs (huntToday, forYou, etc.) — bounded sliding window trim.
+    /// Section tabs (huntToday, forYou, etc.) — adaptive sliding window with scroll-back recovery.
     func scheduleSectionTabTrim(visibleIndex: Int, columnWidth: CGFloat) {
         let tab = selectedFeedTab
         guard tab != .following else { return }
@@ -169,8 +199,36 @@ final class HomeViewModel {
             guard !Task.isCancelled else { return }
             guard selectedFeedTab == tab else { return }
             guard let boundary = homeScrollBoundary, !boundary.isUserInteracting else { return }
+            let assignments = columnAssignmentsByTab[tab.rawValue] ?? [:]
+            let policy = adaptiveSectionTabPolicy(columnWidth: columnWidth)
             var state = tabFeedState[tab.rawValue] ?? HomeTabFeedState()
-            guard let trim = state.trimFront(visibleIndex: visibleIndex, columnWidth: columnWidth) else { return }
+
+            // Scroll-back: restore evicted items when near the window boundary.
+            if visibleIndex <= policy.backfillVisibleThreshold && state.window.logicalStartIndex > 0 {
+                let targetStart = max(0, state.window.logicalStartIndex - policy.bufferBefore)
+                if let restore = state.restoreFromGlobal(
+                    targetGlobalStart: targetStart,
+                    columnWidth: columnWidth,
+                    columnAssignments: assignments
+                ) {
+                    tabFeedState[tab.rawValue] = state
+                    syncItemsForSelectedTab()
+                    homeFeedTrimSignedDeltaY = restore.scrollDeltaY  // positive → push viewport down
+                    homeFeedTrimToken += 1
+                    FeedPerformance.log(
+                        "Home \(tab) restore +\(restore.addedCount) window=\(state.items.count) start=\(state.window.logicalStartIndex)"
+                    )
+                }
+                return
+            }
+
+            // Forward scroll: trim items far above the viewport.
+            guard let trim = state.trimFront(
+                visibleIndex: visibleIndex,
+                columnWidth: columnWidth,
+                columnAssignments: assignments,
+                policy: policy
+            ) else { return }
             tabFeedState[tab.rawValue] = state
             syncItemsForSelectedTab()
             homeFeedTrimSignedDeltaY = -trim.scrollDeltaY
@@ -672,6 +730,21 @@ final class HomeViewModel {
         scheduleFollowingWindowTrimDeferred(visibleIndex: index, columnWidth: columnWidth)
     }
 
+    private func adaptiveSectionTabPolicy(columnWidth: CGFloat) -> FeedSlidingWindowPolicy {
+        let vpH = UIScreen.main.bounds.height
+        let itemH = max(120, columnWidth * 1.2)
+        let itemsPerVP = max(4, Int(vpH / itemH * 2))
+        let maxItems = min(300, max(80, itemsPerVP * 6))
+        let buffer = max(24, itemsPerVP * 2)
+        let backfill = max(10, itemsPerVP)
+        return FeedSlidingWindowPolicy(
+            maxItems: maxItems,
+            bufferBefore: buffer,
+            bufferAfter: buffer,
+            backfillVisibleThreshold: backfill
+        )
+    }
+
     private func scheduleFollowingWindowTrimDeferred(visibleIndex: Int, columnWidth: CGFloat) {
         followingTrimTask?.cancel()
         followingTrimTask = Task { @MainActor in
@@ -679,10 +752,12 @@ final class HomeViewModel {
             guard !Task.isCancelled else { return }
             guard selectedFeedTab == .following else { return }
             guard let boundary = homeScrollBoundary, !boundary.isUserInteracting else { return }
+            let assignments = columnAssignmentsByTab[HomeFeedTab.following.rawValue] ?? [:]
             guard let trim = followingWindow.trimFrontIfNeeded(
                 visibleIndex: visibleIndex,
                 columnWidth: columnWidth,
-                policy: .homeFollowing
+                policy: .homeFollowing,
+                columnAssignments: assignments
             ) else { return }
             syncItemsForSelectedTab()
             homeFeedTrimSignedDeltaY = -trim.scrollDeltaY
@@ -837,6 +912,7 @@ final class HomeViewModel {
         sectionTabTrimTask?.cancel()
         sectionTabTrimTask = nil
         tabFeedState = [:]
+        columnAssignmentsByTab = [:]
         sectionLoadMoreTasks.values.forEach { $0.cancel() }
         sectionLoadMoreTasks = [:]
         tabsLoading = []
@@ -1197,6 +1273,7 @@ final class HomeViewModel {
 
     private func applyFirstPageToTab(_ tab: HomeFeedTab, items: [ListingFeedItem]) {
         guard tab != .following else { return }
+        columnAssignmentsByTab[tab.rawValue] = nil  // Clear stale assignments on first-page reload.
         var state = tabFeedState[tab.rawValue] ?? HomeTabFeedState()
         state.setFirstPage(items)
         tabFeedState[tab.rawValue] = state

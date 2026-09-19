@@ -64,7 +64,6 @@ struct HomeFeedContent: View {
     @State private var homeHeaderHeight: CGFloat = 0
     @State private var homeTabRowHeight: CGFloat = 48
     @State private var homeScrollClampRevision = 0
-    @State private var masonryColumnAssignmentsByTab: [String: [String: Bool]] = [:]
     @State private var listingInteractionEnabled = true
 
     private var pinnedChromeHeight: CGFloat {
@@ -87,8 +86,8 @@ struct HomeFeedContent: View {
 
     private var masonryColumnAssignments: Binding<[String: Bool]> {
         Binding(
-            get: { masonryColumnAssignmentsByTab[viewModel.selectedFeedTabKey] ?? [:] },
-            set: { masonryColumnAssignmentsByTab[viewModel.selectedFeedTabKey] = $0 }
+            get: { viewModel.columnAssignmentsByTab[viewModel.selectedFeedTabKey] ?? [:] },
+            set: { viewModel.columnAssignmentsByTab[viewModel.selectedFeedTabKey] = $0 }
         )
     }
 

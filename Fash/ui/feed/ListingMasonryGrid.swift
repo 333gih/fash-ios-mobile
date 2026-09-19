@@ -282,9 +282,8 @@ extension ListingMasonryGrid {
         verticalGap: CGFloat,
         assignedIsRightColumn: inout [String: Bool]
     ) -> ListingMasonryColumnLayout {
-        let liveIds = Set(items.map(\.id))
-        assignedIsRightColumn = assignedIsRightColumn.filter { liveIds.contains($0.key) }
-
+        // Stale entries for evicted items are intentionally kept — feeds need them for
+        // scroll-back masonry reconstruction without re-fetching layout metadata.
         guard !items.isEmpty else { return .empty }
 
         var left: [(index: Int, item: ListingFeedItem)] = []
