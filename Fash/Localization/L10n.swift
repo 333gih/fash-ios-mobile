@@ -2206,6 +2206,12 @@ enum L10n {
     static var profileCompletionStepBio: String { t("profile_completion_step_bio") }
     static var profileCompletionStepFollow: String { t("profile_completion_step_follow") }
     static var milestoneProfileComplete: String { t("milestone_profile_complete") }
+    static var profileCompletionImproveTitle: String { t("profile_completion_improve_title") }
+    static func profileCompletionStepsFormat(_ a1: CVarArg, _ a2: CVarArg) -> String {
+        String(format: t("profile_completion_steps_format"), a1, a2)
+    }
+    static var profilePersonalizationSection: String { t("profile_personalization_section") }
+    static var profileActivitySection: String { t("profile_activity_section") }
     static var profileEdit: String { t("profile_edit") }
     static var profileEmptyInReviewSubtitle: String { t("profile_empty_in_review_subtitle") }
     static var profileEmptyInReviewTitle: String { t("profile_empty_in_review_title") }

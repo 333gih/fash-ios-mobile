@@ -2191,5 +2191,9 @@
     <string name="profile_completion_step_sizing">Add your sizing info</string>
     <string name="profile_completion_step_bio">Write a short bio</string>
     <string name="profile_completion_step_follow">Follow a seller you like</string>
+    <string name="profile_completion_improve_title">Improve style recommendations</string>
+    <string name="profile_completion_steps_format">%1$d/%2$d steps</string>
+    <string name="profile_personalization_section">Personalization</string>
+    <string name="profile_activity_section">Activity</string>
     <string name="milestone_profile_complete">Your style profile is complete!</string>
 </resources>

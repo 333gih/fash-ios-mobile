@@ -58,11 +58,11 @@ struct ProfileCompletionCard: View {
         Button(action: onAction) {
             VStack(alignment: .leading, spacing: spacing.spacing2) {
                 HStack {
-                    Text(L10n.profileCompletionTitle)
+                    Text(L10n.profileCompletionImproveTitle)
                         .font(FashTypography.labelLarge)
                         .foregroundStyle(FashColors.textPrimary)
                     Spacer()
-                    Text("\(Int(state.fraction * 100))%")
+                    Text(L10n.profileCompletionStepsFormat(state.completedSteps, state.totalSteps))
                         .font(FashTypography.labelMedium.weight(.bold))
                         .foregroundStyle(FashColors.brandPrimary)
                 }
@@ -95,6 +95,5 @@ struct ProfileCompletionCard: View {
         }
         .buttonStyle(.plain)
         .padding(.horizontal, spacing.editorialStart)
-        .padding(.top, spacing.spacing3)
     }
 }

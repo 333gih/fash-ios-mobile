@@ -1883,6 +1883,10 @@
 "profile_completion_step_sizing" = "Thêm thông tin kích thước";
 "profile_completion_step_bio" = "Viết giới thiệu ngắn";
 "profile_completion_step_follow" = "Theo dõi một người bán";
+"profile_completion_improve_title" = "Cải thiện gợi ý phong cách";
+"profile_completion_steps_format" = "%d/%d bước";
+"profile_personalization_section" = "Cá nhân hoá";
+"profile_activity_section" = "Hoạt động";
 "milestone_profile_complete" = "Hồ sơ phong cách của bạn đã hoàn tất!";
 "profile_edit" = "Chỉnh sửa hồ sơ";
 "profile_empty_in_review_subtitle" = "Tin mới đăng sẽ hiển thị ở đây cho đến khi được Fash phê duyệt.";

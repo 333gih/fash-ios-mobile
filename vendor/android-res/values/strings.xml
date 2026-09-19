@@ -2246,5 +2246,9 @@
     <string name="profile_completion_step_sizing">Thêm thông tin kích thước</string>
     <string name="profile_completion_step_bio">Viết giới thiệu ngắn</string>
     <string name="profile_completion_step_follow">Theo dõi một người bán</string>
+    <string name="profile_completion_improve_title">Cải thiện gợi ý phong cách</string>
+    <string name="profile_completion_steps_format">%1$d/%2$d bước</string>
+    <string name="profile_personalization_section">Cá nhân hoá</string>
+    <string name="profile_activity_section">Hoạt động</string>
     <string name="milestone_profile_complete">Hồ sơ phong cách của bạn đã hoàn tất!</string>
 </resources>

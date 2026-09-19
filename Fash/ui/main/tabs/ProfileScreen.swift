@@ -265,6 +265,14 @@ struct ProfileScreen: View {
         ProfileCompletionState.from(viewModel.profile)
     }
 
+    private func sectionLabel(_ text: String) -> some View {
+        Text(text)
+            .font(FashTypography.labelMedium.weight(.semibold))
+            .foregroundStyle(FashColors.textSecondary)
+            .padding(.leading, spacing.editorialStart + 4)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
     private var expandedHeader: some View {
         VStack(spacing: 0) {
             ProfileHeroSection(
@@ -282,13 +290,22 @@ struct ProfileScreen: View {
                 }
             )
             if viewModel.profile != nil && !completionState.isComplete {
+                sectionLabel(L10n.profilePersonalizationSection)
+                    .padding(.top, spacing.spacing3)
                 ProfileCompletionCard(state: completionState, onAction: onEditProfile)
+                    .padding(.top, spacing.spacing2)
+                Spacer().frame(height: spacing.spacing5)
+            }
+            if viewModel.profile != nil {
+                sectionLabel(L10n.profileActivitySection)
+                    .padding(.top, completionState.isComplete ? spacing.spacing3 : 0)
             }
             ProfileOwnMetricsCard(
                 profile: viewModel.profile,
                 onFollowersTap: { onOpenFollowConnections(1) },
                 onFollowingTap: { onOpenFollowConnections(0) }
             )
+            .padding(.top, spacing.spacing2)
             ProfileSizingReferenceCard(profile: viewModel.profile, onEdit: onEditProfile)
             SellerPackageEntitlementCard(
                 summary: entitlementSummary,

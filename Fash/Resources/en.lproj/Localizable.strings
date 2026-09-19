@@ -1883,6 +1883,10 @@
 "profile_completion_step_sizing" = "Add your sizing info";
 "profile_completion_step_bio" = "Write a short bio";
 "profile_completion_step_follow" = "Follow a seller you like";
+"profile_completion_improve_title" = "Improve style recommendations";
+"profile_completion_steps_format" = "%d/%d steps";
+"profile_personalization_section" = "Personalization";
+"profile_activity_section" = "Activity";
 "milestone_profile_complete" = "Your style profile is complete!";
 "profile_edit" = "Edit profile";
 "profile_empty_in_review_subtitle" = "New listings appear here until Fash approves them.";
