@@ -261,7 +261,6 @@ struct ProfileScreen: View {
         }
     }
 
-    @ViewBuilder
     private var completionState: ProfileCompletionState {
         ProfileCompletionState.from(viewModel.profile)
     }
