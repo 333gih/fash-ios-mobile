@@ -49,6 +49,11 @@ private struct HomeTabFeedState {
         )
     }
 
+    @discardableResult
+    mutating func trimBack(count: Int) -> Int {
+        window.trimBack(count: count)
+    }
+
     /// Restore evicted items from the global store when the user scrolls back up.
     mutating func restoreFromGlobal(
         targetGlobalStart: Int,
@@ -224,7 +229,7 @@ final class HomeViewModel {
                 ) {
                     // Bidirectional window: trim same count from tail as prepended at head.
                     // Tail is behind the viewport — no scroll compensation needed.
-                    state.window.trimBack(count: restore.addedCount)
+                    state.trimBack(count: restore.addedCount)
                     tabFeedState[tab.rawValue] = state
                     syncItemsForSelectedTab()
                     FeedPerformance.log(
@@ -427,7 +432,7 @@ final class HomeViewModel {
             columnAssignments: [:]
         ) else { return }
         // Bidirectional: trim same count from back to keep window bounded.
-        state.window.trimBack(count: restore.addedCount)
+        state.trimBack(count: restore.addedCount)
         tabFeedState[tab.rawValue] = state
         syncItemsForSelectedTab()
     }
