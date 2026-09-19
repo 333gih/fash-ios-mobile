@@ -375,7 +375,7 @@ struct RootView: View {
                 onDismiss: { router.showPersonalization = false },
                 onNavigateToExplore: {
                     router.showPersonalization = false
-                    router.selectedTab = .explore
+                    router.showExploreOverlay = true
                 },
                 onOpenEditProfile: {
                     router.showPersonalization = false
