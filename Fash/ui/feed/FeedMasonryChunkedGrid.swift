@@ -7,6 +7,7 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
     let items: [ListingFeedItem]
     @Binding var columnAssignments: [String: Bool]
     var chunkSize: Int = ListingMasonryFeedPages.profileChunkPageSize
+    var isLoadingTop: Bool = false
     @ViewBuilder var footer: () -> Footer
     @ViewBuilder let cell: (ListingFeedItem, Int) -> Cell
 
@@ -44,18 +45,25 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
         items: [ListingFeedItem],
         columnAssignments: Binding<[String: Bool]>,
         chunkSize: Int = ListingMasonryFeedPages.profileChunkPageSize,
+        isLoadingTop: Bool = false,
         @ViewBuilder footer: @escaping () -> Footer = { EmptyView() },
         @ViewBuilder cell: @escaping (ListingFeedItem, Int) -> Cell
     ) {
         self.items = items
         self._columnAssignments = columnAssignments
         self.chunkSize = chunkSize
+        self.isLoadingTop = isLoadingTop
         self.footer = footer
         self.cell = cell
     }
 
     var body: some View {
         LazyVStack(spacing: gap) {
+            if isLoadingTop {
+                ProgressView()
+                    .progressViewStyle(.circular)
+                    .frame(maxWidth: .infinity, minHeight: 52)
+            }
             widthProbe
             ForEach(feedChunks) { chunk in
                 feedChunkRow(chunk)
@@ -238,12 +246,14 @@ extension FeedMasonryChunkedGrid where Footer == EmptyView {
         items: [ListingFeedItem],
         columnAssignments: Binding<[String: Bool]>,
         chunkSize: Int = ListingMasonryFeedPages.profileChunkPageSize,
+        isLoadingTop: Bool = false,
         @ViewBuilder cell: @escaping (ListingFeedItem, Int) -> Cell
     ) {
         self.init(
             items: items,
             columnAssignments: columnAssignments,
             chunkSize: chunkSize,
+            isLoadingTop: isLoadingTop,
             footer: { EmptyView() },
             cell: cell
         )

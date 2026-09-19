@@ -107,6 +107,8 @@ final class HomeViewModel {
     private(set) var homeTabBarScrollToken = 0
     var homeFeedTrimToken = 0
     private(set) var homeFeedTrimSignedDeltaY: CGFloat = 0
+    /// True while top-of-window content is being loaded; drives the grid's top loading spinner.
+    var homeFeedTopLoading = false
     /// Last column width passed to scheduleSectionTabTrim — used for immediate scroll-to-top restore.
     private var lastKnownFeedColumnWidth: CGFloat = 160
 
@@ -209,19 +211,30 @@ final class HomeViewModel {
             // Scroll-back: restore evicted items when near the window boundary.
             if visibleIndex <= policy.backfillVisibleThreshold && state.window.logicalStartIndex > 0 {
                 let targetStart = max(0, state.window.logicalStartIndex - policy.bufferBefore)
+
+                // Show top loading indicator; give SwiftUI one frame to render it before content changes.
+                homeFeedTopLoading = true
+                try? await Task.sleep(for: .milliseconds(16))
+                guard !Task.isCancelled, selectedFeedTab == tab else { homeFeedTopLoading = false; return }
+
                 if let restore = state.restoreFromGlobal(
                     targetGlobalStart: targetStart,
                     columnWidth: columnWidth,
                     columnAssignments: assignments
                 ) {
+                    // Bidirectional window: trim same count from tail as prepended at head.
+                    // Tail is behind the viewport — no scroll compensation needed.
+                    state.window.trimBack(count: restore.addedCount)
                     tabFeedState[tab.rawValue] = state
                     syncItemsForSelectedTab()
-                    homeFeedTrimSignedDeltaY = restore.scrollDeltaY  // positive → push viewport down
-                    homeFeedTrimToken += 1
                     FeedPerformance.log(
-                        "Home \(tab) restore +\(restore.addedCount) window=\(state.items.count) start=\(state.window.logicalStartIndex)"
+                        "Home \(tab) restore +\(restore.addedCount) trim-back window=\(state.items.count) start=\(state.window.logicalStartIndex)"
                     )
                 }
+
+                // Brief hold so loading indicator is visible, then dismiss.
+                try? await Task.sleep(for: .milliseconds(80))
+                homeFeedTopLoading = false
                 return
             }
 
@@ -408,11 +421,13 @@ final class HomeViewModel {
         guard tab != .following else { return }
         var state = tabFeedState[tab.rawValue] ?? HomeTabFeedState()
         guard state.window.logicalStartIndex > 0 else { return }
-        guard state.restoreFromGlobal(
+        guard let restore = state.restoreFromGlobal(
             targetGlobalStart: 0,
             columnWidth: max(1, lastKnownFeedColumnWidth),
             columnAssignments: [:]
-        ) != nil else { return }
+        ) else { return }
+        // Bidirectional: trim same count from back to keep window bounded.
+        state.window.trimBack(count: restore.addedCount)
         tabFeedState[tab.rawValue] = state
         syncItemsForSelectedTab()
     }

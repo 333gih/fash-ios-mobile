@@ -123,6 +123,17 @@ struct FeedSlidingWindow {
         return TrimResult(removedCount: removeCount, scrollDeltaY: deltaY)
     }
 
+    /// Trim items from the tail of the window. Used bidirectionally: when loading content above,
+    /// cut the same count from below so the window stays bounded without scroll compensation.
+    /// Unlike trimFront, this does NOT change [logicalStartIndex].
+    @discardableResult
+    mutating func trimBack(count: Int) -> Int {
+        guard count > 0, !items.isEmpty else { return 0 }
+        let removeCount = min(count, items.count)
+        items.removeLast(removeCount)
+        return removeCount
+    }
+
     mutating func mapItems(_ transform: (ListingFeedItem) -> ListingFeedItem) {
         items = items.map(transform)
     }

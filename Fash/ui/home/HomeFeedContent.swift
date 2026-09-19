@@ -342,6 +342,7 @@ struct HomeFeedContent: View {
                 FeedMasonryChunkedGrid(
                     items: viewModel.items,
                     columnAssignments: masonryColumnAssignments,
+                    isLoadingTop: viewModel.homeFeedTopLoading,
                     footer: {
                         let tab = viewModel.selectedFeedTab
                         if viewModel.hasMore(for: tab) || viewModel.isLoadingMore(for: tab) {
