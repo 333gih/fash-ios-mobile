@@ -163,26 +163,13 @@ struct ExploreSearchOverlay: View {
     }
 }
 
-/// Simple wrapping tag chips for trending aesthetic tags.
+/// Wrapping flow of trending aesthetic tag chips.
 private struct FlowLayoutTags: View {
     let tags: [String]
     let onTag: (String) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            var row: [String] = []
-            let _ = row
-            FlexibleTagWrap(tags: tags, onTag: onTag)
-        }
-    }
-}
-
-private struct FlexibleTagWrap: View {
-    let tags: [String]
-    let onTag: (String) -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        FlowLayout(spacing: 8) {
             ForEach(tags, id: \.self) { tag in
                 Button(tag) { onTag(tag) }
                     .font(FashTypography.labelMedium)

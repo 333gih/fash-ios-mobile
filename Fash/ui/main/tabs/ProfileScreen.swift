@@ -262,6 +262,10 @@ struct ProfileScreen: View {
     }
 
     @ViewBuilder
+    private var completionState: ProfileCompletionState {
+        ProfileCompletionState.from(viewModel.profile)
+    }
+
     private var expandedHeader: some View {
         VStack(spacing: 0) {
             ProfileHeroSection(
@@ -278,6 +282,9 @@ struct ProfileScreen: View {
                     onNavigateToExploreFromProfile(nil, nil, p.aestheticTagId, p.searchQuery, nil, nil)
                 }
             )
+            if viewModel.profile != nil && !completionState.isComplete {
+                ProfileCompletionCard(state: completionState, onAction: onEditProfile)
+            }
             ProfileOwnMetricsCard(
                 profile: viewModel.profile,
                 onFollowersTap: { onOpenFollowConnections(1) },

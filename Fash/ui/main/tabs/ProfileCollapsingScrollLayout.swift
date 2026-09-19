@@ -743,9 +743,9 @@ struct ProfileCollapsingScrollLayout<ExpandedHeader: View, CompactHeader: View>:
     private func refreshBriefBarVisibility(collapseProgress: CGFloat, tabsPinned: Bool) {
         // Android ProfileStickyProfileChrome hysteresis — avoid elastic-scroll flicker.
         if tabsPinned || chromePinnedLatch || collapseProgress > 0.52 {
-            if !showBriefBar { showBriefBar = true }
+            if !showBriefBar { withAnimation(FashMotion.overlay) { showBriefBar = true } }
         } else if collapseProgress < 0.36, !tabsPinned, !chromePinnedLatch {
-            if showBriefBar { showBriefBar = false }
+            if showBriefBar { withAnimation(FashMotion.overlay) { showBriefBar = false } }
         }
     }
 

@@ -1877,6 +1877,13 @@
 "profile_action_share" = "Share shop";
 "profile_cd_brief_scroll_to_top" = "Scroll to profile top";
 "profile_completed_sales" = "Sales";
+"profile_completion_title" = "Your style profile";
+"profile_completion_step_photo" = "Upload a profile photo";
+"profile_completion_step_tags" = "Choose your aesthetic tags";
+"profile_completion_step_sizing" = "Add your sizing info";
+"profile_completion_step_bio" = "Write a short bio";
+"profile_completion_step_follow" = "Follow a seller you like";
+"milestone_profile_complete" = "Your style profile is complete!";
 "profile_edit" = "Edit profile";
 "profile_empty_in_review_subtitle" = "New listings appear here until Fash approves them.";
 "profile_empty_in_review_title" = "No listings pending review";

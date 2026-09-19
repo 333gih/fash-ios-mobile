@@ -2,6 +2,8 @@ import SwiftUI
 
 /// Shared onboarding step chrome (Android onboarding flow).
 struct OnboardingStepShell: View {
+    let step: Int
+    let total: Int
     let title: String
     let bodyText: String
     let actionTitle: String
@@ -9,7 +11,7 @@ struct OnboardingStepShell: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
-            OnboardingProgressBar(step: 1, total: 6)
+            OnboardingProgressBar(step: step, total: total)
             Text(title)
                 .font(FashTypography.headlineMedium)
                 .foregroundStyle(FashColors.textPrimary)

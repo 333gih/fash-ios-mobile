@@ -58,7 +58,6 @@ struct CreateListingPostSteps: View {
                 label: L10n.createListingSelectCategory,
                 text: $categoryQuery
             )
-            .onChange(of: categoryQuery) { _, _ in }
 
             let matches = buildCategorySearchMatches(roots: postVM.categoryTree, query: categoryQuery)
             if !categoryQuery.trimmingCharacters(in: .whitespaces).isEmpty {

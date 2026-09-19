@@ -1877,6 +1877,13 @@
 "profile_action_share" = "Chia sẻ shop";
 "profile_cd_brief_scroll_to_top" = "Cuộn lên đầu hồ sơ";
 "profile_completed_sales" = "Giao dịch";
+"profile_completion_title" = "Hồ sơ phong cách của bạn";
+"profile_completion_step_photo" = "Tải ảnh đại diện";
+"profile_completion_step_tags" = "Chọn phong cách yêu thích";
+"profile_completion_step_sizing" = "Thêm thông tin kích thước";
+"profile_completion_step_bio" = "Viết giới thiệu ngắn";
+"profile_completion_step_follow" = "Theo dõi một người bán";
+"milestone_profile_complete" = "Hồ sơ phong cách của bạn đã hoàn tất!";
 "profile_edit" = "Chỉnh sửa hồ sơ";
 "profile_empty_in_review_subtitle" = "Tin mới đăng sẽ hiển thị ở đây cho đến khi được Fash phê duyệt.";
 "profile_empty_in_review_title" = "Không có tin đang duyệt";

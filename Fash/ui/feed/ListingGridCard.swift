@@ -186,7 +186,7 @@ struct ListingGridCard: View, Equatable {
             sellerRow
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, FooterMetrics.paddingH)
+        .padding(.horizontal, spacing.spacing2)
         .padding(.vertical, FooterMetrics.paddingV)
         .background {
             LinearGradient(
@@ -299,7 +299,7 @@ struct ListingGridCard: View, Equatable {
     private var topTrailingBadges: some View {
         VStack(alignment: .trailing, spacing: 6) {
             if item.onsiteInspectionCommitment, !compactFooter {
-                badgePill(L10n.listingCommitmentBadge, color: Color(hex: 0x1B5E20, alpha: 0.88))
+                badgePill(L10n.listingCommitmentBadge, color: FashColors.success.opacity(0.88))
             }
             if let scarcity = scarcityBadge {
                 badgePill(scarcity, color: FashColors.brandPrimary.opacity(0.88))

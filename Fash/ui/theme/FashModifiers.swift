@@ -35,4 +35,13 @@ extension View {
     func fashShimmer() -> some View {
         modifier(FashShimmerModifier())
     }
+
+    func fashAmbientShadow(radius: CGFloat = 8, opacity: Double = 0.06) -> some View {
+        self.shadow(
+            color: FashColors.brandPrimary.opacity(opacity),
+            radius: radius,
+            x: 0,
+            y: 2
+        )
+    }
 }

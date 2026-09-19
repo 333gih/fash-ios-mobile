@@ -44,7 +44,13 @@ struct ProductDetailScreen: View {
                 showTopBar: showTopBar,
                 isGuestMode: isGuestMode,
                 onRequestLogin: onRequestLogin,
-                onSaveAdded: { showSaveNudge = true }
+                onSaveAdded: {
+                    showSaveNudge = true
+                    Task {
+                        try? await Task.sleep(nanoseconds: 3_500_000_000)
+                        withAnimation(FashMotion.overlay) { showSaveNudge = false }
+                    }
+                }
             )
         }
         .background(FashColors.screen)

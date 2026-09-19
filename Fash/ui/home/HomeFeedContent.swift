@@ -156,7 +156,7 @@ struct HomeFeedContent: View {
                     homeTabRowHeight = height
                     refreshHomeStickyTabs()
                 }
-                .animation(.easeInOut(duration: 0.14), value: homeScrollBoundary.stickyTabsVisible)
+                .animation(FashMotion.tabContent, value: homeScrollBoundary.stickyTabsVisible)
                 .fashFeedPullRefresh(isRefreshing: $viewModel.isRefreshing) {
                     await viewModel.pullToRefresh(deps: deps, isGuestMode: isGuestMode)
                 }

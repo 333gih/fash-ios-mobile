@@ -2199,6 +2199,13 @@ enum L10n {
     static var profileActionShare: String { t("profile_action_share") }
     static var profileCdBriefScrollToTop: String { t("profile_cd_brief_scroll_to_top") }
     static var profileCompletedSales: String { t("profile_completed_sales") }
+    static var profileCompletionTitle: String { t("profile_completion_title") }
+    static var profileCompletionStepPhoto: String { t("profile_completion_step_photo") }
+    static var profileCompletionStepTags: String { t("profile_completion_step_tags") }
+    static var profileCompletionStepSizing: String { t("profile_completion_step_sizing") }
+    static var profileCompletionStepBio: String { t("profile_completion_step_bio") }
+    static var profileCompletionStepFollow: String { t("profile_completion_step_follow") }
+    static var milestoneProfileComplete: String { t("milestone_profile_complete") }
     static var profileEdit: String { t("profile_edit") }
     static var profileEmptyInReviewSubtitle: String { t("profile_empty_in_review_subtitle") }
     static var profileEmptyInReviewTitle: String { t("profile_empty_in_review_title") }

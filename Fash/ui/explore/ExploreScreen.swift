@@ -119,7 +119,7 @@ struct ExploreScreen: View {
                 .trimmingCharacters(in: .whitespaces).isEmpty
         )
         guard next != showStickyChrome else { return }
-        withAnimation(.easeInOut(duration: 0.22)) {
+        withAnimation(FashMotion.stickyChrome) {
             showStickyChrome = next
         }
     }
@@ -144,7 +144,7 @@ struct ExploreScreen: View {
             if !showsStickyChromeOverlay {
                 sectionToggle
                     .opacity(tabsFadeOpacity)
-                    .animation(.easeInOut(duration: 0.22), value: tabsFadeOpacity)
+                    .animation(FashMotion.overlay, value: tabsFadeOpacity)
                 marketplaceControlsColumn
             }
             listingsLeadingRows
@@ -166,7 +166,7 @@ struct ExploreScreen: View {
             if !showsStickyChromeOverlay {
                 sectionToggle
                     .opacity(tabsFadeOpacity)
-                    .animation(.easeInOut(duration: 0.22), value: tabsFadeOpacity)
+                    .animation(FashMotion.overlay, value: tabsFadeOpacity)
                 marketplaceControlsColumn
             }
         }
@@ -304,7 +304,7 @@ struct ExploreScreen: View {
                     .allowsHitTesting(false)
             }
         }
-        .animation(.easeInOut(duration: 0.22), value: showsStickyChromeOverlay)
+        .animation(FashMotion.stickyChrome, value: showsStickyChromeOverlay)
         .fashFeedPullRefresh(isRefreshing: $viewModel.isRefreshing) {
             masonryColumnAssignments = [:]
             await viewModel.pullToRefresh(deps: deps, isGuestMode: isGuestMode)
@@ -456,7 +456,7 @@ struct ExploreScreen: View {
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .animation(.easeInOut(duration: 0.22), value: showsStickyChromeOverlay)
+        .animation(FashMotion.stickyChrome, value: showsStickyChromeOverlay)
         .fashFeedPullRefresh(isRefreshing: $viewModel.isRefreshing) {
             await viewModel.pullToRefresh(deps: deps, isGuestMode: isGuestMode)
         }

@@ -11,6 +11,7 @@ struct OnboardingProgressBar: View {
                 Capsule()
                     .fill(FashColors.brandPrimary)
                     .frame(width: geo.size.width * CGFloat(step) / CGFloat(max(total, 1)))
+                    .animation(FashMotion.progressFill, value: step)
             }
         }
         .frame(height: 4)

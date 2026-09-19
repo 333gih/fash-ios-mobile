@@ -37,13 +37,19 @@ enum FashColors {
         FashThemeState.shared.isDark ? FashColorTokens.Dark.surfaceContainerHighest : FashColorTokens.LightEditorial.surfaceContainerHighest
     }
     static var surfaceVariant: Color {
-        FashThemeState.shared.isDark ? FashColorTokens.Dark.surfaceContainer : FashColorTokens.LightEditorial.surfaceVariant
+        if FashThemeState.shared.isDark { return FashColorTokens.Dark.surfaceVariant }
+        return FashThemeState.shared.lightAppearance == .pureWhite
+            ? FashColorTokens.LightPureWhite.surfaceVariant
+            : FashColorTokens.LightEditorial.surfaceVariant
     }
     static var outlineMuted: Color {
         FashThemeState.shared.isDark ? FashColorTokens.Dark.outlineMuted : FashColorTokens.LightEditorial.outlineMuted
     }
     static var error: Color {
         FashThemeState.shared.isDark ? FashColorTokens.Dark.error : FashColorTokens.LightEditorial.error
+    }
+    static var success: Color {
+        FashThemeState.shared.isDark ? FashColorTokens.Dark.success : FashColorTokens.LightEditorial.success
     }
 
     /// Foreground readable on [brandPrimary] — Android [fashReadableOn].

@@ -163,9 +163,9 @@ struct MainNavScreen: View {
             }
         }
         .onPreferenceChange(FeatureTourAnchorKey.self) { featureTourAnchorFrames = $0 }
-        .animation(.easeInOut(duration: 0.22), value: deps.snackbarMessage)
+        .animation(FashMotion.snackbar, value: deps.snackbarMessage)
         .fashInAppNotificationOverlay()
-        .animation(.easeInOut(duration: 0.25), value: activePromoCampaign?.campaignId)
+        .animation(FashMotion.tabBar, value: activePromoCampaign?.campaignId)
         .fashEdgeBackNavigation(
             router: router,
             notificationsViewModel: notificationsVM,

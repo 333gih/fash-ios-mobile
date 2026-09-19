@@ -34,8 +34,11 @@ enum FashColorTokens {
 
     enum Dark {
         static let brandPrimary = Color(hex: 0xFF6B7D)
+        static let brandPrimaryDeep = Color(hex: 0xCC3E54)
         static let brandPrimaryContainer = Color(hex: 0xB02140)
+        static let onBrandPrimary = Color.white
         static let screen = Color(hex: 0x141210)
+        static let surfaceVariant = Color(hex: 0x2A2420)
         static let surfaceContainerLow = Color(hex: 0x1C1916)
         static let surfaceContainer = Color(hex: 0x231F1C)
         static let surfaceContainerHigh = Color(hex: 0x2B2623)
@@ -45,6 +48,7 @@ enum FashColorTokens {
         static let outlineStrong = Color(hex: 0x9D8B83)
         static let outlineMuted = Color(hex: 0x4A4340)
         static let error = Color(hex: 0xFFB4AB)
+        static let success = Color(hex: 0x4CAF50)
     }
 }
 

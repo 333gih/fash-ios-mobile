@@ -108,7 +108,7 @@ struct FashSnackbarOverlayModifier: ViewModifier {
                     .zIndex(1)
                 }
             }
-            .animation(.easeInOut(duration: 0.22), value: deps.snackbarMessage)
+            .animation(FashMotion.snackbar, value: deps.snackbarMessage)
     }
 }
 
