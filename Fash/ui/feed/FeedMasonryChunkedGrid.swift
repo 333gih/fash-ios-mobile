@@ -8,6 +8,8 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
     @Binding var columnAssignments: [String: Bool]
     var chunkSize: Int = ListingMasonryFeedPages.profileChunkPageSize
     var isLoadingTop: Bool = false
+    /// Incremented externally to force a full relayout even if itemsSignature is unchanged.
+    var repaintToken: Int = 0
     @ViewBuilder var footer: () -> Footer
     @ViewBuilder let cell: (ListingFeedItem, Int) -> Cell
 
@@ -46,6 +48,7 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
         columnAssignments: Binding<[String: Bool]>,
         chunkSize: Int = ListingMasonryFeedPages.profileChunkPageSize,
         isLoadingTop: Bool = false,
+        repaintToken: Int = 0,
         @ViewBuilder footer: @escaping () -> Footer = { EmptyView() },
         @ViewBuilder cell: @escaping (ListingFeedItem, Int) -> Cell
     ) {
@@ -53,16 +56,25 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
         self._columnAssignments = columnAssignments
         self.chunkSize = chunkSize
         self.isLoadingTop = isLoadingTop
+        self.repaintToken = repaintToken
         self.footer = footer
         self.cell = cell
     }
+
+    // Stable namespace prefix for chunk view identity — incorporates first item id so LazyVStack
+    // discards stale height caches when front-trim/restore swaps the leading items.
+    private var chunkIdNamespace: String { items.first?.id ?? "empty" }
 
     var body: some View {
         LazyVStack(spacing: gap) {
             widthProbe
             ForEach(feedChunks) { chunk in
                 feedChunkRow(chunk)
-                    .id("masonry_chunk_\(chunk.id)")
+                    // Including chunkIdNamespace makes each chunk's SwiftUI identity unique to the
+                    // current leading item. When a front-trim or restore changes items[0], LazyVStack
+                    // creates fresh views for every chunk instead of reusing views whose cached heights
+                    // belonged to a different set of items — eliminating the blank-area bug.
+                    .id("masonry_chunk_\(chunk.id)_\(chunkIdNamespace)")
             }
             footer()
         }
@@ -85,6 +97,7 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
                 refreshLayout(forceFull: true)
             }
         }
+        .onChange(of: repaintToken) { _, _ in refreshLayout(forceFull: true) }
         .onDisappear { layoutRefreshTask?.cancel() }
     }
 
@@ -251,6 +264,7 @@ extension FeedMasonryChunkedGrid where Footer == EmptyView {
         columnAssignments: Binding<[String: Bool]>,
         chunkSize: Int = ListingMasonryFeedPages.profileChunkPageSize,
         isLoadingTop: Bool = false,
+        repaintToken: Int = 0,
         @ViewBuilder cell: @escaping (ListingFeedItem, Int) -> Cell
     ) {
         self.init(
@@ -258,6 +272,7 @@ extension FeedMasonryChunkedGrid where Footer == EmptyView {
             columnAssignments: columnAssignments,
             chunkSize: chunkSize,
             isLoadingTop: isLoadingTop,
+            repaintToken: repaintToken,
             footer: { EmptyView() },
             cell: cell
         )

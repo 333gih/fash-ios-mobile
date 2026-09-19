@@ -114,6 +114,8 @@ final class HomeViewModel {
     private(set) var homeFeedTrimSignedDeltaY: CGFloat = 0
     /// True while top-of-window content is being loaded; drives the grid's top loading spinner.
     var homeFeedTopLoading = false
+    /// Incremented when blank-top detection fires — forces the masonry grid to relayout from scratch.
+    var homeFeedRepaintToken = 0
     /// Last column width passed to scheduleSectionTabTrim — used for immediate scroll-to-top restore.
     private var lastKnownFeedColumnWidth: CGFloat = 160
 
@@ -412,6 +414,13 @@ final class HomeViewModel {
         homeScrollToTopToken &+= 1
         sectionTabTrimTask?.cancel()
         immediateRestoreCurrentSectionTabIfNeeded()
+    }
+
+    /// Called by blank-top detection when items exist but the masonry appears empty.
+    /// Forces a full grid relayout without touching item data.
+    func forceRepaintFeed() {
+        guard !items.isEmpty else { return }
+        homeFeedRepaintToken &+= 1
     }
 
     /// Horizontal swipe or different tab tap — align pinned tabs + first rows of that tab.

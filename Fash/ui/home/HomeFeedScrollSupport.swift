@@ -280,6 +280,10 @@ struct HomeFeedScrollCoordinator: UIViewRepresentable {
     var scrollToTopToken: Int = 0
     var homeHeaderHeight: CGFloat = 0
     var homeTabRowHeight: CGFloat = 48
+    /// Current item count — used by the blank-top safety check.
+    var itemCount: Int = 0
+    /// Fired when items exist but the scroll content appears blank after scrolling to top.
+    var onBlankTopDetected: (() -> Void)? = nil
 
     func makeCoordinator() -> Coordinator { Coordinator(boundary: scrollBoundary) }
 
@@ -294,6 +298,8 @@ struct HomeFeedScrollCoordinator: UIViewRepresentable {
         coordinator.boundary = scrollBoundary
         coordinator.homeHeaderHeight = homeHeaderHeight
         coordinator.homeTabRowHeight = homeTabRowHeight
+        coordinator.itemCount = itemCount
+        coordinator.onBlankTopDetected = onBlankTopDetected
         uiView.coordinator = coordinator
         coordinator.installIfNeeded(from: uiView)
         scrollBoundary.updateHomeStickyTabsVisibility(
@@ -312,6 +318,8 @@ struct HomeFeedScrollCoordinator: UIViewRepresentable {
         var homeHeaderHeight: CGFloat = 0
         var homeTabRowHeight: CGFloat = 48
         var lastScrollToTopToken = 0
+        var itemCount = 0
+        var onBlankTopDetected: (() -> Void)?
         weak var scrollView: UIScrollView?
         private var offsetObservation: NSKeyValueObservation?
         private var lastContentOffsetY: CGFloat?
@@ -384,6 +392,18 @@ struct HomeFeedScrollCoordinator: UIViewRepresentable {
                     headerHeight: homeHeaderHeight,
                     tabRowHeight: homeTabRowHeight
                 )
+                // Blank-top safety net: PinnedTabScrollOffsetFixer retries for 600ms total.
+                // Check at 750ms — if items exist but contentSize is unreasonably small, the
+                // masonry didn't render. Fire forceRepaintFeed() to rebuild the grid layout.
+                let capturedItemCount = itemCount
+                let capturedCallback = onBlankTopDetected
+                guard capturedItemCount > 5, capturedCallback != nil else { return }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) { [weak scrollView] in
+                    guard let scrollView else { return }
+                    let minExpected = max(400, scrollView.bounds.height * 0.8)
+                    guard scrollView.contentSize.height < minExpected else { return }
+                    capturedCallback?()
+                }
             }
         }
     }

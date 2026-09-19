@@ -136,7 +136,9 @@ struct HomeFeedContent: View {
                                 scrollBoundary: homeScrollBoundary,
                                 scrollToTopToken: viewModel.homeScrollToTopToken,
                                 homeHeaderHeight: homeHeaderHeight,
-                                homeTabRowHeight: homeTabRowHeight
+                                homeTabRowHeight: homeTabRowHeight,
+                                itemCount: viewModel.items.count,
+                                onBlankTopDetected: { viewModel.forceRepaintFeed() }
                             )
                             FeedScrollTrimCompensator(
                                 token: viewModel.homeFeedTrimToken,
@@ -343,6 +345,7 @@ struct HomeFeedContent: View {
                     items: viewModel.items,
                     columnAssignments: masonryColumnAssignments,
                     isLoadingTop: viewModel.homeFeedTopLoading,
+                    repaintToken: viewModel.homeFeedRepaintToken,
                     footer: {
                         let tab = viewModel.selectedFeedTab
                         if viewModel.hasMore(for: tab) || viewModel.isLoadingMore(for: tab) {
