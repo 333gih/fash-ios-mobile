@@ -225,6 +225,11 @@ struct FeedScrollTrimCompensator: UIViewRepresentable {
             guard abs(signedDeltaY) > 0.5, let scrollView = enclosingScrollView() else { return }
             scrollView.layoutIfNeeded()
             let minY = -scrollView.adjustedContentInset.top
+            // Safety net: when a prepend/restore fires (positive delta) but the viewport is already
+            // at or near the top (e.g. a stale token after tab-bar tap-to-top), skip the push-down.
+            // immediateRestoreCurrentSectionTabIfNeeded() is the primary path that prevents this;
+            // this guard covers any race where a delayed token still reaches the compensator.
+            if signedDeltaY > 0, scrollView.contentOffset.y <= minY + 150 { return }
             var offset = scrollView.contentOffset
             offset.y = max(minY, offset.y + signedDeltaY)
             scrollView.setContentOffset(offset, animated: false)

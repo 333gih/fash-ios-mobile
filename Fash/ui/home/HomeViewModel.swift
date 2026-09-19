@@ -107,6 +107,8 @@ final class HomeViewModel {
     private(set) var homeTabBarScrollToken = 0
     var homeFeedTrimToken = 0
     private(set) var homeFeedTrimSignedDeltaY: CGFloat = 0
+    /// Last column width passed to scheduleSectionTabTrim — used for immediate scroll-to-top restore.
+    private var lastKnownFeedColumnWidth: CGFloat = 160
 
     var dailyOutfitDrop: [OutfitSetCard] { sections.dailyOutfitDrop }
 
@@ -191,6 +193,7 @@ final class HomeViewModel {
 
     /// Section tabs (huntToday, forYou, etc.) — adaptive sliding window with scroll-back recovery.
     func scheduleSectionTabTrim(visibleIndex: Int, columnWidth: CGFloat, columnAssignments: [String: Bool] = [:]) {
+        lastKnownFeedColumnWidth = columnWidth
         let tab = selectedFeedTab
         guard tab != .following else { return }
         sectionTabTrimTask?.cancel()
@@ -386,11 +389,32 @@ final class HomeViewModel {
     /// Bottom-nav re-tap / same-tab reselect — scroll to full header top (Android `requestScrollHomeToTop`).
     func requestScrollHomeToTop() {
         homeScrollToTopToken &+= 1
+        sectionTabTrimTask?.cancel()
+        immediateRestoreCurrentSectionTabIfNeeded()
     }
 
     /// Horizontal swipe or different tab tap — align pinned tabs + first rows of that tab.
     func requestScrollHomeFeedToTop() {
         homeScrollToFeedTopToken &+= 1
+        sectionTabTrimTask?.cancel()
+        immediateRestoreCurrentSectionTabIfNeeded()
+    }
+
+    /// Restore all front-trimmed items for the current section tab without applying scroll compensation.
+    /// Called on tab-bar tap-to-top and tab-switch so items 0..N are present before the scroll lands.
+    /// No `homeFeedTrimToken` increment → `FeedScrollTrimCompensator` does not fire.
+    private func immediateRestoreCurrentSectionTabIfNeeded() {
+        let tab = selectedFeedTab
+        guard tab != .following else { return }
+        var state = tabFeedState[tab.rawValue] ?? HomeTabFeedState()
+        guard state.window.logicalStartIndex > 0 else { return }
+        guard state.restoreFromGlobal(
+            targetGlobalStart: 0,
+            columnWidth: max(1, lastKnownFeedColumnWidth),
+            columnAssignments: [:]
+        ) != nil else { return }
+        tabFeedState[tab.rawValue] = state
+        syncItemsForSelectedTab()
     }
 
     func normalizeSelectedFeedTab(isGuestMode: Bool, deps: AppDependencies) {
