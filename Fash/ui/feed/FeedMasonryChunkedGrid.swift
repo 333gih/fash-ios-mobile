@@ -55,7 +55,7 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
     }
 
     var body: some View {
-        VStack(spacing: gap) {
+        LazyVStack(spacing: gap) {
             widthProbe
             ForEach(feedChunks) { chunk in
                 feedChunkRow(chunk)
@@ -159,47 +159,39 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
     private func refreshLayout(forceFull: Bool) {
         guard !items.isEmpty else {
             layout = .empty
-            perChunkLayout = [Int: ChunkColumns]()
+            perChunkLayout = [:]
             layoutedItemCount = 0
             return
         }
-        let fullRelayout = forceFull
-            || layout.isEmpty
-            || items.count < layoutedItemCount
-            || columnWidth <= 1
-            || !layoutMatchesCurrentItems()
-
-        if fullRelayout {
+        // Append-only O(new items) path: new items added to the end without a front-trim.
+        // The onChange handler calls forceFull=true whenever firstId changes (trim/replace),
+        // so forceFull=false here reliably means a trailing pagination append.
+        if !forceFull, !layout.isEmpty, columnWidth > 1, items.count > layoutedItemCount {
+            let start = layoutedItemCount
+            let newSlice = Array(items[start...])
             var assignments = columnAssignments
-            layout = ListingMasonryGrid.makeStableColumnLayout(
-                items: items,
+            layout = ListingMasonryGrid.extendStableColumnLayout(
+                existing: layout,
+                newItems: newSlice,
+                startIndex: start,
                 columnWidth: columnWidth,
                 verticalGap: gap,
                 assignedIsRightColumn: &assignments
             )
-            if assignments != columnAssignments {
-                columnAssignments = assignments
-            }
+            if assignments != columnAssignments { columnAssignments = assignments }
             layoutedItemCount = items.count
             rebuildPerChunkLayout()
             return
         }
-
-        guard items.count > layoutedItemCount else { return }
-        let start = layoutedItemCount
-        let newSlice = Array(items[start...])
+        // Full O(n) relayout — covers: forced, first load, column-width change, front-trim.
         var assignments = columnAssignments
-        layout = ListingMasonryGrid.extendStableColumnLayout(
-            existing: layout,
-            newItems: newSlice,
-            startIndex: start,
+        layout = ListingMasonryGrid.makeStableColumnLayout(
+            items: items,
             columnWidth: columnWidth,
             verticalGap: gap,
             assignedIsRightColumn: &assignments
         )
-        if assignments != columnAssignments {
-            columnAssignments = assignments
-        }
+        if assignments != columnAssignments { columnAssignments = assignments }
         layoutedItemCount = items.count
         rebuildPerChunkLayout()
     }
@@ -239,12 +231,6 @@ struct FeedMasonryChunkedGrid<Cell: View, Footer: View>: View {
         perChunkLayout = result
     }
 
-    private func layoutMatchesCurrentItems() -> Bool {
-        guard !layout.isEmpty, layoutedItemCount == items.count else { return false }
-        let layoutIds = layout.left.map(\.item.id) + layout.right.map(\.item.id)
-        guard layoutIds.count == items.count else { return false }
-        return zip(layoutIds, items.map(\.id)).allSatisfy { $0.0 == $0.1 }
-    }
 }
 
 extension FeedMasonryChunkedGrid where Footer == EmptyView {
