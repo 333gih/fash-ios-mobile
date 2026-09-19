@@ -144,6 +144,10 @@ struct HomeFeedTabSwitcher: View {
                             .fashScrollableTabChipStyle()
                         }
                         .buttonStyle(.plain)
+                        // contentShape on the Button (after buttonStyle) is the reliable way to
+                        // expand the SwiftUI hit-testing rect to the full padded frame; applying
+                        // it only on the label VStack is not consistently propagated upward.
+                        .contentShape(Rectangle())
                         .id(tab.id)
                     }
                 }
