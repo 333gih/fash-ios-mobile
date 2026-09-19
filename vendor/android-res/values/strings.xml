@@ -2240,4 +2240,11 @@
     <string name="home_delivering_list_intro">Đơn hàng đang giao tới người mua. Theo dõi trạng thái và cập nhật thông tin giao hàng tại đây.</string>
     <string name="home_delivering_screen_title">Đang giao</string>
     <string name="session_expired_message">Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.</string>
+    <string name="profile_completion_title">Hồ sơ phong cách của bạn</string>
+    <string name="profile_completion_step_photo">Tải ảnh đại diện</string>
+    <string name="profile_completion_step_tags">Chọn phong cách yêu thích</string>
+    <string name="profile_completion_step_sizing">Thêm thông tin kích thước</string>
+    <string name="profile_completion_step_bio">Viết giới thiệu ngắn</string>
+    <string name="profile_completion_step_follow">Theo dõi một người bán</string>
+    <string name="milestone_profile_complete">Hồ sơ phong cách của bạn đã hoàn tất!</string>
 </resources>

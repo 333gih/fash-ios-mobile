@@ -2185,4 +2185,11 @@
     <string name="product_save_nudge_dismiss">Dismiss</string>
     <string name="profile_height_cm">Height %1$d cm</string>
     <string name="profile_weight_kg">Weight %1$s kg</string>
+    <string name="profile_completion_title">Your style profile</string>
+    <string name="profile_completion_step_photo">Upload a profile photo</string>
+    <string name="profile_completion_step_tags">Choose your aesthetic tags</string>
+    <string name="profile_completion_step_sizing">Add your sizing info</string>
+    <string name="profile_completion_step_bio">Write a short bio</string>
+    <string name="profile_completion_step_follow">Follow a seller you like</string>
+    <string name="milestone_profile_complete">Your style profile is complete!</string>
 </resources>
