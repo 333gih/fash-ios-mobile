@@ -124,6 +124,10 @@ final class AppDependencies {
     private(set) var chatUnreadTotal: Int = 0
     private(set) var chatUnreadSnapshotGeneration: Int = 0
     private var chatUnreadByConversationId: [String: Int] = [:]
+    /// Canonical own-user profile — written by ProfileViewModel after every successful load/reload.
+    /// Read by HomeFeedContent (progress card), PersonalizationViewModel, HomeViewModel (sizing banner).
+    var canonicalUserProfile: ProfileInfo?
+
     var inAppNotification: FashInAppNotificationSession?
     var activeChatSession = ActiveChatSession()
     var snackbarMessage: String?

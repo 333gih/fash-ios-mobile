@@ -159,10 +159,53 @@ final class ProfileViewModel {
         switch await deps.userRepository.getMeProfile() {
         case .success(let p):
             applyProfile(p)
+            deps.canonicalUserProfile = p
             lastSuccessfulRefreshAt = Date()
         case .failure:
             break
         }
+    }
+
+    /// Targeted local update after a mutation (avatar/cover upload, profile patch) — no network call.
+    /// Callers must also update deps.canonicalUserProfile.
+    func applyProfilePatch(_ patch: ProfilePatch) {
+        guard var p = profile else { return }
+        p = ProfileInfo(
+            userId: p.userId,
+            username: patch.username ?? p.username,
+            displayName: patch.displayName ?? p.displayName,
+            avatarUrl: patch.avatarUrl ?? p.avatarUrl,
+            coverImageUrl: patch.coverImageUrl ?? p.coverImageUrl,
+            followerCount: p.followerCount,
+            followingCount: p.followingCount,
+            productCount: p.productCount,
+            bio: patch.bio ?? p.bio,
+            isFollowing: p.isFollowing,
+            aestheticTags: patch.aestheticTags.map { $0.map(\.name) } ?? p.aestheticTags,
+            aestheticTagSnapshots: patch.aestheticTags ?? p.aestheticTagSnapshots,
+            referenceSize: patch.referenceSize ?? p.referenceSize,
+            referenceMeasurementUnit: patch.referenceMeasurementUnit ?? p.referenceMeasurementUnit,
+            referenceMeasurementChest: patch.referenceMeasurementChest ?? p.referenceMeasurementChest,
+            referenceMeasurementHem: patch.referenceMeasurementHem ?? p.referenceMeasurementHem,
+            referenceMeasurementLength: patch.referenceMeasurementLength ?? p.referenceMeasurementLength,
+            referenceMeasurementShoulders: patch.referenceMeasurementShoulders ?? p.referenceMeasurementShoulders,
+            referenceMeasurementSleeveLength: patch.referenceMeasurementSleeveLength ?? p.referenceMeasurementSleeveLength,
+            gender: patch.gender ?? p.gender,
+            soldCount: p.soldCount,
+            rating: p.rating,
+            reviewCount: p.reviewCount,
+            verified: p.verified,
+            hasFastDelivery: p.hasFastDelivery,
+            reputationPoints: p.reputationPoints,
+            meetingNoShowWarning: p.meetingNoShowWarning,
+            sizingReferenceCompleted: p.sizingReferenceCompleted,
+            heightCm: p.heightCm,
+            weightKg: p.weightKg,
+            accountEmail: p.accountEmail,
+            accountPhone: p.accountPhone,
+            topBadges: p.topBadges
+        )
+        applyProfile(p)
     }
 
     /// Loads the first page for a tab when it has never succeeded, or retries when badge count implies listings exist.
@@ -268,6 +311,7 @@ final class ProfileViewModel {
         switch await profileResult {
         case .success(let p):
             applyProfile(p)
+            deps.canonicalUserProfile = p
             lastSuccessfulRefreshAt = Date()
             loadError = false
             if case .success(let summary) = await summaryResult {

@@ -278,18 +278,35 @@ struct ProfileScreen: View {
     }
 
     private func uploadProfileImage(_ item: PhotosPickerItem, type: String) async {
-        guard let data = try? await item.loadTransferable(type: Data.self), !data.isEmpty else { return }
+        guard let rawData = try? await item.loadTransferable(type: Data.self), !rawData.isEmpty else { return }
         let mimeType = item.supportedContentTypes.first?.preferredMIMEType ?? "image/jpeg"
-        let ext = mimeType.contains("png") ? "png" : "jpg"
+        // Compress to max 1200px / 82% JPEG before upload — avoids sending multi-MB camera images.
+        let data = compressImageData(rawData, maxDimension: 1200, jpegQuality: 0.82) ?? rawData
         let uploadResult = await deps.userRepository.uploadProfileImage(
-            bytes: data, filename: "\(type).\(ext)", type: type, mimeType: mimeType
+            bytes: data, filename: "\(type).jpg", type: type, mimeType: "image/jpeg"
         )
-        guard case .success(let url) = uploadResult else { return }
-        let patch = type == "cover" ? ProfilePatch(coverImageUrl: url) : ProfilePatch(avatarUrl: url)
-        if case .success = await deps.userRepository.updateProfile(patch) {
-            await viewModel.reloadProfileAfterEdit(deps: deps)
+        guard case .success(let url) = uploadResult else {
+            if type == "avatar" { selectedAvatarPhoto = nil } else { selectedCoverPhoto = nil }
+            return
         }
+        // Optimistic local update — show new image immediately without waiting for the PATCH response.
+        let patch = type == "cover" ? ProfilePatch(coverImageUrl: url) : ProfilePatch(avatarUrl: url)
+        viewModel.applyProfilePatch(patch)
+        if let updated = viewModel.profile { deps.canonicalUserProfile = updated }
+        // Persist to server in background; no full getMeProfile reload needed.
+        Task { _ = await deps.userRepository.updateProfile(patch) }
         if type == "avatar" { selectedAvatarPhoto = nil } else { selectedCoverPhoto = nil }
+    }
+
+    private func compressImageData(_ data: Data, maxDimension: CGFloat, jpegQuality: CGFloat) -> Data? {
+        guard let image = UIImage(data: data) else { return nil }
+        let size = image.size
+        guard max(size.width, size.height) > maxDimension || data.count > 400_000 else { return data }
+        let scale = min(maxDimension / max(size.width, size.height), 1.0)
+        let newSize = CGSize(width: (size.width * scale).rounded(), height: (size.height * scale).rounded())
+        let renderer = UIGraphicsImageRenderer(size: newSize)
+        let resized = renderer.image { _ in image.draw(in: CGRect(origin: .zero, size: newSize)) }
+        return resized.jpegData(compressionQuality: jpegQuality)
     }
 
     private var completionState: ProfileCompletionState {

@@ -427,6 +427,7 @@ struct MainNavScreen: View {
                 },
                 onRequestSignIn: { reason in onRequestSignIn?(reason) },
                 onOpenSizingSetup: isGuestMode ? nil : { router.showEditProfile = true },
+                onOpenPersonalization: isGuestMode ? nil : { router.showPersonalization = true },
                 onDeliveringJourneyClick: {
                     Task {
                         await ordersVM.openBuyingInTransit(deps: deps)

@@ -11,6 +11,7 @@ struct HomeFeedContent: View {
     var onFeaturedSellerClick: (FeaturedSellerItem) -> Void = { _ in }
     var onRequestSignIn: (String) -> Void = { _ in }
     var onOpenSizingSetup: (() -> Void)? = nil
+    var onOpenPersonalization: (() -> Void)? = nil
     var onDeliveringJourneyClick: () -> Void = {}
     var onSavedJourneyClick: () -> Void = {}
     var onInReviewJourneyClick: () -> Void = {}
@@ -233,6 +234,15 @@ struct HomeFeedContent: View {
                     onSavedClick: onSavedJourneyClick,
                     onInReviewClick: onInReviewJourneyClick
                 )
+            }
+
+            if !isGuestMode, let openPersonalization = onOpenPersonalization,
+               let canonProfile = deps.canonicalUserProfile {
+                let completionState = ProfileCompletionState.from(canonProfile)
+                if !completionState.isComplete {
+                    ProfileCompletionCard(state: completionState, onAction: openPersonalization)
+                        .padding(.top, spacing.spacing2)
+                }
             }
 
             if viewModel.showSizingBanner, let onOpenSizingSetup {

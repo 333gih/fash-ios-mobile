@@ -740,7 +740,29 @@ final class HomeViewModel {
     }
 
     func refreshSizingBannerAfterProfileSave(deps: AppDependencies, isGuestMode: Bool) {
+        // Fast path: use the canonical profile already in memory from the just-completed save.
+        if let p = deps.canonicalUserProfile {
+            applySizingBannerFromProfile(p, isGuestMode: isGuestMode)
+            return
+        }
         Task { await refreshSizingBannerState(deps: deps, isGuestMode: isGuestMode) }
+    }
+
+    /// Computes sizing banner visibility from an already-loaded profile — no network call.
+    func applySizingBannerFromProfile(_ profile: ProfileInfo, isGuestMode: Bool) {
+        guard !isGuestMode, !HomeSizingBannerPreference.isDismissed() else {
+            showSizingBanner = false
+            return
+        }
+        let hasSize = !(profile.referenceSize?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+        let hasMeasurement = [
+            profile.referenceMeasurementChest,
+            profile.referenceMeasurementHem,
+            profile.referenceMeasurementLength,
+            profile.referenceMeasurementShoulders,
+            profile.referenceMeasurementSleeveLength,
+        ].contains { ($0 ?? 0) > 0 }
+        showSizingBanner = !hasSize && !hasMeasurement
     }
 
     func toggleLike(_ item: ListingFeedItem, surface: String, position: Int, deps: AppDependencies) {

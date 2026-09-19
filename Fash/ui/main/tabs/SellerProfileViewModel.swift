@@ -237,6 +237,10 @@ final class SellerProfileViewModel {
         followInFlight = true
         defer { followInFlight = false }
         let wasFollowing = isFollowing
+        let nowFollowing = !wasFollowing
+        // Optimistic update — flip state immediately so the user sees instant feedback.
+        isFollowing = nowFollowing
+        profile = copyProfile(prof, isFollowing: nowFollowing, followerDelta: nowFollowing ? 1 : -1)
         let result: Result<Void, Error> = if wasFollowing {
             await deps.userRepository.unfollow(target)
         } else {
@@ -244,12 +248,11 @@ final class SellerProfileViewModel {
         }
         switch result {
         case .success:
-            isFollowing = !wasFollowing
-            profile = copyProfile(prof, isFollowing: isFollowing, followerDelta: isFollowing ? 1 : -1)
-            if isFollowing {
-                deps.showSnackbar(L10n.followSuccess)
-            }
+            if nowFollowing { deps.showSnackbar(L10n.followSuccess) }
         case .failure(let error):
+            // Rollback optimistic update.
+            isFollowing = wasFollowing
+            profile = copyProfile(profile ?? prof, isFollowing: wasFollowing, followerDelta: wasFollowing ? 1 : -1)
             deps.showSnackbar(FeedEngagementFeedback.actionErrorMessage(for: error))
         }
     }
