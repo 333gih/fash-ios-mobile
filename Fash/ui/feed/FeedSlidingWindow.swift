@@ -30,14 +30,6 @@ struct FeedSlidingWindowPolicy: Sendable {
         bufferAfter: 16,
         backfillVisibleThreshold: 10
     )
-
-    /// Offset-based section tabs (huntToday, forYou, etc.) — larger buffer since no cursor backfill.
-    static let homeSectionTab = FeedSlidingWindowPolicy(
-        maxItems: 120,
-        bufferBefore: 40,
-        bufferAfter: 40,
-        backfillVisibleThreshold: 16
-    )
 }
 
 /// TikTok-style bounded in-memory window with front-trim + scroll compensation.

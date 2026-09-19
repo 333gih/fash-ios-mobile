@@ -68,7 +68,9 @@ private struct HomeTabFeedState {
 
     @discardableResult
     mutating func patchItem(withId id: String, transform: (ListingFeedItem) -> ListingFeedItem) -> Bool {
-        window.patchItem(withId: id, transform: transform)
+        let patched = window.patchItem(withId: id, transform: transform)
+        globalStore.patchItem(withId: id, transform: transform)
+        return patched
     }
 
     var isEmpty: Bool { window.items.isEmpty }

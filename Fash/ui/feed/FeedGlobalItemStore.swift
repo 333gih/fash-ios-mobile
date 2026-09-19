@@ -45,4 +45,12 @@ struct FeedGlobalItemStore {
         guard s < e else { return [] }
         return Array(allItems[s..<e])
     }
+
+    /// Keep interaction state (like/save) in sync so scroll-back restore shows the latest UI state.
+    @discardableResult
+    mutating func patchItem(withId id: String, transform: (ListingFeedItem) -> ListingFeedItem) -> Bool {
+        guard let idx = idToGlobalIndex[id] else { return false }
+        allItems[idx] = transform(allItems[idx])
+        return true
+    }
 }
