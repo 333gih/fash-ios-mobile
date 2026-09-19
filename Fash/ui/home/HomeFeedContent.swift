@@ -65,6 +65,7 @@ struct HomeFeedContent: View {
     @State private var homeTabRowHeight: CGFloat = 48
     @State private var homeScrollClampRevision = 0
     @State private var listingInteractionEnabled = true
+    @State private var masonryColumnAssignmentsByTab: [String: [String: Bool]] = [:]
 
     private var pinnedChromeHeight: CGFloat {
         max(0, homeHeaderHeight + homeTabRowHeight)
@@ -86,8 +87,8 @@ struct HomeFeedContent: View {
 
     private var masonryColumnAssignments: Binding<[String: Bool]> {
         Binding(
-            get: { viewModel.columnAssignmentsByTab[viewModel.selectedFeedTabKey] ?? [:] },
-            set: { viewModel.columnAssignmentsByTab[viewModel.selectedFeedTabKey] = $0 }
+            get: { masonryColumnAssignmentsByTab[viewModel.selectedFeedTabKey] ?? [:] },
+            set: { masonryColumnAssignmentsByTab[viewModel.selectedFeedTabKey] = $0 }
         )
     }
 
@@ -369,12 +370,14 @@ struct HomeFeedContent: View {
                             if tab == .following {
                                 viewModel.scheduleFollowingWindowTrim(
                                     visibleIndex: index,
-                                    columnWidth: masonryColumnWidth
+                                    columnWidth: masonryColumnWidth,
+                                    columnAssignments: masonryColumnAssignmentsByTab[tab.rawValue] ?? [:]
                                 )
                             } else {
                                 viewModel.scheduleSectionTabTrim(
                                     visibleIndex: index,
-                                    columnWidth: masonryColumnWidth
+                                    columnWidth: masonryColumnWidth,
+                                    columnAssignments: masonryColumnAssignmentsByTab[tab.rawValue] ?? [:]
                                 )
                             }
                             if FeedPaginationPolicy.shouldPrefetchNextPage(
