@@ -2195,5 +2195,14 @@
     <string name="profile_completion_steps_format">%1$d/%2$d steps</string>
     <string name="profile_personalization_section">Personalization</string>
     <string name="profile_activity_section">Activity</string>
+    <string name="personalization_subtitle">Help FASH match your personal style.</string>
+    <string name="personalization_progress_format">%1$d/%2$d steps complete</string>
+    <string name="personalization_step_done">Done</string>
+    <string name="personalization_step_photo">Profile photo</string>
+    <string name="personalization_step_tags">Style preferences</string>
+    <string name="personalization_step_sizing">Measurements</string>
+    <string name="personalization_step_bio">Bio</string>
+    <string name="personalization_step_following">Following sellers</string>
+    <string name="personalization_upload_error">Failed to upload photo. Please try again.</string>
     <string name="milestone_profile_complete">Your style profile is complete!</string>
 </resources>

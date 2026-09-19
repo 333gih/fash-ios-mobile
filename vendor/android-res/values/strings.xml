@@ -2250,5 +2250,14 @@
     <string name="profile_completion_steps_format">%1$d/%2$d bước</string>
     <string name="profile_personalization_section">Cá nhân hoá</string>
     <string name="profile_activity_section">Hoạt động</string>
+    <string name="personalization_subtitle">Giúp FASH gợi ý đúng phong cách của bạn.</string>
+    <string name="personalization_progress_format">%1$d/%2$d bước hoàn thành</string>
+    <string name="personalization_step_done">Hoàn thành</string>
+    <string name="personalization_step_photo">Ảnh đại diện</string>
+    <string name="personalization_step_tags">Phong cách yêu thích</string>
+    <string name="personalization_step_sizing">Số đo</string>
+    <string name="personalization_step_bio">Giới thiệu</string>
+    <string name="personalization_step_following">Theo dõi người bán</string>
+    <string name="personalization_upload_error">Không thể tải ảnh lên. Thử lại.</string>
     <string name="milestone_profile_complete">Hồ sơ phong cách của bạn đã hoàn tất!</string>
 </resources>

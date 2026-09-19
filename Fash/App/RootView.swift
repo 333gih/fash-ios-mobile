@@ -361,14 +361,25 @@ struct RootView: View {
         case .editProfile:
             EditProfileScreen(
                 onDismiss: { router.showEditProfile = false },
-                onSaved: {
-                    Task {
-                        await profileVM.reloadProfileAfterEdit(deps: deps)
-                        homeVM.refreshSizingBannerAfterProfileSave(
-                            deps: deps,
-                            isGuestMode: router.isGuestMode
-                        )
-                    }
+                onCompleted: {
+                    await profileVM.reloadProfileAfterEdit(deps: deps)
+                    homeVM.refreshSizingBannerAfterProfileSave(
+                        deps: deps,
+                        isGuestMode: router.isGuestMode
+                    )
+                    router.showEditProfile = false
+                }
+            )
+        case .personalization:
+            PersonalizationScreen(
+                onDismiss: { router.showPersonalization = false },
+                onNavigateToExplore: {
+                    router.showPersonalization = false
+                    router.selectedTab = .explore
+                },
+                onOpenEditProfile: {
+                    router.showPersonalization = false
+                    router.showEditProfile = true
                 }
             )
         case .chat(let id):

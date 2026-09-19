@@ -11,10 +11,12 @@ struct ProfileHeroSection: View {
     @Environment(\.fashSpacing) private var spacing
     let coverImageUrl: String?
     let avatarUrl: String?
+    var onEditAvatar: (() -> Void)? = nil
+    var onEditCover: (() -> Void)? = nil
 
     var body: some View {
         ZStack(alignment: .bottomLeading) {
-            cover
+            coverArea
                 .frame(height: profileHeroCoverHeight)
                 .frame(maxWidth: .infinity)
                 .clipped()
@@ -33,15 +35,29 @@ struct ProfileHeroSection: View {
     }
 
     @ViewBuilder
-    private var cover: some View {
-        if let url = resolvedCover {
-            FashAsyncImage(url: url, contentMode: .fill)
-        } else {
-            LinearGradient(
-                colors: [FashColors.brandPrimary.opacity(0.5), FashColors.surfaceContainerHigh],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+    private var coverArea: some View {
+        ZStack(alignment: .topTrailing) {
+            if let url = resolvedCover {
+                FashAsyncImage(url: url, contentMode: .fill)
+            } else {
+                LinearGradient(
+                    colors: [FashColors.brandPrimary.opacity(0.5), FashColors.surfaceContainerHigh],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            }
+            if let onEditCover {
+                Button(action: onEditCover) {
+                    Image(systemName: "camera.fill")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 32, height: 32)
+                        .background(Color.black.opacity(0.45))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .padding(10)
+            }
         }
     }
 
@@ -50,13 +66,28 @@ struct ProfileHeroSection: View {
     }
 
     private var avatarRing: some View {
-        ZStack {
-            Circle()
-                .fill(FashColors.screen)
-                .frame(width: profileHeroAvatarRing, height: profileHeroAvatarRing)
-                .shadow(color: .black.opacity(0.12), radius: 3, y: 1)
-            FashAvatarCircle(url: avatarUrl, size: profileHeroAvatarInner)
-                .overlay(Circle().stroke(FashColors.screen, lineWidth: 4))
+        ZStack(alignment: .bottomTrailing) {
+            ZStack {
+                Circle()
+                    .fill(FashColors.screen)
+                    .frame(width: profileHeroAvatarRing, height: profileHeroAvatarRing)
+                    .shadow(color: .black.opacity(0.12), radius: 3, y: 1)
+                FashAvatarCircle(url: avatarUrl, size: profileHeroAvatarInner)
+                    .overlay(Circle().stroke(FashColors.screen, lineWidth: 4))
+            }
+            if let onEditAvatar {
+                Button(action: onEditAvatar) {
+                    Image(systemName: "camera.fill")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(FashColors.readableOnBrandPrimary)
+                        .frame(width: 26, height: 26)
+                        .background(FashColors.brandPrimary)
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(FashColors.screen, lineWidth: 2))
+                }
+                .buttonStyle(.plain)
+                .offset(x: 2, y: 2)
+            }
         }
     }
 }

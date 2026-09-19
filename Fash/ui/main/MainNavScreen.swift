@@ -493,6 +493,7 @@ struct MainNavScreen: View {
                 ProfileScreen(
                     viewModel: profileVM,
                     onEditProfile: { router.showEditProfile = true },
+                    onOpenPersonalization: { router.showPersonalization = true },
                     onOpenFollowConnections: { tab in
                         router.followConnectionsInitialTab = tab
                         router.showFollowConnections = true

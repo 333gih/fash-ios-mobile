@@ -1,3 +1,4 @@
+import PhotosUI
 import SwiftUI
 import UIKit
 
@@ -6,6 +7,7 @@ struct ProfileScreen: View {
     @Environment(AppDependencies.self) private var deps
     @Bindable var viewModel: ProfileViewModel
     var onEditProfile: () -> Void
+    var onOpenPersonalization: (() -> Void)? = nil
     var onOpenFollowConnections: (Int) -> Void = { _ in }
     var onShippingAddressesClick: () -> Void = {}
     var onInviteFriendsClick: () -> Void = {}
@@ -26,6 +28,10 @@ struct ProfileScreen: View {
 
     @State private var selectedTab = 0
     @State private var scrollToGridToken = 0
+    @State private var selectedAvatarPhoto: PhotosPickerItem?
+    @State private var selectedCoverPhoto: PhotosPickerItem?
+    @State private var isUploadingAvatar = false
+    @State private var isUploadingCover = false
     /// Home journey → wishlist / in-review: pin grid after content settles.
     @State private var pendingExternalGridScroll = false
     @State private var externalGridScrollTask: Task<Void, Never>?
@@ -85,6 +91,16 @@ struct ProfileScreen: View {
             }
         }
         .background(FashColors.screen)
+        .photosPicker(isPresented: $isUploadingAvatar, selection: $selectedAvatarPhoto, matching: .images)
+        .photosPicker(isPresented: $isUploadingCover, selection: $selectedCoverPhoto, matching: .images)
+        .onChange(of: selectedAvatarPhoto) { _, item in
+            guard let item else { return }
+            Task { await uploadProfileImage(item, type: "avatar") }
+        }
+        .onChange(of: selectedCoverPhoto) { _, item in
+            guard let item else { return }
+            Task { await uploadProfileImage(item, type: "cover") }
+        }
         .task { await viewModel.refreshIfStale(deps: deps) }
         .task(id: selectedTab) {
             await viewModel.ensureListingsLoaded(for: selectedProfileTab, deps: deps)
@@ -261,6 +277,21 @@ struct ProfileScreen: View {
         }
     }
 
+    private func uploadProfileImage(_ item: PhotosPickerItem, type: String) async {
+        guard let data = try? await item.loadTransferable(type: Data.self), !data.isEmpty else { return }
+        let mimeType = item.supportedContentTypes.first?.preferredMIMEType ?? "image/jpeg"
+        let ext = mimeType.contains("png") ? "png" : "jpg"
+        let uploadResult = await deps.userRepository.uploadProfileImage(
+            bytes: data, filename: "\(type).\(ext)", type: type, mimeType: mimeType
+        )
+        guard case .success(let url) = uploadResult else { return }
+        let patch = type == "cover" ? ProfilePatch(coverImageUrl: url) : ProfilePatch(avatarUrl: url)
+        if case .success = await deps.userRepository.updateProfile(patch) {
+            await viewModel.reloadProfileAfterEdit(deps: deps)
+        }
+        if type == "avatar" { selectedAvatarPhoto = nil } else { selectedCoverPhoto = nil }
+    }
+
     private var completionState: ProfileCompletionState {
         ProfileCompletionState.from(viewModel.profile)
     }
@@ -277,7 +308,9 @@ struct ProfileScreen: View {
         VStack(spacing: 0) {
             ProfileHeroSection(
                 coverImageUrl: viewModel.profile?.coverImageUrl ?? viewModel.coverImageUrl,
-                avatarUrl: viewModel.profile?.avatarUrl ?? viewModel.avatarUrl
+                avatarUrl: viewModel.profile?.avatarUrl ?? viewModel.avatarUrl,
+                onEditAvatar: { isUploadingAvatar = true },
+                onEditCover: { isUploadingCover = true }
             )
             ProfileIdentityBlock(
                 profile: viewModel.profile,
@@ -292,8 +325,11 @@ struct ProfileScreen: View {
             if viewModel.profile != nil && !completionState.isComplete {
                 sectionLabel(L10n.profilePersonalizationSection)
                     .padding(.top, spacing.spacing3)
-                ProfileCompletionCard(state: completionState, onAction: onEditProfile)
-                    .padding(.top, spacing.spacing2)
+                ProfileCompletionCard(
+                    state: completionState,
+                    onAction: onOpenPersonalization ?? onEditProfile
+                )
+                .padding(.top, spacing.spacing2)
                 Spacer().frame(height: spacing.spacing5)
             }
             if viewModel.profile != nil {

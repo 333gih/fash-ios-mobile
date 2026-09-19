@@ -122,6 +122,7 @@ final class AppRouter {
     var editListingId: String?
     var profileEditReturn: ProfileEditReturnContext?
     var showEditProfile = false
+    var showPersonalization = false
     var selectedConversationId: String?
     var selectedOrderId: String?
     var showOrdersScreen = false
@@ -170,6 +171,7 @@ final class AppRouter {
         editListingId = nil
         profileEditReturn = nil
         showEditProfile = false
+        showPersonalization = false
         selectedConversationId = nil
         selectedOrderId = nil
         showOrdersScreen = false
@@ -200,6 +202,7 @@ final class AppRouter {
             || sellerShopUsername != nil
             || editListingId != nil
             || showEditProfile
+            || showPersonalization
             || selectedConversationId != nil
             || selectedOrderId != nil
             || showOrdersScreen
@@ -244,6 +247,7 @@ final class AppRouter {
         if selectedOrderId != nil { selectedOrderId = nil; return }
         if showOrdersScreen { showOrdersScreen = false; return }
         if selectedConversationId != nil { selectedConversationId = nil; return }
+        if showPersonalization { showPersonalization = false; return }
         if showEditProfile { showEditProfile = false; return }
         if editListingId != nil { editListingId = nil; return }
         if listingDetailRootId != nil {

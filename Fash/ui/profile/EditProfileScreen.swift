@@ -4,7 +4,8 @@ struct EditProfileScreen: View {
     @Environment(\.fashSpacing) private var spacing
     @Environment(AppDependencies.self) private var deps
     var onDismiss: () -> Void
-    var onSaved: () -> Void = {}
+    /// Called after a successful save. Responsible for any reload logic AND dismissal.
+    var onCompleted: (() async -> Void)?
 
     @State private var viewModel = EditProfileViewModel()
 
@@ -55,8 +56,11 @@ struct EditProfileScreen: View {
             ) {
                 Task {
                     if await viewModel.save(deps: deps) {
-                        onSaved()
-                        onDismiss()
+                        if let onCompleted {
+                            await onCompleted()
+                        } else {
+                            onDismiss()
+                        }
                     }
                 }
             }

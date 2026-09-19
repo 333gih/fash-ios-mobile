@@ -2212,6 +2212,17 @@ enum L10n {
     }
     static var profilePersonalizationSection: String { t("profile_personalization_section") }
     static var profileActivitySection: String { t("profile_activity_section") }
+    static var personalizationSubtitle: String { t("personalization_subtitle") }
+    static func personalizationProgressFormat(_ a1: CVarArg, _ a2: CVarArg) -> String {
+        String(format: t("personalization_progress_format"), a1, a2)
+    }
+    static var personalizationStepDone: String { t("personalization_step_done") }
+    static var personalizationStepPhoto: String { t("personalization_step_photo") }
+    static var personalizationStepTags: String { t("personalization_step_tags") }
+    static var personalizationStepSizing: String { t("personalization_step_sizing") }
+    static var personalizationStepBio: String { t("personalization_step_bio") }
+    static var personalizationStepFollowing: String { t("personalization_step_following") }
+    static var personalizationUploadError: String { t("personalization_upload_error") }
     static var profileEdit: String { t("profile_edit") }
     static var profileEmptyInReviewSubtitle: String { t("profile_empty_in_review_subtitle") }
     static var profileEmptyInReviewTitle: String { t("profile_empty_in_review_title") }

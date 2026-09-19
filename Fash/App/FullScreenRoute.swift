@@ -5,6 +5,7 @@ enum FullScreenRoute: Identifiable {
     case seller(String)
     case editListing(String)
     case editProfile
+    case personalization
     case chat(String)
     case orders
     case order(String)
@@ -33,6 +34,7 @@ enum FullScreenRoute: Identifiable {
         case .seller(let u): return "seller-\(u)"
         case .editListing(let id): return "edit-listing-\(id)"
         case .editProfile: return "editProfile"
+        case .personalization: return "personalization"
         case .chat(let id): return "chat-\(id)"
         case .orders: return "orders"
         case .order(let id): return "order-\(id)"
@@ -75,6 +77,7 @@ extension AppRouter {
         if let user = sellerShopUsername { return .seller(user) }
         if let editId = editListingId { return .editListing(editId) }
         if showEditProfile { return .editProfile }
+        if showPersonalization { return .personalization }
         if let conv = selectedConversationId { return .chat(conv) }
         if showChangePasswordScreen { return .changePassword }
         if showNotificationPreferencesScreen { return .notificationPreferences }
